@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js";
 
 export const data = new SlashCommandBuilder()
   .setName("ngword")
@@ -33,7 +33,7 @@ function isUnknownInteraction(err) {
 
 export async function execute(interaction, db) {
   try {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   } catch (e) {
     if (isUnknownInteraction(e)) return;
     throw e;
@@ -64,7 +64,11 @@ export async function execute(interaction, db) {
 
     if (sub === "remove") {
       const word = interaction.options.getString("word", true).trim();
-      await db.run(`DELETE FROM ng_words WHERE guild_id = ? AND word = ?`, guildId, word);
+      await db.run(
+        `DELETE FROM ng_words WHERE guild_id = ? AND word = ?`,
+        guildId,
+        word
+      );
       return await interaction.editReply(`✅ 削除しました：\`${word}\``);
     }
 
@@ -74,7 +78,10 @@ export async function execute(interaction, db) {
     }
 
     // list
-    const rows = await db.all(`SELECT word FROM ng_words WHERE guild_id = ? ORDER BY word ASC`, guildId);
+    const rows = await db.all(
+      `SELECT word FROM ng_words WHERE guild_id = ? ORDER BY word ASC`,
+      guildId
+    );
     if (!rows.length) {
       return await interaction.editReply("（空）NGワードは登録されていません。");
     }
@@ -85,7 +92,9 @@ export async function execute(interaction, db) {
     const joined = words.join("\n");
     const body = joined.length > 1800 ? joined.slice(0, 1800) + "\n...（省略）" : joined;
 
-    return await interaction.editReply(`✅ NGワード一覧（${words.length}件）\n\`\`\`\n${body}\n\`\`\``);
+    return await interaction.editReply(
+      `✅ NGワード一覧（${words.length}件）\n\`\`\`\n${body}\n\`\`\``
+    );
   } catch (e) {
     if (isUnknownInteraction(e)) return;
     console.error("ngword error:", e);

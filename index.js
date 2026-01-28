@@ -10,6 +10,7 @@ import {
   GatewayIntentBits,
   EmbedBuilder,
   PermissionsBitField,
+  MessageFlags, // ✅ 追加
 } from "discord.js";
 
 import sqlite3 from "sqlite3";
@@ -414,7 +415,8 @@ client.on("interactionCreate", async (interaction) => {
     console.error(err);
     if (isUnknownInteraction(err)) return;
 
-    const payload = { content: `❌ エラー: ${err?.message ?? err}`, ephemeral: true };
+    // ✅ ephemeral -> flags（警告対策）
+    const payload = { content: `❌ エラー: ${err?.message ?? err}`, flags: MessageFlags.Ephemeral };
     try {
       if (interaction.deferred || interaction.replied) await interaction.followUp(payload);
       else await interaction.reply(payload);

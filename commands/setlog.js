@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js";
 
 export const data = new SlashCommandBuilder()
   .setName("setlog")
@@ -18,7 +18,7 @@ function isUnknownInteraction(err) {
 export async function execute(interaction, db) {
   // まずACK（ただし二重起動/期限切れなら負け側は黙る）
   try {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   } catch (e) {
     if (isUnknownInteraction(e)) return; // ここが重要：落ちない
     throw e;
