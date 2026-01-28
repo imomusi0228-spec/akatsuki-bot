@@ -16,11 +16,11 @@ function isUnknownInteraction(err) {
 }
 
 export async function execute(interaction, db) {
-  // すでに別プロセスが応答済みでも落とさない
+  // まずACK（ただし二重起動/期限切れなら負け側は黙る）
   try {
     await interaction.deferReply({ ephemeral: true });
   } catch (e) {
-    if (isUnknownInteraction(e)) return; // 二重起動時の負け側
+    if (isUnknownInteraction(e)) return; // ここが重要：落ちない
     throw e;
   }
 

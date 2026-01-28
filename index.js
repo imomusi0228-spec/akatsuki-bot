@@ -161,7 +161,7 @@ client.once("clientReady", () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
-// interactionCreate（10062対策込み）
+// interactionCreate（★コマンド実行ログは出さない版）
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -170,13 +170,6 @@ client.on("interactionCreate", async (interaction) => {
 
   try {
     await command.execute(interaction, db);
-
-    if (interaction.guild) {
-      await sendLog(
-        interaction.guild,
-        `🛠️ /${interaction.commandName} が実行されました（実行者: ${interaction.user.tag}）`
-      );
-    }
   } catch (err) {
     console.error(err);
 
