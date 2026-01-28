@@ -20,9 +20,8 @@ import {
   Client,
   Collection,
   GatewayIntentBits,
-  MessageFlags,
-  PermissionsBitField,
   EmbedBuilder,
+  PermissionsBitField,
 } from "discord.js";
 
 import sqlite3 from "sqlite3";
@@ -34,7 +33,6 @@ import { open } from "sqlite";
 const token = process.env.DISCORD_TOKEN;
 if (!token) {
   console.error("❌ DISCORD_TOKEN が未設定です (.env / Render Env Vars)");
-  // Renderで落とすとポートが閉じるので、process.exitはしない
 }
 
 /* =========================
@@ -77,9 +75,9 @@ try {
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers, // IN/OUTログ用
-    GatewayIntentBits.GuildMessages, // NG検知用
-    GatewayIntentBits.MessageContent, // NG検知用（本文）
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
   ],
 });
 
@@ -102,11 +100,32 @@ try {
 
       if (mod?.data?.name && typeof mod.execute === "function") {
         client.commands.set(mod.data.name, mod);
+      } else {
+        console.warn(`⚠️ commands/${file} は data/execute が無いのでスキップしました`);
       }
     }
+  } else {
+    console.warn("⚠️ commands フォルダが見つかりません");
   }
 } catch (e) {
   console.error("❌ Command load failed:", e?.message ?? e);
+}
+
+/* =========================
+   Utils
+========================= */
+function isUnknownInteraction(err) {
+  return err?.code === 10062 || err?.rawError?.code === 10062;
+}
+
+function normalize(s) {
+  return (s ?? "").toLowerCase();
+}
+
+async function getNgWords(guildId) {
+  if (!db) return [];
+  const rows = await db.all("SELECT word FROM ng_words WHERE guild_id = ?", guildId);
+  return rows.map((r) => (r.word ?? "").trim()).filter(Boolean);
 }
 
 /* =========================
@@ -135,23 +154,14 @@ async function sendLog(guild, payload) {
   }
 }
 
-function normalize(s) {
-  return (s ?? "").toLowerCase();
-}
-
-async function getNgWords(guildId) {
-  if (!db) return [];
-  const rows = await db.all("SELECT word FROM ng_words WHERE guild_id = ?", guildId);
-  return rows.map((r) => (r.word ?? "").trim()).filter(Boolean);
-}
-
 /* =========================
    Events
 ========================= */
-client.once("ready", () => {
+client.once("clientReady", () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
+// interactionCreate（10062対策込み）
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -169,34 +179,37 @@ client.on("interactionCreate", async (interaction) => {
     }
   } catch (err) {
     console.error(err);
-    const payload = {
-      content: `❌ エラー: ${err?.message ?? err}`,
-      flags: MessageFlags.Ephemeral,
-    };
-    if (interaction.deferred || interaction.replied) {
-      await interaction.followUp(payload).catch(() => null);
-    } else {
-      await interaction.reply(payload).catch(() => null);
+
+    // 二重起動やデプロイ直後の競合で起きる。無視でOK
+    if (isUnknownInteraction(err)) return;
+
+    const payload = { content: `❌ エラー: ${err?.message ?? err}`, ephemeral: true };
+
+    try {
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp(payload);
+      } else {
+        await interaction.reply(payload);
+      }
+    } catch (e) {
+      if (!isUnknownInteraction(e)) console.error("reply failed:", e);
     }
   }
 });
 
-// ===== NGワード検知（メッセージ監視） =====
+/* ===== NGワード検知（メッセージ監視） ===== */
 
-// 二重処理防止（同一プロセス内）: message.id を短時間キャッシュ
+// 二重処理防止（同一プロセス内）
 const processedMessageIds = new Map(); // id -> timestamp(ms)
-const DEDUPE_TTL_MS = 60_000; // 60秒
+const DEDUPE_TTL_MS = 60_000;
 
 function markProcessed(id) {
   const now = Date.now();
   processedMessageIds.set(id, now);
-
-  // 古いものを掃除
   for (const [mid, ts] of processedMessageIds) {
     if (now - ts > DEDUPE_TTL_MS) processedMessageIds.delete(mid);
   }
 }
-
 function alreadyProcessed(id) {
   const ts = processedMessageIds.get(id);
   return ts && Date.now() - ts <= DEDUPE_TTL_MS;
@@ -208,7 +221,7 @@ client.on("messageCreate", async (message) => {
     if (message.author?.bot) return;
     if (typeof message.content !== "string") return;
 
-    // ★二重通知対策
+    // 二重通知対策（同一プロセス内）
     if (alreadyProcessed(message.id)) return;
     markProcessed(message.id);
 
@@ -228,16 +241,15 @@ client.on("messageCreate", async (message) => {
       await message.delete().catch(() => null);
     }
 
-    // ★一般参加者に見せない：チャンネルへは何も送らない
-    // 本人へDMで警告（ワード内容は見せない）
+    // 参加者には見せない：本人DMのみ（ヒット語は見せない）
     const dmText =
       `⚠️ サーバーのルールに抵触する可能性のある表現が検出されたため、メッセージが削除されました。\n` +
       `内容を見直して再投稿してください。`;
     await message.author.send({ content: dmText }).catch(() => null);
 
-    // ★管理ログ：赤色Embed（ブロック状）
+    // 管理ログ：赤色Embed
     const embed = new EmbedBuilder()
-      .setColor(0xff3b3b) // 🔴 赤
+      .setColor(0xff3b3b)
       .setAuthor({
         name: message.author.tag,
         iconURL: message.author.displayAvatarURL?.() ?? undefined,
@@ -262,40 +274,49 @@ client.on("messageCreate", async (message) => {
   }
 });
 
-// ===== INログ（参加）: 青色Embed =====
+// INログ（参加）: 青色Embed
 client.on("guildMemberAdd", async (member) => {
-  const embed = new EmbedBuilder()
-    .setColor(0x3498db) // 🔵 青
-    .setTitle("📥 ユーザー参加")
-    .setThumbnail(member.user.displayAvatarURL?.() ?? null)
-    .addFields(
-      { name: "User", value: `${member.user.tag}`, inline: true },
-      { name: "User ID", value: `${member.user.id}`, inline: true }
-    )
-    .setTimestamp(new Date());
+  try {
+    const embed = new EmbedBuilder()
+      .setColor(0x3498db)
+      .setTitle("📥 ユーザー参加")
+      .setThumbnail(member.user.displayAvatarURL?.() ?? null)
+      .addFields(
+        { name: "User", value: `${member.user.tag}`, inline: true },
+        { name: "User ID", value: `${member.user.id}`, inline: true }
+      )
+      .setTimestamp(new Date());
 
-  await sendLog(member.guild, { embeds: [embed] });
+    await sendLog(member.guild, { embeds: [embed] });
+  } catch (e) {
+    console.error("guildMemberAdd log error:", e?.message ?? e);
+  }
 });
 
-// ===== OUTログ（退出）: 青色Embed =====
+// OUTログ（退出）: 青色Embed
 client.on("guildMemberRemove", async (member) => {
-  const embed = new EmbedBuilder()
-    .setColor(0x3498db) // 🔵 青
-    .setTitle("📤 ユーザー退出")
-    .setThumbnail(member.user.displayAvatarURL?.() ?? null)
-    .addFields(
-      { name: "User", value: `${member.user.tag}`, inline: true },
-      { name: "User ID", value: `${member.user.id}`, inline: true }
-    )
-    .setTimestamp(new Date());
+  try {
+    const embed = new EmbedBuilder()
+      .setColor(0x3498db)
+      .setTitle("📤 ユーザー退出")
+      .setThumbnail(member.user.displayAvatarURL?.() ?? null)
+      .addFields(
+        { name: "User", value: `${member.user.tag}`, inline: true },
+        { name: "User ID", value: `${member.user.id}`, inline: true }
+      )
+      .setTimestamp(new Date());
 
-  await sendLog(member.guild, { embeds: [embed] });
+    await sendLog(member.guild, { embeds: [embed] });
+  } catch (e) {
+    console.error("guildMemberRemove log error:", e?.message ?? e);
+  }
 });
 
+/* =========================
+   Login
+========================= */
 if (token) {
-  client
-    .login(token)
-    .catch((e) => console.error("❌ login failed:", e?.message ?? e));
+  client.login(token).catch((e) => console.error("❌ login failed:", e?.message ?? e));
 } else {
   console.error("❌ DISCORD_TOKEN が無いのでログインできません");
 }

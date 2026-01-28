@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, MessageFlags, PermissionFlagsBits } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 
 export const data = new SlashCommandBuilder()
   .setName("setlog")
@@ -11,22 +11,28 @@ export const data = new SlashCommandBuilder()
   )
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
+function isUnknownInteraction(err) {
+  return err?.code === 10062 || err?.rawError?.code === 10062;
+}
+
 export async function execute(interaction, db) {
-  // ★これが超重要：まず受付を返す（3秒制限回避）
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  // すでに別プロセスが応答済みでも落とさない
+  try {
+    await interaction.deferReply({ ephemeral: true });
+  } catch (e) {
+    if (isUnknownInteraction(e)) return; // 二重起動時の負け側
+    throw e;
+  }
 
   try {
     if (!interaction.guildId) {
-      return interaction.editReply("❌ サーバー内で実行してください。");
+      return await interaction.editReply("❌ サーバー内で実行してください。");
     }
     if (!db) {
-      return interaction.editReply("❌ DBが初期化できていません。Renderログを確認してください。");
+      return await interaction.editReply("❌ DBが初期化できていません（Renderログ確認）");
     }
 
     const channel = interaction.options.getChannel("channel", true);
-
-    // テキストチャンネル/スレッド以外を弾きたい場合はここで制限できる
-    // if (!channel.isTextBased()) return interaction.editReply("❌ テキストチャンネルを指定してください。");
 
     await db.run(
       `INSERT INTO settings (guild_id, log_channel_id)
@@ -36,9 +42,12 @@ export async function execute(interaction, db) {
       channel.id
     );
 
-    return interaction.editReply(`✅ 管理ログ送信先を ${channel} に設定しました。`);
+    await interaction.editReply(`✅ 管理ログ送信先を ${channel} に設定しました。`);
   } catch (e) {
+    if (isUnknownInteraction(e)) return;
     console.error("setlog error:", e);
-    return interaction.editReply(`❌ エラー: ${e?.message ?? e}`);
+    try {
+      await interaction.editReply(`❌ エラー: ${e?.message ?? e}`);
+    } catch {}
   }
 }
