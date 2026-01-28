@@ -2,78 +2,95 @@ import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 
 export const data = new SlashCommandBuilder()
   .setName("ngword")
-  .setDescription("不適切ワードの管理")
-  .addSubcommand((s) =>
-    s
+  .setDescription("NGワードを管理します")
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .addSubcommand((sub) =>
+    sub
       .setName("add")
       .setDescription("NGワードを追加")
-      .addStringOption((o) =>
-        o.setName("word").setDescription("追加するワード").setRequired(true)
+      .addStringOption((opt) =>
+        opt.setName("word").setDescription("追加するワード").setRequired(true)
       )
   )
-  .addSubcommand((s) =>
-    s
+  .addSubcommand((sub) =>
+    sub
       .setName("remove")
       .setDescription("NGワードを削除")
-      .addStringOption((o) =>
-        o.setName("word").setDescription("削除するワード").setRequired(true)
+      .addStringOption((opt) =>
+        opt.setName("word").setDescription("削除するワード").setRequired(true)
       )
   )
-  .addSubcommand((s) => s.setName("list").setDescription("NGワード一覧"))
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+  .addSubcommand((sub) =>
+    sub.setName("list").setDescription("NGワード一覧を表示（管理者だけ）")
+  )
+  .addSubcommand((sub) =>
+    sub.setName("clear").setDescription("NGワードを全削除（注意）")
+  );
+
+function isUnknownInteraction(err) {
+  return err?.code === 10062 || err?.rawError?.code === 10062;
+}
 
 export async function execute(interaction, db) {
-  // まず3秒以内に受付を返す（これが「応答しない」対策の本体）
-  await interaction.deferReply({ ephemeral: true });
+  try {
+    await interaction.deferReply({ ephemeral: true });
+  } catch (e) {
+    if (isUnknownInteraction(e)) return;
+    throw e;
+  }
 
   try {
-    // テーブル作成（無ければ）
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS ng_words (
-        guild_id TEXT,
-        word TEXT,
-        PRIMARY KEY (guild_id, word)
-      );
-    `);
+    if (!interaction.guildId) {
+      return await interaction.editReply("❌ サーバー内で実行してください。");
+    }
+    if (!db) {
+      return await interaction.editReply("❌ DBが初期化できていません（Renderログ確認）");
+    }
 
     const sub = interaction.options.getSubcommand();
+    const guildId = interaction.guildId;
 
     if (sub === "add") {
       const word = interaction.options.getString("word", true).trim();
-      if (!word) {
-        return interaction.editReply("❌ ワードが空です");
-      }
+      if (!word) return await interaction.editReply("❌ ワードが空です。");
 
       await db.run(
         `INSERT OR IGNORE INTO ng_words (guild_id, word) VALUES (?, ?)`,
-        interaction.guildId,
+        guildId,
         word
       );
-      return interaction.editReply(`✅ 追加しました: ${word}`);
+      return await interaction.editReply(`✅ 追加しました：\`${word}\``);
     }
 
     if (sub === "remove") {
       const word = interaction.options.getString("word", true).trim();
-      await db.run(
-        `DELETE FROM ng_words WHERE guild_id = ? AND word = ?`,
-        interaction.guildId,
-        word
-      );
-      return interaction.editReply(`✅ 削除しました: ${word}`);
+      await db.run(`DELETE FROM ng_words WHERE guild_id = ? AND word = ?`, guildId, word);
+      return await interaction.editReply(`✅ 削除しました：\`${word}\``);
     }
 
-    if (sub === "list") {
-      const rows = await db.all(
-        `SELECT word FROM ng_words WHERE guild_id = ? ORDER BY word ASC`,
-        interaction.guildId
-      );
-      const text = rows.length ? rows.map((r) => `・${r.word}`).join("\n") : "（なし）";
-      return interaction.editReply(`📄 NGワード一覧\n${text}`);
+    if (sub === "clear") {
+      await db.run(`DELETE FROM ng_words WHERE guild_id = ?`, guildId);
+      return await interaction.editReply("✅ NGワードを全削除しました。");
     }
 
-    return interaction.editReply("❌ 未対応のサブコマンドです");
+    // list
+    const rows = await db.all(`SELECT word FROM ng_words WHERE guild_id = ? ORDER BY word ASC`, guildId);
+    if (!rows.length) {
+      return await interaction.editReply("（空）NGワードは登録されていません。");
+    }
+
+    const words = rows.map((r) => r.word).filter(Boolean);
+
+    // Discordの文字数制限対策：長すぎる場合は途中まで
+    const joined = words.join("\n");
+    const body = joined.length > 1800 ? joined.slice(0, 1800) + "\n...（省略）" : joined;
+
+    return await interaction.editReply(`✅ NGワード一覧（${words.length}件）\n\`\`\`\n${body}\n\`\`\``);
   } catch (e) {
-    console.error(e);
-    return interaction.editReply(`❌ エラー: ${e?.message ?? e}`);
+    if (isUnknownInteraction(e)) return;
+    console.error("ngword error:", e);
+    try {
+      await interaction.editReply(`❌ エラー: ${e?.message ?? e}`);
+    } catch {}
   }
 }
