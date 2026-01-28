@@ -24,6 +24,7 @@ import {
   GatewayIntentBits,
   MessageFlags,
   PermissionsBitField,
+  EmbedBuilder,
 } from "discord.js";
 
 import sqlite3 from "sqlite3";
@@ -111,11 +112,12 @@ try {
 }
 
 /* =========================
-   管理ログ送信 helper
+   管理ログ送信 helper（文字列/Embed 両対応）
 ========================= */
-async function sendLog(guild, content) {
+async function sendLog(guild, payload) {
   try {
     if (!guild || !db) return;
+
     const row = await db.get(
       "SELECT log_channel_id FROM settings WHERE guild_id = ?",
       guild.id
@@ -125,8 +127,14 @@ async function sendLog(guild, content) {
     const ch = await guild.channels.fetch(row.log_channel_id).catch(() => null);
     if (!ch) return;
 
-    await ch.send({ content }).catch(() => null);
-  } catch {}
+    if (typeof payload === "string") {
+      await ch.send({ content: payload }).catch(() => null);
+    } else {
+      await ch.send(payload).catch(() => null);
+    }
+  } catch (e) {
+    console.error("❌ sendLog error:", e?.message ?? e);
+  }
 }
 
 function normalize(s) {
@@ -185,7 +193,7 @@ function markProcessed(id) {
   const now = Date.now();
   processedMessageIds.set(id, now);
 
-  // ついでに古いものを掃除
+  // 古いものを掃除
   for (const [mid, ts] of processedMessageIds) {
     if (now - ts > DEDUPE_TTL_MS) processedMessageIds.delete(mid);
   }
@@ -202,7 +210,7 @@ client.on("messageCreate", async (message) => {
     if (message.author?.bot) return;
     if (typeof message.content !== "string") return;
 
-    // ★二重警告対策
+    // ★二重通知対策
     if (alreadyProcessed(message.id)) return;
     markProcessed(message.id);
 
@@ -210,8 +218,6 @@ client.on("messageCreate", async (message) => {
     if (!ngWords.length) return;
 
     const contentLower = normalize(message.content);
-
-    // 部分一致（必要なら後で厳密化可）
     const hit = ngWords.find((w) => contentLower.includes(normalize(w)));
     if (!hit) return;
 
@@ -225,25 +231,37 @@ client.on("messageCreate", async (message) => {
     }
 
     // ★一般参加者に見せない：チャンネルへは何も送らない
-    // 本人へDMで警告（NGワード自体は書かない）
+    // 本人へDMで警告（ワード内容は見せない）
     const dmText =
       `⚠️ サーバーのルールに抵触する可能性のある表現が検出されたため、メッセージが削除されました。\n` +
       `内容を見直して再投稿してください。`;
-
     await message.author.send({ content: dmText }).catch(() => null);
 
-    // 管理ログには「ヒット語＆原文」を送る（管理者だけが見られる想定）
-    await sendLog(
-      message.guild,
-      `🚫 NGワード検知\n` +
-        `ユーザー: ${message.author.tag} (${message.author.id})\n` +
-        `チャンネル: #${message.channel?.name}\n` +
-        `ヒット: "${hit}"\n` +
-        `内容: "${message.content}"\n` +
-        `URL: ${message.url}`
-    );
+    // ★管理ログ：ブロック状（Embed）でまとめて送る
+    const embed = new EmbedBuilder()
+      .setAuthor({
+        name: message.author.tag,
+        iconURL: message.author.displayAvatarURL?.() ?? undefined,
+      })
+      .setTitle("🚫 NGワード検知")
+      .setDescription(
+        `Channel: ${message.channel}  |  [Jump to Message](${message.url})`
+      )
+      .addFields(
+        { name: "Hit", value: `\`${hit}\``, inline: true },
+        { name: "User ID", value: `${message.author.id}`, inline: true },
+        {
+          name: "Content",
+          value: `\`\`\`\n${message.content.slice(0, 1800)}\n\`\`\``,
+          inline: false,
+        }
+      )
+      .setFooter({ text: `Message ID: ${message.id}` })
+      .setTimestamp(new Date());
+
+    await sendLog(message.guild, { embeds: [embed] });
   } catch (e) {
-    console.error("NG word monitor error:", e);
+    console.error("NG word monitor error:", e?.message ?? e);
   }
 });
 
@@ -252,7 +270,9 @@ client.on("guildMemberAdd", async (member) => {
 });
 
 if (token) {
-  client.login(token).catch((e) => console.error("❌ login failed:", e?.message ?? e));
+  client
+    .login(token)
+    .catch((e) => console.error("❌ login failed:", e?.message ?? e));
 } else {
   console.error("❌ DISCORD_TOKEN が無いのでログインできません");
 }
