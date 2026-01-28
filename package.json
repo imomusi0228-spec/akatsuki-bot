@@ -1,13 +1,16 @@
 {
   "name": "akatsuki-bot",
   "version": "1.0.0",
+  "description": "Discord Bot for Render",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "deploy": "node deploy-commands.js"
+    "start": "node index.js"
   },
   "dependencies": {
-    "discord.js": "^14.15.3",
-    "dotenv": "^16.4.5"
+    "discord.js": "^14.13.0",
+    "dotenv": "^16.3.1"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
