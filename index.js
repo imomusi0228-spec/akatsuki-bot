@@ -11,8 +11,6 @@ http
     console.log(`🌐 Listening on ${PORT}`);
   });
 
-// ここから下で落ちても、ポートは開いたままになる
-
 import "dotenv/config";
 import fs from "node:fs";
 import path from "node:path";
@@ -79,9 +77,9 @@ try {
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers, // IN/OUTログ用
+    GatewayIntentBits.GuildMessages, // NG検知用
+    GatewayIntentBits.MessageContent, // NG検知用（本文）
   ],
 });
 
@@ -237,16 +235,15 @@ client.on("messageCreate", async (message) => {
       `内容を見直して再投稿してください。`;
     await message.author.send({ content: dmText }).catch(() => null);
 
-    // ★管理ログ：ブロック状（Embed）でまとめて送る
+    // ★管理ログ：赤色Embed（ブロック状）
     const embed = new EmbedBuilder()
+      .setColor(0xff3b3b) // 🔴 赤
       .setAuthor({
         name: message.author.tag,
         iconURL: message.author.displayAvatarURL?.() ?? undefined,
       })
       .setTitle("🚫 NGワード検知")
-      .setDescription(
-        `Channel: ${message.channel}  |  [Jump to Message](${message.url})`
-      )
+      .setDescription(`Channel: ${message.channel}  |  [Jump to Message](${message.url})`)
       .addFields(
         { name: "Hit", value: `\`${hit}\``, inline: true },
         { name: "User ID", value: `${message.author.id}`, inline: true },
@@ -265,8 +262,34 @@ client.on("messageCreate", async (message) => {
   }
 });
 
+// ===== INログ（参加）: 青色Embed =====
 client.on("guildMemberAdd", async (member) => {
-  await sendLog(member.guild, `📥 ${member.user.tag} が参加しました`);
+  const embed = new EmbedBuilder()
+    .setColor(0x3498db) // 🔵 青
+    .setTitle("📥 ユーザー参加")
+    .setThumbnail(member.user.displayAvatarURL?.() ?? null)
+    .addFields(
+      { name: "User", value: `${member.user.tag}`, inline: true },
+      { name: "User ID", value: `${member.user.id}`, inline: true }
+    )
+    .setTimestamp(new Date());
+
+  await sendLog(member.guild, { embeds: [embed] });
+});
+
+// ===== OUTログ（退出）: 青色Embed =====
+client.on("guildMemberRemove", async (member) => {
+  const embed = new EmbedBuilder()
+    .setColor(0x3498db) // 🔵 青
+    .setTitle("📤 ユーザー退出")
+    .setThumbnail(member.user.displayAvatarURL?.() ?? null)
+    .addFields(
+      { name: "User", value: `${member.user.tag}`, inline: true },
+      { name: "User ID", value: `${member.user.id}`, inline: true }
+    )
+    .setTimestamp(new Date());
+
+  await sendLog(member.guild, { embeds: [embed] });
 });
 
 if (token) {
