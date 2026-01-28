@@ -21,7 +21,7 @@ import { open } from "sqlite";
 const DEFAULT_NG_THRESHOLD = Number(process.env.NG_THRESHOLD || 3);
 const DEFAULT_TIMEOUT_MIN = Number(process.env.NG_TIMEOUT_MIN || 10);
 const TIMEZONE = "Asia/Tokyo";
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || ""; // 管理画面の鍵（必須推奨）
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || ""; // /admin?token=... 用（推奨:必ず設定）
 
 /* =========================
    Path
@@ -138,7 +138,7 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildVoiceStates, // ★VC統計
+    GatewayIntentBits.GuildVoiceStates, // ★VCログ
   ],
 });
 
@@ -196,7 +196,6 @@ function monthKeyTokyo(date = new Date()) {
 function tokyoMonthRangeUTC(monthStr) {
   const [y, m] = monthStr.split("-").map((x) => Number(x));
   if (!y || !m) return null;
-  // Tokyo UTC+9
   const start = Date.UTC(y, m - 1, 1, -9, 0, 0, 0);
   const end = Date.UTC(m === 12 ? y + 1 : y, m === 12 ? 0 : m, 1, -9, 0, 0, 0);
   return { start, end };
@@ -473,9 +472,6 @@ async function vcEnd(guildId, userId) {
     durMs
   );
 
-  // ★ここで durationMs を meta に入れる（/vc recent で使える）
-  await logEvent(guildId, "vc_session_end", userId, { durationMs: durMs, channelId: active.channel_id });
-
   const monthRow = await db.get(
     `SELECT joins, total_ms FROM vc_stats_month WHERE guild_id = ? AND month_key = ? AND user_id = ?`,
     guildId,
@@ -490,7 +486,6 @@ async function vcEnd(guildId, userId) {
 
   return {
     channelId: active.channel_id,
-    joinedAt: Number(active.joined_at),
     durationMs: durMs,
     monthKey: mKey,
     month: {
@@ -691,7 +686,7 @@ client.on("guildMemberRemove", async (member) => {
 });
 
 /* =========================
-   ★② VC参加/退出ログ（青Embed）＋統計（VC名表示対応済み）
+   ★VCログ：IN/MOVE/OUT 全部を青Embedで管理ログへ（VC名表示）
 ========================= */
 client.on("voiceStateUpdate", async (oldState, newState) => {
   try {
@@ -702,53 +697,76 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
     const oldCh = oldState.channelId;
     const newCh = newState.channelId;
 
-    // 参加
+    const member = await guild.members.fetch(userId).catch(() => null);
+    const userTag = member?.user?.tag ?? `User(${userId})`;
+
+    // 参加（IN）
     if (!oldCh && newCh) {
       await vcStart(guild.id, userId, newCh);
 
-      // ★ログにVC名も入れる（/vc recent 等で使える）
-      const chName = newState.channel?.name ?? null;
-      await logEvent(guild.id, "vc_join", userId, {
-        channelId: newCh,
-        channelName: chName,
-      });
+      const chName = newState.channel?.name ?? `#${newCh}`;
+      await logEvent(guild.id, "vc_join", userId, { channelId: newCh, channelName: newState.channel?.name ?? null });
 
+      const embed = new EmbedBuilder()
+        .setColor(0x3498db)
+        .setTitle("🔊 VC参加（IN）")
+        .setDescription(`ユーザー: **${userTag}**`)
+        .addFields({ name: "VC", value: chName, inline: true })
+        .setTimestamp(new Date());
+
+      await sendLog(guild, { embeds: [embed] });
       return;
     }
 
-    // 移動（セッション継続）
+    // 移動（MOVE）
     if (oldCh && newCh && oldCh !== newCh) {
       await vcMove(guild.id, userId, newCh);
 
-      const fromName = oldState.channel?.name ?? null;
-      const toName = newState.channel?.name ?? null;
+      const fromName = oldState.channel?.name ?? `#${oldCh}`;
+      const toName = newState.channel?.name ?? `#${newCh}`;
+
       await logEvent(guild.id, "vc_move", userId, {
         from: oldCh,
         to: newCh,
-        fromName,
-        toName,
+        fromName: oldState.channel?.name ?? null,
+        toName: newState.channel?.name ?? null,
       });
 
+      const embed = new EmbedBuilder()
+        .setColor(0x3498db)
+        .setTitle("🔊 VC移動（MOVE）")
+        .setDescription(`ユーザー: **${userTag}**`)
+        .addFields(
+          { name: "From", value: fromName, inline: true },
+          { name: "To", value: toName, inline: true }
+        )
+        .setTimestamp(new Date());
+
+      await sendLog(guild, { embeds: [embed] });
       return;
     }
 
-    // 退出
+    // 退出（OUT）
     if (oldCh && !newCh) {
       const result = await vcEnd(guild.id, userId);
       if (!result) return;
 
-      const member = await guild.members.fetch(userId).catch(() => null);
-      const name = member?.user?.tag ?? `User(${userId})`;
-
-      // ★VC名（取れなければ channelId）
+      // vcEnd は channelId を返す。VC名は oldState から拾う
       const chName = oldState.channel?.name ?? `#${result.channelId}`;
+
+      // /vc recent 用（durationMs + channelName も入れる）
+      await logEvent(guild.id, "vc_session_end", userId, {
+        durationMs: result.durationMs,
+        channelId: result.channelId,
+        channelName: oldState.channel?.name ?? null,
+      });
 
       const embed = new EmbedBuilder()
         .setColor(0x3498db)
-        .setTitle("🔊 VC退出")
-        .setDescription(`ユーザー: **${name}**`)
+        .setTitle("🔊 VC退出（OUT）")
+        .setDescription(`ユーザー: **${userTag}**`)
         .addFields(
-          { name: "VC", value: chName, inline: true }, // ★ここが追加
+          { name: "VC", value: chName, inline: true },
           { name: "今回の滞在", value: msToHuman(result.durationMs), inline: true },
           { name: `今月(${result.monthKey}) 参加回数`, value: `${result.month.joins}回`, inline: true },
           { name: `今月(${result.monthKey}) 合計`, value: msToHuman(result.month.totalMs), inline: true },
@@ -774,7 +792,6 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
     const pathname = url.pathname;
 
-    // auth
     const t = url.searchParams.get("token") || "";
     const authed = ADMIN_TOKEN && t === ADMIN_TOKEN;
 
@@ -906,7 +923,7 @@ async function readJson(req) {
 }
 
 /* =========================
-   ★③ Admin HTML（月次サマリをカード表示に変更済み）
+   ★③ Admin HTML（月次サマリ：カード表示 + byType表）
 ========================= */
 function renderAdminHTML() {
   return `<!doctype html>
@@ -1058,7 +1075,7 @@ function renderAdminHTML() {
     const month = $("month").value;
     if (!guildId || !month) return;
 
-    // ★③ monthly stats（見やすい表示）
+    // ★③ monthly stats（カード＋byType表）
     const stats = await api(\`/api/stats?guild=\${encodeURIComponent(guildId)}&month=\${encodeURIComponent(month)}\`);
     const summary = stats.stats?.summary ?? {};
     const byType = summary.byType ?? {};
