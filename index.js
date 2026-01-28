@@ -1,16 +1,4 @@
 import http from "node:http";
-
-// ★Renderのポートスキャン対策（最初）
-const PORT = Number(process.env.PORT || 3000);
-http
-  .createServer((req, res) => {
-    res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
-    res.end("OK");
-  })
-  .listen(PORT, "0.0.0.0", () => {
-    console.log(`🌐 Listening on ${PORT}`);
-  });
-
 import "dotenv/config";
 import fs from "node:fs";
 import path from "node:path";
@@ -22,7 +10,6 @@ import {
   GatewayIntentBits,
   EmbedBuilder,
   PermissionsBitField,
-  ChannelType,
 } from "discord.js";
 
 import sqlite3 from "sqlite3";
@@ -31,25 +18,105 @@ import { open } from "sqlite";
 /* =========================
    設定（必要ならここだけ変える）
 ========================= */
-const DEFAULT_NG_THRESHOLD = Number(process.env.NG_THRESHOLD || 3); // 何回で
-const DEFAULT_TIMEOUT_MIN = Number(process.env.NG_TIMEOUT_MIN || 10); // 何分タイムアウト
+const DEFAULT_NG_THRESHOLD = Number(process.env.NG_THRESHOLD || 3);
+const DEFAULT_TIMEOUT_MIN = Number(process.env.NG_TIMEOUT_MIN || 10);
 const TIMEZONE = "Asia/Tokyo";
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || ""; // 管理画面の鍵
 
 /* =========================
-   Envチェック
+   Renderのポートスキャン対策 + 管理画面
+========================= */
+const PORT = Number(process.env.PORT || 3000);
+const server = http.createServer(async (req, res) => {
+  try {
+    const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+    const pathname = url.pathname;
+
+    // ---- 管理画面（HTML）----
+    if (pathname === "/admin") {
+      // ざっくり認証：?token= で一致したらOK
+      const t = url.searchParams.get("token") || "";
+      if (!ADMIN_TOKEN || t !== ADMIN_TOKEN) {
+        res.writeHead(401, { "Content-Type": "text/plain; charset=utf-8" });
+        return res.end("401 Unauthorized");
+      }
+
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      return res.end(renderAdminHTML());
+    }
+
+    // ---- API（JSON）----
+    if (pathname.startsWith("/api/")) {
+      const t = url.searchParams.get("token") || "";
+      if (!ADMIN_TOKEN || t !== ADMIN_TOKEN) {
+        res.writeHead(401, { "Content-Type": "application/json; charset=utf-8" });
+        return res.end(JSON.stringify({ ok: false, error: "unauthorized" }));
+      }
+
+      // /api/health
+      if (pathname === "/api/health") {
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        return res.end(JSON.stringify({ ok: true }));
+      }
+
+      // /api/ngwords?guild=GUILD_ID
+      if (pathname === "/api/ngwords") {
+        const guildId = url.searchParams.get("guild") || "";
+        if (!guildId) return json(res, { ok: false, error: "missing guild" }, 400);
+        const words = await getNgWords(guildId);
+        return json(res, { ok: true, guildId, count: words.length, words });
+      }
+
+      // /api/settings?guild=GUILD_ID
+      if (pathname === "/api/settings") {
+        const guildId = url.searchParams.get("guild") || "";
+        if (!guildId) return json(res, { ok: false, error: "missing guild" }, 400);
+        const s = await getSettings(guildId);
+        return json(res, { ok: true, guildId, settings: s });
+      }
+
+      // /api/guilds (Botが入ってるGuild一覧)
+      if (pathname === "/api/guilds") {
+        const list = client?.guilds?.cache?.map((g) => ({ id: g.id, name: g.name })) ?? [];
+        return json(res, { ok: true, guilds: list });
+      }
+
+      // /api/stats?guild=GUILD_ID&month=YYYY-MM
+      if (pathname === "/api/stats") {
+        const guildId = url.searchParams.get("guild") || "";
+        const month = url.searchParams.get("month") || ""; // 例: 2026-01
+        if (!guildId) return json(res, { ok: false, error: "missing guild" }, 400);
+        if (!month) return json(res, { ok: false, error: "missing month" }, 400);
+
+        const stats = await getMonthlyStats(guildId, month);
+        return json(res, { ok: true, guildId, month, stats });
+      }
+
+      return json(res, { ok: false, error: "not found" }, 404);
+    }
+
+    // ---- 通常応答（Renderの生存チェック用）----
+    res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+    res.end("OK");
+  } catch (e) {
+    res.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
+    res.end("500");
+  }
+});
+
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`🌐 Listening on ${PORT}`);
+});
+
+/* =========================
+   Discord / DB 初期化
 ========================= */
 const token = process.env.DISCORD_TOKEN;
 if (!token) console.error("❌ DISCORD_TOKEN が未設定です (.env / Render Env Vars)");
 
-/* =========================
-   Path
-========================= */
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-/* =========================
-   DB
-========================= */
 let db;
 try {
   db = await open({
@@ -57,7 +124,6 @@ try {
     driver: sqlite3.Database,
   });
 
-  // ログ設定 + NG設定（閾値/タイムアウト）
   await db.exec(`
     CREATE TABLE IF NOT EXISTS settings (
       guild_id TEXT PRIMARY KEY,
@@ -67,7 +133,6 @@ try {
     );
   `);
 
-  // NGワード
   await db.exec(`
     CREATE TABLE IF NOT EXISTS ng_words (
       guild_id TEXT,
@@ -76,7 +141,6 @@ try {
     );
   `);
 
-  // NG検知回数（ユーザーごと）
   await db.exec(`
     CREATE TABLE IF NOT EXISTS ng_hits (
       guild_id TEXT,
@@ -87,7 +151,6 @@ try {
     );
   `);
 
-  // 日付スレッド管理
   await db.exec(`
     CREATE TABLE IF NOT EXISTS log_threads (
       guild_id TEXT,
@@ -96,19 +159,31 @@ try {
       PRIMARY KEY (guild_id, date_key)
     );
   `);
+
+  // ★月次集計のためのイベントログ
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS log_events (
+      guild_id TEXT,
+      type TEXT,
+      user_id TEXT,
+      meta TEXT,
+      ts INTEGER
+    );
+  `);
+
+  // よく使う検索のためのIndex（任意）
+  await db.exec(`CREATE INDEX IF NOT EXISTS idx_log_events_guild_ts ON log_events (guild_id, ts);`);
+  await db.exec(`CREATE INDEX IF NOT EXISTS idx_log_events_guild_type_ts ON log_events (guild_id, type, ts);`);
 } catch (e) {
   console.error("❌ DB init failed:", e?.message ?? e);
 }
 
-/* =========================
-   Discord Client
-========================= */
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,     // timeout / IN-OUT
-    GatewayIntentBits.GuildMessages,    // NG検知
-    GatewayIntentBits.MessageContent,   // NG本文
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
   ],
 });
 
@@ -128,16 +203,10 @@ try {
     for (const file of files) {
       const filePath = path.join(commandsPath, file);
       const mod = await importFile(filePath);
-
-      // commands/*.js が export const data / export async function execute の形ならOK
       if (mod?.data?.name && typeof mod.execute === "function") {
         client.commands.set(mod.data.name, mod);
-      } else {
-        console.warn(`⚠️ commands/${file} は data/execute が無いのでスキップしました`);
       }
     }
-  } else {
-    console.warn("⚠️ commands フォルダが見つかりません");
   }
 } catch (e) {
   console.error("❌ Command load failed:", e?.message ?? e);
@@ -149,26 +218,33 @@ try {
 function isUnknownInteraction(err) {
   return err?.code === 10062 || err?.rawError?.code === 10062;
 }
-
 function normalize(s) {
   return (s ?? "").toLowerCase();
 }
-
 function todayKeyTokyo() {
-  // YYYY-MM-DD in Asia/Tokyo
   const dtf = new Intl.DateTimeFormat("sv-SE", {
     timeZone: TIMEZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   });
-  return dtf.format(new Date()); // sv-SE => 2026-01-29
+  return dtf.format(new Date()); // YYYY-MM-DD
+}
+function tokyoMonthRangeUTC(monthStr) {
+  // monthStr: "YYYY-MM"
+  const [y, m] = monthStr.split("-").map((x) => Number(x));
+  if (!y || !m) return null;
+
+  // Tokyo は UTC+9（DSTなし）なので、Tokyo 00:00 は UTC前日の15:00
+  const start = Date.UTC(y, m - 1, 1, -9, 0, 0, 0);
+  const end = Date.UTC(m === 12 ? y + 1 : y, m === 12 ? 0 : m, 1, -9, 0, 0, 0);
+  return { start, end };
 }
 
 async function getSettings(guildId) {
-  if (!db) return { log_channel_id: null, ng_threshold: DEFAULT_NG_THRESHOLD, timeout_minutes: DEFAULT_TIMEOUT_MIN };
-
-  // 行が無ければデフォルトで作っておく（setlogより先にNG検知が来てもOK）
+  if (!db) {
+    return { log_channel_id: null, ng_threshold: DEFAULT_NG_THRESHOLD, timeout_minutes: DEFAULT_TIMEOUT_MIN };
+  }
   await db.run(
     `INSERT INTO settings (guild_id, log_channel_id, ng_threshold, timeout_minutes)
      VALUES (?, NULL, ?, ?)
@@ -178,7 +254,11 @@ async function getSettings(guildId) {
     DEFAULT_TIMEOUT_MIN
   );
 
-  const row = await db.get("SELECT log_channel_id, ng_threshold, timeout_minutes FROM settings WHERE guild_id = ?", guildId);
+  const row = await db.get(
+    "SELECT log_channel_id, ng_threshold, timeout_minutes FROM settings WHERE guild_id = ?",
+    guildId
+  );
+
   return {
     log_channel_id: row?.log_channel_id ?? null,
     ng_threshold: Number(row?.ng_threshold ?? DEFAULT_NG_THRESHOLD),
@@ -192,14 +272,28 @@ async function getNgWords(guildId) {
   return rows.map((r) => (r.word ?? "").trim()).filter(Boolean);
 }
 
+async function logEvent(guildId, type, userId = null, metaObj = null) {
+  try {
+    if (!db) return;
+    const meta = metaObj ? JSON.stringify(metaObj) : null;
+    await db.run(
+      "INSERT INTO log_events (guild_id, type, user_id, meta, ts) VALUES (?, ?, ?, ?, ?)",
+      guildId,
+      type,
+      userId,
+      meta,
+      Date.now()
+    );
+  } catch {}
+}
+
 /* =========================
-   日付ごとスレッド作成/取得
+   日付スレッド作成/取得
 ========================= */
 async function getDailyLogThread(channel, guildId) {
   try {
     const dateKey = todayKeyTokyo();
 
-    // 既にDBにあるならそれを使う
     const row = await db.get(
       "SELECT thread_id FROM log_threads WHERE guild_id = ? AND date_key = ?",
       guildId,
@@ -208,18 +302,11 @@ async function getDailyLogThread(channel, guildId) {
     if (row?.thread_id) {
       const existing = await channel.threads.fetch(row.thread_id).catch(() => null);
       if (existing) return existing;
-      // 消されてたらDBから消す
-      await db.run(
-        "DELETE FROM log_threads WHERE guild_id = ? AND date_key = ?",
-        guildId,
-        dateKey
-      );
+      await db.run("DELETE FROM log_threads WHERE guild_id = ? AND date_key = ?", guildId, dateKey);
     }
 
-    // チャンネルがスレッド作成に対応していないなら諦める
     if (!channel?.threads?.create) return null;
 
-    // スレッド作成（logs-YYYY-MM-DD）
     const thread = await channel.threads.create({
       name: `logs-${dateKey}`,
       autoArchiveDuration: 1440,
@@ -252,18 +339,59 @@ async function sendLog(guild, payload) {
     const ch = await guild.channels.fetch(settings.log_channel_id).catch(() => null);
     if (!ch) return;
 
-    // 日付スレッドが作れたらそっちへ、無理ならチャンネルへ
     const thread = await getDailyLogThread(ch, guild.id);
     const target = thread ?? ch;
 
-    if (typeof payload === "string") {
-      await target.send({ content: payload }).catch(() => null);
-    } else {
-      await target.send(payload).catch(() => null);
-    }
+    await target.send(payload).catch(() => null);
   } catch (e) {
     console.error("❌ sendLog error:", e?.message ?? e);
   }
+}
+
+/* =========================
+   月次統計
+========================= */
+async function getMonthlyStats(guildId, monthStr) {
+  if (!db) return null;
+  const range = tokyoMonthRangeUTC(monthStr);
+  if (!range) return null;
+
+  const { start, end } = range;
+
+  const byTypeRows = await db.all(
+    `SELECT type, COUNT(*) as cnt
+     FROM log_events
+     WHERE guild_id = ? AND ts >= ? AND ts < ?
+     GROUP BY type
+     ORDER BY cnt DESC`,
+    guildId,
+    start,
+    end
+  );
+
+  const byType = Object.fromEntries(byTypeRows.map((r) => [r.type, Number(r.cnt)]));
+
+  const topNgUsers = await db.all(
+    `SELECT user_id, COUNT(*) as cnt
+     FROM log_events
+     WHERE guild_id = ? AND type = 'ng_detected' AND ts >= ? AND ts < ? AND user_id IS NOT NULL
+     GROUP BY user_id
+     ORDER BY cnt DESC
+     LIMIT 10`,
+    guildId,
+    start,
+    end
+  );
+
+  const timeouts = Number(byType["timeout_applied"] ?? 0);
+  const ngDetected = Number(byType["ng_detected"] ?? 0);
+  const joins = Number(byType["member_join"] ?? 0);
+  const leaves = Number(byType["member_leave"] ?? 0);
+
+  return {
+    summary: { ngDetected, timeouts, joins, leaves, byType },
+    topNgUsers,
+  };
 }
 
 /* =========================
@@ -297,8 +425,6 @@ client.on("interactionCreate", async (interaction) => {
 });
 
 /* ===== NGワード検知（メッセージ監視） ===== */
-
-// 同一プロセス内の二重処理防止
 const processedMessageIds = new Map();
 const DEDUPE_TTL_MS = 60_000;
 function markProcessed(id) {
@@ -330,7 +456,12 @@ async function incrementHit(guildId, userId) {
 }
 
 async function resetHit(guildId, userId) {
-  await db.run("UPDATE ng_hits SET count = 0, updated_at = ? WHERE guild_id = ? AND user_id = ?", Date.now(), guildId, userId);
+  await db.run(
+    "UPDATE ng_hits SET count = 0, updated_at = ? WHERE guild_id = ? AND user_id = ?",
+    Date.now(),
+    guildId,
+    userId
+  );
 }
 
 client.on("messageCreate", async (message) => {
@@ -358,14 +489,22 @@ client.on("messageCreate", async (message) => {
 
     if (canManage) await message.delete().catch(() => null);
 
-    // 本人にDM（ワード内容は見せない）
-    const dmText =
-      `⚠️ サーバーのルールに抵触する可能性のある表現が検出されたため、メッセージが削除されました。\n` +
-      `内容を見直して再投稿してください。`;
-    await message.author.send({ content: dmText }).catch(() => null);
+    // 本人DM（ヒット語は見せない）
+    await message.author
+      .send({
+        content:
+          "⚠️ サーバーのルールに抵触する可能性のある表現が検出されたため、メッセージが削除されました。\n内容を見直して再投稿してください。",
+      })
+      .catch(() => null);
 
     // 検知回数カウント
     const count = await incrementHit(message.guildId, message.author.id);
+
+    // 月次統計用イベント
+    await logEvent(message.guildId, "ng_detected", message.author.id, {
+      channelId: message.channelId,
+      word: hit,
+    });
 
     // タイムアウト判定
     let timeoutApplied = false;
@@ -374,20 +513,22 @@ client.on("messageCreate", async (message) => {
 
     if (count >= threshold) {
       const member = await message.guild.members.fetch(message.author.id).catch(() => null);
-      if (member) {
-        // 権限があるか
-        const canTimeout = me?.permissions.has(PermissionsBitField.Flags.ModerateMembers);
-        if (canTimeout) {
-          const ms = timeoutMin * 60 * 1000;
-          await member.timeout(ms, `NGワード検知 ${count}/${threshold}`).catch(() => null);
-          timeoutApplied = true;
-          // 一度タイムアウトしたらカウントはリセット（連続タイムアウト防止）
-          await resetHit(message.guildId, message.author.id);
-        }
+      const canTimeout = me?.permissions?.has(PermissionsBitField.Flags.ModerateMembers);
+
+      if (member && canTimeout) {
+        const ms = timeoutMin * 60 * 1000;
+        await member.timeout(ms, `NGワード検知 ${count}/${threshold}`).catch(() => null);
+        timeoutApplied = true;
+        await resetHit(message.guildId, message.author.id);
+
+        await logEvent(message.guildId, "timeout_applied", message.author.id, {
+          minutes: timeoutMin,
+          threshold,
+        });
       }
     }
 
-    // 管理ログ：赤Embed（NG）
+    // 管理ログ：赤Embed
     const embed = new EmbedBuilder()
       .setColor(0xff3b3b)
       .setAuthor({
@@ -405,11 +546,7 @@ client.on("messageCreate", async (message) => {
           inline: false,
         }
       )
-      .setFooter({
-        text: timeoutApplied
-          ? `✅ Timeout applied: ${timeoutMin} min`
-          : `Message ID: ${message.id}`,
-      })
+      .setFooter({ text: timeoutApplied ? `✅ Timeout applied: ${timeoutMin} min` : `Message ID: ${message.id}` })
       .setTimestamp(new Date());
 
     await sendLog(message.guild, { embeds: [embed] });
@@ -421,6 +558,8 @@ client.on("messageCreate", async (message) => {
 // INログ（参加）: 青Embed
 client.on("guildMemberAdd", async (member) => {
   try {
+    await logEvent(member.guild.id, "member_join", member.user.id);
+
     const embed = new EmbedBuilder()
       .setColor(0x3498db)
       .setTitle("📥 ユーザー参加")
@@ -440,6 +579,8 @@ client.on("guildMemberAdd", async (member) => {
 // OUTログ（退出）: 青Embed
 client.on("guildMemberRemove", async (member) => {
   try {
+    await logEvent(member.guild.id, "member_leave", member.user.id);
+
     const embed = new EmbedBuilder()
       .setColor(0x3498db)
       .setTitle("📤 ユーザー退出")
@@ -463,4 +604,135 @@ if (token) {
   client.login(token).catch((e) => console.error("❌ login failed:", e?.message ?? e));
 } else {
   console.error("❌ DISCORD_TOKEN が無いのでログインできません");
+}
+
+/* =========================
+   Web UI helpers
+========================= */
+function json(res, obj, status = 200) {
+  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+  res.end(JSON.stringify(obj));
+}
+
+function renderAdminHTML() {
+  // token はクエリで渡す想定（?token=...）
+  return `<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Akatsuki Bot Admin</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 16px; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
+    select,input { padding:8px; }
+    button { padding:8px 12px; cursor:pointer; }
+    .card { border:1px solid #ddd; border-radius:10px; padding:12px; margin:12px 0; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+    pre { white-space:pre-wrap; word-break:break-word; }
+    .muted { color:#666; }
+    table { width:100%; border-collapse:collapse; }
+    th,td { border-bottom:1px solid #eee; padding:8px; text-align:left; }
+  </style>
+</head>
+<body>
+  <h2>Akatsuki Bot 管理画面</h2>
+  <p class="muted">※URLに token が必要です（/admin?token=...）</p>
+
+  <div class="card">
+    <div class="row">
+      <label>Guild:</label>
+      <select id="guild"></select>
+      <label>Month:</label>
+      <input id="month" type="month" />
+      <button id="reload">更新</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>月次サマリ</h3>
+      <pre id="summary">読み込み中...</pre>
+    </div>
+    <div class="card">
+      <h3>Top NG Users</h3>
+      <table>
+        <thead><tr><th>User ID</th><th>Count</th></tr></thead>
+        <tbody id="top"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>NGワード一覧（管理者のみ）</h3>
+    <pre id="ngwords">読み込み中...</pre>
+  </div>
+
+<script>
+(() => {
+  const token = new URL(location.href).searchParams.get("token") || "";
+  const $ = (id) => document.getElementById(id);
+
+  function yyyymmNowTokyo(){
+    const dt = new Date();
+    // month input expects YYYY-MM
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth()+1).padStart(2,"0");
+    return \`\${y}-\${m}\`;
+  }
+
+  async function api(path){
+    const u = new URL(path, location.origin);
+    u.searchParams.set("token", token);
+    const r = await fetch(u);
+    return r.json();
+  }
+
+  async function loadGuilds(){
+    const data = await api("/api/guilds");
+    const sel = $("guild");
+    sel.innerHTML = "";
+    (data.guilds || []).forEach(g => {
+      const opt = document.createElement("option");
+      opt.value = g.id;
+      opt.textContent = \`\${g.name} (\${g.id})\`;
+      sel.appendChild(opt);
+    });
+  }
+
+  async function reload(){
+    const guildId = $("guild").value;
+    const month = $("month").value;
+    if (!guildId || !month) return;
+
+    // stats
+    const stats = await api(\`/api/stats?guild=\${encodeURIComponent(guildId)}&month=\${encodeURIComponent(month)}\`);
+    $("summary").textContent = JSON.stringify(stats.stats?.summary ?? {}, null, 2);
+
+    const top = $("top");
+    top.innerHTML = "";
+    (stats.stats?.topNgUsers || []).forEach(r => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = \`<td>\${r.user_id}</td><td>\${r.cnt}</td>\`;
+      top.appendChild(tr);
+    });
+
+    // ngwords
+    const ng = await api(\`/api/ngwords?guild=\${encodeURIComponent(guildId)}\`);
+    $("ngwords").textContent = (ng.words || []).join("\\n") || "(empty)";
+  }
+
+  $("reload").addEventListener("click", reload);
+  $("guild").addEventListener("change", reload);
+  $("month").addEventListener("change", reload);
+
+  (async () => {
+    $("month").value = yyyymmNowTokyo();
+    await loadGuilds();
+    await reload();
+  })();
+})();
+</script>
+</body>
+</html>`;
 }
