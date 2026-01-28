@@ -21,7 +21,7 @@ import { open } from "sqlite";
 const DEFAULT_NG_THRESHOLD = Number(process.env.NG_THRESHOLD || 3);
 const DEFAULT_TIMEOUT_MIN = Number(process.env.NG_TIMEOUT_MIN || 10);
 const TIMEZONE = "Asia/Tokyo";
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || ""; // 管理画面の鍵（必須）
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || ""; // 管理画面の鍵（必須推奨）
 
 /* =========================
    Path
@@ -86,7 +86,6 @@ try {
   `);
 
   // ===== VC tracking =====
-  // VCに入った瞬間の状態（アクティブセッション）
   await db.exec(`
     CREATE TABLE IF NOT EXISTS vc_active (
       guild_id TEXT,
@@ -97,11 +96,10 @@ try {
     );
   `);
 
-  // VCの月別統計（joins=参加回数, total_ms=累計滞在ms）
   await db.exec(`
     CREATE TABLE IF NOT EXISTS vc_stats_month (
       guild_id TEXT,
-      month_key TEXT, -- YYYY-MM (Tokyo 기준)
+      month_key TEXT, -- YYYY-MM (Tokyo)
       user_id TEXT,
       joins INTEGER DEFAULT 0,
       total_ms INTEGER DEFAULT 0,
@@ -109,7 +107,6 @@ try {
     );
   `);
 
-  // VCの累計統計（全期間）
   await db.exec(`
     CREATE TABLE IF NOT EXISTS vc_stats_total (
       guild_id TEXT,
@@ -131,7 +128,9 @@ try {
    Discord
 ========================= */
 const token = process.env.DISCORD_TOKEN;
-if (!token) console.error("❌ DISCORD_TOKEN が未設定です (.env / Render Env Vars)");
+if (!token) {
+  console.error("❌ DISCORD_TOKEN が未設定です (.env / Render Env Vars)");
+}
 
 const client = new Client({
   intents: [
@@ -139,7 +138,7 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildVoiceStates, // ★VC統計に必要
+    GatewayIntentBits.GuildVoiceStates, // ★VC統計
   ],
 });
 
@@ -150,7 +149,7 @@ async function importFile(filePath) {
 }
 
 /* =========================
-   コマンド読み込み
+   コマンド読み込み（commands/*.js）
 ========================= */
 try {
   const commandsPath = path.join(__dirname, "commands");
@@ -177,7 +176,6 @@ function isUnknownInteraction(err) {
 function normalize(s) {
   return (s ?? "").toLowerCase();
 }
-
 function todayKeyTokyo() {
   const dtf = new Intl.DateTimeFormat("sv-SE", {
     timeZone: TIMEZONE,
@@ -187,7 +185,6 @@ function todayKeyTokyo() {
   });
   return dtf.format(new Date()); // YYYY-MM-DD
 }
-
 function monthKeyTokyo(date = new Date()) {
   const dtf = new Intl.DateTimeFormat("sv-SE", {
     timeZone: TIMEZONE,
@@ -196,7 +193,6 @@ function monthKeyTokyo(date = new Date()) {
   });
   return dtf.format(date); // YYYY-MM
 }
-
 function tokyoMonthRangeUTC(monthStr) {
   const [y, m] = monthStr.split("-").map((x) => Number(x));
   if (!y || !m) return null;
@@ -205,7 +201,6 @@ function tokyoMonthRangeUTC(monthStr) {
   const end = Date.UTC(m === 12 ? y + 1 : y, m === 12 ? 0 : m, 1, -9, 0, 0, 0);
   return { start, end };
 }
-
 function msToHuman(ms) {
   const s = Math.max(0, Math.floor(ms / 1000));
   const h = Math.floor(s / 3600);
@@ -224,6 +219,7 @@ async function getSettings(guildId) {
       timeout_minutes: DEFAULT_TIMEOUT_MIN,
     };
   }
+
   await db.run(
     `INSERT INTO settings (guild_id, log_channel_id, ng_threshold, timeout_minutes)
      VALUES (?, NULL, ?, ?)
@@ -276,21 +272,18 @@ async function getNgWords(guildId) {
   const rows = await db.all("SELECT word FROM ng_words WHERE guild_id = ? ORDER BY word ASC", guildId);
   return rows.map((r) => (r.word ?? "").trim()).filter(Boolean);
 }
-
 async function addNgWord(guildId, word) {
   const w = (word ?? "").trim();
   if (!w) return { ok: false, error: "empty" };
   await db.run(`INSERT OR IGNORE INTO ng_words (guild_id, word) VALUES (?, ?)`, guildId, w);
   return { ok: true };
 }
-
 async function removeNgWord(guildId, word) {
   const w = (word ?? "").trim();
   if (!w) return { ok: false, error: "empty" };
   await db.run(`DELETE FROM ng_words WHERE guild_id = ? AND word = ?`, guildId, w);
   return { ok: true };
 }
-
 async function clearNgWords(guildId) {
   await db.run(`DELETE FROM ng_words WHERE guild_id = ?`, guildId);
   return { ok: true };
@@ -419,7 +412,7 @@ async function getMonthlyStats(guildId, monthStr) {
 }
 
 /* =========================
-   VC統計
+   VC統計（DB操作）
 ========================= */
 async function vcStart(guildId, userId, channelId) {
   await db.run(
@@ -436,7 +429,6 @@ async function vcStart(guildId, userId, channelId) {
 }
 
 async function vcMove(guildId, userId, channelId) {
-  // 移動は「同じセッション扱い」：開始時刻は維持しつつチャンネルだけ更新
   await db.run(
     `UPDATE vc_active SET channel_id = ? WHERE guild_id = ? AND user_id = ?`,
     channelId,
@@ -458,7 +450,6 @@ async function vcEnd(guildId, userId) {
   const durMs = Math.max(0, Date.now() - Number(active.joined_at));
   const mKey = monthKeyTokyo(new Date());
 
-  // month
   await db.run(
     `INSERT INTO vc_stats_month (guild_id, month_key, user_id, joins, total_ms)
      VALUES (?, ?, ?, 1, ?)
@@ -471,7 +462,6 @@ async function vcEnd(guildId, userId) {
     durMs
   );
 
-  // total
   await db.run(
     `INSERT INTO vc_stats_total (guild_id, user_id, joins, total_ms)
      VALUES (?, ?, 1, ?)
@@ -483,7 +473,8 @@ async function vcEnd(guildId, userId) {
     durMs
   );
 
-  await logEvent(guildId, "vc_session_end", userId, { durationMs: durMs });
+  // ★ここで durationMs を meta に入れる（/vc recent で使える）
+  await logEvent(guildId, "vc_session_end", userId, { durationMs: durMs, channelId: active.channel_id });
 
   const monthRow = await db.get(
     `SELECT joins, total_ms FROM vc_stats_month WHERE guild_id = ? AND month_key = ? AND user_id = ?`,
@@ -513,67 +504,16 @@ async function vcEnd(guildId, userId) {
   };
 }
 
-async function getVcTop(guildId, monthKey, limit = 20) {
-  const rows = await db.all(
-    `SELECT user_id, joins, total_ms
-     FROM vc_stats_month
-     WHERE guild_id = ? AND month_key = ?
-     ORDER BY total_ms DESC
-     LIMIT ?`,
-    guildId,
-    monthKey,
-    limit
-  );
-  return rows.map((r) => ({
-    user_id: r.user_id,
-    joins: Number(r.joins ?? 0),
-    total_ms: Number(r.total_ms ?? 0),
-  }));
-}
-
 /* =========================
-   @タグ（名前の@以降）人数統計
-========================= */
-function extractTagsFromDisplayName(displayName) {
-  const s = String(displayName || "");
-  const at = s.indexOf("@");
-  if (at === -1) return [];
-  const tail = s.slice(at + 1).trim();
-  if (!tail) return [];
-  // スペース区切りで tags: Mana Gaia Meteor Elemental
-  return tail.split(/\s+/).map((x) => x.trim()).filter(Boolean);
-}
-
-async function getTagCounts(guild) {
-  // 正確に出すために全メンバーFetch（権限と人数によって時間かかることはある）
-  const members = await guild.members.fetch().catch(() => null);
-  const list = members ? Array.from(members.values()) : Array.from(guild.members.cache.values());
-
-  const counts = new Map();
-  let scanned = 0;
-
-  for (const m of list) {
-    scanned++;
-    const tags = extractTagsFromDisplayName(m.displayName);
-    for (const t of tags) counts.set(t, (counts.get(t) || 0) + 1);
-  }
-
-  // ソートして返す
-  const arr = Array.from(counts.entries())
-    .map(([tag, count]) => ({ tag, count }))
-    .sort((a, b) => b.count - a.count);
-
-  return { scanned, tags: arr };
-}
-
-/* =========================
-   Discord Events
+   Ready
 ========================= */
 client.once("clientReady", () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
-// ★コマンド実行ログは送らない
+/* =========================
+   interactionCreate（コマンド）
+========================= */
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -596,9 +536,12 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
-/* ===== NGワード検知（メッセージ監視） ===== */
+/* =========================
+   NGワード検知（メッセージ監視）
+========================= */
 const processedMessageIds = new Map();
 const DEDUPE_TTL_MS = 60_000;
+
 function markProcessed(id) {
   const now = Date.now();
   processedMessageIds.set(id, now);
@@ -626,8 +569,14 @@ async function incrementHit(guildId, userId) {
   const row = await db.get("SELECT count FROM ng_hits WHERE guild_id = ? AND user_id = ?", guildId, userId);
   return Number(row?.count ?? 1);
 }
+
 async function resetHit(guildId, userId) {
-  await db.run("UPDATE ng_hits SET count = 0, updated_at = ? WHERE guild_id = ? AND user_id = ?", Date.now(), guildId, userId);
+  await db.run(
+    "UPDATE ng_hits SET count = 0, updated_at = ? WHERE guild_id = ? AND user_id = ?",
+    Date.now(),
+    guildId,
+    userId
+  );
 }
 
 client.on("messageCreate", async (message) => {
@@ -648,24 +597,21 @@ client.on("messageCreate", async (message) => {
 
     const settings = await getSettings(message.guildId);
 
-    // 削除（権限があれば）
     const me = await message.guild.members.fetchMe().catch(() => null);
     const canManage = me?.permissionsIn(message.channel)?.has(PermissionsBitField.Flags.ManageMessages);
     if (canManage) await message.delete().catch(() => null);
 
-    // 本人DM（ヒット語は見せない）
-    await message.author.send({
-      content:
-        "⚠️ サーバーのルールに抵触する可能性のある表現が検出されたため、メッセージが削除されました。\n内容を見直して再投稿してください。",
-    }).catch(() => null);
+    await message.author
+      .send({
+        content:
+          "⚠️ サーバーのルールに抵触する可能性のある表現が検出されたため、メッセージが削除されました。\n内容を見直して再投稿してください。",
+      })
+      .catch(() => null);
 
-    // 統計用イベント
     await logEvent(message.guildId, "ng_detected", message.author.id, { word: hit, channelId: message.channelId });
 
-    // 検知回数
     const count = await incrementHit(message.guildId, message.author.id);
 
-    // タイムアウト判定
     let timeoutApplied = false;
     const threshold = Math.max(1, settings.ng_threshold);
     const timeoutMin = Math.max(1, settings.timeout_minutes);
@@ -682,7 +628,6 @@ client.on("messageCreate", async (message) => {
       }
     }
 
-    // 管理ログ（赤Embed）
     const embed = new EmbedBuilder()
       .setColor(0xff3b3b)
       .setAuthor({ name: message.author.tag, iconURL: message.author.displayAvatarURL?.() ?? undefined })
@@ -702,7 +647,9 @@ client.on("messageCreate", async (message) => {
   }
 });
 
-// IN/OUT（青Embed）
+/* =========================
+   IN/OUT（参加/退出）ログ（青Embed）
+========================= */
 client.on("guildMemberAdd", async (member) => {
   try {
     await logEvent(member.guild.id, "member_join", member.user.id);
@@ -743,7 +690,9 @@ client.on("guildMemberRemove", async (member) => {
   }
 });
 
-/* ===== VC参加/退出ログ（青Embed）＋統計 ===== */
+/* =========================
+   ★② VC参加/退出ログ（青Embed）＋統計（VC名表示対応済み）
+========================= */
 client.on("voiceStateUpdate", async (oldState, newState) => {
   try {
     const guild = newState.guild || oldState.guild;
@@ -756,14 +705,30 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
     // 参加
     if (!oldCh && newCh) {
       await vcStart(guild.id, userId, newCh);
-      await logEvent(guild.id, "vc_join", userId, { channelId: newCh });
+
+      // ★ログにVC名も入れる（/vc recent 等で使える）
+      const chName = newState.channel?.name ?? null;
+      await logEvent(guild.id, "vc_join", userId, {
+        channelId: newCh,
+        channelName: chName,
+      });
+
       return;
     }
 
     // 移動（セッション継続）
     if (oldCh && newCh && oldCh !== newCh) {
       await vcMove(guild.id, userId, newCh);
-      await logEvent(guild.id, "vc_move", userId, { from: oldCh, to: newCh });
+
+      const fromName = oldState.channel?.name ?? null;
+      const toName = newState.channel?.name ?? null;
+      await logEvent(guild.id, "vc_move", userId, {
+        from: oldCh,
+        to: newCh,
+        fromName,
+        toName,
+      });
+
       return;
     }
 
@@ -775,11 +740,15 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
       const member = await guild.members.fetch(userId).catch(() => null);
       const name = member?.user?.tag ?? `User(${userId})`;
 
+      // ★VC名（取れなければ channelId）
+      const chName = oldState.channel?.name ?? `#${result.channelId}`;
+
       const embed = new EmbedBuilder()
         .setColor(0x3498db)
         .setTitle("🔊 VC退出")
         .setDescription(`ユーザー: **${name}**`)
         .addFields(
+          { name: "VC", value: chName, inline: true }, // ★ここが追加
           { name: "今回の滞在", value: msToHuman(result.durationMs), inline: true },
           { name: `今月(${result.monthKey}) 参加回数`, value: `${result.month.joins}回`, inline: true },
           { name: `今月(${result.monthKey}) 合計`, value: msToHuman(result.month.totalMs), inline: true },
@@ -847,27 +816,6 @@ const server = http.createServer(async (req, res) => {
         return json(res, { ok: true, guildId, month, stats });
       }
 
-      // ===== VC API =====
-      if (pathname === "/api/vc/top") {
-        const guildId = url.searchParams.get("guild") || "";
-        const month = url.searchParams.get("month") || monthKeyTokyo(new Date());
-        if (!guildId) return json(res, { ok: false, error: "missing guild" }, 400);
-        const top = await getVcTop(guildId, month, 20);
-        return json(res, { ok: true, guildId, month, top });
-      }
-
-      // ===== Tag counts API =====
-      if (pathname === "/api/tags") {
-        const guildId = url.searchParams.get("guild") || "";
-        if (!guildId) return json(res, { ok: false, error: "missing guild" }, 400);
-        const guild = await client.guilds.fetch(guildId).catch(() => null);
-        if (!guild) return json(res, { ok: false, error: "guild not found" }, 404);
-
-        const data = await getTagCounts(guild);
-        return json(res, { ok: true, guildId, scanned: data.scanned, tags: data.tags });
-      }
-
-      // ===== POST edit API =====
       if (pathname === "/api/ngwords/add" && req.method === "POST") {
         const body = await readJson(req);
         const guildId = String(body?.guild || "");
@@ -950,11 +898,15 @@ async function readJson(req) {
   const chunks = [];
   for await (const c of req) chunks.push(c);
   const raw = Buffer.concat(chunks).toString("utf-8") || "{}";
-  try { return JSON.parse(raw); } catch { return {}; }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
 }
 
 /* =========================
-   Admin HTML（円グラフ付き）
+   ★③ Admin HTML（月次サマリをカード表示に変更済み）
 ========================= */
 function renderAdminHTML() {
   return `<!doctype html>
@@ -974,8 +926,6 @@ function renderAdminHTML() {
     .muted { color:#666; }
     table { width:100%; border-collapse:collapse; }
     th,td { border-bottom:1px solid #eee; padding:8px; text-align:left; }
-    canvas { width:100%; max-width:520px; height:auto; }
-    .pill { display:inline-block; padding:2px 8px; border:1px solid #ddd; border-radius:999px; margin:2px 6px 2px 0; }
   </style>
 </head>
 <body>
@@ -994,35 +944,16 @@ function renderAdminHTML() {
 
   <div class="grid">
     <div class="card">
-      <h3>月次サマリ（既存）</h3>
-      <pre id="summary">読み込み中...</pre>
+      <h3>月次サマリ（見やすい表示）</h3>
+      <div id="summary">読み込み中...</div>
     </div>
 
     <div class="card">
-      <h3>Top NG Users（既存）</h3>
+      <h3>Top NG Users</h3>
       <table>
         <thead><tr><th>User ID</th><th>Count</th></tr></thead>
         <tbody id="topNg"></tbody>
       </table>
-    </div>
-  </div>
-
-  <div class="grid">
-    <div class="card">
-      <h3>VC 統計（今月 Top）</h3>
-      <table>
-        <thead><tr><th>User ID</th><th>参加回数</th><th>合計</th></tr></thead>
-        <tbody id="topVc"></tbody>
-      </table>
-      <p class="muted">※退出ログはDiscordの管理ログ(日付スレッド)にも出ます</p>
-    </div>
-
-    <div class="card">
-      <h3>@タグ人数（円グラフ）</h3>
-      <canvas id="pie" width="520" height="320"></canvas>
-      <div id="legend"></div>
-      <pre id="tagsRaw" class="muted"></pre>
-      <p class="muted">表示名の「@以降」をスペース区切りでタグとして集計します（例: @Mana Gaia Meteor Elemental）</p>
     </div>
   </div>
 
@@ -1084,69 +1015,6 @@ function renderAdminHTML() {
     });
   }
 
-  function msToHuman(ms){
-    const s = Math.max(0, Math.floor(ms/1000));
-    const h = Math.floor(s/3600);
-    const m = Math.floor((s%3600)/60);
-    const ss = s%60;
-    if (h>0) return \`\${h}時間\${m}分\`;
-    if (m>0) return \`\${m}分\${ss}秒\`;
-    return \`\${ss}秒\`;
-  }
-
-  function drawPie(canvas, items){
-    const ctx = canvas.getContext("2d");
-    const w = canvas.width, h = canvas.height;
-    ctx.clearRect(0,0,w,h);
-
-    const total = items.reduce((a,b)=>a+b.count,0) || 1;
-    const cx = 170, cy = 160, r = 120;
-
-    let start = -Math.PI/2;
-    const colors = [
-      "#4E79A7","#F28E2B","#E15759","#76B7B2","#59A14F","#EDC948","#B07AA1","#FF9DA7","#9C755F","#BAB0AC"
-    ];
-
-    items.forEach((it, i)=>{
-      const frac = it.count/total;
-      const end = start + frac*2*Math.PI;
-      ctx.beginPath();
-      ctx.moveTo(cx,cy);
-      ctx.arc(cx,cy,r,start,end);
-      ctx.closePath();
-      ctx.fillStyle = colors[i%colors.length];
-      ctx.fill();
-
-      // label line (optional small)
-      start = end;
-    });
-
-    // donut hole
-    ctx.beginPath();
-    ctx.arc(cx,cy,55,0,2*Math.PI);
-    ctx.fillStyle = "#fff";
-    ctx.fill();
-
-    // total text
-    ctx.fillStyle = "#111";
-    ctx.font = "14px system-ui";
-    ctx.textAlign = "center";
-    ctx.fillText("TOTAL", cx, cy-6);
-    ctx.font = "16px system-ui";
-    ctx.fillText(String(total), cx, cy+16);
-
-    // legend
-    const legend = $("legend");
-    legend.innerHTML = "";
-    items.slice(0, 12).forEach((it,i)=>{
-      const span = document.createElement("span");
-      span.className = "pill";
-      span.style.borderColor = colors[i%colors.length];
-      span.textContent = \`\${it.tag}: \${it.count}\`;
-      legend.appendChild(span);
-    });
-  }
-
   async function loadGuilds(){
     const data = await api("/api/guilds");
     const sel = $("guild");
@@ -1159,15 +1027,55 @@ function renderAdminHTML() {
     });
   }
 
+  function card(label, value){
+    return \`
+      <div style="border:1px solid #eee;border-radius:12px;padding:10px;">
+        <div style="color:#666;font-size:12px;">\${label}</div>
+        <div style="font-size:22px;font-weight:700;">\${value}</div>
+      </div>
+    \`;
+  }
+
+  function renderByTypeTable(obj){
+    const keys = Object.keys(obj || {});
+    if (!keys.length) return \`<div class="muted">（今月のイベントはまだありません）</div>\`;
+
+    const rows = keys
+      .sort((a,b)=> (obj[b]??0)-(obj[a]??0))
+      .map(k => \`<tr><td>\${k}</td><td>\${obj[k]}</td></tr>\`)
+      .join("");
+
+    return \`
+      <table>
+        <thead><tr><th>type</th><th>count</th></tr></thead>
+        <tbody>\${rows}</tbody>
+      </table>
+    \`;
+  }
+
   async function reload(){
     const guildId = $("guild").value;
     const month = $("month").value;
     if (!guildId || !month) return;
 
-    // monthly stats
+    // ★③ monthly stats（見やすい表示）
     const stats = await api(\`/api/stats?guild=\${encodeURIComponent(guildId)}&month=\${encodeURIComponent(month)}\`);
-    $("summary").textContent = JSON.stringify(stats.stats?.summary ?? {}, null, 2);
+    const summary = stats.stats?.summary ?? {};
+    const byType = summary.byType ?? {};
 
+    $("summary").innerHTML = \`
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:10px;">
+        \${card("NG検知", summary.ngDetected ?? 0)}
+        \${card("Timeout", summary.timeouts ?? 0)}
+        \${card("Join", summary.joins ?? 0)}
+        \${card("Leave", summary.leaves ?? 0)}
+      </div>
+
+      <div style="font-weight:600;margin:6px 0;">内訳（byType）</div>
+      \${renderByTypeTable(byType)}
+    \`;
+
+    // Top NG Users
     const topNg = $("topNg");
     topNg.innerHTML = "";
     (stats.stats?.topNgUsers || []).forEach(r => {
@@ -1185,22 +1093,6 @@ function renderAdminHTML() {
     $("settings").textContent = JSON.stringify(st.settings ?? {}, null, 2);
     $("threshold").value = st.settings?.ng_threshold ?? 3;
     $("timeout").value = st.settings?.timeout_minutes ?? 10;
-
-    // vc top
-    const vc = await api(\`/api/vc/top?guild=\${encodeURIComponent(guildId)}&month=\${encodeURIComponent(month)}\`);
-    const topVc = $("topVc");
-    topVc.innerHTML = "";
-    (vc.top || []).forEach(r => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = \`<td>\${r.user_id}</td><td>\${r.joins}</td><td>\${msToHuman(r.total_ms)}</td>\`;
-      topVc.appendChild(tr);
-    });
-
-    // tags
-    const tag = await api(\`/api/tags?guild=\${encodeURIComponent(guildId)}\`);
-    const items = (tag.tags || []).slice(0, 12);
-    drawPie($("pie"), items);
-    $("tagsRaw").textContent = JSON.stringify({ scanned: tag.scanned, tags: tag.tags }, null, 2);
   }
 
   $("reload").addEventListener("click", reload);
@@ -1249,7 +1141,3 @@ function renderAdminHTML() {
 </body>
 </html>`;
 }
-
-/* =========================
-   Start
-========================= */
