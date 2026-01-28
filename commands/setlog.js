@@ -1,9 +1,14 @@
-import { SlashCommandBuilder, PermissionFlagsBits, ChannelType } from "discord.js";
+import {
+  SlashCommandBuilder,
+  PermissionFlagsBits,
+  ChannelType,
+  MessageFlags,
+} from "discord.js";
 
 export const data = new SlashCommandBuilder()
   .setName("setlog")
   .setDescription("管理ログを送信するチャンネルを設定します")
-  .addChannelOption(opt =>
+  .addChannelOption((opt) =>
     opt
       .setName("channel")
       .setDescription("ログ送信先チャンネル")
@@ -23,5 +28,8 @@ export async function execute(interaction, db) {
     channel.id
   );
 
-  await interaction.reply({ content: `✅ 管理ログ送信先を ${channel} に設定しました`, ephemeral: true });
+  await interaction.reply({
+    content: `✅ 管理ログ送信先を ${channel} に設定しました`,
+    flags: MessageFlags.Ephemeral,
+  });
 }
