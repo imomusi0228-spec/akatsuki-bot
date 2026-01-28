@@ -175,21 +175,47 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
-// NGワード検知
+// ===== NGワード検知（メッセージ監視） =====
+
+// 二重処理防止（同一プロセス内）: message.id を短時間キャッシュ
+const processedMessageIds = new Map(); // id -> timestamp(ms)
+const DEDUPE_TTL_MS = 60_000; // 60秒
+
+function markProcessed(id) {
+  const now = Date.now();
+  processedMessageIds.set(id, now);
+
+  // ついでに古いものを掃除
+  for (const [mid, ts] of processedMessageIds) {
+    if (now - ts > DEDUPE_TTL_MS) processedMessageIds.delete(mid);
+  }
+}
+
+function alreadyProcessed(id) {
+  const ts = processedMessageIds.get(id);
+  return ts && Date.now() - ts <= DEDUPE_TTL_MS;
+}
+
 client.on("messageCreate", async (message) => {
   try {
     if (!message.guild) return;
     if (message.author?.bot) return;
     if (typeof message.content !== "string") return;
 
+    // ★二重警告対策
+    if (alreadyProcessed(message.id)) return;
+    markProcessed(message.id);
+
     const ngWords = await getNgWords(message.guildId);
     if (!ngWords.length) return;
 
-    const content = normalize(message.content);
-    const hit = ngWords.find((w) => content.includes(normalize(w)));
+    const contentLower = normalize(message.content);
+
+    // 部分一致（必要なら後で厳密化可）
+    const hit = ngWords.find((w) => contentLower.includes(normalize(w)));
     if (!hit) return;
 
-    // 削除権限チェック
+    // 削除（権限があれば）
     const me = await message.guild.members.fetchMe().catch(() => null);
     const canManage =
       me?.permissionsIn(message.channel)?.has(PermissionsBitField.Flags.ManageMessages);
@@ -198,18 +224,26 @@ client.on("messageCreate", async (message) => {
       await message.delete().catch(() => null);
     }
 
-    await message.channel
-      .send({
-        content: `⚠️ ${message.author} 不適切な表現が検出されました（ワード: \`${hit}\`）。`,
-      })
-      .catch(() => null);
+    // ★一般参加者に見せない：チャンネルへは何も送らない
+    // 本人へDMで警告（NGワード自体は書かない）
+    const dmText =
+      `⚠️ サーバーのルールに抵触する可能性のある表現が検出されたため、メッセージが削除されました。\n` +
+      `内容を見直して再投稿してください。`;
 
+    await message.author.send({ content: dmText }).catch(() => null);
+
+    // 管理ログには「ヒット語＆原文」を送る（管理者だけが見られる想定）
     await sendLog(
       message.guild,
-      `🚫 NGワード検知: ${message.author.tag} / #${message.channel?.name}\nワード: "${hit}"\n内容: "${message.content}"`
+      `🚫 NGワード検知\n` +
+        `ユーザー: ${message.author.tag} (${message.author.id})\n` +
+        `チャンネル: #${message.channel?.name}\n` +
+        `ヒット: "${hit}"\n` +
+        `内容: "${message.content}"\n` +
+        `URL: ${message.url}`
     );
   } catch (e) {
-    console.error("NG word monitor error:", e?.message ?? e);
+    console.error("NG word monitor error:", e);
   }
 });
 
