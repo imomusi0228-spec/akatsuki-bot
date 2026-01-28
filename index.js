@@ -1,216 +1,129 @@
-import {
+require('dotenv').config();
+const {
   Client,
   GatewayIntentBits,
-  PermissionFlagsBits,
-  SlashCommandBuilder
-} from 'discord.js';
-import sqlite3 from 'sqlite3';
-import fs from 'fs';
-import 'dotenv/config';
+  PermissionFlagsBits
+} = require('discord.js');
 
-// ===============================
-// 基本設定
-// ===============================
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent
   ]
 });
 
-const db = new sqlite3.Database('./data.db');
-db.exec(fs.readFileSync('./schema.sql', 'utf8'));
+/* ===== 簡易DB（本番はRedis/DBに置換可） ===== */
+const badWords = new Map();       // guildId => [words]
+const logChannels = new Map();    // guildId => channelId
+const warns = new Map();          // guildId-userId => count
 
-const joinTimes = new Map();
-
-// ===============================
-// Bot起動
-// ===============================
-client.once('ready', async () => {
-  console.log(`Akatsuki Bot logged in as ${client.user.tag}`);
-
-  // Slash Command 登録
-  await client.application.commands.set([
-    new SlashCommandBuilder()
-      .setName('vc_stats')
-      .setDescription('指定ユーザーのVC滞在時間を確認')
-      .addUserOption(o =>
-        o.setName('user').setDescription('対象ユーザー').setRequired(true)
-      )
-      .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-
-    new SlashCommandBuilder()
-      .setName('badword_add')
-      .setDescription('不適切ワードを追加')
-      .addStringOption(o =>
-        o.setName('word').setDescription('ワード').setRequired(true)
-      )
-      .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-
-    new SlashCommandBuilder()
-      .setName('badword_remove')
-      .setDescription('不適切ワードを削除')
-      .addStringOption(o =>
-        o.setName('word').setDescription('ワード').setRequired(true)
-      )
-      .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-  ]);
+/* ===== 起動 ===== */
+client.once('ready', () => {
+  console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
-// ===============================
-// VC滞在時間計測（マルチギルド）
-// ===============================
-client.on('voiceStateUpdate', (oldState, newState) => {
-  const guildId = newState.guild.id;
-  const userId = newState.id;
-
-  if (!oldState.channel && newState.channel) {
-    joinTimes.set(`${guildId}:${userId}`, Date.now());
-  }
-
-  if (oldState.channel && !newState.channel) {
-    const key = `${guildId}:${userId}`;
-    const joined = joinTimes.get(key);
-    if (!joined) return;
-
-    const diff = Date.now() - joined;
-    joinTimes.delete(key);
-
-    db.run(
-      `INSERT INTO vc_time (guild_id, user_id, total_ms)
-       VALUES (?, ?, ?)
-       ON CONFLICT(guild_id, user_id)
-       DO UPDATE SET total_ms = total_ms + ?`,
-      [guildId, userId, diff, diff]
-    );
-  }
-});
-
-// ===============================
-// 不適切ワード監視
-// ===============================
+/* ===== メッセージ監視 ===== */
 client.on('messageCreate', async message => {
-  if (message.author.bot || !message.guild) return;
+  if (!message.guild || message.author.bot) return;
 
-  const guildId = message.guild.id;
-  const userId = message.author.id;
+  const words = badWords.get(message.guild.id) || [];
+  const hit = words.find(w => message.content.includes(w));
+  if (!hit) return;
 
-  db.all(
-    'SELECT word FROM bad_words WHERE guild_id = ?',
-    [guildId],
-    async (_, rows) => {
-      for (const r of rows) {
-        if (message.content.includes(r.word)) {
-          await message.delete();
+  await message.delete().catch(() => {});
 
-          // 本人だけに警告（ephemeral代替：reply→delete）
-          const warn = await message.reply({
-            content: '⚠️ 不適切な表現が検出されました。',
-            allowedMentions: { repliedUser: true }
-          });
-          setTimeout(() => warn.delete(), 5000);
+  const key = `${message.guild.id}-${message.author.id}`;
+  const count = (warns.get(key) || 0) + 1;
+  warns.set(key, count);
 
-          addWarning(message.member);
-          break;
-        }
-      }
+  /* DM警告 */
+  try {
+    await message.author.send(
+      `⚠️ 不適切な表現を検知しました\nワード: **${hit}**\n警告回数: **${count}回**`
+    );
+  } catch {}
+
+  /* 管理ログ */
+  const logId = logChannels.get(message.guild.id);
+  if (logId) {
+    const log = await message.guild.channels.fetch(logId).catch(() => null);
+    if (log) {
+      log.send(
+        `🚨 **不適切発言検知**\n` +
+        `👤 ${message.author.tag}\n` +
+        `📄 ${hit}\n` +
+        `⚠️ 警告 ${count}回`
+      );
     }
-  );
+  }
+
+  /* 3回でタイムアウト */
+  if (count >= 3) {
+    const member = await message.guild.members.fetch(message.author.id);
+    member.timeout(5 * 60 * 1000, '警告3回').catch(() => {});
+  }
 });
 
-// ===============================
-// 警告処理 & 自動タイムアウト
-// ===============================
-function addWarning(member) {
-  const guildId = member.guild.id;
-  const userId = member.id;
-
-  db.get(
-    'SELECT count FROM warnings WHERE guild_id = ? AND user_id = ?',
-    [guildId, userId],
-    async (_, row) => {
-      const next = (row?.count || 0) + 1;
-
-      db.run(
-        `INSERT INTO warnings (guild_id, user_id, count)
-         VALUES (?, ?, ?)
-         ON CONFLICT(guild_id, user_id)
-         DO UPDATE SET count = ?`,
-        [guildId, userId, next, next]
-      );
-
-      const log = member.guild.channels.cache.get(
-        process.env.ADMIN_LOG_CHANNEL_ID
-      );
-      log?.send(`⚠️ <@${userId}> 警告 ${next} 回`);
-
-      if (next >= 3) {
-        await member.timeout(5 * 60 * 1000, '警告3回');
-        log?.send(`⏱ <@${userId}> を5分タイムアウト`);
-        db.run(
-          'DELETE FROM warnings WHERE guild_id = ? AND user_id = ?',
-          [guildId, userId]
-        );
-      }
-    }
-  );
-}
-
-// ===============================
-// Slash Command 処理
-// ===============================
+/* ===== スラッシュコマンド ===== */
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
+  if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+    return interaction.reply({ content: '❌ 管理者専用', ephemeral: true });
+  }
 
-  if (
-    !interaction.memberPermissions.has(PermissionFlagsBits.Administrator)
-  ) {
+  const { commandName, options, guildId } = interaction;
+
+  /* --- badword --- */
+  if (commandName === 'badword') {
+    const list = badWords.get(guildId) || [];
+    const word = options.getString('word');
+
+    if (options.getSubcommand() === 'add') {
+      list.push(word);
+      badWords.set(guildId, list);
+      return interaction.reply(`✅ 追加: ${word}`);
+    }
+
+    if (options.getSubcommand() === 'remove') {
+      badWords.set(guildId, list.filter(w => w !== word));
+      return interaction.reply(`🗑️ 削除: ${word}`);
+    }
+
+    if (options.getSubcommand() === 'list') {
+      return interaction.reply({
+        content: list.join(', ') || '（未登録）',
+        ephemeral: true
+      });
+    }
+  }
+
+  /* --- log --- */
+  if (commandName === 'log') {
+    if (options.getSubcommand() === 'set') {
+      const ch = options.getChannel('channel');
+      logChannels.set(guildId, ch.id);
+      return interaction.reply(`📌 管理ログ先: ${ch}`);
+    }
+
+    if (options.getSubcommand() === 'show') {
+      const id = logChannels.get(guildId);
+      return interaction.reply({
+        content: id ? `<#${id}>` : '未設定',
+        ephemeral: true
+      });
+    }
+  }
+
+  /* --- warn --- */
+  if (commandName === 'warn') {
+    const user = options.getUser('user');
+    const key = `${guildId}-${user.id}`;
     return interaction.reply({
-      content: '管理者専用コマンドです。',
+      content: `⚠️ ${user.tag}：${warns.get(key) || 0}回`,
       ephemeral: true
     });
   }
-
-  const guildId = interaction.guildId;
-
-  // VC統計
-  if (interaction.commandName === 'vc_stats') {
-    const user = interaction.options.getUser('user');
-
-    db.get(
-      'SELECT total_ms FROM vc_time WHERE guild_id = ? AND user_id = ?',
-      [guildId, user.id],
-      (_, row) => {
-        const h = row ? (row.total_ms / 3600000).toFixed(2) : 0;
-        interaction.reply({
-          content: `⏱ ${user.username} のVC滞在時間：${h} 時間`,
-          ephemeral: true
-        });
-      }
-    );
-  }
-
-  // NGワード追加
-  if (interaction.commandName === 'badword_add') {
-    const word = interaction.options.getString('word');
-    db.run(
-      'INSERT INTO bad_words (guild_id, word) VALUES (?, ?)',
-      [guildId, word]
-    );
-    interaction.reply({ content: `✅ 追加しました: ${word}`, ephemeral: true });
-  }
-
-  // NGワード削除
-  if (interaction.commandName === 'badword_remove') {
-    const word = interaction.options.getString('word');
-    db.run(
-      'DELETE FROM bad_words WHERE guild_id = ? AND word = ?',
-      [guildId, word]
-    );
-    interaction.reply({ content: `🗑 削除しました: ${word}`, ephemeral: true });
-  }
 });
 
-client.login(process.env.TOKEN);
+client.login(process.env.DISCORD_TOKEN);
