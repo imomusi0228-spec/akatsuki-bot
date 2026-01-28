@@ -1,16 +1,20 @@
 {
   "name": "akatsuki-bot",
   "version": "1.0.0",
+  "description": "Discord server management bot (Akatsuki)",
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "register": "node register-commands.js",
-    "start": "node index.js"
+    "start": "node index.js",
+    "deploy": "node deploy-commands.js",
+    "render-start": "npm run deploy && npm start"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   },
   "dependencies": {
-    "discord.js": "^14.25.1",
-    "dotenv": "^17.2.3",
-    "sqlite": "^5.1.1",
+    "discord.js": "^14.15.3",
+    "dotenv": "^16.4.5",
     "sqlite3": "^5.1.7"
   }
 }
