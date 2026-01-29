@@ -5,15 +5,13 @@ import {
   EmbedBuilder,
 } from "discord.js";
 
-const TIMEZONE = "Asia/Tokyo";
-
 function isUnknownInteraction(err) {
   return err?.code === 10062 || err?.rawError?.code === 10062;
 }
 
-function monthKeyTokyo(date = new Date()) {
+function ymTokyo(date = new Date()) {
   const dtf = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: TIMEZONE,
+    timeZone: "Asia/Tokyo",
     year: "numeric",
     month: "2-digit",
   });
@@ -30,14 +28,6 @@ function msToHuman(ms) {
   return `${ss}秒`;
 }
 
-function safeJsonParse(str) {
-  try {
-    return JSON.parse(str);
-  } catch {
-    return null;
-  }
-}
-
 export const data = new SlashCommandBuilder()
   .setName("vc")
   .setDescription("VCログ/統計")
@@ -45,7 +35,7 @@ export const data = new SlashCommandBuilder()
   .addSubcommand((sub) =>
     sub
       .setName("recent")
-      .setDescription("直近のVCログを表示")
+      .setDescription("直近のVCログを表示（log_events から）")
       .addIntegerOption((opt) =>
         opt
           .setName("limit")
@@ -55,7 +45,9 @@ export const data = new SlashCommandBuilder()
       )
   )
   .addSubcommand((sub) =>
-    sub.setName("top").setDescription("今月のVC滞在時間Topを表示（上位10）")
+    sub
+      .setName("top")
+      .setDescription("今月のVC滞在時間Topを表示（上位10）")
   )
   .addSubcommand((sub) =>
     sub
@@ -89,7 +81,6 @@ export async function execute(interaction, db) {
     if (sub === "recent") {
       const limit = interaction.options.getInteger("limit") ?? 10;
 
-      // index.js の log_events にVCイベントが入ってる前提
       const rows = await db.all(
         `SELECT type, user_id, meta, ts
            FROM log_events
@@ -106,25 +97,22 @@ export async function execute(interaction, db) {
       }
 
       const lines = rows.map((r) => {
-        const t = `<t:${Math.floor(r.ts / 1000)}:R>`;
-        const meta = safeJsonParse(r.meta) || {};
+        const t = `<t:${Math.floor(Number(r.ts) / 1000)}:R>`;
+        let meta = null;
+        try { meta = r.meta ? JSON.parse(r.meta) : null; } catch { meta = null; }
 
         if (r.type === "vc_join") {
-          const vcName = meta.channelName || (meta.channelId ? `#${meta.channelId}` : "?");
-          return `${t} 🟦 IN  <@${r.user_id}> → **${vcName}**`;
+          const name = meta?.channelName || meta?.channelId || "?";
+          return `${t} 🟦 IN  <@${r.user_id}> → **${name}**`;
         }
-
-        if (r.type === "vc_move_merged") {
-          const route = meta.route || "?";
-          return `${t} 🔁 MOVE <@${r.user_id}> **${route}**`;
+        if (r.type === "vc_session_end") {
+          const name = meta?.channelName || meta?.channelId || "?";
+          const dur = meta?.durationMs != null ? `（${msToHuman(meta.durationMs)}）` : "";
+          return `${t} 🟦 OUT <@${r.user_id}> ← **${name}** ${dur}`;
         }
-
-        // vc_session_end
-        const vcName =
-          meta.channelName ||
-          (meta.channelId ? `#${meta.channelId}` : "?");
-        const dur = meta.durationMs != null ? `（${msToHuman(meta.durationMs)}）` : "";
-        return `${t} 🟦 OUT <@${r.user_id}> ← **${vcName}** ${dur}`;
+        // vc_move_merged
+        const route = meta?.route || "?";
+        return `${t} 🔁 MOVE <@${r.user_id}> **${route}**`;
       });
 
       const embed = new EmbedBuilder()
@@ -138,10 +126,10 @@ export async function execute(interaction, db) {
 
     // /vc top
     if (sub === "top") {
-      const ym = monthKeyTokyo();
+      const ym = ymTokyo();
 
       const rows = await db.all(
-        `SELECT user_id, total_ms
+        `SELECT user_id, total_ms, joins
            FROM vc_stats_month
           WHERE guild_id = ? AND month_key = ?
           ORDER BY total_ms DESC
@@ -155,7 +143,8 @@ export async function execute(interaction, db) {
       }
 
       const lines = rows.map(
-        (r, i) => `**${i + 1}.** <@${r.user_id}>  —  ${msToHuman(Number(r.total_ms ?? 0))}`
+        (r, i) =>
+          `**${i + 1}.** <@${r.user_id}>  —  ${msToHuman(Number(r.total_ms ?? 0))}（${r.joins ?? 0}回）`
       );
 
       const embed = new EmbedBuilder()
@@ -170,33 +159,36 @@ export async function execute(interaction, db) {
     // /vc user
     if (sub === "user") {
       const user = interaction.options.getUser("target", true);
-      const ym = monthKeyTokyo();
+      const ym = ymTokyo();
 
       const m = await db.get(
-        `SELECT joins, total_ms
+        `SELECT total_ms, joins
            FROM vc_stats_month
-          WHERE guild_id = ? AND month_key = ? AND user_id = ?`,
+          WHERE guild_id = ? AND user_id = ? AND month_key = ?`,
         guildId,
-        ym,
-        user.id
+        user.id,
+        ym
       );
 
       const t = await db.get(
-        `SELECT joins, total_ms
+        `SELECT total_ms, joins
            FROM vc_stats_total
           WHERE guild_id = ? AND user_id = ?`,
         guildId,
         user.id
       );
 
+      const thisMonthMs = Number(m?.total_ms ?? 0);
+      const thisMonthJoins = Number(m?.joins ?? 0);
+      const totalMs = Number(t?.total_ms ?? 0);
+      const totalJoins = Number(t?.joins ?? 0);
+
       const embed = new EmbedBuilder()
         .setTitle(`👤 VC統計：${user.tag}`)
         .setColor(0x3498db)
         .addFields(
-          { name: `今月（${ym}）参加回数`, value: `${Number(m?.joins ?? 0)}回`, inline: true },
-          { name: `今月（${ym}）合計`, value: msToHuman(Number(m?.total_ms ?? 0)), inline: true },
-          { name: "累計 参加回数", value: `${Number(t?.joins ?? 0)}回`, inline: true },
-          { name: "累計 合計", value: msToHuman(Number(t?.total_ms ?? 0)), inline: true }
+          { name: `今月（${ym}）`, value: `${msToHuman(thisMonthMs)} / ${thisMonthJoins}回`, inline: true },
+          { name: "累計", value: `${msToHuman(totalMs)} / ${totalJoins}回`, inline: true }
         )
         .setTimestamp(new Date());
 
