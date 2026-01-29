@@ -12,24 +12,6 @@ function isUnknownInteraction(err) {
   return err?.code === 10062 || err?.rawError?.code === 10062;
 }
 
-function normalizePublicUrl(raw) {
-  let url = (raw || "").trim();
-
-  // 末尾の / を削る
-  url = url.replace(/\/+$/, "");
-
-  // もし /admin まで入ってたら落とす（事故防止）
-  url = url.replace(/\/admin$/i, "");
-
-  // https が無ければ付ける（httpだとDiscord側で弾かれるケースあり）
-  if (url && !/^https?:\/\//i.test(url)) url = `https://${url}`;
-
-  // 念のため http を https に寄せる（Renderは基本 https）
-  url = url.replace(/^http:\/\//i, "https://");
-
-  return url;
-}
-
 export const data = new SlashCommandBuilder()
   .setName("admin")
   .setDescription("管理画面を開くリンクを表示（管理者向け）")
@@ -44,14 +26,6 @@ export async function execute(interaction) {
   }
 
   try {
-    const base = normalizePublicUrl(process.env.PUBLIC_URL);
-    if (!base) {
-      return await interaction.editReply({
-        content:
-          "❌ PUBLIC_URL が未設定です。\nRender の環境変数 PUBLIC_URL に `https://xxxx.onrender.com` を設定してください。",
-      });
-    }
-
     const isAdmin =
       interaction.memberPermissions?.has(PermissionFlagsBits.Administrator) ||
       interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild);
@@ -60,18 +34,23 @@ export async function execute(interaction) {
       return await interaction.editReply({ content: "❌ 管理者権限が必要です。" });
     }
 
-    const adminUrl = `${base}/admin`;
+    // ★常にトップページへ（そこからOAuthログイン→/adminへ）
+    const base = interaction.client?.configBaseUrl || null;
+
+    // フォールバック（手動設定が必要な場合）
+    const url =
+      process.env.PUBLIC_URL ||
+      "https://YOUR-RENDER-URL.onrender.com";
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setLabel("管理画面を開く")
         .setStyle(ButtonStyle.Link)
-        .setURL(adminUrl)
+        .setURL(url)
     );
 
-    // ★URLを本文にも出す（ボタンが開かない端末対策）
     return await interaction.editReply({
-      content: `🔐 管理者用リンクです（他の人には見えません）\n${adminUrl}`,
+      content: `🔐 管理者用ページはこちら\n${url}`,
       components: [row],
     });
   } catch (e) {
