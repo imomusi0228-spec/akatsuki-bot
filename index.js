@@ -529,27 +529,54 @@ client.once("clientReady", () => {
 /* =========================
    interactionCreate（コマンド）
 ========================= */
-client.on("interactionCreate", async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
+function isUnknownInteraction(err) {
+  return err?.code === 10062 || err?.rawError?.code === 10062;
+}
+function isAlreadyAck(err) {
+  return err?.code === 40060 || err?.rawError?.code === 40060;
+}
 
-  const command = client.commands.get(interaction.commandName);
-  if (!command) return;
-
+// エラー時に「必ず返す」ヘルパ（ACK済み/未ACKどっちでも安全）
+async function safeInteractionError(interaction, content) {
   try {
+    if (interaction.deferred || interaction.replied) {
+      return await interaction.editReply({ content });
+    }
+    return await interaction.reply({ content, ephemeral: true });
+  } catch (e) {
+    if (isUnknownInteraction(e)) return;
+
+    // 競合で「もうACK済み」になってたら followUp で逃がす
+    if (isAlreadyAck(e)) {
+      try {
+        return await interaction.followUp({ content, ephemeral: true });
+      } catch (e2) {
+        if (isUnknownInteraction(e2)) return;
+      }
+    }
+
+    // ここまで来たらログだけ
+    console.error("safeInteractionError failed:", e?.message ?? e);
+  }
+}
+
+client.on("interactionCreate", async (interaction) => {
+  try {
+    if (!interaction.isChatInputCommand()) return;
+
+    const command = client.commands.get(interaction.commandName);
+    if (!command) return;
+
+    // ★ ここで deferReply() は絶対にしない（各コマンド側に任せる）
     await command.execute(interaction, db);
   } catch (err) {
-    console.error(err);
+    console.error("interactionCreate error:", err);
     if (isUnknownInteraction(err)) return;
 
-    const payload = { content: `❌ エラー: ${err?.message ?? err}`, flags: MessageFlags.Ephemeral };
-    try {
-      if (interaction.deferred || interaction.replied) await interaction.followUp(payload);
-      else await interaction.reply(payload);
-    } catch (e) {
-      if (!isUnknownInteraction(e)) console.error("reply failed:", e?.message ?? e);
-    }
+    await safeInteractionError(interaction, `❌ エラー: ${err?.message ?? String(err)}`);
   }
 });
+
 
 /* =========================
    NGワード検知（メッセージ監視）
