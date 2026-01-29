@@ -1,3 +1,4 @@
+// register-commands.js（完成形：そのままコピペOK）
 import "dotenv/config";
 import fs from "node:fs";
 import path from "node:path";
@@ -7,11 +8,18 @@ import { REST, Routes } from "discord.js";
 
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
+
+// GLOBAL_COMMANDS=1 なら全鯖(グローバル)登録、それ以外はGuild登録
+const IS_GLOBAL = process.env.GLOBAL_COMMANDS === "1";
 const GUILD_ID = process.env.GUILD_ID;
 
 if (!TOKEN) throw new Error("DISCORD_TOKEN が未設定です");
 if (!CLIENT_ID) throw new Error("DISCORD_CLIENT_ID が未設定です");
-if (!GUILD_ID) throw new Error("GUILD_ID が未設定です（Guildコマンド登録に必要）");
+
+// Guild登録のときだけ GUILD_ID 必須
+if (!IS_GLOBAL && !GUILD_ID) {
+  throw new Error("GUILD_ID が未設定です（Guildコマンド登録に必要）");
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,6 +29,11 @@ async function loadCommandJson() {
   const used = new Set();
 
   const commandsDir = path.join(__dirname, "commands");
+  if (!fs.existsSync(commandsDir)) {
+    console.warn("⚠️ commands ディレクトリが見つかりません:", commandsDir);
+    return commands;
+  }
+
   const files = fs.readdirSync(commandsDir).filter((f) => f.endsWith(".js"));
 
   for (const file of files) {
@@ -37,6 +50,8 @@ async function loadCommandJson() {
     if (!data?.toJSON) continue;
 
     const json = data.toJSON();
+    if (!json?.name) continue;
+
     if (used.has(json.name)) {
       console.warn(`⚠️ duplicate command skipped: ${json.name} (${file})`);
       continue;
@@ -45,22 +60,32 @@ async function loadCommandJson() {
     commands.push(json);
   }
 
-  // ★重要：/admin は index.js で処理するので、commandsに無い場合だけ追加したい
-  // ただし今回 duplicate が出ているので「adminは既にcommands側にある」想定で追加しない
-
   return commands;
 }
 
 const rest = new REST({ version: "10" }).setToken(TOKEN);
 
-console.log("🚀 Deploying guild commands...");
 const commands = await loadCommandJson();
 
-// 既存を全削除 → 登録（確実に反映）
-console.log("🧹 既存Guildコマンドを全削除中...");
-await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: [] });
+if (IS_GLOBAL) {
+  console.log("🚀 Deploying GLOBAL commands...");
+  console.log("🧹 既存GLOBALコマンドを全削除中...");
+  await rest.put(Routes.applicationCommands(CLIENT_ID), { body: [] });
 
-console.log("📥 新しいコマンドを登録中...");
-await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
+  console.log("📥 新しいコマンドを登録中...");
+  await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
 
-console.log("✅ commands registered (guild)");
+  console.log("✅ commands registered (global)");
+  console.log("ℹ️ Global反映は最大1時間かかることがあります");
+} else {
+  console.log("🚀 Deploying GUILD commands...");
+  console.log("Target GUILD_ID:", GUILD_ID);
+
+  console.log("🧹 既存Guildコマンドを全削除中...");
+  await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: [] });
+
+  console.log("📥 新しいコマンドを登録中...");
+  await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
+
+  console.log("✅ commands registered (guild)");
+}
