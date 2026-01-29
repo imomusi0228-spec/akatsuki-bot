@@ -374,11 +374,11 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
         $("ngwords").textContent = "取得失敗: " + (ng.error || "unknown");
         showStatus("ngStatus", "取得失敗: " + (ng.error || "unknown"), true);
       } else {
-        $("ngwords").textContent = (ng.words || []).map(w =>
-      (w.kind === "regex"
-      ? "/" + w.word + "/" + (w.flags || "")
-      : w.word)
-      ).join("\n") || "（なし）";
+       $("ngwords").textContent = (ng.words || []).map(w =>
+  (w.kind === "regex"
+    ? "/" + w.word + "/" + (w.flags || "")
+    : w.word)
+).join(String.fromCharCode(10)) || "（なし）";
 
         showStatus("ngStatus", "取得OK（" + (ng.count ?? (ng.words||[]).length) + "件）", false);
       }
