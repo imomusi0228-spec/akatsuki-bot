@@ -1188,9 +1188,9 @@ async function discordApi(accessToken, apiPath, method = "GET", body = null, ext
 
 function hasAdminPerm(permStr) {
   try {
-    const p = BigInt(permStr || "0");
+    const p = BigInt(permStr ?? "0");
     const ADMINISTRATOR = 1n << 3n; // 0x8
-    const MANAGE_GUILD = 1n << 5n; // 0x20
+    const MANAGE_GUILD  = 1n << 5n; // 0x20
     return (p & ADMINISTRATOR) !== 0n || (p & MANAGE_GUILD) !== 0n;
   } catch {
     return false;
@@ -1395,16 +1395,20 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (pathname === "/api/guilds") {
-  // Botがready前だと guilds.cache が空のことがあるので待つ
-  const ready = await waitForClientReady(15000);
-  if (!ready) return json(res, { ok: false, error: "bot_not_ready" }, 503);
-
   if (sess) {
     const userGuilds = await ensureGuildsForSession(sess);
-    const allowed = intersectUserBotGuilds(userGuilds).map((g) => ({ id: g.id, name: g.name }));
-    return json(res, { ok: true, guilds: allowed });
-  }
+    console.log("oauth userGuilds len =", userGuilds?.length);
 
+    const botSet = new Set(client.guilds.cache.map((g) => g.id));
+    const mine = (userGuilds || []).filter((g) => botSet.has(g.id));
+    console.log("bot-in-common len =", mine.length);
+
+    const adminable = mine.filter((g) => hasAdminPerm(g.permissions));
+    console.log("adminable len =", adminable.length);
+
+    const list = adminable.map((g) => ({ id: g.id, name: g.name }));
+    return json(res, { ok: true, guilds: list });
+  }
   return json(res, { ok: true, guilds: botGuilds() });
 }
 
