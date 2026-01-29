@@ -1462,8 +1462,11 @@ server.listen(PORT, "0.0.0.0", () => {
    Login
 ========================= */
 if (token) {
-  client.login(token).catch((e) => console.error("❌ login failed:", e?.message ?? e));
-} else {
+
+    client.login(token).catch((e) => {
+    console.error("❌ Discord login failed:", e);
+  });
+
   console.error("❌ DISCORD_TOKEN が無いのでログインできません");
 }
 
@@ -1924,3 +1927,31 @@ if (!confirm("NGワードを全削除します。よろしいですか？")) ret
 server.listen(PORT, () => {
   console.log(`Web server listening on ${PORT}`);
 });
+
+// =========================
+// Discord Bot 起動（強制）
+// =========================
+const discordToken =
+  process.env.DISCORD_TOKEN ||
+  process.env.BOT_TOKEN ||
+  process.env.TOKEN ||
+  "";
+
+console.log("DISCORD_TOKEN exists:", !!discordToken);
+
+import { Events } from "discord.js";
+
+client.once(Events.ClientReady, (c) => {
+  console.log(`✅ Logged in as ${c.user.tag}`);
+});
+
+client.on("error", (e) => console.error("Discord client error:", e));
+client.on("shardError", (e) => console.error("Discord shard error:", e));
+
+if (!discordToken) {
+  console.error("❌ Discord token is missing");
+} else {
+  client.login(discordToken).catch((e) => {
+    console.error("❌ Discord login failed:", e);
+  });
+}
