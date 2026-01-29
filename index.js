@@ -1,3 +1,5 @@
+// index.js（完成形：そのまま丸ごとコピペでOK）
+
 import http from "node:http";
 import crypto from "node:crypto";
 import "dotenv/config";
@@ -82,7 +84,7 @@ try {
     );
   `);
 
-  // ★ ここは後でkind付きにマイグレーションする（既存互換のため一旦旧schemaも許容）
+  // 旧schemaも許容（後でkind付きにマイグレーション）
   await db.exec(`
     CREATE TABLE IF NOT EXISTS log_threads (
       guild_id TEXT,
@@ -135,7 +137,9 @@ try {
   `);
 
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_log_events_guild_ts ON log_events (guild_id, ts);`);
-  await db.exec(`CREATE INDEX IF NOT EXISTS idx_log_events_guild_type_ts ON log_events (guild_id, type, ts);`);
+  await db.exec(
+    `CREATE INDEX IF NOT EXISTS idx_log_events_guild_type_ts ON log_events (guild_id, type, ts);`
+  );
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_vc_month_guild_month ON vc_stats_month (guild_id, month_key);`);
 
   // =========================
@@ -150,7 +154,6 @@ try {
       const hasKind = cols.some((c) => c.name === "kind");
       if (hasKind) return;
 
-      // 新テーブル作成
       await db.exec(`
         CREATE TABLE IF NOT EXISTS log_threads_new (
           guild_id TEXT,
@@ -161,14 +164,12 @@ try {
         );
       `);
 
-      // 旧データを main として移行
       await db.exec(`
         INSERT OR IGNORE INTO log_threads_new (guild_id, date_key, kind, thread_id)
         SELECT guild_id, date_key, 'main' as kind, thread_id
         FROM log_threads;
       `);
 
-      // 置き換え
       await db.exec(`DROP TABLE log_threads;`);
       await db.exec(`ALTER TABLE log_threads_new RENAME TO log_threads;`);
       console.log("✅ Migrated log_threads -> kind-aware schema");
@@ -176,9 +177,10 @@ try {
       console.error("❌ log_threads migration failed:", e?.message ?? e);
     }
   }
+
   await migrateLogThreadsKind();
 
-  // 念のため、新schemaのlog_threadsが無い場合も作る（migration済みなら何もしない）
+  // 念のため（migration済みなら何もしない）
   await db.exec(`
     CREATE TABLE IF NOT EXISTS log_threads (
       guild_id TEXT,
@@ -243,6 +245,9 @@ try {
 function isUnknownInteraction(err) {
   return err?.code === 10062 || err?.rawError?.code === 10062;
 }
+function isAlreadyAck(err) {
+  return err?.code === 40060 || err?.rawError?.code === 40060;
+}
 function normalize(s) {
   return (s ?? "").toLowerCase();
 }
@@ -278,6 +283,109 @@ function msToHuman(ms) {
   if (h > 0) return `${h}時間${m}分`;
   if (m > 0) return `${m}分${ss}秒`;
   return `${ss}秒`;
+}
+
+/* =========================
+   DB Event Log（★最上流に置く）
+========================= */
+async function logEvent(guildId, type, userId = null, metaObj = null) {
+  try {
+    if (!db) return;
+    const meta = metaObj ? JSON.stringify(metaObj) : null;
+    await db.run(
+      "INSERT INTO log_events (guild_id, type, user_id, meta, ts) VALUES (?, ?, ?, ?, ?)",
+      guildId,
+      type,
+      userId,
+      meta,
+      Date.now()
+    );
+  } catch {}
+}
+
+/* =========================
+   Settings / NG words
+========================= */
+async function getSettings(guildId) {
+  if (!db) {
+    return {
+      log_channel_id: null,
+      ng_threshold: DEFAULT_NG_THRESHOLD,
+      timeout_minutes: DEFAULT_TIMEOUT_MIN,
+    };
+  }
+
+  await db.run(
+    `INSERT INTO settings (guild_id, log_channel_id, ng_threshold, timeout_minutes)
+     VALUES (?, NULL, ?, ?)
+     ON CONFLICT(guild_id) DO NOTHING`,
+    guildId,
+    DEFAULT_NG_THRESHOLD,
+    DEFAULT_TIMEOUT_MIN
+  );
+
+  const row = await db.get(
+    "SELECT log_channel_id, ng_threshold, timeout_minutes FROM settings WHERE guild_id = ?",
+    guildId
+  );
+
+  return {
+    log_channel_id: row?.log_channel_id ?? null,
+    ng_threshold: Number(row?.ng_threshold ?? DEFAULT_NG_THRESHOLD),
+    timeout_minutes: Number(row?.timeout_minutes ?? DEFAULT_TIMEOUT_MIN),
+  };
+}
+
+async function updateSettings(guildId, patch) {
+  const cur = await getSettings(guildId);
+  const next = {
+    log_channel_id: patch.log_channel_id ?? cur.log_channel_id,
+    ng_threshold: Number.isFinite(Number(patch.ng_threshold))
+      ? Number(patch.ng_threshold)
+      : cur.ng_threshold,
+    timeout_minutes: Number.isFinite(Number(patch.timeout_minutes))
+      ? Number(patch.timeout_minutes)
+      : cur.timeout_minutes,
+  };
+  next.ng_threshold = Math.max(1, next.ng_threshold);
+  next.timeout_minutes = Math.max(1, next.timeout_minutes);
+
+  await db.run(
+    `INSERT INTO settings (guild_id, log_channel_id, ng_threshold, timeout_minutes)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(guild_id) DO UPDATE SET
+       log_channel_id = excluded.log_channel_id,
+       ng_threshold = excluded.ng_threshold,
+       timeout_minutes = excluded.timeout_minutes`,
+    guildId,
+    next.log_channel_id,
+    next.ng_threshold,
+    next.timeout_minutes
+  );
+
+  return await getSettings(guildId);
+}
+
+async function getNgWords(guildId) {
+  if (!db) return [];
+  const rows = await db.all("SELECT word FROM ng_words WHERE guild_id = ? ORDER BY word ASC", guildId);
+  return rows.map((r) => (r.word ?? "").trim()).filter(Boolean);
+}
+async function addNgWord(guildId, word) {
+  const w = (word ?? "").trim();
+  if (!w) return { ok: false, error: "empty" };
+  await db.run(`INSERT OR IGNORE INTO ng_words (guild_id, word) VALUES (?, ?)`, guildId, w);
+  return { ok: true };
+}
+async function removeNgWord(guildId, word) {
+  const w = (word ?? "").trim();
+  if (!w) return { ok: false, error: "empty" };
+  await db.run(`DELETE FROM ng_words WHERE guild_id = ? AND word = ?`, guildId, w);
+  return { ok: true };
+}
+async function clearNgWords(guildId) {
+  await db.run(`DELETE FROM ng_words WHERE guild_id = ?`, guildId);
+  return { ok: true };
 }
 
 /** ★ 表示名を優先で返す（ニックネーム→グローバル名→username→tag） */
@@ -317,16 +425,14 @@ function tokyoFooterTime(now = new Date()) {
 
 /** ★ VCログEmbedをスクショ風に統一 */
 function buildVcEmbed({ member, userId, actionText, channelId, when = new Date() }) {
-  const displayName = displayNameFromMember(member, `User(${userId})`);
   const username = member?.user?.username || member?.user?.tag || `User(${userId})`;
   const avatar = member?.user?.displayAvatarURL?.() ?? undefined;
-
   const chMention = channelId ? `<#${channelId}>` : "(unknown VC)";
 
   return new EmbedBuilder()
     .setColor(0x3498db)
     .setAuthor({ name: username, iconURL: avatar })
-    // スクショっぽく： @表示名 @username left voice channel 🔊 #VC
+    // スクショ寄せ：@表示名（メンションで青） + @username（青にするため同一ユーザーをもう一回メンション）
     .setDescription(`${member ? member.toString() : `<@${userId}>`} <@${userId}> ${actionText} 🔊 ${chMention}`)
     .setFooter({ text: `ID: ${userId} · ${tokyoFooterTime(when)}` })
     .setTimestamp(when);
@@ -467,12 +573,7 @@ async function vcStart(guildId, userId, channelId) {
   );
 }
 async function vcMove(guildId, userId, channelId) {
-  await db.run(
-    `UPDATE vc_active SET channel_id = ? WHERE guild_id = ? AND user_id = ?`,
-    channelId,
-    guildId,
-    userId
-  );
+  await db.run(`UPDATE vc_active SET channel_id = ? WHERE guild_id = ? AND user_id = ?`, channelId, guildId, userId);
 }
 async function vcEnd(guildId, userId) {
   const active = await db.get(
@@ -546,12 +647,8 @@ client.once("clientReady", () => {
 
 /* =========================
    interactionCreate（コマンド）
+   ★ 全コマンド一括ACK + reply衝突を吸収（安全化）
 ========================= */
-function isAlreadyAck(err) {
-  return err?.code === 40060 || err?.rawError?.code === 40060;
-}
-
-// エラー時に「必ず返す」ヘルパ（ACK済み/未ACKどっちでも安全）
 async function safeInteractionError(interaction, content) {
   try {
     if (interaction.deferred || interaction.replied) {
@@ -572,6 +669,63 @@ async function safeInteractionError(interaction, content) {
     console.error("safeInteractionError failed:", e?.message ?? e);
   }
 }
+
+client.on("interactionCreate", async (interaction) => {
+  try {
+    if (!interaction.isChatInputCommand()) return;
+
+    const command = client.commands.get(interaction.commandName);
+    if (!command) return;
+
+    // ★ まずACK（3秒タイムアウト回避）
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => null);
+    }
+
+    // ★ 既存コマンドが interaction.reply() を使ってても落ちないようにパッチ
+    const origReply = interaction.reply.bind(interaction);
+    const origFollowUp = interaction.followUp.bind(interaction);
+    const origEdit = interaction.editReply.bind(interaction);
+
+    interaction.reply = async (payload) => {
+      const data = typeof payload === "string" ? { content: payload } : payload;
+      if (interaction.deferred || interaction.replied) {
+        return origEdit(data).catch(() => null);
+      }
+      return origReply({ ...data, flags: data?.flags ?? MessageFlags.Ephemeral }).catch(() => null);
+    };
+
+    interaction.followUp = async (payload) => {
+      const data = typeof payload === "string" ? { content: payload } : payload;
+      if (!interaction.deferred && !interaction.replied) {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => null);
+      }
+      return origFollowUp({ ...data, flags: data?.flags ?? MessageFlags.Ephemeral }).catch(() => null);
+    };
+
+    interaction.editReply = async (payload) => {
+      const data = typeof payload === "string" ? { content: payload } : payload;
+      if (!interaction.deferred && !interaction.replied) {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => null);
+      }
+      return origEdit(data).catch(() => null);
+    };
+
+    // 互換で ctx も渡す
+    const ctx = {
+      reply: (p) => interaction.reply(p),
+      edit: (p) => interaction.editReply(p),
+      followUp: (p) => interaction.followUp(p),
+      interaction,
+    };
+
+    await command.execute(interaction, db, ctx);
+  } catch (err) {
+    console.error("interactionCreate error:", err);
+    if (isUnknownInteraction(err)) return;
+    await safeInteractionError(interaction, `❌ エラー: ${err?.message ?? String(err)}`);
+  }
+});
 
 /* =========================
    NGワード検知（メッセージ監視）
@@ -608,12 +762,7 @@ async function incrementHit(guildId, userId) {
 }
 
 async function resetHit(guildId, userId) {
-  await db.run(
-    "UPDATE ng_hits SET count = 0, updated_at = ? WHERE guild_id = ? AND user_id = ?",
-    Date.now(),
-    guildId,
-    userId
-  );
+  await db.run("UPDATE ng_hits SET count = 0, updated_at = ? WHERE guild_id = ? AND user_id = ?", Date.now(), guildId, userId);
 }
 
 client.on("messageCreate", async (message) => {
@@ -645,10 +794,7 @@ client.on("messageCreate", async (message) => {
       })
       .catch(() => null);
 
-    await logEvent(message.guildId, "ng_detected", message.author.id, {
-      word: hit,
-      channelId: message.channelId,
-    });
+    await logEvent(message.guildId, "ng_detected", message.author.id, { word: hit, channelId: message.channelId });
 
     const count = await incrementHit(message.guildId, message.author.id);
 
@@ -809,23 +955,7 @@ function queueMove(guild, guildId, userId, userTag, fromName, toName) {
 
 /* =========================
    ★VCログ：IN/MOVE/OUT（青Embed）
-   ★ IN/OUTは表示名（ニックネーム）で出す
 ========================= */
-async function logEvent(guildId, type, userId = null, metaObj = null) {
-  try {
-    if (!db) return;
-    const meta = metaObj ? JSON.stringify(metaObj) : null;
-    await db.run(
-      "INSERT INTO log_events (guild_id, type, user_id, meta, ts) VALUES (?, ?, ?, ?, ?)",
-      guildId,
-      type,
-      userId,
-      meta,
-      Date.now()
-    );
-  } catch {}
-}
-
 client.on("voiceStateUpdate", async (oldState, newState) => {
   try {
     const guild = newState.guild || oldState.guild;
@@ -867,7 +997,6 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
       const fromName = oldState.channel?.name ?? `#${oldCh}`;
       const toName = newState.channel?.name ?? `#${newCh}`;
 
-      // moveまとめは既存通り（ログはまとめ後に出る）
       const displayName = displayNameFromMember(member, member?.user?.tag ?? `User(${userId})`);
       queueMove(guild, guild.id, userId, displayName, fromName, toName);
       return;
@@ -943,14 +1072,7 @@ function rand(n = 24) {
 }
 
 /** ★ Discord API：429はRetry-After尊重でバックオフ（header/JSON両対応） */
-async function discordApi(
-  accessToken,
-  apiPath,
-  method = "GET",
-  body = null,
-  extraHeaders = null,
-  maxRetries = 4
-) {
+async function discordApi(accessToken, apiPath, method = "GET", body = null, extraHeaders = null, maxRetries = 4) {
   const url = `https://discord.com/api/v10${apiPath}`;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -981,18 +1103,13 @@ async function discordApi(
       } else {
         try {
           const data = await r.json();
-          if (typeof data?.retry_after === "number") {
-            waitMs = Math.ceil(data.retry_after * 1000);
-          }
+          if (typeof data?.retry_after === "number") waitMs = Math.ceil(data.retry_after * 1000);
         } catch {}
       }
 
       waitMs += 250 + Math.floor(Math.random() * 250);
 
-      if (attempt === maxRetries) {
-        throw new Error(`Discord API ${apiPath} failed: 429 (rate limited)`);
-      }
-
+      if (attempt === maxRetries) throw new Error(`Discord API ${apiPath} failed: 429 (rate limited)`);
       await new Promise((res) => setTimeout(res, waitMs));
       continue;
     }
@@ -1032,12 +1149,7 @@ async function getSession(req) {
 async function ensureGuildsForSession(s) {
   const now = Date.now();
 
-  if (
-    s.guilds &&
-    Array.isArray(s.guilds) &&
-    s.guildsFetchedAt &&
-    now - s.guildsFetchedAt < USER_GUILDS_CACHE_TTL_MS
-  ) {
+  if (s.guilds && Array.isArray(s.guilds) && s.guildsFetchedAt && now - s.guildsFetchedAt < USER_GUILDS_CACHE_TTL_MS) {
     return s.guilds;
   }
 
@@ -1057,9 +1169,7 @@ async function ensureGuildsForSession(s) {
 
       return guilds;
     } catch (e) {
-      if (s.guilds && Array.isArray(s.guilds) && s.guilds.length > 0) {
-        return s.guilds;
-      }
+      if (s.guilds && Array.isArray(s.guilds) && s.guilds.length > 0) return s.guilds;
       throw e;
     }
   })().finally(() => {
@@ -1203,9 +1313,7 @@ const server = http.createServer(async (req, res) => {
 
       function requireGuildAllowed(guildId) {
         if (!guildId) return { ok: false, status: 400, error: "missing guild" };
-        if (allowedGuildIds && !allowedGuildIds.has(guildId)) {
-          return { ok: false, status: 403, error: "forbidden guild" };
-        }
+        if (allowedGuildIds && !allowedGuildIds.has(guildId)) return { ok: false, status: 403, error: "forbidden guild" };
         return { ok: true };
       }
 
@@ -1228,7 +1336,6 @@ const server = http.createServer(async (req, res) => {
           const list = intersectUserBotGuilds(userGuilds).map((g) => ({ id: g.id, name: g.name }));
           return json(res, { ok: true, guilds: list });
         }
-        // token方式はbotが入ってる鯖一覧（制限なし）
         return json(res, { ok: true, guilds: botGuilds() });
       }
 
@@ -1407,11 +1514,7 @@ body{font-family:system-ui;margin:16px}
         ? `<a class="btn" href="/login">Discordでログイン</a>`
         : `<p class="muted">OAuth未設定（DISCORD_CLIENT_ID/SECRET + PUBLIC_URL が必要）</p>`
     }
-    ${
-      tokenEnabled
-        ? `<hr/><p class="muted">（保険）ADMIN_TOKEN方式: /admin?token=XXXX</p>`
-        : ``
-    }
+    ${tokenEnabled ? `<hr/><p class="muted">（保険）ADMIN_TOKEN方式: /admin?token=XXXX</p>` : ``}
   </div>
 </body></html>`;
 }
