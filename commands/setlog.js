@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionsBitField } from "discord.js";
+import { SlashCommandBuilder, PermissionsBitField, MessageFlags } from "discord.js";
 
 export const data = new SlashCommandBuilder()
   .setName("setlog")
@@ -8,17 +8,17 @@ export const data = new SlashCommandBuilder()
   );
 
 export async function execute(interaction, db) {
-  // ★ まずACK（これが無いと「応答しませんでした」になる）
-  await interaction.deferReply({ flags: 64 }); // Ephemeral
+  // ★ まずACK（Aパッチが入ってれば二重でも安全）
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageGuild)) {
-    return interaction.editReply("❌ このコマンドは管理権限が必要です");
+    return interaction.editReply({ content: "❌ このコマンドは管理権限（サーバー管理）が必要です" });
   }
 
   const ch = interaction.options.getChannel("channel");
 
   if (!ch || !ch.isTextBased()) {
-    return interaction.editReply("❌ テキストチャンネルを指定してください");
+    return interaction.editReply({ content: "❌ テキストチャンネルを指定してください" });
   }
 
   await db.run(
@@ -29,5 +29,5 @@ export async function execute(interaction, db) {
     ch.id
   );
 
-  return interaction.editReply(`✅ 管理ログの送信先を ${ch} に設定しました`);
+  return interaction.editReply({ content: `✅ 管理ログの送信先を ${ch} に設定しました` });
 }
