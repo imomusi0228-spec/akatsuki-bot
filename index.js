@@ -14,6 +14,7 @@ import {
   EmbedBuilder,
   PermissionsBitField,
   MessageFlags,
+  Events,
 } from "discord.js";
 
 import sqlite3 from "sqlite3";
@@ -295,6 +296,18 @@ function msToHuman(ms) {
   if (h > 0) return `${h}時間${m}分`;
   if (m > 0) return `${m}分${ss}秒`;
   return `${ss}秒`;
+}
+
+function waitForClientReady(timeoutMs = 15000) {
+  if (client.isReady?.()) return Promise.resolve(true);
+
+  return new Promise((resolve) => {
+    const t = setTimeout(() => resolve(false), timeoutMs);
+    client.once(Events.ClientReady, () => {
+      clearTimeout(t);
+      resolve(true);
+    });
+  });
 }
 
 /* =========================
@@ -1280,7 +1293,6 @@ const server = http.createServer(async (req, res) => {
       authorize.searchParams.set("redirect_uri", redirectUri);
       authorize.searchParams.set("scope", OAUTH_SCOPES);
       authorize.searchParams.set("state", state);
-      authorize.searchParams.set("prompt", "none");
 
       res.writeHead(302, { Location: authorize.toString() });
       return res.end();
@@ -1383,13 +1395,19 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (pathname === "/api/guilds") {
-        if (sess) {
-          const userGuilds = await ensureGuildsForSession(sess);
-          const list = intersectUserBotGuilds(userGuilds).map((g) => ({ id: g.id, name: g.name }));
-          return json(res, { ok: true, guilds: list });
-        }
-        return json(res, { ok: true, guilds: botGuilds() });
-      }
+  // Botがready前だと guilds.cache が空のことがあるので待つ
+  const ready = await waitForClientReady(15000);
+  if (!ready) return json(res, { ok: false, error: "bot_not_ready" }, 503);
+
+  if (sess) {
+    const userGuilds = await ensureGuildsForSession(sess);
+    const allowed = intersectUserBotGuilds(userGuilds).map((g) => ({ id: g.id, name: g.name }));
+    return json(res, { ok: true, guilds: allowed });
+  }
+
+  return json(res, { ok: true, guilds: botGuilds() });
+}
+
 
       if (pathname === "/api/settings") {
         const guildId = u.searchParams.get("guild") || "";
@@ -1690,16 +1708,37 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
   let loading = false;
 
   async function loadGuilds(){
-    const data = await api("/api/guilds");
-    const sel = $("guild");
-    sel.innerHTML = "";
-    (data.guilds || []).forEach(g => {
-      const opt = document.createElement("option");
-      opt.value = g.id;
-      opt.textContent = \`\${g.name} (\${g.id})\`;
-      sel.appendChild(opt);
-    });
+  const sel = $("guild");
+  sel.innerHTML = "";
+  sel.disabled = true;
+
+  // 最大10回リトライ（bot ready待ち / guilds取得待ち）
+  for (let i = 0; i < 10; i++) {
+    const data = await api("/api/guilds").catch(() => null);
+
+    if (data && data.ok && Array.isArray(data.guilds) && data.guilds.length > 0) {
+      data.guilds.forEach(g => {
+        const opt = document.createElement("option");
+        opt.value = g.id;
+        opt.textContent = `${g.name} (${g.id})`;
+        sel.appendChild(opt);
+      });
+      sel.disabled = false;
+      return;
+    }
+
+    // 503(bot_not_ready) や 空配列なら少し待って再試行
+    await new Promise(r => setTimeout(r, 800));
   }
+
+  // ここまで来たら失敗表示
+  sel.disabled = false;
+  const opt = document.createElement("option");
+  opt.value = "";
+  opt.textContent = "（取得できませんでした。/api/guilds を確認）";
+  sel.appendChild(opt);
+}
+
 
   function card(label, value){
     return \`
