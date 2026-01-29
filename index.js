@@ -710,51 +710,76 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
-// ===== NGワード検出（literal + regex 対応）=====
-const ngWords = await getNgWords(message.guildId);
-if (!ngWords.length) return;
+client.on("messageCreate", async (message) => {
+  try {
+    if (!message.guild || message.author.bot) return;
 
-const content = message.content ?? "";
-const contentLower = normalize(content);
+    // ===== NGワード検出（literal + regex 対応）=====
+    const ngWords = await getNgWords(message.guildId);
+    if (!ngWords.length) return;
 
-let hit = null;
+    const content = message.content ?? "";
+    const contentLower = normalize(content);
 
-// 1) literal（部分一致）
-for (const item of ngWords) {
-  if (item.kind !== "literal") continue;
+    let hit = null;
 
-  if (contentLower.includes(normalize(item.word))) {
-    hit = { ...item, matched: item.word };
-    break;
-  }
-}
+    // 1) literal
+    for (const item of ngWords) {
+      if (item.kind !== "literal") continue;
 
-// 2) regex（正規表現）
-if (!hit) {
-  for (const item of ngWords) {
-    if (item.kind !== "regex") continue;
+      if (contentLower.includes(normalize(item.word))) {
+        hit = { ...item, matched: item.word };
+        break;
+      }
+    }
 
-    // 最低限のReDoS対策
-    if (item.word.length > 200) continue;
-    if (content.length > 4000) continue;
+    // 2) regex
+    if (!hit) {
+      for (const item of ngWords) {
+        if (item.kind !== "regex") continue;
 
-    let re;
+        // 最低限のReDoS対策
+        if (item.word.length > 200) continue;
+        if (content.length > 4000) continue;
+
+        let re;
+        try {
+          re = new RegExp(item.word, item.flags || "i");
+        } catch {
+          continue;
+        }
+
+        if (re.test(content)) {
+          hit = { ...item, matched: item.word };
+          break;
+        }
+      }
+    }
+
+    if (!hit) return;
+
+    // ===== ここから先は今までの処理 =====
+    // 例：削除・警告・カウント・ログなど
+
+    await message.delete().catch(() => {});
+
+    const settings = await getSettings(message.guildId);
+    if (settings?.log_channel_id) {
+      await logEvent(message.guildId, "ng_detected", message.author.id, {
+        pattern: hit.word,
+        kind: hit.kind,
+        channelId: message.channelId,
+      });
+    }
+
     try {
-      re = new RegExp(item.word, item.flags || "i");
-    } catch {
-      continue;
-    }
+      await message.author.send(`⚠️ NGワードが含まれていたためメッセージを削除しました。`);
+    } catch {}
 
-    if (re.test(content)) {
-      hit = { ...item, matched: item.word };
-      break;
-    }
+  } catch (err) {
+    console.error("messageCreate error:", err);
   }
-}
-
-if (!hit) return;
-
-// ===== ここから先は今までの処理（削除・ログ・警告など）=====
+});
 
 /* =========================
    IN/OUT（参加/退出）ログ（青Embed）
