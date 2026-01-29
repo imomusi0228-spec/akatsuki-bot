@@ -710,85 +710,41 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
-/* =========================
-   NGワード検知（メッセージ監視）
-========================= */
-const processedMessageIds = new Map();
-const DEDUPE_TTL_MS = 60_000;
+// ===== NGワード検出（literal + regex 対応）=====
+const ngWords = await getNgWords(message.guildId);
+if (!ngWords.length) return;
 
-function markProcessed(id) {
-  const now = Date.now();
-  processedMessageIds.set(id, now);
-  for (const [mid, ts] of processedMessageIds) {
-    if (now - ts > DEDUPE_TTL_MS) processedMessageIds.delete(mid);
-  }
-}
-function alreadyProcessed(id) {
-  const ts = processedMessageIds.get(id);
-  return ts && Date.now() - ts <= DEDUPE_TTL_MS;
-}
+const content = message.content ?? "";
+const contentLower = normalize(content);
 
-async function incrementHit(guildId, userId) {
-  const now = Date.now();
-  await db.run(
-    `INSERT INTO ng_hits (guild_id, user_id, count, updated_at)
-     VALUES (?, ?, 1, ?)
-     ON CONFLICT(guild_id, user_id) DO UPDATE SET
-       count = count + 1,
-       updated_at = excluded.updated_at`,
-    guildId,
-    userId,
-    now
-  );
-  const row = await db.get("SELECT count FROM ng_hits WHERE guild_id = ? AND user_id = ?", guildId, userId);
-  return Number(row?.count ?? 1);
-}
+let hit = null;
 
-async function resetHit(guildId, userId) {
-  await db.run("UPDATE ng_hits SET count = 0, updated_at = ? WHERE guild_id = ? AND user_id = ?", Date.now(), guildId, userId);
-}
+// 1) literal（部分一致）
+for (const item of ngWords) {
+  if (item.kind !== "literal") continue;
 
-client.on("messageCreate", async (message) => {
-  try {
-    if (!message.guild) return;
-    if (message.author?.bot) return;
-    if (typeof message.content !== "string") return;
-
-    if (alreadyProcessed(message.id)) return;
-    markProcessed(message.id);
-
-    const ngWords = await getNgWords(message.guildId);
-    if (!ngWords.length) return;
-    
-    const content = message.content ?? "";
-    const contentLower = normalize(content);
-    
-    // 1) literal（高速）
-    // let hit = null;
-    // for (const item of ngWords) {
-
-    if (item.kind !== "literal") continue;
-    if (contentLower.includes(normalize(item.word))) {
+  if (contentLower.includes(normalize(item.word))) {
     hit = { ...item, matched: item.word };
     break;
   }
 }
 
-// 2) regex（必要な時だけ）
-// if (!hit) {
-for (const item of ngWords) {
+// 2) regex（正規表現）
+if (!hit) {
+  for (const item of ngWords) {
     if (item.kind !== "regex") continue;
 
-    // ★安全の最低限：長すぎる入力や長すぎるregexを弾く（ReDoS軽減）
+    // 最低限のReDoS対策
     if (item.word.length > 200) continue;
     if (content.length > 4000) continue;
 
-    let re = null;
+    let re;
     try {
       re = new RegExp(item.word, item.flags || "i");
     } catch {
       continue;
     }
+
     if (re.test(content)) {
       hit = { ...item, matched: item.word };
       break;
@@ -798,19 +754,7 @@ for (const item of ngWords) {
 
 if (!hit) return;
 
-// ここから先は今まで通り（ログ/削除/DM/カウント等）
-const settings = await getSettings(message.guildId);
-...
-await logEvent(message.guildId, "ng_detected", message.author.id, {
-  kind: hit.kind,
-  pattern: hit.word,
-  channelId: message.channelId,
-});
-...
-.addFields(
-  { name: "Hit", value: hit.kind === "regex" ? `/( ${hit.word} )/${hit.flags || "i"}` : `\`${hit.word}\``, inline: true },
-  ...
-)
+// ===== ここから先は今までの処理（削除・ログ・警告など）=====
 
 /* =========================
    IN/OUT（参加/退出）ログ（青Embed）
