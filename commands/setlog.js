@@ -1,81 +1,33 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import { SlashCommandBuilder, PermissionsBitField } from "discord.js";
 
 export const data = new SlashCommandBuilder()
   .setName("setlog")
-  .setDescription("管理ログを流すチャンネルを設定します")
+  .setDescription("管理ログを送信するチャンネルを設定します")
   .addChannelOption((opt) =>
-    opt
-      .setName("channel")
-      .setDescription("管理ログを流すチャンネル")
-      .setRequired(true)
-  )
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
-
-function isUnknownInteraction(err) {
-  return err?.code === 10062 || err?.rawError?.code === 10062;
-}
-function isAlreadyAck(err) {
-  return err?.code === 40060 || err?.rawError?.code === 40060;
-}
-
-async function safeDefer(interaction) {
-  if (interaction.deferred || interaction.replied) return;
-  try {
-    await interaction.deferReply({ ephemeral: true });
-  } catch (e) {
-    if (isUnknownInteraction(e) || isAlreadyAck(e)) return;
-    throw e;
-  }
-}
-
-async function safeSend(interaction, content) {
-  try {
-    if (interaction.deferred || interaction.replied) {
-      return await interaction.editReply({ content });
-    }
-    return await interaction.reply({ content, ephemeral: true });
-  } catch (e) {
-    if (isUnknownInteraction(e)) return;
-    if (isAlreadyAck(e)) {
-      try {
-        return await interaction.followUp({ content, ephemeral: true });
-      } catch (e2) {
-        if (isUnknownInteraction(e2)) return;
-      }
-    }
-    throw e;
-  }
-}
+    opt.setName("channel").setDescription("ログ送信先チャンネル").setRequired(true)
+  );
 
 export async function execute(interaction, db) {
-  await safeDefer(interaction);
+  // ★ まずACK（これが無いと「応答しませんでした」になる）
+  await interaction.deferReply({ flags: 64 }); // Ephemeral
 
-  try {
-    if (!interaction.guildId) {
-      await safeSend(interaction, "❌ サーバー内で実行してください。");
-      return;
-    }
-    if (!db) {
-      await safeSend(interaction, "❌ DBが初期化できていません（Renderログ確認）");
-      return;
-    }
-
-    const channel = interaction.options.getChannel("channel", true);
-
-    await db.run(
-      `INSERT INTO settings (guild_id, log_channel_id)
-       VALUES (?, ?)
-       ON CONFLICT(guild_id) DO UPDATE SET log_channel_id = excluded.log_channel_id`,
-      interaction.guildId,
-      channel.id
-    );
-
-    await safeSend(interaction, `✅ 管理ログ送信先を ${channel} に設定しました。`);
-  } catch (e) {
-    if (isUnknownInteraction(e)) return;
-    console.error("setlog error:", e);
-    try {
-      await safeSend(interaction, `❌ エラー: ${e?.message ?? String(e)}`);
-    } catch {}
+  if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageGuild)) {
+    return interaction.editReply("❌ このコマンドは管理権限が必要です");
   }
+
+  const ch = interaction.options.getChannel("channel");
+
+  if (!ch || !ch.isTextBased()) {
+    return interaction.editReply("❌ テキストチャンネルを指定してください");
+  }
+
+  await db.run(
+    `INSERT INTO settings (guild_id, log_channel_id)
+     VALUES (?, ?)
+     ON CONFLICT(guild_id) DO UPDATE SET log_channel_id = excluded.log_channel_id`,
+    interaction.guildId,
+    ch.id
+  );
+
+  return interaction.editReply(`✅ 管理ログの送信先を ${ch} に設定しました`);
 }
