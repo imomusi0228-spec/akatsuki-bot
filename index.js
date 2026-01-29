@@ -327,7 +327,7 @@ function buildVcEmbed({ member, userId, actionText, channelId, when = new Date()
     .setColor(0x3498db)
     .setAuthor({ name: username, iconURL: avatar })
     // スクショっぽく： @表示名 @username left voice channel 🔊 #VC
-    .setDescription(`${member ? member.toString() : `@${displayName}`} @${username} ${actionText} 🔊 ${chMention}`)
+    .setDescription(`${member ? member.toString() : `<@${userId}>`} <@${userId}> ${actionText} 🔊 ${chMention}`)
     .setFooter({ text: `ID: ${userId} · ${tokyoFooterTime(when)}` })
     .setTimestamp(when);
 }
@@ -557,13 +557,13 @@ async function safeInteractionError(interaction, content) {
     if (interaction.deferred || interaction.replied) {
       return await interaction.editReply({ content });
     }
-    return await interaction.reply({ content, ephemeral: true });
+    return await interaction.reply({ content, flags: MessageFlags.Ephemeral });
   } catch (e) {
     if (isUnknownInteraction(e)) return;
 
     if (isAlreadyAck(e)) {
       try {
-        return await interaction.followUp({ content, ephemeral: true });
+        return await interaction.followUp({ content, flags: MessageFlags.Ephemeral });
       } catch (e2) {
         if (isUnknownInteraction(e2)) return;
       }
@@ -572,23 +572,6 @@ async function safeInteractionError(interaction, content) {
     console.error("safeInteractionError failed:", e?.message ?? e);
   }
 }
-
-client.on("interactionCreate", async (interaction) => {
-  try {
-    if (!interaction.isChatInputCommand()) return;
-
-    const command = client.commands.get(interaction.commandName);
-    if (!command) return;
-
-    // ★ ここで deferReply() はしない（各コマンド側に任せる）
-    await command.execute(interaction, db);
-  } catch (err) {
-    console.error("interactionCreate error:", err);
-    if (isUnknownInteraction(err)) return;
-
-    await safeInteractionError(interaction, `❌ エラー: ${err?.message ?? String(err)}`);
-  }
-});
 
 /* =========================
    NGワード検知（メッセージ監視）
@@ -828,6 +811,21 @@ function queueMove(guild, guildId, userId, userTag, fromName, toName) {
    ★VCログ：IN/MOVE/OUT（青Embed）
    ★ IN/OUTは表示名（ニックネーム）で出す
 ========================= */
+async function logEvent(guildId, type, userId = null, metaObj = null) {
+  try {
+    if (!db) return;
+    const meta = metaObj ? JSON.stringify(metaObj) : null;
+    await db.run(
+      "INSERT INTO log_events (guild_id, type, user_id, meta, ts) VALUES (?, ?, ?, ?, ?)",
+      guildId,
+      type,
+      userId,
+      meta,
+      Date.now()
+    );
+  } catch {}
+}
+
 client.on("voiceStateUpdate", async (oldState, newState) => {
   try {
     const guild = newState.guild || oldState.guild;
