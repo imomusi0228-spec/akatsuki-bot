@@ -50,7 +50,38 @@ const __dirname = path.dirname(__filename);
 /* =========================
    DB
 ========================= */
-let db;
+let db = null;
+
+async function migrateLogThreadsKind(db) {
+  try {
+    const cols = await db.all(`PRAGMA table_info(log_threads);`);
+    const hasKind = cols.some((c) => c.name === "kind");
+    if (hasKind) return;
+
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS log_threads_new (
+        guild_id TEXT,
+        date_key TEXT,
+        kind TEXT,
+        thread_id TEXT,
+        PRIMARY KEY (guild_id, date_key, kind)
+      );
+    `);
+
+    await db.exec(`
+      INSERT OR IGNORE INTO log_threads_new (guild_id, date_key, kind, thread_id)
+      SELECT guild_id, date_key, 'main' as kind, thread_id
+      FROM log_threads;
+    `);
+
+    await db.exec(`DROP TABLE log_threads;`);
+    await db.exec(`ALTER TABLE log_threads_new RENAME TO log_threads;`);
+    console.log("✅ Migrated log_threads -> kind-aware schema");
+  } catch (e) {
+    console.error("❌ log_threads migration failed:", e?.message ?? e);
+  }
+}
+
 try {
   db = await open({
     filename: path.join(__dirname, "data.db"),
@@ -66,13 +97,26 @@ try {
     );
   `);
 
+  // ✅ ng_words を「literal/regex」対応にする（無ければ自動で追加）
   await db.exec(`
     CREATE TABLE IF NOT EXISTS ng_words (
       guild_id TEXT,
+      kind TEXT DEFAULT 'literal', -- 'literal' | 'regex'
       word TEXT,
-      PRIMARY KEY (guild_id, word)
+      flags TEXT DEFAULT 'i',
+      PRIMARY KEY (guild_id, kind, word)
     );
   `);
+
+  // 旧schema互換（kind/flags列が無い場合に追加）
+  try {
+    const cols = await db.all(`PRAGMA table_info(ng_words);`);
+    const hasKind = cols.some((c) => c.name === "kind");
+    const hasFlags = cols.some((c) => c.name === "flags");
+
+    if (!hasKind) await db.exec(`ALTER TABLE ng_words ADD COLUMN kind TEXT DEFAULT 'literal';`);
+    if (!hasFlags) await db.exec(`ALTER TABLE ng_words ADD COLUMN flags TEXT DEFAULT 'i';`);
+  } catch {}
 
   await db.exec(`
     CREATE TABLE IF NOT EXISTS ng_hits (
@@ -140,52 +184,29 @@ try {
   await db.exec(
     `CREATE INDEX IF NOT EXISTS idx_log_events_guild_type_ts ON log_events (guild_id, type, ts);`
   );
-  await db.exec(`CREATE INDEX IF NOT EXISTS idx_vc_month_guild_month ON vc_stats_month (guild_id, month_key);`);
-
-  // ===== ng_words を kind 対応に自動マイグレーション =====
-async function migrateNgWordsKind() {
-  if (!db) return;
-  try {
-    const cols = await db.all(`PRAGMA table_info(ng_words);`);
-    const hasKind = cols.some((c) => c.name === "kind");
-    if (hasKind) return;
-
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS ng_words_new (
-        guild_id TEXT,
-        word TEXT,
-        kind TEXT,
-        flags TEXT,
-        PRIMARY KEY (guild_id, word, kind)
-      );
-    `);
-
-    // 旧データは literal として移行
-    await db.exec(`
-      INSERT OR IGNORE INTO ng_words_new (guild_id, word, kind, flags)
-      SELECT guild_id, word, 'literal' as kind, '' as flags
-      FROM ng_words;
-    `);
-
-    await db.exec(`DROP TABLE ng_words;`);
-    await db.exec(`ALTER TABLE ng_words_new RENAME TO ng_words;`);
-    console.log("✅ Migrated ng_words -> kind-aware schema");
-  } catch (e) {
-    console.error("❌ ng_words migration failed:", e?.message ?? e);
-  }
-}
-await migrateNgWordsKind();
-
-// 念のため
-await db.exec(`
-  CREATE TABLE IF NOT EXISTS ng_words (
-    guild_id TEXT,
-    word TEXT,
-    kind TEXT,
-    flags TEXT,
-    PRIMARY KEY (guild_id, word, kind)
+  await db.exec(
+    `CREATE INDEX IF NOT EXISTS idx_vc_month_guild_month ON vc_stats_month (guild_id, month_key);`
   );
-`);
+
+  // ★ log_threads を kind 対応に自動マイグレーション
+  await migrateLogThreadsKind(db);
+
+  // 念のため（migration済みなら何もしない）
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS log_threads (
+      guild_id TEXT,
+      date_key TEXT,
+      kind TEXT,
+      thread_id TEXT,
+      PRIMARY KEY (guild_id, date_key, kind)
+    );
+  `);
+
+  console.log("✅ DB ready");
+} catch (e) {
+  console.error("❌ DB init failed:", e?.message ?? e);
+  db = null;
+}
 
 /* =========================
    Discord
@@ -297,110 +318,97 @@ async function logEvent(guildId, type, userId = null, metaObj = null) {
 /* =========================
    Settings / NG words
 ========================= */
-async function getSettings(guildId) {
-  if (!db) {
-    return {
-      log_channel_id: null,
-      ng_threshold: DEFAULT_NG_THRESHOLD,
-      timeout_minutes: DEFAULT_TIMEOUT_MIN,
-    };
-  }
-
-  await db.run(
-    `INSERT INTO settings (guild_id, log_channel_id, ng_threshold, timeout_minutes)
-     VALUES (?, NULL, ?, ?)
-     ON CONFLICT(guild_id) DO NOTHING`,
-    guildId,
-    DEFAULT_NG_THRESHOLD,
-    DEFAULT_TIMEOUT_MIN
-  );
-
-  const row = await db.get(
-    "SELECT log_channel_id, ng_threshold, timeout_minutes FROM settings WHERE guild_id = ?",
-    guildId
-  );
-
-  return {
-    log_channel_id: row?.log_channel_id ?? null,
-    ng_threshold: Number(row?.ng_threshold ?? DEFAULT_NG_THRESHOLD),
-    timeout_minutes: Number(row?.timeout_minutes ?? DEFAULT_TIMEOUT_MIN),
-  };
-}
-
-async function updateSettings(guildId, patch) {
-  const cur = await getSettings(guildId);
-  const next = {
-    log_channel_id: patch.log_channel_id ?? cur.log_channel_id,
-    ng_threshold: Number.isFinite(Number(patch.ng_threshold))
-      ? Number(patch.ng_threshold)
-      : cur.ng_threshold,
-    timeout_minutes: Number.isFinite(Number(patch.timeout_minutes))
-      ? Number(patch.timeout_minutes)
-      : cur.timeout_minutes,
-  };
-  next.ng_threshold = Math.max(1, next.ng_threshold);
-  next.timeout_minutes = Math.max(1, next.timeout_minutes);
-
-  await db.run(
-    `INSERT INTO settings (guild_id, log_channel_id, ng_threshold, timeout_minutes)
-     VALUES (?, ?, ?, ?)
-     ON CONFLICT(guild_id) DO UPDATE SET
-       log_channel_id = excluded.log_channel_id,
-       ng_threshold = excluded.ng_threshold,
-       timeout_minutes = excluded.timeout_minutes`,
-    guildId,
-    next.log_channel_id,
-    next.ng_threshold,
-    next.timeout_minutes
-  );
-
-  return await getSettings(guildId);
-}
 
 async function getNgWords(guildId) {
   if (!db) return [];
   const rows = await db.all(
-    "SELECT word, kind, flags FROM ng_words WHERE guild_id = ? ORDER BY kind ASC, word ASC",
+    `SELECT kind, word, flags
+     FROM ng_words
+     WHERE guild_id = ?
+     ORDER BY kind ASC, word ASC`,
     guildId
   );
-  return rows.map((r) => ({
-    word: (r.word ?? "").trim(),
-    kind: r.kind ?? "literal",
-    flags: r.flags ?? "",
-  })).filter((x) => x.word);
+
+  return rows
+    .map((r) => ({
+      kind: (r.kind || "literal").trim(),
+      word: (r.word || "").trim(),
+      flags: (r.flags || "i").trim(),
+    }))
+    .filter((x) => x.word.length > 0 && (x.kind === "literal" || x.kind === "regex"));
 }
 
-async function addNgWord(guildId, word, kind = "literal", flags = "") {
-  const w = (word ?? "").trim();
-  if (!w) return { ok: false, error: "empty" };
-  if (!["literal", "regex"].includes(kind)) return { ok: false, error: "bad_kind" };
+// 入力を {kind, word, flags} に正規化
+function parseNgInput(raw) {
+  const s = String(raw ?? "").trim();
+  if (!s) return null;
 
-  // regexはコンパイルできるかチェック（危険なやつは別途制限）
-  if (kind === "regex") {
-    try { new RegExp(w, flags || "i"); } catch { return { ok: false, error: "invalid_regex" }; }
+  // /pattern/flags 形式 → regex
+  if (s.startsWith("/") && s.lastIndexOf("/") > 0) {
+    const last = s.lastIndexOf("/");
+    const pattern = s.slice(1, last);
+    const flags = s.slice(last + 1) || "i";
+
+    // pattern 空は不可
+    if (!pattern.trim()) return null;
+
+    // フラグ検証（JSの正規表現フラグのみ）
+    // d g i m s u v y
+    if (!/^[dgimsuvy]*$/.test(flags)) return null;
+
+    // コンパイルできるかチェック
+    try {
+      // eslint-disable-next-line no-new
+      new RegExp(pattern, flags);
+    } catch {
+      return null;
+    }
+
+    return { kind: "regex", word: pattern, flags };
   }
+
+  // その他 → literal
+  return { kind: "literal", word: s, flags: "i" };
+}
+
+async function addNgWord(guildId, raw) {
+  if (!db) return { ok: false, error: "db_not_ready" };
+
+  const parsed = parseNgInput(raw);
+  if (!parsed) return { ok: false, error: "invalid_input" };
 
   await db.run(
-    `INSERT OR IGNORE INTO ng_words (guild_id, word, kind, flags) VALUES (?, ?, ?, ?)`,
-    guildId, w, kind, flags || ""
+    `INSERT OR IGNORE INTO ng_words (guild_id, kind, word, flags)
+     VALUES (?, ?, ?, ?)`,
+    guildId,
+    parsed.kind,
+    parsed.word,
+    parsed.flags || "i"
   );
-  return { ok: true };
+
+  return { ok: true, added: parsed };
 }
 
-async function removeNgWord(guildId, word, kind = null) {
-  const w = (word ?? "").trim();
-  if (!w) return { ok: false, error: "empty" };
+async function removeNgWord(guildId, raw) {
+  if (!db) return { ok: false, error: "db_not_ready" };
 
-  if (kind) {
-    await db.run(`DELETE FROM ng_words WHERE guild_id = ? AND word = ? AND kind = ?`, guildId, w, kind);
-  } else {
-    // kind指定なしなら全部消す
-    await db.run(`DELETE FROM ng_words WHERE guild_id = ? AND word = ?`, guildId, w);
-  }
-  return { ok: true };
+  const parsed = parseNgInput(raw);
+  if (!parsed) return { ok: false, error: "invalid_input" };
+
+  // remove は kind+word で一致（regexはflags違っても同patternなら消えるようにしたいなら下を変える）
+  const r = await db.run(
+    `DELETE FROM ng_words
+     WHERE guild_id = ? AND kind = ? AND word = ?`,
+    guildId,
+    parsed.kind,
+    parsed.word
+  );
+
+  return { ok: true, deleted: r?.changes ?? 0, target: parsed };
 }
 
 async function clearNgWords(guildId) {
+  if (!db) return { ok: false, error: "db_not_ready" };
   await db.run(`DELETE FROM ng_words WHERE guild_id = ?`, guildId);
   return { ok: true };
 }
@@ -710,53 +718,138 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
+/* =========================
+   NGワード検知（メッセージ監視）
+========================= */
+const processedMessageIds = new Map();
+const DEDUPE_TTL_MS = 60_000;
+
+function markProcessed(id) {
+  const now = Date.now();
+  processedMessageIds.set(id, now);
+  for (const [mid, ts] of processedMessageIds) {
+    if (now - ts > DEDUPE_TTL_MS) processedMessageIds.delete(mid);
+  }
+}
+function alreadyProcessed(id) {
+  const ts = processedMessageIds.get(id);
+  return ts && Date.now() - ts <= DEDUPE_TTL_MS;
+}
+
+async function incrementHit(guildId, userId) {
+  const now = Date.now();
+  await db.run(
+    `INSERT INTO ng_hits (guild_id, user_id, count, updated_at)
+     VALUES (?, ?, 1, ?)
+     ON CONFLICT(guild_id, user_id) DO UPDATE SET
+       count = count + 1,
+       updated_at = excluded.updated_at`,
+    guildId,
+    userId,
+    now
+  );
+  const row = await db.get("SELECT count FROM ng_hits WHERE guild_id = ? AND user_id = ?", guildId, userId);
+  return Number(row?.count ?? 1);
+}
+
+async function resetHit(guildId, userId) {
+  await db.run(
+    "UPDATE ng_hits SET count = 0, updated_at = ? WHERE guild_id = ? AND user_id = ?",
+    Date.now(),
+    guildId,
+    userId
+  );
+}
+
+// ReDoS/暴走防止のゆるいガード
+function isSafeRegexCandidate(pattern, content) {
+  if (!pattern) return false;
+  if (pattern.length > 200) return false;       // 長すぎるパターン拒否
+  if (content.length > 4000) return false;      // 長文にregexを掛けない
+  // よくある地雷っぽいものを軽く弾く（完全防止ではないが保険）
+  if (/(?:\(\?:)?\.\*\)\+/.test(pattern)) return false; // (.*)+ っぽい
+  return true;
+}
+
 client.on("messageCreate", async (message) => {
   try {
+    if (!db) return;
     if (!message.guild) return;
     if (message.author?.bot) return;
     if (typeof message.content !== "string") return;
 
-    // ===== 二重処理防止 =====
     if (alreadyProcessed(message.id)) return;
     markProcessed(message.id);
 
-    // ===== NGワード取得 =====
-    const ngWords = await getNgWords(message.guildId);
-    if (!ngWords.length) return;
+    const ngList = await getNgWords(message.guildId);
+    if (!ngList.length) return;
 
-    const contentLower = normalize(message.content);
+    const content = message.content;
+    const contentLower = normalize(content);
 
-    // ===== 通常文字列一致のみ（正規表現は後で拡張）=====
-    const hitWord = ngWords.find((w) => contentLower.includes(normalize(w)));
-    if (!hitWord) return;
+    let hit = null; // {kind, word, flags, matched}
 
-    // ===== メッセージ削除 =====
+    // 1) literal 優先
+    for (const item of ngList) {
+      if (item.kind !== "literal") continue;
+      const w = normalize(item.word);
+      if (!w) continue;
+      if (contentLower.includes(w)) {
+        hit = { ...item, matched: item.word };
+        break;
+      }
+    }
+
+    // 2) regex
+    if (!hit) {
+      for (const item of ngList) {
+        if (item.kind !== "regex") continue;
+
+        if (!isSafeRegexCandidate(item.word, content)) continue;
+
+        let re;
+        try {
+          re = new RegExp(item.word, item.flags || "i");
+        } catch {
+          continue;
+        }
+
+        if (re.test(content)) {
+          hit = { ...item, matched: `/${item.word}/${item.flags || ""}` };
+          break;
+        }
+      }
+    }
+
+    if (!hit) return;
+
+    const settings = await getSettings(message.guildId);
+
     const me = await message.guild.members.fetchMe().catch(() => null);
     const canManage = me?.permissionsIn(message.channel)?.has(PermissionsBitField.Flags.ManageMessages);
+
     if (canManage) await message.delete().catch(() => null);
 
-    // ===== DM警告 =====
     await message.author
-      .send(
-        "⚠️ サーバーのルールに抵触する可能性のある表現が検出されたため、メッセージが削除されました。\n内容を見直して再投稿してください。"
-      )
+      .send({
+        content:
+          "⚠️ サーバーのルールに抵触する可能性のある表現が検出されたため、メッセージが削除されました。\n内容を見直して再投稿してください。",
+      })
       .catch(() => null);
 
-    // ===== ログ保存 =====
     await logEvent(message.guildId, "ng_detected", message.author.id, {
-      word: hitWord,
+      kind: hit.kind,
+      pattern: hit.word,
+      flags: hit.flags || null,
       channelId: message.channelId,
     });
 
-    // ===== 回数カウント =====
-    const settings = await getSettings(message.guildId);
     const count = await incrementHit(message.guildId, message.author.id);
 
     let timeoutApplied = false;
     const threshold = Math.max(1, settings.ng_threshold);
     const timeoutMin = Math.max(1, settings.timeout_minutes);
 
-    // ===== タイムアウト処理 =====
     if (count >= threshold) {
       const member = await message.guild.members.fetch(message.author.id).catch(() => null);
       const canTimeout = me?.permissions?.has(PermissionsBitField.Flags.ModerateMembers);
@@ -765,7 +858,6 @@ client.on("messageCreate", async (message) => {
         await member.timeout(timeoutMin * 60 * 1000, `NGワード検知 ${count}/${threshold}`).catch(() => null);
         timeoutApplied = true;
         await resetHit(message.guildId, message.author.id);
-
         await logEvent(message.guildId, "timeout_applied", message.author.id, {
           minutes: timeoutMin,
           threshold,
@@ -773,23 +865,24 @@ client.on("messageCreate", async (message) => {
       }
     }
 
-    // ===== 管理ログ送信 =====
     const embed = new EmbedBuilder()
       .setColor(0xff3b3b)
       .setAuthor({ name: message.author.tag, iconURL: message.author.displayAvatarURL?.() ?? undefined })
       .setTitle("🚫 NGワード検知")
-      .setDescription(`Channel: ${message.channel}`)
+      .setDescription(`Channel: ${message.channel}  |  [Jump to Message](${message.url})`)
       .addFields(
-        { name: "Hit", value: `\`${hitWord}\``, inline: true },
+        { name: "Kind", value: `\`${hit.kind}\``, inline: true },
+        { name: "Hit", value: `\`${hit.matched}\``, inline: true },
         { name: "Count", value: `${Math.min(count, threshold)}/${threshold}`, inline: true },
-        { name: "Content", value: `\`\`\`\n${message.content.slice(0, 1800)}\n\`\`\``, inline: false }
+        { name: "Content", value: `\`\`\`\n${content.slice(0, 1800)}\n\`\`\``, inline: false }
       )
       .setFooter({ text: timeoutApplied ? `✅ Timeout applied: ${timeoutMin} min` : `Message ID: ${message.id}` })
       .setTimestamp(new Date());
 
+    // ★ NGログは ng スレッドへ
     await sendLog(message.guild, { embeds: [embed] }, "ng");
-  } catch (err) {
-    console.error("messageCreate error:", err);
+  } catch (e) {
+    console.error("NG word monitor error:", e?.message ?? e);
   }
 });
 
@@ -1478,6 +1571,9 @@ body{font-family:system-ui;margin:16px}
 </body></html>`;
 }
 
+/* =========================
+   ★管理画面（設定表示をわかりやすく）
+========================= */
 function renderAdminHTML({ user, oauth, tokenAuthed }) {
   return `<!doctype html>
 <html lang="ja">
@@ -1676,7 +1772,16 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
       });
 
       const ng = await api(\`/api/ngwords?guild=\${encodeURIComponent(guildId)}\`);
-      $("ngwords").textContent = (ng.words || []).join("\\n") || "(empty)";
+      $("ngwords").textContent =
+  (ng.words || [])
+    .map(function (w) {
+      if (w.kind === "regex") {
+        return "/" + w.word + "/" + (w.flags || "");
+      }
+      return w.word;
+    })
+    .join("\n") || "(empty)";
+
 
       const st = await api(\`/api/settings?guild=\${encodeURIComponent(guildId)}\`);
       $("settingsBox").innerHTML = renderSettingsBox(st.settings ?? { log_channel_id:null, ng_threshold:3, timeout_minutes:10 });
