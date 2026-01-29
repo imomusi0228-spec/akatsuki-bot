@@ -82,6 +82,7 @@ try {
     );
   `);
 
+  // ★ ここは後でkind付きにマイグレーションする（既存互換のため一旦旧schemaも許容）
   await db.exec(`
     CREATE TABLE IF NOT EXISTS log_threads (
       guild_id TEXT,
@@ -136,6 +137,57 @@ try {
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_log_events_guild_ts ON log_events (guild_id, ts);`);
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_log_events_guild_type_ts ON log_events (guild_id, type, ts);`);
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_vc_month_guild_month ON vc_stats_month (guild_id, month_key);`);
+
+  // =========================
+  // ★ log_threads を kind 対応に自動マイグレーション
+  //   - 旧: (guild_id, date_key) PK
+  //   - 新: (guild_id, date_key, kind) PK
+  // =========================
+  async function migrateLogThreadsKind() {
+    if (!db) return;
+    try {
+      const cols = await db.all(`PRAGMA table_info(log_threads);`);
+      const hasKind = cols.some((c) => c.name === "kind");
+      if (hasKind) return;
+
+      // 新テーブル作成
+      await db.exec(`
+        CREATE TABLE IF NOT EXISTS log_threads_new (
+          guild_id TEXT,
+          date_key TEXT,
+          kind TEXT,
+          thread_id TEXT,
+          PRIMARY KEY (guild_id, date_key, kind)
+        );
+      `);
+
+      // 旧データを main として移行
+      await db.exec(`
+        INSERT OR IGNORE INTO log_threads_new (guild_id, date_key, kind, thread_id)
+        SELECT guild_id, date_key, 'main' as kind, thread_id
+        FROM log_threads;
+      `);
+
+      // 置き換え
+      await db.exec(`DROP TABLE log_threads;`);
+      await db.exec(`ALTER TABLE log_threads_new RENAME TO log_threads;`);
+      console.log("✅ Migrated log_threads -> kind-aware schema");
+    } catch (e) {
+      console.error("❌ log_threads migration failed:", e?.message ?? e);
+    }
+  }
+  await migrateLogThreadsKind();
+
+  // 念のため、新schemaのlog_threadsが無い場合も作る（migration済みなら何もしない）
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS log_threads (
+      guild_id TEXT,
+      date_key TEXT,
+      kind TEXT,
+      thread_id TEXT,
+      PRIMARY KEY (guild_id, date_key, kind)
+    );
+  `);
 
   console.log("✅ DB ready");
 } catch (e) {
@@ -226,6 +278,18 @@ function msToHuman(ms) {
   if (h > 0) return `${h}時間${m}分`;
   if (m > 0) return `${m}分${ss}秒`;
   return `${ss}秒`;
+}
+
+/** ★ 表示名を優先で返す（ニックネーム→グローバル名→username→tag） */
+function displayNameFromMember(member, fallbackTag = "") {
+  return (
+    member?.displayName ||
+    member?.user?.globalName ||
+    member?.user?.username ||
+    member?.user?.tag ||
+    fallbackTag ||
+    "Unknown"
+  );
 }
 
 async function getSettings(guildId) {
@@ -326,35 +390,45 @@ async function logEvent(guildId, type, userId = null, metaObj = null) {
 }
 
 /* =========================
-   日付スレッド作成/取得
+   日付スレッド作成/取得（kind別）
+   - main: 既存ログ（VC/Join/Leaveなど）
+   - ng  : NGワード検知ログ
 ========================= */
-async function getDailyLogThread(channel, guildId) {
+function threadNameByKind(kind, dateKey) {
+  if (kind === "ng") return `ng-${dateKey}`;
+  return `logs-${dateKey}`;
+}
+
+async function getDailyLogThread(channel, guildId, kind = "main") {
   try {
     const dateKey = todayKeyTokyo();
 
     const row = await db.get(
-      "SELECT thread_id FROM log_threads WHERE guild_id = ? AND date_key = ?",
+      "SELECT thread_id FROM log_threads WHERE guild_id = ? AND date_key = ? AND kind = ?",
       guildId,
-      dateKey
+      dateKey,
+      kind
     );
+
     if (row?.thread_id) {
       const existing = await channel.threads.fetch(row.thread_id).catch(() => null);
       if (existing) return existing;
-      await db.run("DELETE FROM log_threads WHERE guild_id = ? AND date_key = ?", guildId, dateKey);
+      await db.run("DELETE FROM log_threads WHERE guild_id = ? AND date_key = ? AND kind = ?", guildId, dateKey, kind);
     }
 
     if (!channel?.threads?.create) return null;
 
     const thread = await channel.threads.create({
-      name: `logs-${dateKey}`,
+      name: threadNameByKind(kind, dateKey),
       autoArchiveDuration: 1440,
-      reason: "Daily log thread",
+      reason: `Daily log thread (${kind})`,
     });
 
     await db.run(
-      "INSERT OR REPLACE INTO log_threads (guild_id, date_key, thread_id) VALUES (?, ?, ?)",
+      "INSERT OR REPLACE INTO log_threads (guild_id, date_key, kind, thread_id) VALUES (?, ?, ?, ?)",
       guildId,
       dateKey,
+      kind,
       thread.id
     );
 
@@ -366,8 +440,9 @@ async function getDailyLogThread(channel, guildId) {
 
 /* =========================
    管理ログ送信（スレッド優先）
+   ★ kindでスレッド分岐
 ========================= */
-async function sendLog(guild, payload) {
+async function sendLog(guild, payload, kind = "main") {
   try {
     if (!guild || !db) return;
 
@@ -377,7 +452,7 @@ async function sendLog(guild, payload) {
     const ch = await guild.channels.fetch(settings.log_channel_id).catch(() => null);
     if (!ch) return;
 
-    const thread = await getDailyLogThread(ch, guild.id);
+    const thread = await getDailyLogThread(ch, guild.id, kind);
     const target = thread ?? ch;
 
     await target.send(payload).catch(() => null);
@@ -680,7 +755,8 @@ client.on("messageCreate", async (message) => {
       .setFooter({ text: timeoutApplied ? `✅ Timeout applied: ${timeoutMin} min` : `Message ID: ${message.id}` })
       .setTimestamp(new Date());
 
-    await sendLog(message.guild, { embeds: [embed] });
+    // ★ NGログは ng スレッドへ
+    await sendLog(message.guild, { embeds: [embed] }, "ng");
   } catch (e) {
     console.error("NG word monitor error:", e?.message ?? e);
   }
@@ -703,7 +779,7 @@ client.on("guildMemberAdd", async (member) => {
       )
       .setTimestamp(new Date());
 
-    await sendLog(member.guild, { embeds: [embed] });
+    await sendLog(member.guild, { embeds: [embed] }, "main");
   } catch (e) {
     console.error("guildMemberAdd log error:", e?.message ?? e);
   }
@@ -723,7 +799,7 @@ client.on("guildMemberRemove", async (member) => {
       )
       .setTimestamp(new Date());
 
-    await sendLog(member.guild, { embeds: [embed] });
+    await sendLog(member.guild, { embeds: [embed] }, "main");
   } catch (e) {
     console.error("guildMemberRemove log error:", e?.message ?? e);
   }
@@ -763,7 +839,7 @@ async function flushMove(guild, guildId, userId) {
     )
     .setTimestamp(new Date());
 
-  await sendLog(guild, { embeds: [embed] });
+  await sendLog(guild, { embeds: [embed] }, "main");
 }
 
 function queueMove(guild, guildId, userId, userTag, fromName, toName) {
@@ -807,6 +883,7 @@ function queueMove(guild, guildId, userId, userTag, fromName, toName) {
 
 /* =========================
    ★VCログ：IN/MOVE/OUT（青Embed）
+   ★ IN/OUTは表示名（ニックネーム）で出す
 ========================= */
 client.on("voiceStateUpdate", async (oldState, newState) => {
   try {
@@ -818,7 +895,10 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
     const newCh = newState.channelId;
 
     const member = await guild.members.fetch(userId).catch(() => null);
-    const userTag = member?.user?.tag ?? `User(${userId})`;
+    const userTagFallback = member?.user?.tag ?? `User(${userId})`;
+
+    // ★ ここが変更点：表示名（ニックネーム）を優先
+    const displayName = displayNameFromMember(member, userTagFallback);
 
     // IN
     if (!oldCh && newCh) {
@@ -832,11 +912,11 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
       const embed = new EmbedBuilder()
         .setColor(0x3498db)
         .setTitle("🔊 VC参加（IN）")
-        .setDescription(`ユーザー: **${userTag}**`)
+        .setDescription(`ユーザー: **${displayName}**`)
         .addFields({ name: "VC", value: chName, inline: true })
         .setTimestamp(new Date());
 
-      await sendLog(guild, { embeds: [embed] });
+      await sendLog(guild, { embeds: [embed] }, "main");
       return;
     }
 
@@ -847,7 +927,8 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
       const fromName = oldState.channel?.name ?? `#${oldCh}`;
       const toName = newState.channel?.name ?? `#${newCh}`;
 
-      queueMove(guild, guild.id, userId, userTag, fromName, toName);
+      // MOVEも表示名を使う（要望がIN/OUTのみでも、揃えた方が自然なので）
+      queueMove(guild, guild.id, userId, displayName, fromName, toName);
       return;
     }
 
@@ -869,7 +950,7 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
       const embed = new EmbedBuilder()
         .setColor(0x3498db)
         .setTitle("🔊 VC退出（OUT）")
-        .setDescription(`ユーザー: **${userTag}**`)
+        .setDescription(`ユーザー: **${displayName}**`)
         .addFields(
           { name: "VC", value: chName, inline: true },
           { name: "今回の滞在", value: msToHuman(result.durationMs), inline: true },
@@ -880,7 +961,7 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
         )
         .setTimestamp(new Date());
 
-      await sendLog(guild, { embeds: [embed] });
+      await sendLog(guild, { embeds: [embed] }, "main");
     }
   } catch (e) {
     console.error("voiceStateUpdate error:", e?.message ?? e);
