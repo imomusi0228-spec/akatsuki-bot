@@ -1279,24 +1279,17 @@ const server = http.createServer(async (req, res) => {
     const isAuthed = !!sess || tokenAuthed;
 
     // ====== OAuth endpoints ======
-    if (pathname === "/login") {
-      if (!oauthReady) return text(res, "OAuth not configured. Set DISCORD_CLIENT_ID/SECRET and PUBLIC_URL.", 500);
-
-      const state = rand(18);
-      states.set(state, Date.now());
-      for (const [k, t] of states) if (Date.now() - t > 10 * 60_000) states.delete(k);
-
-      const redirectUri = OAUTH_REDIRECT_URI || `${baseUrl(req)}${REDIRECT_PATH}`;
-      const authorize = new URL("https://discord.com/oauth2/authorize");
-      authorize.searchParams.set("client_id", CLIENT_ID);
-      authorize.searchParams.set("response_type", "code");
-      authorize.searchParams.set("redirect_uri", redirectUri);
-      authorize.searchParams.set("scope", OAUTH_SCOPES);
-      authorize.searchParams.set("state", state);
-
-      res.writeHead(302, { Location: authorize.toString() });
-      return res.end();
-    }
+if (pathname === "/login") {
+  if (!oauthReady) {
+    return text(
+      res,
+      "OAuth not configured. Set DISCORD_CLIENT_ID/SECRET and PUBLIC_URL.",
+      500
+    );
+  }
+  const user = sess?.user || null;
+  return html(res, renderAdminHTML({ user, oauth: !!sess, tokenAuthed }));
+}
 
     if (pathname === REDIRECT_PATH) {
       if (!oauthReady) return text(res, "OAuth is not configured.", 500);
@@ -1757,39 +1750,26 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
         const byType = summary.byType ?? {};
 
         $("summary").innerHTML =
-          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:10px;">' +
-            card("NG検知", summary.ngDetected ?? 0) +
-            card("Timeout", summary.timeouts ?? 0) +
-            card("Join", summary.joins ?? 0) +
-            card("Leave", summary.leaves ?? 0) +
-          '</div>' +
-          '<div style="font-weight:600;margin:6px 0;">内訳（byType）</div>' +
-          renderByTypeTable(byType);
+  '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:10px;">' +
+    card("NG検知", summary.ngDetected ?? 0) +
+    card("Timeout", summary.timeouts ?? 0) +
+    card("Join", summary.joins ?? 0) +
+    card("Leave", summary.leaves ?? 0) +
+  '</div>' +
+  '<div style="font-weight:600;margin:6px 0;">内訳（byType）</div>' +
+  renderByTypeTable(byType);
 
-        const topNg = $("topNg");
-        topNg.innerHTML = "";
-        (stats.stats?.topNgUsers || []).forEach(r => {
-          const tr = document.createElement("tr");
-          tr.innerHTML = "<td>" + r.user_id + "</td><td>" + r.cnt + "</td>";
-          topNg.appendChild(tr);
-        });
-      }
+// ...
 
-      // ng words
-      const ng = await api("/api/ngwords?guild=" + encodeURIComponent(guildId));
-      if (!ng.ok) {
-        $("ngwords").textContent = "取得失敗: " + (ng.error || "unknown");
-        showStatus("ngStatus", "NG取得失敗: " + (ng.error || "unknown"), true);
-      } else {
-        $("ngwords").textContent =
-          (ng.words || [])
-            .map(function (w) {
-              if (w.kind === "regex") return "/" + w.word + "/" + (w.flags || "");
-              return w.word;
-            })
-            .join("\\n") || "(empty)";
-        showStatus("ngStatus", "取得OK（" + (ng.count ?? (ng.words||[]).length) + "件）", false);
-      }
+showStatus(
+  "ngStatus",
+  "取得OK（" + (ng.count ?? (ng.words || []).length) + "件）",
+  false
+);
+
+// ...
+
+if (!confirm("NGワードを全削除します。よろしいですか？")) return;
 
       // settings
       const st = await api("/api/settings?guild=" + encodeURIComponent(guildId));
@@ -1863,4 +1843,17 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
 </script>
 </body>
 </html>`;
-}
+};
+    } // <-- close: if (pathname.startsWith("/api/")) { ... }
+
+    // fallback
+    return text(res, "Not Found", 404);
+  } catch (err) {
+    console.error("[web]", err);
+    return text(res, "Internal Server Error", 500);
+  }
+});
+
+server.listen(PORT, () => {
+  console.log(`Web server listening on ${PORT}`);
+});
