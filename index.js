@@ -38,6 +38,55 @@ function json(res, obj, status = 200, headers = {}) {
   res.end(JSON.stringify(obj));
 }
 
+// =========================
+// Home 画面 HTML
+// =========================
+function escapeHTML(s = "") {
+  return String(s)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function renderHomeHTML({
+  title = "Akatsuki Bot",
+  message = "",
+  links = [],
+} = {}) {
+  const linkItems = (links || [])
+    .map((l) => {
+      const href = escapeHTML(l.href || "#");
+      const label = escapeHTML(l.label || l.href || "link");
+      return `<li><a href="${href}">${label}</a></li>`;
+    })
+    .join("");
+
+  return `<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHTML(title)}</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; margin:24px; line-height:1.6;}
+    .card{max-width:720px; padding:18px 20px; border:1px solid #ddd; border-radius:12px;}
+    code{background:#f6f6f6; padding:2px 6px; border-radius:6px;}
+    ul{padding-left:20px;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>${escapeHTML(title)}</h1>
+    ${message ? `<p>${escapeHTML(message)}</p>` : `<p>Bot is running.</p>`}
+    ${linkItems ? `<h3>Links</h3><ul>${linkItems}</ul>` : ""}
+    <p style="opacity:.7;font-size:12px">Server OK</p>
+  </div>
+</body>
+</html>`;
+}
+
 /* =========================
    設定
 ========================= */
