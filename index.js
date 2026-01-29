@@ -543,7 +543,6 @@ async function safeInteractionError(interaction, content) {
   } catch (e) {
     if (isUnknownInteraction(e)) return;
 
-    // 競合で「もうACK済み」になってたら followUp で逃がす
     if (isAlreadyAck(e)) {
       try {
         return await interaction.followUp({ content, ephemeral: true });
@@ -552,7 +551,6 @@ async function safeInteractionError(interaction, content) {
       }
     }
 
-    // ここまで来たらログだけ
     console.error("safeInteractionError failed:", e?.message ?? e);
   }
 }
@@ -564,7 +562,7 @@ client.on("interactionCreate", async (interaction) => {
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
 
-    // ★ ここで deferReply() は絶対にしない（各コマンド側に任せる）
+    // ★ ここで deferReply() はしない（各コマンド側に任せる）
     await command.execute(interaction, db);
   } catch (err) {
     console.error("interactionCreate error:", err);
@@ -573,7 +571,6 @@ client.on("interactionCreate", async (interaction) => {
     await safeInteractionError(interaction, `❌ エラー: ${err?.message ?? String(err)}`);
   }
 });
-
 
 /* =========================
    NGワード検知（メッセージ監視）
