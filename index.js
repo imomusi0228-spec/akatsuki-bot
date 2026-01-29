@@ -292,101 +292,44 @@ function displayNameFromMember(member, fallbackTag = "") {
   );
 }
 
-async function getSettings(guildId) {
-  if (!db) {
-    return {
-      log_channel_id: null,
-      ng_threshold: DEFAULT_NG_THRESHOLD,
-      timeout_minutes: DEFAULT_TIMEOUT_MIN,
-    };
-  }
+/** ★ 「今日 21:04」っぽいフッター文字を作る（Tokyo基準） */
+function tokyoFooterTime(now = new Date()) {
+  const dtfDate = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const dtfTime = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 
-  await db.run(
-    `INSERT INTO settings (guild_id, log_channel_id, ng_threshold, timeout_minutes)
-     VALUES (?, NULL, ?, ?)
-     ON CONFLICT(guild_id) DO NOTHING`,
-    guildId,
-    DEFAULT_NG_THRESHOLD,
-    DEFAULT_TIMEOUT_MIN
-  );
+  const today = dtfDate.format(new Date());
+  const d = dtfDate.format(now);
+  const hm = dtfTime.format(now);
 
-  const row = await db.get(
-    "SELECT log_channel_id, ng_threshold, timeout_minutes FROM settings WHERE guild_id = ?",
-    guildId
-  );
-
-  return {
-    log_channel_id: row?.log_channel_id ?? null,
-    ng_threshold: Number(row?.ng_threshold ?? DEFAULT_NG_THRESHOLD),
-    timeout_minutes: Number(row?.timeout_minutes ?? DEFAULT_TIMEOUT_MIN),
-  };
+  if (d === today) return `今日 ${hm}`;
+  return `${d} ${hm}`; // YYYY-MM-DD HH:MM
 }
 
-async function updateSettings(guildId, patch) {
-  const cur = await getSettings(guildId);
-  const next = {
-    log_channel_id: patch.log_channel_id ?? cur.log_channel_id,
-    ng_threshold: Number.isFinite(Number(patch.ng_threshold))
-      ? Number(patch.ng_threshold)
-      : cur.ng_threshold,
-    timeout_minutes: Number.isFinite(Number(patch.timeout_minutes))
-      ? Number(patch.timeout_minutes)
-      : cur.timeout_minutes,
-  };
-  next.ng_threshold = Math.max(1, next.ng_threshold);
-  next.timeout_minutes = Math.max(1, next.timeout_minutes);
+/** ★ VCログEmbedをスクショ風に統一 */
+function buildVcEmbed({ member, userId, actionText, channelId, when = new Date() }) {
+  const displayName = displayNameFromMember(member, `User(${userId})`);
+  const username = member?.user?.username || member?.user?.tag || `User(${userId})`;
+  const avatar = member?.user?.displayAvatarURL?.() ?? undefined;
 
-  await db.run(
-    `INSERT INTO settings (guild_id, log_channel_id, ng_threshold, timeout_minutes)
-     VALUES (?, ?, ?, ?)
-     ON CONFLICT(guild_id) DO UPDATE SET
-       log_channel_id = excluded.log_channel_id,
-       ng_threshold = excluded.ng_threshold,
-       timeout_minutes = excluded.timeout_minutes`,
-    guildId,
-    next.log_channel_id,
-    next.ng_threshold,
-    next.timeout_minutes
-  );
+  const chMention = channelId ? `<#${channelId}>` : "(unknown VC)";
 
-  return await getSettings(guildId);
-}
-
-async function getNgWords(guildId) {
-  if (!db) return [];
-  const rows = await db.all("SELECT word FROM ng_words WHERE guild_id = ? ORDER BY word ASC", guildId);
-  return rows.map((r) => (r.word ?? "").trim()).filter(Boolean);
-}
-async function addNgWord(guildId, word) {
-  const w = (word ?? "").trim();
-  if (!w) return { ok: false, error: "empty" };
-  await db.run(`INSERT OR IGNORE INTO ng_words (guild_id, word) VALUES (?, ?)`, guildId, w);
-  return { ok: true };
-}
-async function removeNgWord(guildId, word) {
-  const w = (word ?? "").trim();
-  if (!w) return { ok: false, error: "empty" };
-  await db.run(`DELETE FROM ng_words WHERE guild_id = ? AND word = ?`, guildId, w);
-  return { ok: true };
-}
-async function clearNgWords(guildId) {
-  await db.run(`DELETE FROM ng_words WHERE guild_id = ?`, guildId);
-  return { ok: true };
-}
-
-async function logEvent(guildId, type, userId = null, metaObj = null) {
-  try {
-    if (!db) return;
-    const meta = metaObj ? JSON.stringify(metaObj) : null;
-    await db.run(
-      "INSERT INTO log_events (guild_id, type, user_id, meta, ts) VALUES (?, ?, ?, ?, ?)",
-      guildId,
-      type,
-      userId,
-      meta,
-      Date.now()
-    );
-  } catch {}
+  return new EmbedBuilder()
+    .setColor(0x3498db)
+    .setAuthor({ name: username, iconURL: avatar })
+    // スクショっぽく： @表示名 @username left voice channel 🔊 #VC
+    .setDescription(`${member ? member.toString() : `@${displayName}`} @${username} ${actionText} 🔊 ${chMention}`)
+    .setFooter({ text: `ID: ${userId} · ${tokyoFooterTime(when)}` })
+    .setTimestamp(when);
 }
 
 /* =========================
@@ -895,10 +838,6 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
     const newCh = newState.channelId;
 
     const member = await guild.members.fetch(userId).catch(() => null);
-    const userTagFallback = member?.user?.tag ?? `User(${userId})`;
-
-    // ★ ここが変更点：表示名（ニックネーム）を優先
-    const displayName = displayNameFromMember(member, userTagFallback);
 
     // IN
     if (!oldCh && newCh) {
@@ -906,15 +845,18 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
 
       await vcStart(guild.id, userId, newCh);
 
-      const chName = newState.channel?.name ?? `#${newCh}`;
-      await logEvent(guild.id, "vc_join", userId, { channelId: newCh, channelName: newState.channel?.name ?? null });
+      await logEvent(guild.id, "vc_join", userId, {
+        channelId: newCh,
+        channelName: newState.channel?.name ?? null,
+      });
 
-      const embed = new EmbedBuilder()
-        .setColor(0x3498db)
-        .setTitle("🔊 VC参加（IN）")
-        .setDescription(`ユーザー: **${displayName}**`)
-        .addFields({ name: "VC", value: chName, inline: true })
-        .setTimestamp(new Date());
+      const embed = buildVcEmbed({
+        member,
+        userId,
+        actionText: "joined voice channel",
+        channelId: newCh,
+        when: new Date(),
+      });
 
       await sendLog(guild, { embeds: [embed] }, "main");
       return;
@@ -927,7 +869,8 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
       const fromName = oldState.channel?.name ?? `#${oldCh}`;
       const toName = newState.channel?.name ?? `#${newCh}`;
 
-      // MOVEも表示名を使う（要望がIN/OUTのみでも、揃えた方が自然なので）
+      // moveまとめは既存通り（ログはまとめ後に出る）
+      const displayName = displayNameFromMember(member, member?.user?.tag ?? `User(${userId})`);
       queueMove(guild, guild.id, userId, displayName, fromName, toName);
       return;
     }
@@ -939,27 +882,19 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
       const result = await vcEnd(guild.id, userId);
       if (!result) return;
 
-      const chName = oldState.channel?.name ?? `#${result.channelId}`;
-
       await logEvent(guild.id, "vc_session_end", userId, {
         durationMs: result.durationMs,
         channelId: result.channelId,
         channelName: oldState.channel?.name ?? null,
       });
 
-      const embed = new EmbedBuilder()
-        .setColor(0x3498db)
-        .setTitle("🔊 VC退出（OUT）")
-        .setDescription(`ユーザー: **${displayName}**`)
-        .addFields(
-          { name: "VC", value: chName, inline: true },
-          { name: "今回の滞在", value: msToHuman(result.durationMs), inline: true },
-          { name: `今月(${result.monthKey}) 参加回数`, value: `${result.month.joins}回`, inline: true },
-          { name: `今月(${result.monthKey}) 合計`, value: msToHuman(result.month.totalMs), inline: true },
-          { name: "累計 参加回数", value: `${result.total.joins}回`, inline: true },
-          { name: "累計 合計", value: msToHuman(result.total.totalMs), inline: true }
-        )
-        .setTimestamp(new Date());
+      const embed = buildVcEmbed({
+        member,
+        userId,
+        actionText: "left voice channel",
+        channelId: result.channelId,
+        when: new Date(),
+      });
 
       await sendLog(guild, { embeds: [embed] }, "main");
     }
