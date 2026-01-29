@@ -20,6 +20,24 @@ import {
 import sqlite3 from "sqlite3";
 import { open } from "sqlite";
 
+// =========================
+// レスポンス helper（html / text）
+// =========================
+function text(res, body, status = 200, headers = {}) {
+  res.writeHead(status, { "Content-Type": "text/plain; charset=utf-8", ...headers });
+  res.end(body ?? "");
+}
+
+function html(res, body, status = 200, headers = {}) {
+  res.writeHead(status, { "Content-Type": "text/html; charset=utf-8", ...headers });
+  res.end(body ?? "");
+}
+
+function json(res, obj, status = 200, headers = {}) {
+  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", ...headers });
+  res.end(JSON.stringify(obj));
+}
+
 /* =========================
    設定
 ========================= */
