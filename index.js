@@ -626,7 +626,7 @@ async function vcEnd(guildId, userId) {
 /* =========================
    Ready（★ここが修正点）
 ========================= */
-client.once("clientReady", () => {
+client.once(Events.ClientReady, () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
@@ -1394,112 +1394,6 @@ const server = http.createServer(async (req, res) => {
         });
       }
 
-      if (pathname === "/api/guilds") {
-  if (sess) {
-    const userGuilds = await ensureGuildsForSession(sess);
-    console.log("oauth userGuilds len =", userGuilds?.length);
-
-    const botSet = new Set(client.guilds.cache.map((g) => g.id));
-    const mine = (userGuilds || []).filter((g) => botSet.has(g.id));
-    console.log("bot-in-common len =", mine.length);
-
-    const adminable = mine.filter((g) => hasAdminPerm(g.permissions));
-    console.log("adminable len =", adminable.length);
-
-    const list = adminable.map((g) => ({ id: g.id, name: g.name }));
-    return json(res, { ok: true, guilds: list });
-  }
-  return json(res, { ok: true, guilds: botGuilds() });
-}
-
-
-      if (pathname === "/api/settings") {
-        const guildId = u.searchParams.get("guild") || "";
-        const chk = requireGuildAllowed(guildId);
-        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
-
-        const s = await getSettings(guildId);
-        return json(res, { ok: true, guildId, settings: s });
-      }
-
-      if (pathname === "/api/ngwords") {
-        const guildId = u.searchParams.get("guild") || "";
-        const chk = requireGuildAllowed(guildId);
-        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
-
-        const words = await getNgWords(guildId);
-        return json(res, { ok: true, guildId, count: words.length, words });
-      }
-
-      if (pathname === "/api/stats") {
-        const guildId = u.searchParams.get("guild") || "";
-        const month = u.searchParams.get("month") || "";
-        const chk = requireGuildAllowed(guildId);
-        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
-        if (!month) return json(res, { ok: false, error: "missing month" }, 400);
-
-        const stats = await getMonthlyStats(guildId, month);
-        return json(res, { ok: true, guildId, month, stats });
-      }
-
-      if (pathname === "/api/ngwords/add" && req.method === "POST") {
-        const body = await readJson(req);
-        const guildId = String(body?.guild || "");
-        const word = String(body?.word || "");
-        const chk = requireGuildAllowed(guildId);
-        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
-
-        const r = await addNgWord(guildId, word);
-        const words = await getNgWords(guildId);
-        return json(res, { ok: !!r.ok, error: r.error || null, count: words.length, words });
-      }
-
-      if (pathname === "/api/ngwords/remove" && req.method === "POST") {
-        const body = await readJson(req);
-        const guildId = String(body?.guild || "");
-        const word = String(body?.word || "");
-        const chk = requireGuildAllowed(guildId);
-        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
-
-        const r = await removeNgWord(guildId, word);
-        const words = await getNgWords(guildId);
-        return json(res, { ok: !!r.ok, error: r.error || null, count: words.length, words });
-      }
-
-      if (pathname === "/api/ngwords/clear" && req.method === "POST") {
-        const body = await readJson(req);
-        const guildId = String(body?.guild || "");
-        const chk = requireGuildAllowed(guildId);
-        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
-
-        await clearNgWords(guildId);
-        const words = await getNgWords(guildId);
-        return json(res, { ok: true, count: words.length, words });
-      }
-
-      if (pathname === "/api/settings/update" && req.method === "POST") {
-        const body = await readJson(req);
-        const guildId = String(body?.guild || "");
-        const chk = requireGuildAllowed(guildId);
-        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
-
-        const next = await updateSettings(guildId, {
-          ng_threshold: body?.ng_threshold,
-          timeout_minutes: body?.timeout_minutes,
-        });
-        return json(res, { ok: true, settings: next });
-      }
-
-      return json(res, { ok: false, error: "not found" }, 404);
-    }
-
-    return text(res, "Not Found", 404);
-  } catch (e) {
-    console.error("web error:", e?.message ?? e);
-    return text(res, "500", 500);
-  }
-});
-
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`🌐 Listening on ${PORT}`);
 });
@@ -1612,6 +1506,7 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
   .grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(320px,1fr)); gap:12px; }
   pre { white-space:pre-wrap; word-break:break-word; }
   .muted { color:#666; }
+  .err { color:#b00020; font-weight:600; }
   table { width:100%; border-collapse:collapse; }
   th,td { border-bottom:1px solid #eee; padding:8px; text-align:left; }
   .pill{display:inline-block;padding:4px 8px;border:1px solid #ccc;border-radius:999px;font-size:12px}
@@ -1633,13 +1528,14 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
       <input id="month" type="month" />
       <button id="reload">更新</button>
     </div>
+    <div id="guildStatus" class="muted"></div>
     <p class="muted">※「あなたが所属」かつ「Botが入ってる」かつ「管理権限(Manage Guild / Admin)」の鯖だけ出ます。</p>
   </div>
 
   <div class="grid">
     <div class="card">
       <h3>月次サマリ</h3>
-      <div id="summary">読み込み中...</div>
+      <div id="summary" class="muted">未取得</div>
     </div>
 
     <div class="card">
@@ -1654,24 +1550,25 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
   <div class="grid">
     <div class="card">
       <h3>NGワード一覧（管理者のみ）</h3>
-      <pre id="ngwords">(loading)</pre>
+      <pre id="ngwords" class="muted">未取得</pre>
       <div class="row">
-        <input id="ng_add" placeholder="追加するワード" />
+        <input id="ng_add" placeholder="追加するワード（例: ばか / /ばか|あほ/i）" />
         <button id="btn_add">追加</button>
       </div>
       <div class="row">
-        <input id="ng_remove" placeholder="削除するワード（完全一致）" />
+        <input id="ng_remove" placeholder="削除するワード（完全一致：登録した形式のまま）" />
         <button id="btn_remove">削除</button>
       </div>
       <div class="row">
         <button id="btn_clear" style="border:1px solid #f00;">全削除</button>
         <span class="muted">※戻せません</span>
       </div>
+      <div id="ngStatus" class="muted"></div>
     </div>
 
     <div class="card">
-      <h3>NG検知の自動処分（わかりやすく）</h3>
-      <div id="settingsBox" class="muted">読み込み中...</div>
+      <h3>NG検知の自動処分</h3>
+      <div id="settingsBox" class="muted">未取得</div>
 
       <div class="row" style="margin-top:10px;">
         <label>何回でタイムアウト？</label>
@@ -1681,6 +1578,7 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
         <button id="btn_save">保存</button>
       </div>
       <p class="muted">例：3回で10分タイムアウト</p>
+      <div id="settingsStatus" class="muted"></div>
     </div>
   </div>
 
@@ -1692,12 +1590,17 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
     const dt = new Date();
     const y = dt.getFullYear();
     const m = String(dt.getMonth()+1).padStart(2,"0");
-    return \`\${y}-\${m}\`;
+    return y + "-" + m;
   }
 
   async function api(path, opts){
     const r = await fetch(path, opts);
-    return r.json();
+    let data = null;
+    try { data = await r.json(); } catch { data = { ok:false, error:"bad_json" }; }
+    if (!r.ok && data && data.ok !== true) {
+      data._httpStatus = r.status;
+    }
+    return data;
   }
 
   async function postJson(path, body){
@@ -1708,82 +1611,129 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
     });
   }
 
-  // ★ 2重ロード防止（429踏み防止）
+  function showStatus(id, msg, isErr){
+    const el = $(id);
+    if (!el) return;
+    el.className = isErr ? "err" : "muted";
+    el.textContent = msg || "";
+  }
+
   let loading = false;
 
   async function loadGuilds(){
-  const sel = $("guild");
-  sel.innerHTML = "";
-  sel.disabled = true;
+    const sel = $("guild");
+    sel.innerHTML = "";
+    sel.disabled = true;
 
-  // 最大10回リトライ（bot ready待ち / guilds取得待ち）
-  for (let i = 0; i < 10; i++) {
-    let data = null;
-    try {
-      data = await api("/api/guilds");
-    } catch {}
+    showStatus("guildStatus", "サーバー一覧を取得中...", false);
 
-    if (data && data.ok && Array.isArray(data.guilds) && data.guilds.length > 0) {
-      for (const g of data.guilds) {
+    // 最大10回リトライ（bot ready待ち / guilds取得待ち）
+    for (let i = 0; i < 10; i++) {
+      const data = await api("/api/guilds");
+
+      if (data && data.ok && Array.isArray(data.guilds)) {
+        if (data.guilds.length > 0) {
+          for (const g of data.guilds) {
+            const opt = document.createElement("option");
+            opt.value = g.id;
+            opt.textContent = String(g.name) + " (" + String(g.id) + ")";
+            sel.appendChild(opt);
+          }
+          sel.disabled = false;
+
+          // debugがあれば表示
+          if (data.debug) {
+            showStatus(
+              "guildStatus",
+              "取得OK（userGuilds=" + (data.debug.userGuilds ?? "?") +
+              ", botGuilds=" + (data.debug.botGuilds ?? "?") +
+              ", common=" + (data.debug.common ?? "?") +
+              ", adminable=" + (data.debug.adminable ?? "?") + "）",
+              false
+            );
+          } else {
+            showStatus("guildStatus", "取得OK", false);
+          }
+          return true;
+        }
+
+        // 0件のとき（理由を表示）
+        if (data.debug) {
+          showStatus(
+            "guildStatus",
+            "0件でした（userGuilds=" + (data.debug.userGuilds ?? "?") +
+            ", botGuilds=" + (data.debug.botGuilds ?? "?") +
+            ", common=" + (data.debug.common ?? "?") +
+            ", adminable=" + (data.debug.adminable ?? "?") + "）",
+            true
+          );
+        } else {
+          showStatus("guildStatus", "0件でした（権限/導入状況を確認）", true);
+        }
+
+        sel.disabled = false;
         const opt = document.createElement("option");
-        opt.value = g.id;
-        opt.textContent = String(g.name) + " (" + String(g.id) + ")";
+        opt.value = "";
+        opt.textContent = "（0件：権限/導入状況を確認）";
         sel.appendChild(opt);
+        return false;
       }
-      sel.disabled = false;
-      return;
+
+      // bot_not_ready等
+      if (data && data.error) {
+        showStatus("guildStatus", "取得失敗: " + data.error + (data._httpStatus ? " (HTTP " + data._httpStatus + ")" : ""), true);
+      } else {
+        showStatus("guildStatus", "取得失敗: unknown", true);
+      }
+
+      await new Promise(function(r){ setTimeout(r, 800); });
     }
 
-    // 503(bot_not_ready) や 空配列なら少し待って再試行
-    await new Promise(function(r){ setTimeout(r, 800); });
+    sel.disabled = false;
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "（取得できませんでした。/api/guilds を開いて確認）";
+    sel.appendChild(opt);
+
+    showStatus("guildStatus", "取得できませんでした。/api/guilds を直接開いて内容を確認してください。", true);
+    return false;
   }
 
-  // ここまで来たら失敗表示
-  sel.disabled = false;
-  const opt = document.createElement("option");
-  opt.value = "";
-  opt.textContent = "（取得できませんでした。/api/guilds を確認）";
-  sel.appendChild(opt);
-}
-
-
   function card(label, value){
-    return \`
-      <div style="border:1px solid #eee;border-radius:12px;padding:10px;">
-        <div style="color:#666;font-size:12px;">\${label}</div>
-        <div style="font-size:22px;font-weight:700;">\${value}</div>
-      </div>
-    \`;
+    return (
+      '<div style="border:1px solid #eee;border-radius:12px;padding:10px;">' +
+        '<div style="color:#666;font-size:12px;">' + label + '</div>' +
+        '<div style="font-size:22px;font-weight:700;">' + value + '</div>' +
+      '</div>'
+    );
   }
 
   function renderByTypeTable(obj){
     const keys = Object.keys(obj || {});
-    if (!keys.length) return \`<div class="muted">（今月のイベントはまだありません）</div>\`;
+    if (!keys.length) return '<div class="muted">（今月のイベントはまだありません）</div>';
 
     const rows = keys
       .sort((a,b)=> (obj[b]??0)-(obj[a]??0))
-      .map(k => \`<tr><td>\${k}</td><td>\${obj[k]}</td></tr>\`)
+      .map(k => '<tr><td>' + k + '</td><td>' + obj[k] + '</td></tr>')
       .join("");
 
-    return \`
-      <table>
-        <thead><tr><th>type</th><th>count</th></tr></thead>
-        <tbody>\${rows}</tbody>
-      </table>
-    \`;
+    return (
+      '<table>' +
+        '<thead><tr><th>type</th><th>count</th></tr></thead>' +
+        '<tbody>' + rows + '</tbody>' +
+      '</table>'
+    );
   }
 
   function renderSettingsBox(s){
     const logCh = s.log_channel_id ? s.log_channel_id : "未設定（/setlog で設定）";
-    return \`
-      <table>
-        <tbody>
-          <tr><td style="width:220px;">管理ログ チャンネルID</td><td><b>\${logCh}</b></td></tr>
-          <tr><td>NG検知 → タイムアウトまで</td><td><b>\${s.ng_threshold} 回</b></td></tr>
-          <tr><td>タイムアウト時間</td><td><b>\${s.timeout_minutes} 分</b></td></tr>
-        </tbody>
-      </table>
-    \`;
+    return (
+      '<table><tbody>' +
+        '<tr><td style="width:220px;">管理ログ チャンネルID</td><td><b>' + logCh + '</b></td></tr>' +
+        '<tr><td>NG検知 → タイムアウトまで</td><td><b>' + (s.ng_threshold ?? 3) + ' 回</b></td></tr>' +
+        '<tr><td>タイムアウト時間</td><td><b>' + (s.timeout_minutes ?? 10) + ' 分</b></td></tr>' +
+      '</tbody></table>'
+    );
   }
 
   async function reload(){
@@ -1792,47 +1742,67 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
     try {
       const guildId = $("guild").value;
       const month = $("month").value;
-      if (!guildId || !month) return;
 
-      const stats = await api(\`/api/stats?guild=\${encodeURIComponent(guildId)}&month=\${encodeURIComponent(month)}\`);
-      const summary = stats.stats?.summary ?? {};
-      const byType = summary.byType ?? {};
-
-      $("summary").innerHTML = \`
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:10px;">
-          \${card("NG検知", summary.ngDetected ?? 0)}
-          \${card("Timeout", summary.timeouts ?? 0)}
-          \${card("Join", summary.joins ?? 0)}
-          \${card("Leave", summary.leaves ?? 0)}
-        </div>
-        <div style="font-weight:600;margin:6px 0;">内訳（byType）</div>
-        \${renderByTypeTable(byType)}
-      \`;
-
-      const topNg = $("topNg");
-      topNg.innerHTML = "";
-      (stats.stats?.topNgUsers || []).forEach(r => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = \`<td>\${r.user_id}</td><td>\${r.cnt}</td>\`;
-        topNg.appendChild(tr);
-      });
-
-      const ng = await api(\`/api/ngwords?guild=\${encodeURIComponent(guildId)}\`);
-      $("ngwords").textContent =
-  (ng.words || [])
-    .map(function (w) {
-      if (w.kind === "regex") {
-        return "/" + w.word + "/" + (w.flags || "");
+      if (!guildId || !month) {
+        $("summary").textContent = "サーバーと月を選んでください";
+        return;
       }
-      return w.word;
-    })
-    .join("\n") || "(empty)";
 
+      // stats
+      const stats = await api("/api/stats?guild=" + encodeURIComponent(guildId) + "&month=" + encodeURIComponent(month));
+      if (!stats.ok) {
+        $("summary").innerHTML = '<div class="err">stats取得失敗: ' + (stats.error || "unknown") + '</div>';
+      } else {
+        const summary = stats.stats?.summary ?? {};
+        const byType = summary.byType ?? {};
 
-      const st = await api(\`/api/settings?guild=\${encodeURIComponent(guildId)}\`);
-      $("settingsBox").innerHTML = renderSettingsBox(st.settings ?? { log_channel_id:null, ng_threshold:3, timeout_minutes:10 });
-      $("threshold").value = st.settings?.ng_threshold ?? 3;
-      $("timeout").value = st.settings?.timeout_minutes ?? 10;
+        $("summary").innerHTML =
+          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:10px;">' +
+            card("NG検知", summary.ngDetected ?? 0) +
+            card("Timeout", summary.timeouts ?? 0) +
+            card("Join", summary.joins ?? 0) +
+            card("Leave", summary.leaves ?? 0) +
+          '</div>' +
+          '<div style="font-weight:600;margin:6px 0;">内訳（byType）</div>' +
+          renderByTypeTable(byType);
+
+        const topNg = $("topNg");
+        topNg.innerHTML = "";
+        (stats.stats?.topNgUsers || []).forEach(r => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = "<td>" + r.user_id + "</td><td>" + r.cnt + "</td>";
+          topNg.appendChild(tr);
+        });
+      }
+
+      // ng words
+      const ng = await api("/api/ngwords?guild=" + encodeURIComponent(guildId));
+      if (!ng.ok) {
+        $("ngwords").textContent = "取得失敗: " + (ng.error || "unknown");
+        showStatus("ngStatus", "NG取得失敗: " + (ng.error || "unknown"), true);
+      } else {
+        $("ngwords").textContent =
+          (ng.words || [])
+            .map(function (w) {
+              if (w.kind === "regex") return "/" + w.word + "/" + (w.flags || "");
+              return w.word;
+            })
+            .join("\\n") || "(empty)";
+        showStatus("ngStatus", "取得OK（" + (ng.count ?? (ng.words||[]).length) + "件）", false);
+      }
+
+      // settings
+      const st = await api("/api/settings?guild=" + encodeURIComponent(guildId));
+      if (!st.ok) {
+        $("settingsBox").innerHTML = '<div class="err">取得失敗: ' + (st.error || "unknown") + '</div>';
+        showStatus("settingsStatus", "設定取得失敗: " + (st.error || "unknown"), true);
+      } else {
+        const s = st.settings ?? { log_channel_id:null, ng_threshold:3, timeout_minutes:10 };
+        $("settingsBox").innerHTML = renderSettingsBox(s);
+        $("threshold").value = s.ng_threshold ?? 3;
+        $("timeout").value = s.timeout_minutes ?? 10;
+        showStatus("settingsStatus", "取得OK", false);
+      }
     } finally {
       loading = false;
     }
@@ -1845,7 +1815,10 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
   $("btn_add").addEventListener("click", async () => {
     const guildId = $("guild").value;
     const word = $("ng_add").value;
-    await postJson("/api/ngwords/add", { guild: guildId, word });
+    if (!guildId) return alert("サーバーを選んでください");
+    if (!word.trim()) return alert("ワードを入力してください");
+    const r = await postJson("/api/ngwords/add", { guild: guildId, word: word.trim() });
+    if (!r.ok) alert("追加失敗: " + (r.error || "unknown"));
     $("ng_add").value = "";
     await reload();
   });
@@ -1853,7 +1826,10 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
   $("btn_remove").addEventListener("click", async () => {
     const guildId = $("guild").value;
     const word = $("ng_remove").value;
-    await postJson("/api/ngwords/remove", { guild: guildId, word });
+    if (!guildId) return alert("サーバーを選んでください");
+    if (!word.trim()) return alert("ワードを入力してください");
+    const r = await postJson("/api/ngwords/remove", { guild: guildId, word: word.trim() });
+    if (!r.ok) alert("削除失敗: " + (r.error || "unknown"));
     $("ng_remove").value = "";
     await reload();
   });
@@ -1861,15 +1837,19 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
   $("btn_clear").addEventListener("click", async () => {
     if (!confirm("NGワードを全削除します。よろしいですか？")) return;
     const guildId = $("guild").value;
-    await postJson("/api/ngwords/clear", { guild: guildId });
+    if (!guildId) return alert("サーバーを選んでください");
+    const r = await postJson("/api/ngwords/clear", { guild: guildId });
+    if (!r.ok) alert("全削除失敗: " + (r.error || "unknown"));
     await reload();
   });
 
   $("btn_save").addEventListener("click", async () => {
     const guildId = $("guild").value;
+    if (!guildId) return alert("サーバーを選んでください");
     const ng_threshold = Number($("threshold").value);
     const timeout_minutes = Number($("timeout").value);
-    await postJson("/api/settings/update", { guild: guildId, ng_threshold, timeout_minutes });
+    const r = await postJson("/api/settings/update", { guild: guildId, ng_threshold, timeout_minutes });
+    if (!r.ok) return alert("保存失敗: " + (r.error || "unknown"));
     await reload();
     alert("保存しました");
   });
