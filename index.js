@@ -140,9 +140,7 @@ try {
   await db.exec(
     `CREATE INDEX IF NOT EXISTS idx_log_events_guild_type_ts ON log_events (guild_id, type, ts);`
   );
-  await db.exec(
-    `CREATE INDEX IF NOT EXISTS idx_vc_month_guild_month ON vc_stats_month (guild_id, month_key);`
-  );
+  await db.exec(`CREATE INDEX IF NOT EXISTS idx_vc_month_guild_month ON vc_stats_month (guild_id, month_key);`);
 
   // =========================
   // ★ log_threads を kind 対応に自動マイグレーション
@@ -244,6 +242,12 @@ try {
 /* =========================
    Utils
 ========================= */
+function isUnknownInteraction(err) {
+  return err?.code === 10062 || err?.rawError?.code === 10062;
+}
+function isAlreadyAck(err) {
+  return err?.code === 40060 || err?.rawError?.code === 40060;
+}
 function normalize(s) {
   return (s ?? "").toLowerCase();
 }
@@ -428,17 +432,13 @@ function buildVcEmbed({ member, userId, actionText, channelId, when = new Date()
   return new EmbedBuilder()
     .setColor(0x3498db)
     .setAuthor({ name: username, iconURL: avatar })
-    .setDescription(
-      `${member ? member.toString() : `<@${userId}>`} <@${userId}> ${actionText} 🔊 ${chMention}`
-    )
+    .setDescription(`${member ? member.toString() : `<@${userId}>`} <@${userId}> ${actionText} 🔊 ${chMention}`)
     .setFooter({ text: `ID: ${userId} · ${tokyoFooterTime(when)}` })
     .setTimestamp(when);
 }
 
 /* =========================
    日付スレッド作成/取得（kind別）
-   - main: 既存ログ（VC/Join/Leaveなど）
-   - ng  : NGワード検知ログ
 ========================= */
 function threadNameByKind(kind, dateKey) {
   if (kind === "ng") return `ng-${dateKey}`;
@@ -459,12 +459,7 @@ async function getDailyLogThread(channel, guildId, kind = "main") {
     if (row?.thread_id) {
       const existing = await channel.threads.fetch(row.thread_id).catch(() => null);
       if (existing) return existing;
-      await db.run(
-        "DELETE FROM log_threads WHERE guild_id = ? AND date_key = ? AND kind = ?",
-        guildId,
-        dateKey,
-        kind
-      );
+      await db.run("DELETE FROM log_threads WHERE guild_id = ? AND date_key = ? AND kind = ?", guildId, dateKey, kind);
     }
 
     if (!channel?.threads?.create) return null;
@@ -491,7 +486,6 @@ async function getDailyLogThread(channel, guildId, kind = "main") {
 
 /* =========================
    管理ログ送信（スレッド優先）
-   ★ kindでスレッド分岐
 ========================= */
 async function sendLog(guild, payload, kind = "main") {
   try {
@@ -575,12 +569,7 @@ async function vcStart(guildId, userId, channelId) {
   );
 }
 async function vcMove(guildId, userId, channelId) {
-  await db.run(
-    `UPDATE vc_active SET channel_id = ? WHERE guild_id = ? AND user_id = ?`,
-    channelId,
-    guildId,
-    userId
-  );
+  await db.run(`UPDATE vc_active SET channel_id = ? WHERE guild_id = ? AND user_id = ?`, channelId, guildId, userId);
 }
 async function vcEnd(guildId, userId) {
   const active = await db.get(
@@ -646,7 +635,7 @@ async function vcEnd(guildId, userId) {
 }
 
 /* =========================
-   Ready
+   Ready（★ここが修正点）
 ========================= */
 client.once("clientReady", () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
@@ -654,7 +643,6 @@ client.once("clientReady", () => {
 
 /* =========================
    interactionCreate（コマンド）
-   ★ここは1個だけにする
 ========================= */
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
@@ -789,12 +777,7 @@ async function incrementHit(guildId, userId) {
 }
 
 async function resetHit(guildId, userId) {
-  await db.run(
-    "UPDATE ng_hits SET count = 0, updated_at = ? WHERE guild_id = ? AND user_id = ?",
-    Date.now(),
-    guildId,
-    userId
-  );
+  await db.run("UPDATE ng_hits SET count = 0, updated_at = ? WHERE guild_id = ? AND user_id = ?", Date.now(), guildId, userId);
 }
 
 client.on("messageCreate", async (message) => {
@@ -826,10 +809,7 @@ client.on("messageCreate", async (message) => {
       })
       .catch(() => null);
 
-    await logEvent(message.guildId, "ng_detected", message.author.id, {
-      word: hit,
-      channelId: message.channelId,
-    });
+    await logEvent(message.guildId, "ng_detected", message.author.id, { word: hit, channelId: message.channelId });
 
     const count = await incrementHit(message.guildId, message.author.id);
 
@@ -845,10 +825,7 @@ client.on("messageCreate", async (message) => {
         await member.timeout(timeoutMin * 60 * 1000, `NGワード検知 ${count}/${threshold}`).catch(() => null);
         timeoutApplied = true;
         await resetHit(message.guildId, message.author.id);
-        await logEvent(message.guildId, "timeout_applied", message.author.id, {
-          minutes: timeoutMin,
-          threshold,
-        });
+        await logEvent(message.guildId, "timeout_applied", message.author.id, { minutes: timeoutMin, threshold });
       }
     }
 
@@ -1557,9 +1534,6 @@ body{font-family:system-ui;margin:16px}
 </body></html>`;
 }
 
-/* =========================
-   ★管理画面（設定表示をわかりやすく）
-========================= */
 function renderAdminHTML({ user, oauth, tokenAuthed }) {
   return `<!doctype html>
 <html lang="ja">
