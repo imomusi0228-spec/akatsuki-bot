@@ -693,8 +693,8 @@ async function vcEnd(guildId, userId) {
 /* =========================
    Ready（★ここが修正点）
 ========================= */
-client.once(Events.ClientReady, () => {
-  console.log(`✅ Logged in as ${client.user.tag}`);
+client.once(Events.ClientReady, (c) => {
+  console.log(`✅ Logged in as ${c.user.tag}`);
 });
 
 /* =========================
@@ -1938,12 +1938,6 @@ const discordToken =
   "";
 
 console.log("DISCORD_TOKEN exists:", !!discordToken);
-
-import { Events } from "discord.js";
-
-client.once(Events.ClientReady, (c) => {
-  console.log(`✅ Logged in as ${c.user.tag}`);
-});
 
 client.on("error", (e) => console.error("Discord client error:", e));
 client.on("shardError", (e) => console.error("Discord shard error:", e));
