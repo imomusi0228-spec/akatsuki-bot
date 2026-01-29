@@ -140,7 +140,9 @@ try {
   await db.exec(
     `CREATE INDEX IF NOT EXISTS idx_log_events_guild_type_ts ON log_events (guild_id, type, ts);`
   );
-  await db.exec(`CREATE INDEX IF NOT EXISTS idx_vc_month_guild_month ON vc_stats_month (guild_id, month_key);`);
+  await db.exec(
+    `CREATE INDEX IF NOT EXISTS idx_vc_month_guild_month ON vc_stats_month (guild_id, month_key);`
+  );
 
   // =========================
   // ★ log_threads を kind 対応に自動マイグレーション
@@ -242,12 +244,6 @@ try {
 /* =========================
    Utils
 ========================= */
-function isUnknownInteraction(err) {
-  return err?.code === 10062 || err?.rawError?.code === 10062;
-}
-function isAlreadyAck(err) {
-  return err?.code === 40060 || err?.rawError?.code === 40060;
-}
 function normalize(s) {
   return (s ?? "").toLowerCase();
 }
@@ -432,8 +428,9 @@ function buildVcEmbed({ member, userId, actionText, channelId, when = new Date()
   return new EmbedBuilder()
     .setColor(0x3498db)
     .setAuthor({ name: username, iconURL: avatar })
-    // スクショ寄せ：@表示名（メンションで青） + @username（青にするため同一ユーザーをもう一回メンション）
-    .setDescription(`${member ? member.toString() : `<@${userId}>`} <@${userId}> ${actionText} 🔊 ${chMention}`)
+    .setDescription(
+      `${member ? member.toString() : `<@${userId}>`} <@${userId}> ${actionText} 🔊 ${chMention}`
+    )
     .setFooter({ text: `ID: ${userId} · ${tokyoFooterTime(when)}` })
     .setTimestamp(when);
 }
@@ -462,7 +459,12 @@ async function getDailyLogThread(channel, guildId, kind = "main") {
     if (row?.thread_id) {
       const existing = await channel.threads.fetch(row.thread_id).catch(() => null);
       if (existing) return existing;
-      await db.run("DELETE FROM log_threads WHERE guild_id = ? AND date_key = ? AND kind = ?", guildId, dateKey, kind);
+      await db.run(
+        "DELETE FROM log_threads WHERE guild_id = ? AND date_key = ? AND kind = ?",
+        guildId,
+        dateKey,
+        kind
+      );
     }
 
     if (!channel?.threads?.create) return null;
@@ -573,7 +575,12 @@ async function vcStart(guildId, userId, channelId) {
   );
 }
 async function vcMove(guildId, userId, channelId) {
-  await db.run(`UPDATE vc_active SET channel_id = ? WHERE guild_id = ? AND user_id = ?`, channelId, guildId, userId);
+  await db.run(
+    `UPDATE vc_active SET channel_id = ? WHERE guild_id = ? AND user_id = ?`,
+    channelId,
+    guildId,
+    userId
+  );
 }
 async function vcEnd(guildId, userId) {
   const active = await db.get(
@@ -641,89 +648,109 @@ async function vcEnd(guildId, userId) {
 /* =========================
    Ready
 ========================= */
-client.once("clientReady", () => {
+client.once("ready", () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
 /* =========================
    interactionCreate（コマンド）
-   ★ 全コマンド一括ACK + reply衝突を吸収（安全化）
+   ★ここは1個だけにする
 ========================= */
-async function safeInteractionError(interaction, content) {
-  try {
-    if (interaction.deferred || interaction.replied) {
-      return await interaction.editReply({ content });
-    }
-    return await interaction.reply({ content, flags: MessageFlags.Ephemeral });
-  } catch (e) {
-    if (isUnknownInteraction(e)) return;
-
-    if (isAlreadyAck(e)) {
-      try {
-        return await interaction.followUp({ content, flags: MessageFlags.Ephemeral });
-      } catch (e2) {
-        if (isUnknownInteraction(e2)) return;
-      }
-    }
-
-    console.error("safeInteractionError failed:", e?.message ?? e);
-  }
-}
-
 client.on("interactionCreate", async (interaction) => {
-  try {
-    if (!interaction.isChatInputCommand()) return;
+  if (!interaction.isChatInputCommand()) return;
 
+  // ====== 二重ACK安全化（最優先）======
+  const origDefer = interaction.deferReply.bind(interaction);
+  const origReply = interaction.reply.bind(interaction);
+  const origFollowUp = interaction.followUp.bind(interaction);
+  const origEdit = interaction.editReply.bind(interaction);
+
+  const isUnknown = (err) => err?.code === 10062 || err?.rawError?.code === 10062;
+
+  const isAckedErr = (err) => {
+    const c = err?.code ?? err?.rawError?.code ?? err?.name;
+    return c === 40060 || c === "InteractionAlreadyReplied" || String(c).includes("AlreadyReplied");
+  };
+
+  const normalizePayload = (payload) => {
+    if (!payload || typeof payload === "string") return payload;
+    const p = { ...payload };
+    if (p.ephemeral === true) {
+      delete p.ephemeral;
+      p.flags = MessageFlags.Ephemeral;
+    }
+    return p;
+  };
+
+  interaction.deferReply = async (payload = {}) => {
+    try {
+      if (interaction.deferred || interaction.replied) return null;
+      return await origDefer(normalizePayload(payload));
+    } catch (e) {
+      if (isUnknown(e) || isAckedErr(e)) return null;
+      throw e;
+    }
+  };
+
+  interaction.reply = async (payload) => {
+    const p = typeof payload === "string" ? { content: payload } : payload;
+    const pp = normalizePayload(p);
+    try {
+      if (interaction.deferred || interaction.replied) {
+        return await origEdit(pp).catch(() => null);
+      }
+      return await origReply(pp).catch(() => null);
+    } catch (e) {
+      if (isUnknown(e)) return null;
+      if (isAckedErr(e)) return await origEdit(pp).catch(() => null);
+      throw e;
+    }
+  };
+
+  interaction.editReply = async (payload) => {
+    const p = typeof payload === "string" ? { content: payload } : payload;
+    const pp = normalizePayload(p);
+    try {
+      return await origEdit(pp).catch(() => null);
+    } catch (e) {
+      if (isUnknown(e)) return null;
+      if (isAckedErr(e)) return await origEdit(pp).catch(() => null);
+      throw e;
+    }
+  };
+
+  interaction.followUp = async (payload) => {
+    const p = typeof payload === "string" ? { content: payload } : payload;
+    const pp = normalizePayload(p);
+    try {
+      if (!interaction.deferred && !interaction.replied) {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => null);
+      }
+      return await origFollowUp(pp).catch(() => null);
+    } catch (e) {
+      if (isUnknown(e)) return null;
+      if (isAckedErr(e)) return await origFollowUp(pp).catch(() => null);
+      throw e;
+    }
+  };
+
+  // ====== 実行 ======
+  try {
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
-
-    // ★ まずACK（3秒タイムアウト回避）
-    if (!interaction.deferred && !interaction.replied) {
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => null);
-    }
-
-    // ★ 既存コマンドが interaction.reply() を使ってても落ちないようにパッチ
-    const origReply = interaction.reply.bind(interaction);
-    const origFollowUp = interaction.followUp.bind(interaction);
-    const origEdit = interaction.editReply.bind(interaction);
-
-    interaction.reply = async (payload) => {
-      const data = typeof payload === "string" ? { content: payload } : payload;
-      if (interaction.deferred || interaction.replied) {
-        return origEdit(data).catch(() => null);
-      }
-      return origReply({ ...data, flags: data?.flags ?? MessageFlags.Ephemeral }).catch(() => null);
-    };
-
-    interaction.followUp = async (payload) => {
-      const data = typeof payload === "string" ? { content: payload } : payload;
-      if (!interaction.deferred && !interaction.replied) {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => null);
-      }
-      return origFollowUp({ ...data, flags: data?.flags ?? MessageFlags.Ephemeral }).catch(() => null);
-    };
-
-    interaction.editReply = async (payload) => {
-      const data = typeof payload === "string" ? { content: payload } : payload;
-      if (!interaction.deferred && !interaction.replied) {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => null);
-      }
-      return origEdit(data).catch(() => null);
-    };
-
-    // 互換で ctx も渡す
-    const ctx = {
-      reply: (p) => interaction.reply(p),
-      edit: (p) => interaction.editReply(p),
-      followUp: (p) => interaction.followUp(p),
-      interaction,
-    };
-
-    await command.execute(interaction, db, ctx);
+    await command.execute(interaction, db);
   } catch (err) {
     console.error("interactionCreate error:", err);
-    if (isUnknownInteraction(err)) return;
-    await safeInteractionError(interaction, `❌ エラー: ${err?.message ?? String(err)}`);
+    if (isUnknown(err)) return;
+
+    const msg = `❌ エラー: ${err?.message ?? String(err)}`;
+    try {
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({ content: msg }).catch(() => null);
+      } else {
+        await interaction.reply({ content: msg, flags: MessageFlags.Ephemeral }).catch(() => null);
+      }
+    } catch {}
   }
 });
 
@@ -762,7 +789,12 @@ async function incrementHit(guildId, userId) {
 }
 
 async function resetHit(guildId, userId) {
-  await db.run("UPDATE ng_hits SET count = 0, updated_at = ? WHERE guild_id = ? AND user_id = ?", Date.now(), guildId, userId);
+  await db.run(
+    "UPDATE ng_hits SET count = 0, updated_at = ? WHERE guild_id = ? AND user_id = ?",
+    Date.now(),
+    guildId,
+    userId
+  );
 }
 
 client.on("messageCreate", async (message) => {
@@ -794,7 +826,10 @@ client.on("messageCreate", async (message) => {
       })
       .catch(() => null);
 
-    await logEvent(message.guildId, "ng_detected", message.author.id, { word: hit, channelId: message.channelId });
+    await logEvent(message.guildId, "ng_detected", message.author.id, {
+      word: hit,
+      channelId: message.channelId,
+    });
 
     const count = await incrementHit(message.guildId, message.author.id);
 
@@ -810,7 +845,10 @@ client.on("messageCreate", async (message) => {
         await member.timeout(timeoutMin * 60 * 1000, `NGワード検知 ${count}/${threshold}`).catch(() => null);
         timeoutApplied = true;
         await resetHit(message.guildId, message.author.id);
-        await logEvent(message.guildId, "timeout_applied", message.author.id, { minutes: timeoutMin, threshold });
+        await logEvent(message.guildId, "timeout_applied", message.author.id, {
+          minutes: timeoutMin,
+          threshold,
+        });
       }
     }
 
