@@ -11,6 +11,7 @@ import {
   GatewayIntentBits,
   EmbedBuilder,
   PermissionsBitField,
+  MessageFlags,
 } from "discord.js";
 
 import sqlite3 from "sqlite3";
@@ -135,6 +136,8 @@ try {
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_log_events_guild_ts ON log_events (guild_id, ts);`);
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_log_events_guild_type_ts ON log_events (guild_id, type, ts);`);
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_vc_month_guild_month ON vc_stats_month (guild_id, month_key);`);
+
+  console.log("✅ DB ready");
 } catch (e) {
   console.error("❌ DB init failed:", e?.message ?? e);
 }
@@ -259,8 +262,12 @@ async function updateSettings(guildId, patch) {
   const cur = await getSettings(guildId);
   const next = {
     log_channel_id: patch.log_channel_id ?? cur.log_channel_id,
-    ng_threshold: Number.isFinite(Number(patch.ng_threshold)) ? Number(patch.ng_threshold) : cur.ng_threshold,
-    timeout_minutes: Number.isFinite(Number(patch.timeout_minutes)) ? Number(patch.timeout_minutes) : cur.timeout_minutes,
+    ng_threshold: Number.isFinite(Number(patch.ng_threshold))
+      ? Number(patch.ng_threshold)
+      : cur.ng_threshold,
+    timeout_minutes: Number.isFinite(Number(patch.timeout_minutes))
+      ? Number(patch.timeout_minutes)
+      : cur.timeout_minutes,
   };
   next.ng_threshold = Math.max(1, next.ng_threshold);
   next.timeout_minutes = Math.max(1, next.timeout_minutes);
@@ -380,7 +387,7 @@ async function sendLog(guild, payload) {
 }
 
 /* =========================
-   月次統計（既存）
+   月次統計
 ========================= */
 async function getMonthlyStats(guildId, monthStr) {
   if (!db) return null;
@@ -534,7 +541,7 @@ client.on("interactionCreate", async (interaction) => {
     console.error(err);
     if (isUnknownInteraction(err)) return;
 
-    const payload = { content: `❌ エラー: ${err?.message ?? err}`, ephemeral: true };
+    const payload = { content: `❌ エラー: ${err?.message ?? err}`, flags: MessageFlags.Ephemeral };
     try {
       if (interaction.deferred || interaction.replied) await interaction.followUp(payload);
       else await interaction.reply(payload);
@@ -616,7 +623,10 @@ client.on("messageCreate", async (message) => {
       })
       .catch(() => null);
 
-    await logEvent(message.guildId, "ng_detected", message.author.id, { word: hit, channelId: message.channelId });
+    await logEvent(message.guildId, "ng_detected", message.author.id, {
+      word: hit,
+      channelId: message.channelId,
+    });
 
     const count = await incrementHit(message.guildId, message.author.id);
 
@@ -715,7 +725,6 @@ async function flushMove(guild, guildId, userId) {
   clearTimeout(buf.timer);
   moveBuffer.delete(key);
 
-  // pathNames: [from, to, to, ...] みたいになるので、整形
   const pathNames = buf.pathNames.filter(Boolean);
   if (pathNames.length < 2) return;
 
@@ -753,10 +762,8 @@ function queueMove(guild, guildId, userId, userTag, fromName, toName) {
     return;
   }
 
-  // 5秒以内なら合流
   if (now - existing.lastAt <= MOVE_MERGE_WINDOW_MS) {
     existing.userTag = userTag;
-    // 直前が同じなら詰める
     const last = existing.pathNames[existing.pathNames.length - 1];
     if (last !== toName) existing.pathNames.push(toName);
     existing.lastAt = now;
@@ -765,7 +772,6 @@ function queueMove(guild, guildId, userId, userTag, fromName, toName) {
     return;
   }
 
-  // 5秒越えたらいったん吐いて、新規
   flushMove(guild, guildId, userId).catch(() => null);
 
   const obj = {
@@ -793,9 +799,8 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
     const member = await guild.members.fetch(userId).catch(() => null);
     const userTag = member?.user?.tag ?? `User(${userId})`;
 
-    // 参加（IN）
+    // IN
     if (!oldCh && newCh) {
-      // もし直前にMOVEまとめが残っていたら吐く
       await flushMove(guild, guild.id, userId).catch(() => null);
 
       await vcStart(guild.id, userId, newCh);
@@ -814,7 +819,7 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
       return;
     }
 
-    // 移動（MOVE）→ 5秒まとめ
+    // MOVE（まとめ）
     if (oldCh && newCh && oldCh !== newCh) {
       await vcMove(guild.id, userId, newCh);
 
@@ -825,9 +830,8 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
       return;
     }
 
-    // 退出（OUT）
+    // OUT
     if (oldCh && !newCh) {
-      // OUT前に、溜まってるMOVEまとめがあれば先に吐く
       await flushMove(guild, guild.id, userId).catch(() => null);
 
       const result = await vcEnd(guild.id, userId);
@@ -871,11 +875,15 @@ const states = new Map(); // state -> createdAt
 function parseCookies(req) {
   const raw = req.headers.cookie || "";
   const out = {};
-  raw.split(";").map(s => s.trim()).filter(Boolean).forEach(pair => {
-    const idx = pair.indexOf("=");
-    if (idx < 0) return;
-    out[pair.slice(0, idx)] = decodeURIComponent(pair.slice(idx + 1));
-  });
+  raw
+    .split(";")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .forEach((pair) => {
+      const idx = pair.indexOf("=");
+      if (idx < 0) return;
+      out[pair.slice(0, idx)] = decodeURIComponent(pair.slice(idx + 1));
+    });
   return out;
 }
 function setCookie(res, name, value, opts = {}) {
@@ -899,12 +907,18 @@ function rand(n = 24) {
   return crypto.randomBytes(n).toString("hex");
 }
 
-/** ★ Discord API：429はRetry-After尊重でバックオフ */
-async function discordApi(accessToken, path, method = "GET", body = null, extraHeaders = null, maxRetries = 3) {
-  const url = `https://discord.com/api/v10${path}`;
-  let attempt = 0;
+/** ★ Discord API：429はRetry-After尊重でバックオフ（header/JSON両対応） */
+async function discordApi(
+  accessToken,
+  apiPath,
+  method = "GET",
+  body = null,
+  extraHeaders = null,
+  maxRetries = 4
+) {
+  const url = `https://discord.com/api/v10${apiPath}`;
 
-  while (true) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const headers = {
       Authorization: `Bearer ${accessToken}`,
       "User-Agent": "AkatsukiBotAdmin/1.0",
@@ -918,31 +932,44 @@ async function discordApi(accessToken, path, method = "GET", body = null, extraH
     });
 
     if (r.ok) {
-      // 204などbody無しもあるので安全に読む
       const text = await r.text().catch(() => "");
       return text ? JSON.parse(text) : null;
     }
 
-    // 429: Retry-Afterを必ず待つ
     if (r.status === 429) {
-      const retryAfter = r.headers.get("retry-after");
-      const waitMs = (retryAfter ? Number(retryAfter) * 1000 : 1000) + Math.floor(Math.random() * 250);
-      attempt++;
-      if (attempt > maxRetries) {
-        const msg = await r.text().catch(() => "");
-        throw new Error(`Discord API ${path} failed: 429 (too many). ${msg}`);
+      let waitMs = 1000;
+
+      const ra = r.headers.get("retry-after");
+      if (ra) {
+        const sec = Number(ra);
+        if (Number.isFinite(sec)) waitMs = Math.ceil(sec * 1000);
+      } else {
+        try {
+          const data = await r.json();
+          if (typeof data?.retry_after === "number") {
+            waitMs = Math.ceil(data.retry_after * 1000);
+          }
+        } catch {}
       }
+
+      waitMs += 250 + Math.floor(Math.random() * 250);
+
+      if (attempt === maxRetries) {
+        throw new Error(`Discord API ${apiPath} failed: 429 (rate limited)`);
+      }
+
       await new Promise((res) => setTimeout(res, waitMs));
       continue;
     }
 
     const msg = await r.text().catch(() => "");
-    throw new Error(`Discord API ${path} failed: ${r.status} ${msg}`);
+    throw new Error(`Discord API ${apiPath} failed: ${r.status} ${msg}`);
   }
+
+  throw new Error(`Discord API ${apiPath} failed`);
 }
 
 function hasAdminPerm(permStr) {
-  // /users/@me/guilds の permissions は文字列のbitset
   try {
     const p = BigInt(permStr || "0");
     const ADMINISTRATOR = 1n << 3n; // 0x8
@@ -966,32 +993,40 @@ async function getSession(req) {
   return { sid, ...s };
 }
 
-/** ★ ここが429の主因：/users/@me/guilds を「短時間キャッシュ + 同時合流」 */
+/** ★ 429の主因：/users/@me/guilds を「短時間キャッシュ + 同時合流 + 失敗時は古いキャッシュ」 */
 async function ensureGuildsForSession(s) {
   const now = Date.now();
 
-  // キャッシュが新しければ返す
-  if (s.guilds && Array.isArray(s.guilds) && s.guildsFetchedAt && (now - s.guildsFetchedAt) < USER_GUILDS_CACHE_TTL_MS) {
+  if (
+    s.guilds &&
+    Array.isArray(s.guilds) &&
+    s.guildsFetchedAt &&
+    now - s.guildsFetchedAt < USER_GUILDS_CACHE_TTL_MS
+  ) {
     return s.guilds;
   }
 
-  // 同じsidで既に取りに行ってたら、それに乗る（合流）
   const inflight = guildsInFlightBySid.get(s.sid);
-  if (inflight) {
-    const guilds = await inflight;
-    return guilds;
-  }
+  if (inflight) return await inflight;
 
   const p = (async () => {
-    const guilds = await discordApi(s.accessToken, "/users/@me/guilds");
-    // セッションへキャッシュ保存
-    const raw = sessions.get(s.sid);
-    if (raw) {
-      raw.guilds = guilds;
-      raw.guildsFetchedAt = Date.now();
-      sessions.set(s.sid, raw);
+    try {
+      const guilds = await discordApi(s.accessToken, "/users/@me/guilds");
+
+      const raw = sessions.get(s.sid);
+      if (raw) {
+        raw.guilds = guilds;
+        raw.guildsFetchedAt = Date.now();
+        sessions.set(s.sid, raw);
+      }
+
+      return guilds;
+    } catch (e) {
+      if (s.guilds && Array.isArray(s.guilds) && s.guilds.length > 0) {
+        return s.guilds;
+      }
+      throw e;
     }
-    return guilds;
   })().finally(() => {
     guildsInFlightBySid.delete(s.sid);
   });
@@ -1001,14 +1036,14 @@ async function ensureGuildsForSession(s) {
 }
 
 function botGuilds() {
-  return client.guilds.cache.map(g => ({ id: g.id, name: g.name }));
+  return client.guilds.cache.map((g) => ({ id: g.id, name: g.name }));
 }
 function intersectUserBotGuilds(userGuilds) {
-  const botSet = new Set(client.guilds.cache.map(g => g.id));
+  const botSet = new Set(client.guilds.cache.map((g) => g.id));
   return (userGuilds || [])
-    .filter(g => botSet.has(g.id))
-    .filter(g => hasAdminPerm(g.permissions))
-    .map(g => ({ id: g.id, name: g.name, owner: !!g.owner, permissions: g.permissions }));
+    .filter((g) => botSet.has(g.id))
+    .filter((g) => hasAdminPerm(g.permissions))
+    .map((g) => ({ id: g.id, name: g.name, owner: !!g.owner, permissions: g.permissions }));
 }
 
 /* =========================
@@ -1021,6 +1056,9 @@ const server = http.createServer(async (req, res) => {
     const u = new URL(req.url || "/", baseUrl(req));
     const pathname = u.pathname;
 
+    // health (Render check)
+    if (pathname === "/health") return text(res, "ok", 200);
+
     // ---- 旧token方式（OAuthが無い場合の保険）----
     const tokenQ = u.searchParams.get("token") || "";
     const tokenAuthed = ADMIN_TOKEN && tokenQ === ADMIN_TOKEN;
@@ -1032,11 +1070,10 @@ const server = http.createServer(async (req, res) => {
 
     // ====== OAuth endpoints ======
     if (pathname === "/login") {
-      if (!oauthReady) return text(res, "OAuth is not configured. Set DISCORD_CLIENT_ID/SECRET and PUBLIC_URL.", 500);
+      if (!oauthReady) return text(res, "OAuth not configured. Set DISCORD_CLIENT_ID/SECRET and PUBLIC_URL.", 500);
 
       const state = rand(18);
       states.set(state, Date.now());
-      // 古いstate掃除
       for (const [k, t] of states) if (Date.now() - t > 10 * 60_000) states.delete(k);
 
       const redirectUri = OAUTH_REDIRECT_URI || `${baseUrl(req)}${REDIRECT_PATH}`;
@@ -1111,7 +1148,6 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === "/admin") {
       if (!isAuthed) {
-        // OAuthが使えるならログイン誘導、無いならtoken方式案内
         return html(res, renderNeedLoginHTML({ oauthReady, tokenEnabled: !!ADMIN_TOKEN }));
       }
       const user = sess?.user || null;
@@ -1120,3 +1156,486 @@ const server = http.createServer(async (req, res) => {
 
     // ====== APIs ======
     if (pathname.startsWith("/api/")) {
+      if (!isAuthed) return json(res, { ok: false, error: "unauthorized" }, 401);
+
+      // OAuth時は「Bot入り + あなたが管理権限のある鯖」だけ許可
+      let allowedGuildIds = null;
+      if (sess) {
+        const userGuilds = await ensureGuildsForSession(sess);
+        const allowed = intersectUserBotGuilds(userGuilds);
+        allowedGuildIds = new Set(allowed.map((g) => g.id));
+      }
+
+      function requireGuildAllowed(guildId) {
+        if (!guildId) return { ok: false, status: 400, error: "missing guild" };
+        if (allowedGuildIds && !allowedGuildIds.has(guildId)) {
+          return { ok: false, status: 403, error: "forbidden guild" };
+        }
+        return { ok: true };
+      }
+
+      if (pathname === "/api/health") return json(res, { ok: true });
+
+      if (pathname === "/api/me") {
+        return json(res, {
+          ok: true,
+          oauth: !!sess,
+          user: sess?.user
+            ? { id: sess.user.id, username: sess.user.username, global_name: sess.user.global_name }
+            : null,
+          botGuildCount: client.guilds.cache.size,
+        });
+      }
+
+      if (pathname === "/api/guilds") {
+        if (sess) {
+          const userGuilds = await ensureGuildsForSession(sess);
+          const list = intersectUserBotGuilds(userGuilds).map((g) => ({ id: g.id, name: g.name }));
+          return json(res, { ok: true, guilds: list });
+        }
+        // token方式はbotが入ってる鯖一覧（制限なし）
+        return json(res, { ok: true, guilds: botGuilds() });
+      }
+
+      if (pathname === "/api/settings") {
+        const guildId = u.searchParams.get("guild") || "";
+        const chk = requireGuildAllowed(guildId);
+        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
+
+        const s = await getSettings(guildId);
+        return json(res, { ok: true, guildId, settings: s });
+      }
+
+      if (pathname === "/api/ngwords") {
+        const guildId = u.searchParams.get("guild") || "";
+        const chk = requireGuildAllowed(guildId);
+        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
+
+        const words = await getNgWords(guildId);
+        return json(res, { ok: true, guildId, count: words.length, words });
+      }
+
+      if (pathname === "/api/stats") {
+        const guildId = u.searchParams.get("guild") || "";
+        const month = u.searchParams.get("month") || "";
+        const chk = requireGuildAllowed(guildId);
+        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
+        if (!month) return json(res, { ok: false, error: "missing month" }, 400);
+
+        const stats = await getMonthlyStats(guildId, month);
+        return json(res, { ok: true, guildId, month, stats });
+      }
+
+      if (pathname === "/api/ngwords/add" && req.method === "POST") {
+        const body = await readJson(req);
+        const guildId = String(body?.guild || "");
+        const word = String(body?.word || "");
+        const chk = requireGuildAllowed(guildId);
+        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
+
+        const r = await addNgWord(guildId, word);
+        const words = await getNgWords(guildId);
+        return json(res, { ok: !!r.ok, error: r.error || null, count: words.length, words });
+      }
+
+      if (pathname === "/api/ngwords/remove" && req.method === "POST") {
+        const body = await readJson(req);
+        const guildId = String(body?.guild || "");
+        const word = String(body?.word || "");
+        const chk = requireGuildAllowed(guildId);
+        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
+
+        const r = await removeNgWord(guildId, word);
+        const words = await getNgWords(guildId);
+        return json(res, { ok: !!r.ok, error: r.error || null, count: words.length, words });
+      }
+
+      if (pathname === "/api/ngwords/clear" && req.method === "POST") {
+        const body = await readJson(req);
+        const guildId = String(body?.guild || "");
+        const chk = requireGuildAllowed(guildId);
+        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
+
+        await clearNgWords(guildId);
+        const words = await getNgWords(guildId);
+        return json(res, { ok: true, count: words.length, words });
+      }
+
+      if (pathname === "/api/settings/update" && req.method === "POST") {
+        const body = await readJson(req);
+        const guildId = String(body?.guild || "");
+        const chk = requireGuildAllowed(guildId);
+        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
+
+        const next = await updateSettings(guildId, {
+          ng_threshold: body?.ng_threshold,
+          timeout_minutes: body?.timeout_minutes,
+        });
+        return json(res, { ok: true, settings: next });
+      }
+
+      return json(res, { ok: false, error: "not found" }, 404);
+    }
+
+    return text(res, "Not Found", 404);
+  } catch (e) {
+    console.error("web error:", e?.message ?? e);
+    return text(res, "500", 500);
+  }
+});
+
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`🌐 Listening on ${PORT}`);
+});
+
+/* =========================
+   Login
+========================= */
+if (token) {
+  client.login(token).catch((e) => console.error("❌ login failed:", e?.message ?? e));
+} else {
+  console.error("❌ DISCORD_TOKEN が無いのでログインできません");
+}
+
+/* =========================
+   Web helpers
+========================= */
+function json(res, obj, status = 200) {
+  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+  res.end(JSON.stringify(obj));
+}
+function text(res, body, status = 200) {
+  res.writeHead(status, { "Content-Type": "text/plain; charset=utf-8" });
+  res.end(body);
+}
+function html(res, body, status = 200) {
+  res.writeHead(status, { "Content-Type": "text/html; charset=utf-8" });
+  res.end(body);
+}
+async function readJson(req) {
+  const chunks = [];
+  for await (const c of req) chunks.push(c);
+  const raw = Buffer.concat(chunks).toString("utf-8") || "{}";
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+/* =========================
+   Pages
+========================= */
+function renderHomeHTML({ oauthReady, isAuthed, botGuilds }) {
+  return `<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Akatsuki Bot</title>
+<style>
+body{font-family:system-ui;margin:16px}
+.card{border:1px solid #ddd;border-radius:12px;padding:12px;max-width:820px}
+.btn{display:inline-block;padding:10px 12px;border:1px solid #333;border-radius:10px;text-decoration:none;color:#000}
+.muted{color:#666}
+</style></head>
+<body>
+  <div class="card">
+    <h2>Akatsuki Bot</h2>
+    <p class="muted">Botが入っているサーバー数: ${botGuilds}</p>
+    ${
+      isAuthed
+        ? `<a class="btn" href="/admin">管理画面へ</a> <a class="btn" href="/logout">ログアウト</a>`
+        : oauthReady
+          ? `<a class="btn" href="/login">Discordでログイン</a>`
+          : `<p class="muted">OAuth未設定（DISCORD_CLIENT_ID/SECRET + PUBLIC_URL を設定してください）</p>`
+    }
+  </div>
+</body></html>`;
+}
+
+function renderNeedLoginHTML({ oauthReady, tokenEnabled }) {
+  return `<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Login</title>
+<style>
+body{font-family:system-ui;margin:16px}
+.card{border:1px solid #ddd;border-radius:12px;padding:12px;max-width:820px}
+.btn{display:inline-block;padding:10px 12px;border:1px solid #333;border-radius:10px;text-decoration:none;color:#000}
+.muted{color:#666}
+</style></head>
+<body>
+  <div class="card">
+    <h2>管理画面</h2>
+    <p class="muted">Discord OAuthでログインしてください。</p>
+    ${
+      oauthReady
+        ? `<a class="btn" href="/login">Discordでログイン</a>`
+        : `<p class="muted">OAuth未設定（DISCORD_CLIENT_ID/SECRET + PUBLIC_URL が必要）</p>`
+    }
+    ${
+      tokenEnabled
+        ? `<hr/><p class="muted">（保険）ADMIN_TOKEN方式: /admin?token=XXXX</p>`
+        : ``
+    }
+  </div>
+</body></html>`;
+}
+
+/* =========================
+   ★管理画面（設定表示をわかりやすく）
+========================= */
+function renderAdminHTML({ user, oauth, tokenAuthed }) {
+  return `<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Akatsuki Bot Admin</title>
+<style>
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 16px; }
+  .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
+  select,input,button { padding:8px; }
+  button { cursor:pointer; }
+  .card { border:1px solid #ddd; border-radius:12px; padding:12px; margin:12px 0; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(320px,1fr)); gap:12px; }
+  pre { white-space:pre-wrap; word-break:break-word; }
+  .muted { color:#666; }
+  table { width:100%; border-collapse:collapse; }
+  th,td { border-bottom:1px solid #eee; padding:8px; text-align:left; }
+  .pill{display:inline-block;padding:4px 8px;border:1px solid #ccc;border-radius:999px;font-size:12px}
+</style>
+</head>
+<body>
+  <h2>Akatsuki Bot 管理画面</h2>
+  <div class="row">
+    <span class="pill">${oauth ? "Discord OAuth" : "Token"} でログイン中</span>
+    ${user ? `<span class="pill">User: ${user.global_name || user.username}</span>` : ``}
+    ${oauth ? `<a href="/logout">ログアウト</a>` : ``}
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <label>あなたが管理できる鯖（Bot導入済み）:</label>
+      <select id="guild"></select>
+      <label>Month:</label>
+      <input id="month" type="month" />
+      <button id="reload">更新</button>
+    </div>
+    <p class="muted">※「あなたが所属」かつ「Botが入ってる」かつ「管理権限(Manage Guild / Admin)」の鯖だけ出ます。</p>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>月次サマリ</h3>
+      <div id="summary">読み込み中...</div>
+    </div>
+
+    <div class="card">
+      <h3>Top NG Users</h3>
+      <table>
+        <thead><tr><th>User ID</th><th>Count</th></tr></thead>
+        <tbody id="topNg"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>NGワード一覧（管理者のみ）</h3>
+      <pre id="ngwords">(loading)</pre>
+      <div class="row">
+        <input id="ng_add" placeholder="追加するワード" />
+        <button id="btn_add">追加</button>
+      </div>
+      <div class="row">
+        <input id="ng_remove" placeholder="削除するワード（完全一致）" />
+        <button id="btn_remove">削除</button>
+      </div>
+      <div class="row">
+        <button id="btn_clear" style="border:1px solid #f00;">全削除</button>
+        <span class="muted">※戻せません</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>NG検知の自動処分（わかりやすく）</h3>
+      <div id="settingsBox" class="muted">読み込み中...</div>
+
+      <div class="row" style="margin-top:10px;">
+        <label>何回でタイムアウト？</label>
+        <input id="threshold" type="number" min="1" step="1" />
+        <label>タイムアウト時間（分）</label>
+        <input id="timeout" type="number" min="1" step="1" />
+        <button id="btn_save">保存</button>
+      </div>
+      <p class="muted">例：3回で10分タイムアウト</p>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+
+  function yyyymmNow(){
+    const dt = new Date();
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth()+1).padStart(2,"0");
+    return \`\${y}-\${m}\`;
+  }
+
+  async function api(path, opts){
+    const r = await fetch(path, opts);
+    return r.json();
+  }
+
+  async function postJson(path, body){
+    return api(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  }
+
+  // ★ 2重ロード防止（429踏み防止）
+  let loading = false;
+
+  async function loadGuilds(){
+    const data = await api("/api/guilds");
+    const sel = $("guild");
+    sel.innerHTML = "";
+    (data.guilds || []).forEach(g => {
+      const opt = document.createElement("option");
+      opt.value = g.id;
+      opt.textContent = \`\${g.name} (\${g.id})\`;
+      sel.appendChild(opt);
+    });
+  }
+
+  function card(label, value){
+    return \`
+      <div style="border:1px solid #eee;border-radius:12px;padding:10px;">
+        <div style="color:#666;font-size:12px;">\${label}</div>
+        <div style="font-size:22px;font-weight:700;">\${value}</div>
+      </div>
+    \`;
+  }
+
+  function renderByTypeTable(obj){
+    const keys = Object.keys(obj || {});
+    if (!keys.length) return \`<div class="muted">（今月のイベントはまだありません）</div>\`;
+
+    const rows = keys
+      .sort((a,b)=> (obj[b]??0)-(obj[a]??0))
+      .map(k => \`<tr><td>\${k}</td><td>\${obj[k]}</td></tr>\`)
+      .join("");
+
+    return \`
+      <table>
+        <thead><tr><th>type</th><th>count</th></tr></thead>
+        <tbody>\${rows}</tbody>
+      </table>
+    \`;
+  }
+
+  function renderSettingsBox(s){
+    const logCh = s.log_channel_id ? s.log_channel_id : "未設定（/setlog で設定）";
+    return \`
+      <table>
+        <tbody>
+          <tr><td style="width:220px;">管理ログ チャンネルID</td><td><b>\${logCh}</b></td></tr>
+          <tr><td>NG検知 → タイムアウトまで</td><td><b>\${s.ng_threshold} 回</b></td></tr>
+          <tr><td>タイムアウト時間</td><td><b>\${s.timeout_minutes} 分</b></td></tr>
+        </tbody>
+      </table>
+    \`;
+  }
+
+  async function reload(){
+    if (loading) return;
+    loading = true;
+    try {
+      const guildId = $("guild").value;
+      const month = $("month").value;
+      if (!guildId || !month) return;
+
+      const stats = await api(\`/api/stats?guild=\${encodeURIComponent(guildId)}&month=\${encodeURIComponent(month)}\`);
+      const summary = stats.stats?.summary ?? {};
+      const byType = summary.byType ?? {};
+
+      $("summary").innerHTML = \`
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:10px;">
+          \${card("NG検知", summary.ngDetected ?? 0)}
+          \${card("Timeout", summary.timeouts ?? 0)}
+          \${card("Join", summary.joins ?? 0)}
+          \${card("Leave", summary.leaves ?? 0)}
+        </div>
+        <div style="font-weight:600;margin:6px 0;">内訳（byType）</div>
+        \${renderByTypeTable(byType)}
+      \`;
+
+      const topNg = $("topNg");
+      topNg.innerHTML = "";
+      (stats.stats?.topNgUsers || []).forEach(r => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = \`<td>\${r.user_id}</td><td>\${r.cnt}</td>\`;
+        topNg.appendChild(tr);
+      });
+
+      const ng = await api(\`/api/ngwords?guild=\${encodeURIComponent(guildId)}\`);
+      $("ngwords").textContent = (ng.words || []).join("\\n") || "(empty)";
+
+      const st = await api(\`/api/settings?guild=\${encodeURIComponent(guildId)}\`);
+      $("settingsBox").innerHTML = renderSettingsBox(st.settings ?? { log_channel_id:null, ng_threshold:3, timeout_minutes:10 });
+      $("threshold").value = st.settings?.ng_threshold ?? 3;
+      $("timeout").value = st.settings?.timeout_minutes ?? 10;
+    } finally {
+      loading = false;
+    }
+  }
+
+  $("reload").addEventListener("click", reload);
+  $("guild").addEventListener("change", reload);
+  $("month").addEventListener("change", reload);
+
+  $("btn_add").addEventListener("click", async () => {
+    const guildId = $("guild").value;
+    const word = $("ng_add").value;
+    await postJson("/api/ngwords/add", { guild: guildId, word });
+    $("ng_add").value = "";
+    await reload();
+  });
+
+  $("btn_remove").addEventListener("click", async () => {
+    const guildId = $("guild").value;
+    const word = $("ng_remove").value;
+    await postJson("/api/ngwords/remove", { guild: guildId, word });
+    $("ng_remove").value = "";
+    await reload();
+  });
+
+  $("btn_clear").addEventListener("click", async () => {
+    if (!confirm("NGワードを全削除します。よろしいですか？")) return;
+    const guildId = $("guild").value;
+    await postJson("/api/ngwords/clear", { guild: guildId });
+    await reload();
+  });
+
+  $("btn_save").addEventListener("click", async () => {
+    const guildId = $("guild").value;
+    const ng_threshold = Number($("threshold").value);
+    const timeout_minutes = Number($("timeout").value);
+    await postJson("/api/settings/update", { guild: guildId, ng_threshold, timeout_minutes });
+    await reload();
+    alert("保存しました");
+  });
+
+  (async () => {
+    $("month").value = yyyymmNow();
+    await loadGuilds();
+    await reload();
+  })();
+})();
+</script>
+</body>
+</html>`;
+}
