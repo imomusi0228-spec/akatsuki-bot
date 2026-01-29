@@ -14,40 +14,32 @@ export const data = new SlashCommandBuilder()
 function isUnknownInteraction(err) {
   return err?.code === 10062 || err?.rawError?.code === 10062;
 }
+function isAlreadyAck(err) {
+  return err?.code === 40060 || err?.rawError?.code === 40060;
+}
 
-export async function execute(interaction, db) {
-  // まずACK（ただし二重起動/期限切れなら負け側は黙る）
+// ACK済み/未ACKどっちでも確実にユーザーへ返すためのヘルパ
+async function safeReply(interaction, content) {
   try {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-  } catch (e) {
-    if (isUnknownInteraction(e)) return; // ここが重要：落ちない
-    throw e;
-  }
-
-  try {
-    if (!interaction.guildId) {
-      return await interaction.editReply("❌ サーバー内で実行してください。");
+    if (interaction.deferred || interaction.replied) {
+      return await interaction.editReply({ content });
     }
-    if (!db) {
-      return await interaction.editReply("❌ DBが初期化できていません（Renderログ確認）");
-    }
-
-    const channel = interaction.options.getChannel("channel", true);
-
-    await db.run(
-      `INSERT INTO settings (guild_id, log_channel_id)
-       VALUES (?, ?)
-       ON CONFLICT(guild_id) DO UPDATE SET log_channel_id = excluded.log_channel_id`,
-      interaction.guildId,
-      channel.id
-    );
-
-    await interaction.editReply(`✅ 管理ログ送信先を ${channel} に設定しました。`);
+    return await interaction.reply({ content, flags: MessageFlags.Ephemeral });
   } catch (e) {
     if (isUnknownInteraction(e)) return;
-    console.error("setlog error:", e);
-    try {
-      await interaction.editReply(`❌ エラー: ${e?.message ?? e}`);
-    } catch {}
+    // 競合で reply が先に走った等 → followUp に逃がす
+    if (isAlreadyAck(e)) {
+      try {
+        return await interaction.followUp({
+          content,
+          flags: MessageFlags.Ephemeral,
+        });
+      } catch (e2) {
+        if (isUnknownInteraction(e2)) return;
+      }
+    }
+    throw e;
   }
 }
+
+async function safeDef
