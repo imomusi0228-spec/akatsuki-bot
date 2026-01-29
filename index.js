@@ -1412,8 +1412,13 @@ if (pathname === "/login") {
 
     // ====== Pages ======
     if (pathname === "/") {
-      return html(res, renderHomeHTML({ oauthReady, isAuthed, botGuilds: botGuilds().length }));
-    }
+      return html(res, renderHomeHTML({
+  title: "Akatsuki Bot",
+  links: [
+    { label: "Admin", href: "/admin" },
+    { label: "OAuth Callback", href: "/oauth/callback" },
+  ],
+}));
 
     if (pathname === "/admin") {
       if (!isAuthed) {
