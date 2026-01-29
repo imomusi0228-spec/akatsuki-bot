@@ -529,9 +529,6 @@ client.once("clientReady", () => {
 /* =========================
    interactionCreate（コマンド）
 ========================= */
-function isUnknownInteraction(err) {
-  return err?.code === 10062 || err?.rawError?.code === 10062;
-}
 function isAlreadyAck(err) {
   return err?.code === 40060 || err?.rawError?.code === 40060;
 }
