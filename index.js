@@ -375,10 +375,10 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
         showStatus("ngStatus", "取得失敗: " + (ng.error || "unknown"), true);
       } else {
         $("ngwords").textContent = (ng.words || []).map(w =>
-  (w.kind === "regex"
-    ? "/" + w.word + "/" + (w.flags || "")
-    : w.word)
-).join("\n") || "（なし）";
+      (w.kind === "regex"
+      ? "/" + w.word + "/" + (w.flags || "")
+      : w.word)
+      ).join("\n") || "（なし）";
 
         showStatus("ngStatus", "取得OK（" + (ng.count ?? (ng.words||[]).length) + "件）", false);
       }
