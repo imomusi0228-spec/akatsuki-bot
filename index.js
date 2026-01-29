@@ -648,7 +648,7 @@ async function vcEnd(guildId, userId) {
 /* =========================
    Ready
 ========================= */
-client.once("ready", () => {
+client.once("clientReady", () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
