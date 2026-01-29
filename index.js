@@ -1714,21 +1714,24 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
 
   // 最大10回リトライ（bot ready待ち / guilds取得待ち）
   for (let i = 0; i < 10; i++) {
-    const data = await api("/api/guilds").catch(() => null);
+    let data = null;
+    try {
+      data = await api("/api/guilds");
+    } catch {}
 
     if (data && data.ok && Array.isArray(data.guilds) && data.guilds.length > 0) {
-      data.guilds.forEach(g => {
+      for (const g of data.guilds) {
         const opt = document.createElement("option");
         opt.value = g.id;
-        opt.textContent = `${g.name} (${g.id})`;
+        opt.textContent = String(g.name) + " (" + String(g.id) + ")";
         sel.appendChild(opt);
-      });
+      }
       sel.disabled = false;
       return;
     }
 
     // 503(bot_not_ready) や 空配列なら少し待って再試行
-    await new Promise(r => setTimeout(r, 800));
+    await new Promise(function(r){ setTimeout(r, 800); });
   }
 
   // ここまで来たら失敗表示
