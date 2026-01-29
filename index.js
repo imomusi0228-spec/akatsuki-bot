@@ -712,70 +712,82 @@ client.on("interactionCreate", async (interaction) => {
 
 client.on("messageCreate", async (message) => {
   try {
-    if (!message.guild || message.author.bot) return;
+    if (!message.guild) return;
+    if (message.author?.bot) return;
+    if (typeof message.content !== "string") return;
 
-    // ===== NGワード検出（literal + regex 対応）=====
+    // ===== 二重処理防止 =====
+    if (alreadyProcessed(message.id)) return;
+    markProcessed(message.id);
+
+    // ===== NGワード取得 =====
     const ngWords = await getNgWords(message.guildId);
     if (!ngWords.length) return;
 
-    const content = message.content ?? "";
-    const contentLower = normalize(content);
+    const contentLower = normalize(message.content);
 
-    let hit = null;
+    // ===== 通常文字列一致のみ（正規表現は後で拡張）=====
+    const hitWord = ngWords.find((w) => contentLower.includes(normalize(w)));
+    if (!hitWord) return;
 
-    // 1) literal
-    for (const item of ngWords) {
-      if (item.kind !== "literal") continue;
+    // ===== メッセージ削除 =====
+    const me = await message.guild.members.fetchMe().catch(() => null);
+    const canManage = me?.permissionsIn(message.channel)?.has(PermissionsBitField.Flags.ManageMessages);
+    if (canManage) await message.delete().catch(() => null);
 
-      if (contentLower.includes(normalize(item.word))) {
-        hit = { ...item, matched: item.word };
-        break;
-      }
-    }
+    // ===== DM警告 =====
+    await message.author
+      .send(
+        "⚠️ サーバーのルールに抵触する可能性のある表現が検出されたため、メッセージが削除されました。\n内容を見直して再投稿してください。"
+      )
+      .catch(() => null);
 
-    // 2) regex
-    if (!hit) {
-      for (const item of ngWords) {
-        if (item.kind !== "regex") continue;
+    // ===== ログ保存 =====
+    await logEvent(message.guildId, "ng_detected", message.author.id, {
+      word: hitWord,
+      channelId: message.channelId,
+    });
 
-        // 最低限のReDoS対策
-        if (item.word.length > 200) continue;
-        if (content.length > 4000) continue;
-
-        let re;
-        try {
-          re = new RegExp(item.word, item.flags || "i");
-        } catch {
-          continue;
-        }
-
-        if (re.test(content)) {
-          hit = { ...item, matched: item.word };
-          break;
-        }
-      }
-    }
-
-    if (!hit) return;
-
-    // ===== ここから先は今までの処理 =====
-    // 例：削除・警告・カウント・ログなど
-
-    await message.delete().catch(() => {});
-
+    // ===== 回数カウント =====
     const settings = await getSettings(message.guildId);
-    if (settings?.log_channel_id) {
-      await logEvent(message.guildId, "ng_detected", message.author.id, {
-        pattern: hit.word,
-        kind: hit.kind,
-        channelId: message.channelId,
-      });
+    const count = await incrementHit(message.guildId, message.author.id);
+
+    let timeoutApplied = false;
+    const threshold = Math.max(1, settings.ng_threshold);
+    const timeoutMin = Math.max(1, settings.timeout_minutes);
+
+    // ===== タイムアウト処理 =====
+    if (count >= threshold) {
+      const member = await message.guild.members.fetch(message.author.id).catch(() => null);
+      const canTimeout = me?.permissions?.has(PermissionsBitField.Flags.ModerateMembers);
+
+      if (member && canTimeout) {
+        await member.timeout(timeoutMin * 60 * 1000, `NGワード検知 ${count}/${threshold}`).catch(() => null);
+        timeoutApplied = true;
+        await resetHit(message.guildId, message.author.id);
+
+        await logEvent(message.guildId, "timeout_applied", message.author.id, {
+          minutes: timeoutMin,
+          threshold,
+        });
+      }
     }
 
-    try {
-      await message.author.send(`⚠️ NGワードが含まれていたためメッセージを削除しました。`);
-    } catch {}
+    // ===== 管理ログ送信 =====
+    const embed = new EmbedBuilder()
+      .setColor(0xff3b3b)
+      .setAuthor({ name: message.author.tag, iconURL: message.author.displayAvatarURL?.() ?? undefined })
+      .setTitle("🚫 NGワード検知")
+      .setDescription(`Channel: ${message.channel}`)
+      .addFields(
+        { name: "Hit", value: `\`${hitWord}\``, inline: true },
+        { name: "Count", value: `${Math.min(count, threshold)}/${threshold}`, inline: true },
+        { name: "Content", value: `\`\`\`\n${message.content.slice(0, 1800)}\n\`\`\``, inline: false }
+      )
+      .setFooter({ text: timeoutApplied ? `✅ Timeout applied: ${timeoutMin} min` : `Message ID: ${message.id}` })
+      .setTimestamp(new Date());
 
+    await sendLog(message.guild, { embeds: [embed] }, "ng");
   } catch (err) {
     console.error("messageCreate error:", err);
   }
