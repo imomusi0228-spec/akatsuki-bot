@@ -21,10 +21,8 @@ function isAlreadyAck(err) {
 async function safeDefer(interaction) {
   if (interaction.deferred || interaction.replied) return;
   try {
-    // ephemeral
     await interaction.deferReply({ ephemeral: true });
   } catch (e) {
-    // 期限切れ/すでにACK済みは黙って終了（落とさない）
     if (isUnknownInteraction(e) || isAlreadyAck(e)) return;
     throw e;
   }
@@ -39,7 +37,6 @@ async function safeSend(interaction, content) {
   } catch (e) {
     if (isUnknownInteraction(e)) return;
     if (isAlreadyAck(e)) {
-      // 競合したらfollowUpで返す
       try {
         return await interaction.followUp({ content, ephemeral: true });
       } catch (e2) {
