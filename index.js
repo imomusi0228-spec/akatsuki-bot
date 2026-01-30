@@ -62,31 +62,33 @@ async function ensureLogThread(guild, kind) {
   // テキストチャンネル前提（フォーラム運用なら後で分岐を足す）
   if (!parent.threads?.create) return null;
 
-  const name = threadNameFor(kind, dateKey);
+    const name = threadNameFor(kind, dateKey);
 
-  const thread = await parent.threads
-    .create({
+  let thread = null;
+
+  // フォーラム（投稿=スレッド）
+  if (parent.type === ChannelType.GuildForum) {
+    thread = await parent.threads.create({
+      name,
+      autoArchiveDuration: 1440,
+      message: { content: `ログ開始: ${name}` },
+      reason: "Create daily log thread",
+    }).catch(() => null);
+  }
+  // テキスト（チャンネル内スレッド）
+  else if (parent.threads?.create) {
+    thread = await parent.threads.create({
       name,
       autoArchiveDuration: 1440,
       reason: "Create daily log thread",
-    })
-    .catch(() => null);
+    }).catch(() => null);
+
+    if (thread) {
+      await thread.send({ content: `ログ開始: ${name}` }).catch(() => null);
+    }
+  }
 
   if (!thread) return null;
-
-  await thread.send({ content: `ログ開始: ${name}` }).catch(() => null);
-
-  await db.run(
-    `INSERT OR REPLACE INTO log_threads (guild_id, date_key, kind, thread_id)
-     VALUES (?, ?, ?, ?)`,
-    guild.id,
-    dateKey,
-    kind,
-    thread.id
-  );
-
-  return thread;
-}
 
 async function sendToKindThread(guild, kind, payload) {
   const th = await ensureLogThread(guild, kind);
@@ -94,6 +96,8 @@ async function sendToKindThread(guild, kind, payload) {
   await th.send(payload).catch(() => null);
   return true;
 }
+
+import { ChannelType } from "discord.js";
 
 function todayKeyTokyo() {
   const dtf = new Intl.DateTimeFormat("sv-SE", {
