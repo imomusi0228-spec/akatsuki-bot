@@ -15,7 +15,7 @@ import {
   PermissionsBitField,
   MessageFlags,
   Events,
-  ChannelType,
+  ChannelType, // ← 追加
 } from "discord.js";
 
 import sqlite3 from "sqlite3";
@@ -59,29 +59,30 @@ async function ensureLogThread(guild, kind) {
     (await guild.channels.fetch(logChannelId).catch(() => null));
   if (!parent) return null;
 
-  // テキストチャンネル前提（フォーラム運用なら後で分岐を足す）
-  if (!parent.threads?.create) return null;
-
-    const name = threadNameFor(kind, dateKey);
+  const name = threadNameFor(kind, dateKey);
 
   let thread = null;
 
   // フォーラム（投稿=スレッド）
   if (parent.type === ChannelType.GuildForum) {
-    thread = await parent.threads.create({
-      name,
-      autoArchiveDuration: 1440,
-      message: { content: `ログ開始: ${name}` },
-      reason: "Create daily log thread",
-    }).catch(() => null);
+    thread = await parent.threads
+      .create({
+        name,
+        autoArchiveDuration: 1440,
+        message: { content: `ログ開始: ${name}` },
+        reason: "Create daily log thread",
+      })
+      .catch(() => null);
   }
   // テキスト（チャンネル内スレッド）
   else if (parent.threads?.create) {
-    thread = await parent.threads.create({
-      name,
-      autoArchiveDuration: 1440,
-      reason: "Create daily log thread",
-    }).catch(() => null);
+    thread = await parent.threads
+      .create({
+        name,
+        autoArchiveDuration: 1440,
+        reason: "Create daily log thread",
+      })
+      .catch(() => null);
 
     if (thread) {
       await thread.send({ content: `ログ開始: ${name}` }).catch(() => null);
@@ -90,14 +91,24 @@ async function ensureLogThread(guild, kind) {
 
   if (!thread) return null;
 
+  await db.run(
+    `INSERT OR REPLACE INTO log_threads (guild_id, date_key, kind, thread_id)
+     VALUES (?, ?, ?, ?)`,
+    guild.id,
+    dateKey,
+    kind,
+    thread.id
+  );
+
+  return thread;
+}
+
 async function sendToKindThread(guild, kind, payload) {
   const th = await ensureLogThread(guild, kind);
   if (!th) return false;
   await th.send(payload).catch(() => null);
   return true;
 }
-
-import { ChannelType } from "discord.js";
 
 function todayKeyTokyo() {
   const dtf = new Intl.DateTimeFormat("sv-SE", {
@@ -809,6 +820,18 @@ function baseUrl(req) {
 /* =========================
    Settings / NG
 ========================= */
+const ngProcessed = new Map(); // messageId -> timestamp
+const NG_DEDUPE_TTL = 30_000;  // 30秒
+
+function markNgProcessed(messageId) {
+  const now = Date.now();
+  // 掃除
+  for (const [k, t] of ngProcessed) if (now - t > NG_DEDUPE_TTL) ngProcessed.delete(k);
+  if (ngProcessed.has(messageId)) return false; // もう処理済み
+  ngProcessed.set(messageId, now);
+  return true;
+}
+
 async function getSettings(guildId) {
   if (!db) return { log_channel_id: null, ng_threshold: DEFAULT_NG_THRESHOLD, timeout_minutes: DEFAULT_TIMEOUT_MIN };
   const row = await db.get("SELECT * FROM settings WHERE guild_id = ?", guildId);
@@ -1472,6 +1495,8 @@ client.on(Events.MessageCreate, async (message) => {
   try {
     if (!message.guild) return;
     if (message.author?.bot) return;
+
+    if (!markNgProcessed(message.id)) return;
 
     const guildId = message.guild.id;
 
