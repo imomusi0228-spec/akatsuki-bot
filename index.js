@@ -1309,9 +1309,9 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
 /* =========================
    Ready / Commands (NO EPHEMERAL / NO REPLY UI)
    - Always ACK once (public) to avoid "応答しませんでした"
-   - Immediately delete the reply UI
+   - Immediately delete the reply UI when possible
    - Provide publicSend() for normal messages
-   - Make reply/defer/edit/followUp safe no-ops to avoid 40060 errors
+   - DO NOT rely on interaction.reply/editReply/followUp in commands
 ========================= */
 client.once(Events.ClientReady, (c) => {
   console.log(`✅ Logged in as ${c.user.tag}`);
@@ -1323,60 +1323,46 @@ client.on("interactionCreate", async (interaction) => {
   const isUnknown = (err) => err?.code === 10062 || err?.rawError?.code === 10062;
   const isAlreadyAcked = (err) => {
     const c = err?.code ?? err?.rawError?.code ?? err?.name;
-    return c === 40060 || c === "InteractionAlreadyReplied" || String(c).includes("AlreadyReplied");
+    return (
+      c === 40060 ||
+      c === "InteractionAlreadyReplied" ||
+      String(c).includes("AlreadyReplied")
+    );
   };
 
-  // ✅ 2枚目の見た目：通常メッセージ送信用
+  // ✅ 2枚目の見た目：通常メッセージ送信用（これだけ使う）
   interaction.publicSend = async (payload) => {
     return await interaction.channel?.send(payload).catch(() => null);
   };
 
-  // ✅ 以後はコマンド側が間違って reply/defer しても落ちないように無害化
-  const safeNoop = async () => null;
-
-  // deferReplyだけは「未ACKの時だけ」本物を呼ぶ。それ以外は握り潰す
-  const origDefer = interaction.deferReply.bind(interaction);
-  interaction.deferReply = async (payload = {}) => {
-    try {
-      if (interaction.deferred || interaction.replied) return null;
-      return await origDefer(payload).catch(() => null);
-    } catch (e) {
-      if (isUnknown(e) || isAlreadyAcked(e)) return null;
-      return null;
-    }
-  };
-
-  // reply/editReply/followUp は禁止（＝使っても落ちないように no-op）
-  interaction.reply = safeNoop;
-  interaction.editReply = safeNoop;
-  interaction.followUp = safeNoop;
-
-  // deleteReply は「できるなら消す」だけ
-  const origDelete = interaction.deleteReply?.bind(interaction);
-  interaction.deleteReply = async () => {
-    try {
-      if (!origDelete) return null;
-      if (!interaction.deferred && !interaction.replied) return null;
-      return await origDelete().catch(() => null);
-    } catch (e) {
-      if (isUnknown(e) || isAlreadyAcked(e)) return null;
-      return null;
-    }
-  };
-
-  // ✅ Discordの「応答しませんでした」を回避：最初に必ずACK（public）
+  // ✅ Discordの「応答しませんでした」を回避：未ACKの時だけACK（public）
   try {
-    await interaction.deferReply();
-  } catch {}
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply().catch(() => null);
+    }
+  } catch (e) {
+    if (!(isUnknown(e) || isAlreadyAcked(e))) console.error("deferReply error:", e);
+  }
 
-  // ✅ 返信UIは残さない
+  // ✅ コマンドUIの返信を消す（できる時だけ）
   try {
-    await interaction.deleteReply();
+    if (interaction.deferred || interaction.replied) {
+      await interaction.deleteReply().catch(() => null);
+    }
   } catch {}
 
   try {
     const command = client.commands.get(interaction.commandName);
-    if (!command) return;
+
+    // ✅ /admin が無い時に「何も起きない」を防ぐ
+    if (!command) {
+      await interaction.publicSend({
+        content: `❌ コマンドが見つかりません: /${interaction.commandName}`,
+      });
+      return;
+    }
+
+    // ✅ コマンド側は interaction.publicSend() で必ず出す
     await command.execute(interaction, db);
   } catch (err) {
     console.error("interactionCreate error:", err);
