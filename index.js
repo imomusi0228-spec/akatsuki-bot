@@ -477,7 +477,7 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
           renderByTypeTable(byType);
 
         const top = stats.stats?.topNgUsers ?? [];
-        $("topNg").innerHTML = top.map(x => '<tr><td>' + x.user_id + '</td><td>' + x.cnt + '</td></tr>').join("");
+        $("topNg").innerHTML = top.map(x => '<tr><td>' + (x.user_label || x.user_id) + '</td><td>' + x.cnt + '</td></tr>').join("");
       }
 
       // ngwords
@@ -954,6 +954,17 @@ async function logEvent(guildId, type, userId = null, metaObj = null) {
       Date.now()
     );
   } catch {}
+}
+
+async function resolveUserLabel(guild, userId) {
+  try {
+    const member = await guild.members.fetch(userId);
+    const display = member.displayName;
+    const username = member.user.username;
+    return `${display} (@${username})`;
+  } catch {
+    return `Unknown (${userId})`;
+  }
 }
 
 async function getMonthlyStats(guildId, monthStr) {
@@ -1667,15 +1678,34 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (pathname === "/api/stats") {
-        const guildId = u.searchParams.get("guild") || "";
-        const month = u.searchParams.get("month") || "";
-        const chk = requireGuildAllowed(guildId);
-        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
+  const guildId = u.searchParams.get("guild") || "";
+  const month = u.searchParams.get("month") || "";
+  const chk = requireGuildAllowed(guildId);
+  if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
 
-        const stats = await getMonthlyStats(guildId, month);
-        if (!stats) return json(res, { ok: false, error: "no_stats" }, 400);
-        return json(res, { ok: true, stats });
-      }
+  const stats = await getMonthlyStats(guildId, month);
+  if (!stats) return json(res, { ok: false, error: "no_stats" }, 400);
+
+  // ★ ここから追加：user_id -> 表示名(@username)
+  const guild = client.guilds.cache.get(guildId) || (await client.guilds.fetch(guildId).catch(() => null));
+
+  if (guild && Array.isArray(stats.topNgUsers)) {
+    const named = [];
+    for (const row of stats.topNgUsers) {
+      const uinfo = await resolveUserLabel(guild, row.user_id);
+      named.push({
+        ...row,              // user_id / cnt は残す
+        user_label: uinfo.label,
+        display_name: uinfo.display_name,
+        username: uinfo.username,
+      });
+    }
+    stats.topNgUsers = named;
+  }
+  // ★ 追加ここまで
+
+  return json(res, { ok: true, stats });
+}
 
       if (pathname === "/api/ngwords") {
         const guildId = u.searchParams.get("guild") || "";
