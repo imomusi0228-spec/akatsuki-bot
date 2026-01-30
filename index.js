@@ -1369,19 +1369,41 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
 
 function matchNg(content, ngList) {
   const text = String(content ?? "");
+
   for (const w of ngList) {
+    // ===== regex は今まで通り =====
     if (w.kind === "regex") {
       try {
         const re = new RegExp(w.word, w.flags || "i");
         if (re.test(text)) return { hit: true, pattern: `/${w.word}/${w.flags || "i"}` };
       } catch {}
-    } else {
-      const needle = String(w.word ?? "");
-      if (needle && text.toLowerCase().includes(needle.toLowerCase())) {
-        return { hit: true, pattern: needle };
-      }
+      continue;
+    }
+
+    // ===== plain word =====
+    const needle = String(w.word ?? "");
+    if (!needle) continue;
+
+    // 大文字小文字対策（日本語は影響なし）
+    const hay = text.toLowerCase();
+    const ndl = needle.toLowerCase();
+
+    // カタカナ語（例: バカ）については
+    // 「直後がカタカナなら語中とみなして除外」する
+    if (isKatakanaOnly(needle)) {
+      // 例: バカ(?![ァ-ヶー・]) → バカンス/バカラ などを除外
+      // ただし バカヤロー も除外される（必要なら後述の方法で拾える）
+      const re = new RegExp(`${escapeRegExp(needle)}(?![\\u30A0-\\u30FF\\u30FC\\u30FB])`, "u");
+      if (re.test(text)) return { hit: true, pattern: needle };
+      continue;
+    }
+
+    // それ以外は従来通り部分一致
+    if (hay.includes(ndl)) {
+      return { hit: true, pattern: needle };
     }
   }
+
   return { hit: false };
 }
 
