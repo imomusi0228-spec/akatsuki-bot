@@ -1307,7 +1307,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
 });
 
 /* =========================
-   Ready / Commands
+   Ready / Commands  (NO EPHEMERAL / NO REPLY UI)
 ========================= */
 client.once(Events.ClientReady, (c) => {
   console.log(`✅ Logged in as ${c.user.tag}`);
@@ -1316,71 +1316,15 @@ client.once(Events.ClientReady, (c) => {
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
-  // 二重ACK安全化
-  const origDefer = interaction.deferReply.bind(interaction);
-  const origReply = interaction.reply.bind(interaction);
-  const origFollowUp = interaction.followUp.bind(interaction);
-  const origEdit = interaction.editReply.bind(interaction);
-
   const isUnknown = (err) => err?.code === 10062 || err?.rawError?.code === 10062;
-  const isAckedErr = (err) => {
-    const c = err?.code ?? err?.rawError?.code ?? err?.name;
-    return c === 40060 || c === "InteractionAlreadyReplied" || String(c).includes("AlreadyReplied");
-  };
-  const normalizePayload = (payload) => {
-    if (!payload || typeof payload === "string") return payload;
-    const p = { ...payload };
-    if (p.ephemeral === true) {
-      delete p.ephemeral;
-      p.flags = MessageFlags.Ephemeral;
-    }
-    return p;
-  };
 
-  interaction.deferReply = async (payload = {}) => {
+  // ✅ 2枚目風：コマンド結果は「通常メッセージ」で出す
+  // これをコマンド側で使う：await interaction.publicSend({ content / embeds })
+  interaction.publicSend = async (payload) => {
     try {
-      if (interaction.deferred || interaction.replied) return null;
-      return await origDefer(normalizePayload(payload));
-    } catch (e) {
-      if (isUnknown(e) || isAckedErr(e)) return null;
-      throw e;
-    }
-  };
-  interaction.reply = async (payload) => {
-    const p = typeof payload === "string" ? { content: payload } : payload;
-    const pp = normalizePayload(p);
-    try {
-      if (interaction.deferred || interaction.replied) return await origEdit(pp).catch(() => null);
-      return await origReply(pp).catch(() => null);
+      return await interaction.channel?.send(payload).catch(() => null);
     } catch (e) {
       if (isUnknown(e)) return null;
-      if (isAckedErr(e)) return await origEdit(pp).catch(() => null);
-      throw e;
-    }
-  };
-  interaction.editReply = async (payload) => {
-    const p = typeof payload === "string" ? { content: payload } : payload;
-    const pp = normalizePayload(p);
-    try {
-      return await origEdit(pp).catch(() => null);
-    } catch (e) {
-      if (isUnknown(e)) return null;
-      if (isAckedErr(e)) return await origEdit(pp).catch(() => null);
-      throw e;
-    }
-  };
-    interaction.followUp = async (payload) => {
-    const p = typeof payload === "string" ? { content: payload } : payload;
-    const pp = normalizePayload(p);
-    try {
-      if (!interaction.deferred && !interaction.replied) {
--        await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => null);
-+        await interaction.deferReply().catch(() => null); // ✅ デフォルト public
-      }
-      return await origFollowUp(pp).catch(() => null);
-    } catch (e) {
-      if (isUnknown(e)) return null;
-      if (isAckedErr(e)) return await origFollowUp(pp).catch(() => null);
       throw e;
     }
   };
@@ -1392,17 +1336,15 @@ client.on("interactionCreate", async (interaction) => {
   } catch (err) {
     console.error("interactionCreate error:", err);
     if (isUnknown(err)) return;
+
     const msg = `❌ エラー: ${err?.message ?? String(err)}`;
-    try {
-      if (interaction.deferred || interaction.replied) {
-        await interaction.editReply({ content: msg }).catch(() => null);
-      } else {
-        await interaction.reply({ content: msg, flags: MessageFlags.Ephemeral }).catch(() => null);
-      }
-    } catch {}
+    await interaction.publicSend({ content: msg }).catch(() => null);
   }
 });
 
+/* =========================
+   Message debug log (必要なら残す)
+========================= */
 client.on(Events.MessageCreate, (m) => {
   if (!m.guild || m.author?.bot) return;
   console.log("🧪 Message seen:", {
