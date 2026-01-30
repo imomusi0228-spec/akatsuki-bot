@@ -26,9 +26,9 @@ import { open } from "sqlite";
 ========================= */
 
 function threadNameFor(kind, dateKey) {
-  if (kind === "vc") return `🎙 VCログ ${dateKey}`;
-  if (kind === "ng") return `🚫 NGログ ${dateKey}`;
-  return `📌 ${kind} ${dateKey}`;
+  if (kind === "vc") return `VCログ ${dateKey}`;
+  if (kind === "ng") return `NGログ ${dateKey}`;
+  return `ログ ${kind} ${dateKey}`;
 }
 
 async function ensureLogThread(guild, kind) {
@@ -1205,71 +1205,6 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
   }
 });
 
-/* =========================
-   VC join/leave logging -> vc thread
-========================= */
-client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
-  try {
-    const guild = newState.guild || oldState.guild;
-    if (!guild) return;
-
-    const member = newState.member || oldState.member;
-    if (!member || member.user?.bot) return;
-
-    const oldCh = oldState.channel;
-    const newCh = newState.channel;
-
-    // 変化なし
-    if (oldCh?.id === newCh?.id) return;
-
-    const displayName = member.displayName || member.user.username || member.id;
-    const avatar = member.user.displayAvatarURL?.() ?? null;
-
-    // IN
-    if (!oldCh && newCh) {
-      const embed = new EmbedBuilder()
-        .setAuthor({ name: displayName, iconURL: avatar || undefined })
-        .setDescription(`joined voice channel ${newCh ? `<#${newCh.id}>` : ""}`)
-        .addFields({ name: "ID", value: `${member.id}・今日 ${new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}`, inline: false })
-        .setTimestamp(new Date());
-
-      await sendToKindThread(guild, "vc", { embeds: [embed] });
-
-      await logEvent(guild.id, "vc_join", member.id, { channel_id: newCh.id });
-      // joins/leaves を月次で出したいなら、あなたの集計に合わせて type 名を統一してもOK
-      return;
-    }
-
-    // OUT
-    if (oldCh && !newCh) {
-      const embed = new EmbedBuilder()
-        .setAuthor({ name: displayName, iconURL: avatar || undefined })
-        .setDescription(`left voice channel ${oldCh ? `<#${oldCh.id}>` : ""}`)
-        .addFields({ name: "ID", value: `${member.id}・今日 ${new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}`, inline: false })
-        .setTimestamp(new Date());
-
-      await sendToKindThread(guild, "vc", { embeds: [embed] });
-
-      await logEvent(guild.id, "vc_leave", member.id, { channel_id: oldCh.id });
-      return;
-    }
-
-    // MOVE（任意：欲しければ）
-    if (oldCh && newCh) {
-      const embed = new EmbedBuilder()
-        .setAuthor({ name: displayName, iconURL: avatar || undefined })
-        .setDescription(`moved voice channel ${`<#${oldCh.id}> → <#${newCh.id}>`}`)
-        .addFields({ name: "ID", value: `${member.id}・今日 ${new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}`, inline: false })
-        .setTimestamp(new Date());
-
-      await sendToKindThread(guild, "vc", { embeds: [embed] });
-
-      await logEvent(guild.id, "vc_move", member.id, { from: oldCh.id, to: newCh.id });
-    }
-  } catch (e) {
-    console.error("voiceStateUpdate log error:", e);
-  }
-});
 
 /* =========================
    Ready / Commands
@@ -1405,32 +1340,11 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     const idLine = `${member.id}・${timeLabel}`;
 
     // IN
-    if (!oldCh && newCh) {
-      const embed = new EmbedBuilder()
-        .setColor(0x00ff7f) // green
-        .setAuthor({ name: authorName, iconURL: avatar || undefined })
-        .setDescription(`@${displayName} joined voice channel 🔊 <#${newCh.id}>`)
-        .addFields({ name: "ID", value: idLine, inline: false })
-        .setTimestamp(new Date());
+await sendToKindThread(guild, "vc", { embeds: [embedIn] });
 
-      await sendToKindThread(guild, "vc", { embeds: [embed] });
-      await logEvent(guild.id, "vc_join", member.id, { channel_id: newCh.id });
-      return;
-    }
+// OUT
+await sendToKindThread(guild, "vc", { embeds: [embedOut] });
 
-    // OUT
-    if (oldCh && !newCh) {
-      const embed = new EmbedBuilder()
-        .setColor(0x95a5a6) // gray
-        .setAuthor({ name: authorName, iconURL: avatar || undefined })
-        .setDescription(`@${displayName} left voice channel 🔊 <#${oldCh.id}>`)
-        .addFields({ name: "ID", value: idLine, inline: false })
-        .setTimestamp(new Date());
-
-      await sendToKindThread(guild, "vc", { embeds: [embed] });
-      await logEvent(guild.id, "vc_leave", member.id, { channel_id: oldCh.id });
-      return;
-    }
 
     // MOVE
     if (oldCh && newCh) {
