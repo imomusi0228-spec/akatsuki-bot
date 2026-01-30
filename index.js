@@ -95,6 +95,26 @@ async function sendToKindThread(guild, kind, payload) {
   return true;
 }
 
+function todayKeyTokyo() {
+  const dtf = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return dtf.format(new Date()); // YYYY-MM-DD
+}
+
+function tokyoNowLabel() {
+  const hm = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: TIMEZONE,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date());
+  return `今日 ${hm}`;
+}
+
 /* =========================
    Basic helpers (text/html/json)
 ========================= */
