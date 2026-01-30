@@ -1369,12 +1369,13 @@ client.on("interactionCreate", async (interaction) => {
       throw e;
     }
   };
-  interaction.followUp = async (payload) => {
+    interaction.followUp = async (payload) => {
     const p = typeof payload === "string" ? { content: payload } : payload;
     const pp = normalizePayload(p);
     try {
       if (!interaction.deferred && !interaction.replied) {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => null);
+-        await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => null);
++        await interaction.deferReply().catch(() => null); // ✅ デフォルト public
       }
       return await origFollowUp(pp).catch(() => null);
     } catch (e) {
@@ -1490,13 +1491,14 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
    - log BEFORE delete (keep deleted content)
    - warn DM (fallback mention)
    - Color: NG orange / Timeout purple
+   - includes message debug log (A案)
 ========================= */
 
 function matchNg(content, ngList) {
   const text = String(content ?? "");
 
   for (const w of ngList) {
-    // ===== regex は今まで通り =====
+    // ===== regex =====
     if (w.kind === "regex") {
       try {
         const re = new RegExp(w.word, w.flags || "i");
@@ -1505,25 +1507,23 @@ function matchNg(content, ngList) {
       continue;
     }
 
-    // ===== plain word =====
+    // ===== plain =====
     const needle = String(w.word ?? "");
     if (!needle) continue;
 
-    // 大文字小文字対策（日本語は影響なし）
     const hay = text.toLowerCase();
     const ndl = needle.toLowerCase();
 
-    // カタカナ語（例: バカ）については
-    // 「直後がカタカナなら語中とみなして除外」する
+    // カタカナ語の語中除外
     if (isKatakanaOnly(needle)) {
-      // 例: バカ(?![ァ-ヶー・]) → バカンス/バカラ などを除外
-      // ただし バカヤロー も除外される（必要なら後述の方法で拾える）
-      const re = new RegExp(`${escapeRegExp(needle)}(?![\\u30A0-\\u30FF\\u30FC\\u30FB])`, "u");
+      const re = new RegExp(
+        `${escapeRegExp(needle)}(?![\\u30A0-\\u30FF\\u30FC\\u30FB])`,
+        "u"
+      );
       if (re.test(text)) return { hit: true, pattern: needle };
       continue;
     }
 
-    // それ以外は従来通り部分一致
     if (hay.includes(ndl)) {
       return { hit: true, pattern: needle };
     }
@@ -1545,19 +1545,30 @@ async function incNgHit(guildId, userId) {
     userId,
     now
   );
-  const row = await db.get(`SELECT count FROM ng_hits WHERE guild_id = ? AND user_id = ?`, guildId, userId);
+  const row = await db.get(
+    `SELECT count FROM ng_hits WHERE guild_id = ? AND user_id = ?`,
+    guildId,
+    userId
+  );
   return Number(row?.count ?? 0);
 }
 
 client.on(Events.MessageCreate, async (message) => {
   try {
-    if (!message.guild) return;
-    if (message.author?.bot) return;
+    if (!message.guild || message.author?.bot) return;
+
+    /* ===== 🧪 message debug log ===== */
+    console.log("🧪 Message seen:", {
+      guild: message.guild.id,
+      channel: message.channelId,
+      author: message.author.id,
+      len: (message.content || "").length,
+      contentHead: (message.content || "").slice(0, 30),
+    });
 
     if (!markNgProcessed(message.id)) return;
 
     const guildId = message.guild.id;
-
     const ngList = await getNgWords(guildId);
     if (!ngList.length) return;
 
@@ -1568,16 +1579,17 @@ client.on(Events.MessageCreate, async (message) => {
 
     const member = message.member;
     const authorName = message.author?.username || message.author?.id;
-    const displayName = member?.displayName || message.author?.globalName || authorName;
+    const displayName =
+      member?.displayName || message.author?.globalName || authorName;
     const avatar = message.author?.displayAvatarURL?.() ?? null;
 
     const timeLabel = tokyoNowLabel();
     const idLine = `${message.author.id}・${timeLabel}`;
     const content = message.content || "";
 
-    // ===== ① NGログ（削除前） =====
+    /* ===== ① NGログ（削除前） ===== */
     const embed = new EmbedBuilder()
-      .setColor(0xe74c3c) // red
+      .setColor(0xe67e22) // NG orange
       .setAuthor({ name: authorName, iconURL: avatar || undefined })
       .setDescription(`@${displayName} NG word detected in <#${message.channelId}>`)
       .addFields(
@@ -1586,7 +1598,9 @@ client.on(Events.MessageCreate, async (message) => {
         {
           name: "Content",
           value: content
-            ? (content.length > 900 ? content.slice(0, 900) + "…" : content)
+            ? content.length > 900
+              ? content.slice(0, 900) + "…"
+              : content
             : "（空）",
           inline: false,
         }
@@ -1601,32 +1615,44 @@ client.on(Events.MessageCreate, async (message) => {
       message_id: message.id,
     });
 
-    // ===== ② 削除 =====
+    /* ===== ② 削除 ===== */
     await message.delete().catch(() => null);
 
-    // ===== ③ 警告 =====
+    /* ===== ③ 個人警告（DM → fallback mention） ===== */
     const warnText =
-      `⚠️ NGワードが含まれていたため、メッセージは削除されました。\n` +
+      `⚠️ **NGワード警告**\n` +
+      `あなたのメッセージは削除されました。\n\n` +
       `該当: ${m.pattern}\n` +
       `繰り返すとタイムアウト等の処分が行われます。`;
 
-    const dmOk = await message.author.send(warnText).then(() => true).catch(() => false);
+    const dmOk = await message.author
+      .send(warnText)
+      .then(() => true)
+      .catch(() => false);
+
     if (!dmOk) {
       await message.channel
         .send({ content: `<@${message.author.id}> ${warnText}` })
-        .then((msg) => setTimeout(() => msg.delete().catch(() => null), 10_000))
+        .then((msg) =>
+          setTimeout(() => msg.delete().catch(() => null), 10_000)
+        )
         .catch(() => null);
     }
 
-    // ===== ④ 回数加算→閾値でタイムアウト =====
+    /* ===== ④ 回数加算 → 閾値でタイムアウト ===== */
     const count = await incNgHit(guildId, message.author.id);
     const threshold = Number(st.ng_threshold ?? DEFAULT_NG_THRESHOLD);
     const timeoutMin = Number(st.timeout_minutes ?? DEFAULT_TIMEOUT_MIN);
 
     if (count >= threshold) {
-      const mem = await message.guild.members.fetch(message.author.id).catch(() => null);
+      const mem = await message.guild.members
+        .fetch(message.author.id)
+        .catch(() => null);
+
       if (mem?.moderatable) {
-        await mem.timeout(timeoutMin * 60_000, "NGワード検出の累積").catch(() => null);
+        await mem
+          .timeout(timeoutMin * 60_000, "NGワード検出の累積")
+          .catch(() => null);
 
         await logEvent(guildId, "timeout_applied", message.author.id, {
           minutes: timeoutMin,
@@ -1635,7 +1661,7 @@ client.on(Events.MessageCreate, async (message) => {
         });
 
         const embed2 = new EmbedBuilder()
-          .setColor(0x8e44ad) // purple
+          .setColor(0x8e44ad) // timeout purple
           .setAuthor({ name: authorName, iconURL: avatar || undefined })
           .setDescription(`@${displayName} timeout applied`)
           .addFields(
