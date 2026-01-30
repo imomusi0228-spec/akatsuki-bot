@@ -1318,16 +1318,24 @@ client.on("interactionCreate", async (interaction) => {
 
   const isUnknown = (err) => err?.code === 10062 || err?.rawError?.code === 10062;
 
-  // ✅ 2枚目風：コマンド結果は「通常メッセージ」で出す
-  // これをコマンド側で使う：await interaction.publicSend({ content / embeds })
+  // ✅ 通常メッセージ用ヘルパー（2枚目の見た目）
   interaction.publicSend = async (payload) => {
-    try {
-      return await interaction.channel?.send(payload).catch(() => null);
-    } catch (e) {
-      if (isUnknown(e)) return null;
-      throw e;
-    }
+    return await interaction.channel?.send(payload).catch(() => null);
   };
+
+  // ✅ Discordの「応答しませんでした」を出さないために ACK は必須（public）
+  try {
+    await interaction.deferReply();
+  } catch (e) {
+    // 既にACK済み等は無視
+  }
+
+  // ✅ 返信UIは残さない（消せる時だけ消す）
+  try {
+    await interaction.deleteReply();
+  } catch (e) {
+    // 消せない環境もあるので無視
+  }
 
   try {
     const command = client.commands.get(interaction.commandName);
