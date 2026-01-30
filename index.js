@@ -285,6 +285,7 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
     <div class="card">
       <h3>月次サマリ</h3>
       <div id="summary" class="muted">未取得</div>
+      <pre id="debugStats" class="muted" style="margin-top:10px;font-size:12px;display:none;"></pre>
     </div>
     <div class="card">
       <h3>Top NG Users</h3>
@@ -343,8 +344,12 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
 
   async function api(path, opts){
     const r = await fetch(path, opts);
+    const text = await r.text().catch(() => "");
     let data = null;
-    try { data = await r.json(); } catch { data = { ok:false, error:"bad_json" }; }
+    try { data = text ? JSON.parse(text) : null; } catch {
+      data = { ok:false, error:"bad_json", raw:text, _httpStatus:r.status };
+      return data;
+    }
     if (!r.ok && data && data.ok !== true) data._httpStatus = r.status;
     return data;
   }
@@ -461,10 +466,15 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
 
       // stats
       const stats = await api("/api/stats?guild=" + encodeURIComponent(guildId) + "&month=" + encodeURIComponent(month));
-      if (!stats.ok) {
-        $("summary").innerHTML = '<div class="err">stats取得失敗: ' + (stats.error || "unknown") + '</div>';
-        $("topNg").innerHTML = "";
+      if (!stats || !stats.ok) {
+        $("summary").innerHTML = '<div class="err">stats取得失敗: ' + (stats?.error || "unknown") + '</div>';
+        // デバッグ表示（bad_jsonならrawが入る）
+        const dbg = $("debugStats");
+        dbg.style.display = "block";
+        dbg.textContent = JSON.stringify(stats, null, 2);
+        $("topNg").innerHTML = '<tr><td colspan="2" class="muted">（未取得）</td></tr>';
       } else {
+        $("debugStats").style.display = "none";
         const summary = stats.stats?.summary ?? {};
         const byType = summary.byType ?? {};
         $("summary").innerHTML =
@@ -480,23 +490,17 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
         const top = stats.stats?.topNgUsers ?? [];
         $("topNg").innerHTML = top.map(x =>
           '<tr>' +
-          '<td>' + (x.user_label || (x.display_name ? (x.display_name + ' (@' + (x.username||'') + ')') : x.user_id)) + '</td>' +
-          '<td>' + (x.cnt ?? 0) + '</td>' +
+            '<td>' + (x.user_label || (x.display_name ? (x.display_name + ' (@' + (x.username||'') + ')') : x.user_id)) + '</td>' +
+            '<td>' + (x.cnt ?? 0) + '</td>' +
           '</tr>'
-          ).join("") || '<tr><td colspan="2" class="muted">（なし）</td></tr>';
-
-
-        // ★ここが「Web側（表示）」の修正箇所：user_label（表示名）優先、なければuser_id
-        $("topNg").innerHTML = top.map(x =>
-          '<tr><td>' + (x.user_label || x.user_id) + '</td><td>' + (x.cnt ?? 0) + '</td></tr>'
         ).join("") || '<tr><td colspan="2" class="muted">（なし）</td></tr>';
       }
 
       // ngwords
       const ng = await api("/api/ngwords?guild=" + encodeURIComponent(guildId));
-      if (!ng.ok) {
-        $("ngwords").textContent = "取得失敗: " + (ng.error || "unknown");
-        showStatus("ngStatus", "取得失敗: " + (ng.error || "unknown"), true);
+      if (!ng || !ng.ok) {
+        $("ngwords").textContent = "取得失敗: " + (ng?.error || "unknown");
+        showStatus("ngStatus", "取得失敗: " + (ng?.error || "unknown"), true);
       } else {
         $("ngwords").textContent = (ng.words || []).map(w =>
           (w.kind === "regex"
@@ -509,9 +513,9 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
 
       // settings
       const st = await api("/api/settings?guild=" + encodeURIComponent(guildId));
-      if (!st.ok) {
-        $("settingsBox").innerHTML = '<div class="err">取得失敗: ' + (st.error || "unknown") + '</div>';
-        showStatus("settingsStatus", "設定取得失敗: " + (st.error || "unknown"), true);
+      if (!st || !st.ok) {
+        $("settingsBox").innerHTML = '<div class="err">取得失敗: ' + (st?.error || "unknown") + '</div>';
+        showStatus("settingsStatus", "設定取得失敗: " + (st?.error || "unknown"), true);
       } else {
         const s = st.settings ?? { log_channel_id:null, ng_threshold:3, timeout_minutes:10 };
         $("settingsBox").innerHTML = renderSettingsBox(s);
