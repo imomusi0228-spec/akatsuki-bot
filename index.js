@@ -207,42 +207,6 @@ function vcText(member, action, channelName) {
 }
 
 /* =========================
-   Example: voiceStateUpdate handler
-   - IN  -> kind "vc_in"
-   - OUT -> kind "vc_out"
-   - move -> OUT(old) then IN(new)
-========================= */
-
-// client.on("voiceStateUpdate", async (oldState, newState) => {
-async function onVoiceStateUpdate(oldState, newState) {
-  const guild = newState.guild || oldState.guild;
-  if (!guild) return;
-
-  const member = newState.member || oldState.member;
-  const oldCh = oldState.channel;
-  const newCh = newState.channel;
-
-  // join
-  if (!oldCh && newCh) {
-    await sendToKindThread(guild, "vc_in", vcText(member, "joined", newCh.name));
-    return;
-  }
-
-  // leave
-  if (oldCh && !newCh) {
-    await sendToKindThread(guild, "vc_out", vcText(member, "left", oldCh.name));
-    return;
-  }
-
-  // move
-  if (oldCh && newCh && oldCh.id !== newCh.id) {
-    await sendToKindThread(guild, "vc_out", vcText(member, "left", oldCh.name));
-    await sendToKindThread(guild, "vc_in", vcText(member, "joined", newCh.name));
-  }
-}
-// });
-
-/* =========================
    Example: NG word logging (plain text)
    - kind "ng"
 ========================= */
@@ -1244,69 +1208,6 @@ function intersectUserBotGuilds(userGuilds) {
 }
 
 /* =========================
-   VC join/leave logging -> vc thread
-========================= */
-client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
-  try {
-    const guild = newState.guild || oldState.guild;
-    if (!guild) return;
-
-    const member = newState.member || oldState.member;
-    if (!member) return;
-
-    const oldCh = oldState.channel;
-    const newCh = newState.channel;
-
-    // 変化なし（ミュート等）は無視
-    if ((oldCh?.id || null) === (newCh?.id || null)) return;
-
-    const who = member.displayName || member.user?.username || member.id;
-
-    // VCリンク（Discordクライアントで開ける）
-    const vcLink = (ch) => `https://discord.com/channels/${guild.id}/${ch.id}`;
-
-    // IN
-    if (!oldCh && newCh) {
-      const embedIn = new EmbedBuilder()
-        .setColor(0x00ff7f) // #00ff7f
-        .setTitle("VC IN")
-        .setDescription(`**${who}** が入室\n🔗 ${newCh} (${vcLink(newCh)})`)
-        .setTimestamp(new Date());
-
-      await logEvent(guild.id, "vc_in", member.id, { channel_id: newCh.id }).catch(() => null);
-      return;
-    }
-
-    // OUT
-    if (oldCh && !newCh) {
-      const embedOut = new EmbedBuilder()
-        .setColor(0x95a5a6) // gray
-        .setTitle("VC OUT")
-        .setDescription(`**${who}** が退室\n🔗 ${oldCh} (${vcLink(oldCh)})`)
-        .setTimestamp(new Date());
-
-      await logEvent(guild.id, "vc_out", member.id, { channel_id: oldCh.id }).catch(() => null);
-      return;
-    }
-
-    // MOVE（VC移動もログしたいなら）
-    if (oldCh && newCh && oldCh.id !== newCh.id) {
-      const embedMove = new EmbedBuilder()
-        .setColor(0x95a5a6)
-        .setTitle("VC MOVE")
-        .setDescription(
-          `**${who}** が移動\n🔗 ${oldCh} (${vcLink(oldCh)}) → ${newCh} (${vcLink(newCh)})`
-        )
-        .setTimestamp(new Date());
-
-      await logEvent(guild.id, "vc_move", member.id, { from: oldCh.id, to: newCh.id }).catch(() => null);
-    }
-  } catch (e) {
-    console.error("voiceStateUpdate log error:", e);
-  }
-});
-
-/* =========================
    Ready / Commands (NO EPHEMERAL / NO REPLY UI)
    - Always ACK once (public) to avoid "応答しませんでした"
    - Immediately delete the reply UI when possible
@@ -1316,7 +1217,6 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
 client.once(Events.ClientReady, (c) => {
   console.log(`✅ Logged in as ${c.user.tag}`);
 });
-
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -1330,46 +1230,38 @@ client.on("interactionCreate", async (interaction) => {
     );
   };
 
-  // ✅ 2枚目の見た目：通常メッセージ送信用（これだけ使う）
+  // ✅ コマンドUIを使う前提なので publicSend は「補助」扱い（使わなくてもOK）
   interaction.publicSend = async (payload) => {
     return await interaction.channel?.send(payload).catch(() => null);
   };
 
-  // ✅ Discordの「応答しませんでした」を回避：未ACKの時だけACK（public）
-  try {
-    if (!interaction.deferred && !interaction.replied) {
-      await interaction.deferReply().catch(() => null);
-    }
-  } catch (e) {
-    if (!(isUnknown(e) || isAlreadyAcked(e))) console.error("deferReply error:", e);
-  }
-
-  // ✅ コマンドUIの返信を消す（できる時だけ）
-  try {
-    if (interaction.deferred || interaction.replied) {
-      await interaction.deleteReply().catch(() => null);
-    }
-  } catch {}
-
   try {
     const command = client.commands.get(interaction.commandName);
 
-    // ✅ /admin が無い時に「何も起きない」を防ぐ
     if (!command) {
-      await interaction.publicSend({
-        content: `❌ コマンドが見つかりません: /${interaction.commandName}`,
-      });
+      // ここは見えるように ephemeral
+      await interaction.reply({ content: `❌ コマンドが見つかりません: /${interaction.commandName}`, ephemeral: true }).catch(() => null);
       return;
     }
 
-    // ✅ コマンド側は interaction.publicSend() で必ず出す
     await command.execute(interaction, db);
   } catch (err) {
     console.error("interactionCreate error:", err);
     if (isUnknown(err)) return;
 
     const msg = `❌ エラー: ${err?.message ?? String(err)}`;
-    await interaction.publicSend({ content: msg }).catch(() => null);
+
+    try {
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({ content: msg }).catch(() => null);
+      } else {
+        await interaction.reply({ content: msg, ephemeral: true }).catch(() => null);
+      }
+    } catch (e) {
+      if (isUnknown(e) || isAlreadyAcked(e)) return;
+      // 最後の保険：通常投稿
+      await interaction.publicSend({ content: msg }).catch(() => null);
+    }
   }
 });
 
@@ -1388,11 +1280,8 @@ client.on(Events.MessageCreate, (m) => {
 });
 
 /* =========================
-   VC Join/Leave -> kind="vc"
-   - display name in body: @表示名
-   - VC link: <#channelId>
-   - Tokyo time label: 今日 9:10
-   - Color: IN green / OUT red / MOVE blue
+   VC Join/Leave -> kind="vc_in" / kind="vc_out"
+   - スレ分け：IN / OUT（MOVEは両方に出す）
 ========================= */
 client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
   try {
@@ -1404,10 +1293,12 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
 
     const oldCh = oldState.channel;
     const newCh = newState.channel;
-    if (oldCh?.id === newCh?.id) return;
+
+    // 変化なし（ミュート等）は無視
+    if ((oldCh?.id || null) === (newCh?.id || null)) return;
 
     const authorName = member.user?.username || member.id;
-    const displayName = member.displayName || authorName;
+    const displayName = member.displayName || member.user?.globalName || authorName;
     const avatar = member.user?.displayAvatarURL?.() ?? null;
 
     const timeLabel = tokyoNowLabel();
@@ -1422,7 +1313,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
         .addFields({ name: "ID", value: idLine, inline: false })
         .setTimestamp(new Date());
 
-      await sendToKindThread(guild, "vc", { embeds: [embedIn] });
+      await sendToKindThread(guild, "vc_in", { embeds: [embedIn] });
       await logEvent(guild.id, "vc_in", member.id, { to: newCh.id });
       return;
     }
@@ -1436,21 +1327,30 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
         .addFields({ name: "ID", value: idLine, inline: false })
         .setTimestamp(new Date());
 
-      await sendToKindThread(guild, "vc", { embeds: [embedOut] });
+      await sendToKindThread(guild, "vc_out", { embeds: [embedOut] });
       await logEvent(guild.id, "vc_out", member.id, { from: oldCh.id });
       return;
     }
 
-    // MOVE (channel -> channel)
-    if (oldCh && newCh) {
-      const embedMove = new EmbedBuilder()
-        .setColor(0x3498db) // blue
+    // MOVE (channel -> channel) → OUTにもINにも出す
+    if (oldCh && newCh && oldCh.id !== newCh.id) {
+      const embedMoveOut = new EmbedBuilder()
+        .setColor(0x95a5a6) // gray
         .setAuthor({ name: authorName, iconURL: avatar || undefined })
-        .setDescription(`@${displayName} moved voice channel 🔊 <#${oldCh.id}> → <#${newCh.id}>`)
+        .setDescription(`@${displayName} left voice channel 🔇 <#${oldCh.id}>（MOVE）`)
         .addFields({ name: "ID", value: idLine, inline: false })
         .setTimestamp(new Date());
 
-      await sendToKindThread(guild, "vc", { embeds: [embedMove] });
+      const embedMoveIn = new EmbedBuilder()
+        .setColor(0x2ecc71) // green
+        .setAuthor({ name: authorName, iconURL: avatar || undefined })
+        .setDescription(`@${displayName} joined voice channel 🔊 <#${newCh.id}>（MOVE）`)
+        .addFields({ name: "ID", value: idLine, inline: false })
+        .setTimestamp(new Date());
+
+      await sendToKindThread(guild, "vc_out", { embeds: [embedMoveOut] });
+      await sendToKindThread(guild, "vc_in", { embeds: [embedMoveIn] });
+
       await logEvent(guild.id, "vc_move", member.id, { from: oldCh.id, to: newCh.id });
       return;
     }
@@ -1659,6 +1559,8 @@ const PORT = Number(process.env.PORT || 3000);
 
 const server = http.createServer(async (req, res) => {
   try {
+    // ===== ここに今のルーティング処理をそのまま貼る =====
+
     const u = new URL(req.url || "/", baseUrl(req));
     const pathname = u.pathname;
 
@@ -1799,7 +1701,6 @@ const server = http.createServer(async (req, res) => {
 
       if (pathname === "/api/guilds") {
         if (!sess) {
-          // tokenAuthed の場合は「botが入ってる鯖全部」を見せる（必要なら絞って）
           const guilds = client.guilds.cache.map((g) => ({ id: g.id, name: g.name }));
           return json(res, { ok: true, guilds });
         }
@@ -1807,36 +1708,36 @@ const server = http.createServer(async (req, res) => {
         const guilds = intersectUserBotGuilds(userGuilds);
         return json(res, { ok: true, guilds });
       }
-if (pathname === "/api/stats") {
-  const guildId = u.searchParams.get("guild") || "";
-  const month = u.searchParams.get("month") || "";
-  const chk = requireGuildAllowed(guildId);
-  if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
 
-  const stats = await getMonthlyStats(guildId, month);
-  if (!stats) return json(res, { ok: false, error: "no_stats" }, 400);
+      if (pathname === "/api/stats") {
+        const guildId = u.searchParams.get("guild") || "";
+        const month = u.searchParams.get("month") || "";
+        const chk = requireGuildAllowed(guildId);
+        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
 
-  // ★ user_id -> 表示名(@username) を解決して返す
-  const guild =
-    client.guilds.cache.get(guildId) ||
-    (await client.guilds.fetch(guildId).catch(() => null));
+        const stats = await getMonthlyStats(guildId, month);
+        if (!stats) return json(res, { ok: false, error: "no_stats" }, 400);
 
-  if (guild && Array.isArray(stats.topNgUsers)) {
-    const named = [];
-    for (const row of stats.topNgUsers) {
-      const uinfo = await resolveUserLabel(guild, row.user_id);
-      named.push({
-        ...row, // user_id/cntは残す
-        user_label: uinfo.user_label,
-        display_name: uinfo.display_name,
-        username: uinfo.username,
-      });
-    }
-    stats.topNgUsers = named;
-  }
+        const guild =
+          client.guilds.cache.get(guildId) ||
+          (await client.guilds.fetch(guildId).catch(() => null));
 
-  return json(res, { ok: true, stats });
-}
+        if (guild && Array.isArray(stats.topNgUsers)) {
+          const named = [];
+          for (const row of stats.topNgUsers) {
+            const uinfo = await resolveUserLabel(guild, row.user_id);
+            named.push({
+              ...row,
+              user_label: uinfo.user_label,
+              display_name: uinfo.display_name,
+              username: uinfo.username,
+            });
+          }
+          stats.topNgUsers = named;
+        }
+
+        return json(res, { ok: true, stats });
+      }
 
       if (pathname === "/api/ngwords") {
         const guildId = u.searchParams.get("guild") || "";
@@ -1906,8 +1807,9 @@ if (pathname === "/api/stats") {
 
     // fallback
     return text(res, "Not Found", 404);
+
   } catch (err) {
-    console.error(err);
+    console.error("HTTP server error:", err);
     return text(res, "Internal Server Error", 500);
   }
 });
@@ -1916,71 +1818,6 @@ if (pathname === "/api/stats") {
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`🌐 Listening on ${PORT}`);
 });
-
-async function resolveUserLabel(guild, userId) {
-  try {
-    const member = await guild.members.fetch(userId);
-    const display_name = member.displayName || member.user.globalName || member.user.username || userId;
-    const username = member.user.username || "";
-    return {
-      user_id: userId,
-      display_name,
-      username,
-      user_label: `${display_name} (@${username})`,
-    };
-  } catch {
-    return {
-      user_id: userId,
-      display_name: `Unknown`,
-      username: "",
-      user_label: `Unknown (${userId})`,
-    };
-  }
-}
-
-async function getMonthlyStats(guildId, monthStr) {
-  if (!db) return null;
-  const range = tokyoMonthRangeUTC(monthStr);
-  if (!range) return null;
-  const { start, end } = range;
-
-  const byTypeRows = await db.all(
-    `SELECT type, COUNT(*) as cnt
-     FROM log_events
-     WHERE guild_id = ? AND ts >= ? AND ts < ?
-     GROUP BY type
-     ORDER BY cnt DESC`,
-    guildId,
-    start,
-    end
-  );
-  const byType = Object.fromEntries(byTypeRows.map((r) => [r.type, Number(r.cnt)]));
-
-  const topNgUsers = await db.all(
-    `SELECT user_id, COUNT(*) as cnt
-     FROM log_events
-     WHERE guild_id = ? AND type = 'ng_detected'
-       AND ts >= ? AND ts < ?
-       AND user_id IS NOT NULL
-     GROUP BY user_id
-     ORDER BY cnt DESC
-     LIMIT 10`,
-    guildId,
-    start,
-    end
-  );
-
-  return {
-    summary: {
-      ngDetected: Number(byType["ng_detected"] ?? 0),
-      timeouts: Number(byType["timeout_applied"] ?? 0),
-      joins: Number(byType["member_join"] ?? 0),
-      leaves: Number(byType["member_leave"] ?? 0),
-      byType,
-    },
-    topNgUsers,
-  };
-}
 
 /* =========================
    Discord Bot 起動（外で1回だけ）
