@@ -22,25 +22,24 @@ import sqlite3 from "sqlite3";
 import { open } from "sqlite";
 
 /* =========================
-   Log thread helpers (date x kind)
+   Log thread helpers (SINGLE SOURCE OF TRUTH)
 ========================= */
 
 function threadNameFor(kind, dateKey) {
   if (kind === "vc") return `🎙 VCログ ${dateKey}`;
   if (kind === "ng") return `🚫 NGログ ${dateKey}`;
-  return `📌 log ${kind} ${dateKey}`;
+  return `📌 ${kind} ${dateKey}`;
 }
 
-// log_channel_id に「日付 x kind」スレッドを作って、ThreadChannelを返す
 async function ensureLogThread(guild, kind) {
   if (!db) return null;
 
-  const { log_channel_id } = await getSettings(guild.id);
-  if (!log_channel_id) return null;
+  const st = await getSettings(guild.id);
+  const logChannelId = st?.log_channel_id;
+  if (!logChannelId) return null;
 
   const dateKey = todayKeyTokyo();
 
-  // DBに既存があればそれを開く
   const row = await db.get(
     `SELECT thread_id FROM log_threads WHERE guild_id = ? AND date_key = ? AND kind = ?`,
     guild.id,
@@ -49,49 +48,37 @@ async function ensureLogThread(guild, kind) {
   );
 
   if (row?.thread_id) {
-    const th =
-      guild.channels.cache.get(row.thread_id) ||
-      (await guild.channels.fetch(row.thread_id).catch(() => null));
-    if (th) return th;
+    const cached = guild.channels.cache.get(row.thread_id);
+    if (cached) return cached;
+    const fetched = await guild.channels.fetch(row.thread_id).catch(() => null);
+    if (fetched) return fetched;
   }
 
-  // なければスレッド作成
   const parent =
-    guild.channels.cache.get(log_channel_id) ||
-    (await guild.channels.fetch(log_channel_id).catch(() => null));
+    guild.channels.cache.get(logChannelId) ||
+    (await guild.channels.fetch(logChannelId).catch(() => null));
   if (!parent) return null;
+
+  // テキストチャンネル前提（フォーラム運用なら後で分岐を足す）
+  if (!parent.threads?.create) return null;
 
   const name = threadNameFor(kind, dateKey);
 
-  let thread = null;
-
-  // Forumチャンネル対応 / 通常テキスト対応
-  if (parent.type === ChannelType.GuildForum) {
-    thread = await parent.threads
-      .create({
-        name,
-        autoArchiveDuration: 1440,
-        message: { content: `ログ開始: ${name}` },
-        reason: "Create log thread",
-      })
-      .catch(() => null);
-  } else if (parent.threads?.create) {
-    thread = await parent.threads
-      .create({
-        name,
-        autoArchiveDuration: 1440,
-        reason: "Create log thread",
-      })
-      .catch(() => null);
-    if (thread) {
-      await thread.send({ content: `ログ開始: ${name}` }).catch(() => null);
-    }
-  }
+  const thread = await parent.threads
+    .create({
+      name,
+      autoArchiveDuration: 1440,
+      reason: "Create daily log thread",
+    })
+    .catch(() => null);
 
   if (!thread) return null;
 
+  await thread.send({ content: `ログ開始: ${name}` }).catch(() => null);
+
   await db.run(
-    `INSERT OR REPLACE INTO log_threads (guild_id, date_key, kind, thread_id) VALUES (?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO log_threads (guild_id, date_key, kind, thread_id)
+     VALUES (?, ?, ?, ?)`,
     guild.id,
     dateKey,
     kind,
@@ -1345,113 +1332,6 @@ client.on(Events.MessageCreate, (m) => {
 });
 
 /* =========================
-   Log threads (date x kind) using DB log_threads(kind)
-   - VC logs -> kind="vc"
-   - NG logs -> kind="ng"
-========================= */
-
-function todayKeyTokyo() {
-  const dtf = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-  return dtf.format(new Date()); // YYYY-MM-DD
-}
-
-function tokyoNowLabel() {
-  const now = new Date();
-  const hm = new Intl.DateTimeFormat("ja-JP", {
-    timeZone: TIMEZONE,
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: false,
-  }).format(now);
-  return `今日 ${hm}`;
-}
-
-function threadNameFor(kind, dateKey) {
-  if (kind === "vc") return `🎙 VCログ ${dateKey}`;
-  if (kind === "ng") return `🚫 NGログ ${dateKey}`;
-  return `📌 ${kind} ${dateKey}`;
-}
-
-async function ensureLogThread(guild, kind) {
-  if (!db) return null;
-
-  const st = await getSettings(guild.id);
-  const logChannelId = st?.log_channel_id;
-  if (!logChannelId) return null;
-
-  const dateKey = todayKeyTokyo();
-
-  const row = await db.get(
-    `SELECT thread_id FROM log_threads WHERE guild_id = ? AND date_key = ? AND kind = ?`,
-    guild.id,
-    dateKey,
-    kind
-  );
-
-  if (row?.thread_id) {
-    const cached = guild.channels.cache.get(row.thread_id);
-    if (cached) return cached;
-    const fetched = await guild.channels.fetch(row.thread_id).catch(() => null);
-    if (fetched) return fetched;
-  }
-
-  const parent =
-    guild.channels.cache.get(logChannelId) ||
-    (await guild.channels.fetch(logChannelId).catch(() => null));
-  if (!parent) return null;
-
-  const name = threadNameFor(kind, dateKey);
-  let thread = null;
-
-  if (parent.type === ChannelType.GuildForum) {
-    thread = await parent.threads
-      .create({
-        name,
-        autoArchiveDuration: 1440,
-        message: { content: `ログ開始: ${name}` },
-        reason: "Create daily log thread",
-      })
-      .catch(() => null);
-  } else if (parent.threads?.create) {
-    thread = await parent.threads
-      .create({
-        name,
-        autoArchiveDuration: 1440,
-        reason: "Create daily log thread",
-      })
-      .catch(() => null);
-
-    if (thread) await thread.send({ content: `ログ開始: ${name}` }).catch(() => null);
-  } else {
-    return null;
-  }
-
-  if (!thread) return null;
-
-  await db.run(
-    `INSERT OR REPLACE INTO log_threads (guild_id, date_key, kind, thread_id) VALUES (?, ?, ?, ?)`,
-    guild.id,
-    dateKey,
-    kind,
-    thread.id
-  );
-
-  return thread;
-}
-
-async function sendToKindThread(guild, kind, payload) {
-  const th = await ensureLogThread(guild, kind);
-  if (!th) return false;
-  await th.send(payload).catch(() => null);
-  return true;
-}
-
-/* =========================
    VC Join/Leave -> kind="vc"
    - display name in body: @表示名
    - VC link: <#channelId>
@@ -1480,7 +1360,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     // IN
     if (!oldCh && newCh) {
       const embed = new EmbedBuilder()
-        .setColor(000ff7f) // green
+        .setColor(0x00ff7f) // green
         .setAuthor({ name: authorName, iconURL: avatar || undefined })
         .setDescription(`@${displayName} joined voice channel 🔊 <#${newCh.id}>`)
         .addFields({ name: "ID", value: idLine, inline: false })
@@ -1665,104 +1545,6 @@ client.on(Events.MessageCreate, async (message) => {
     console.error("MessageCreate NG handler error:", e);
   }
 });
-
-/* =========================
-   NG detection: delete + warn + log to NG thread
-========================= */
-
-function matchNg(content, ngList) {
-  const text = String(content ?? "");
-  for (const w of ngList) {
-    if (w.kind === "regex") {
-      try {
-        const re = new RegExp(w.word, w.flags || "i");
-        if (re.test(text)) return { hit: true, pattern: `/${w.word}/${w.flags || "i"}` };
-      } catch {}
-    } else {
-      const needle = String(w.word ?? "");
-      if (needle && text.toLowerCase().includes(needle.toLowerCase())) {
-        return { hit: true, pattern: needle };
-      }
-    }
-  }
-  return { hit: false };
-}
-
-async function incNgHit(guildId, userId) {
-  if (!db) return 0;
-  const now = Date.now();
-  await db.run(
-    `INSERT INTO ng_hits (guild_id, user_id, count, updated_at)
-     VALUES (?, ?, 1, ?)
-     ON CONFLICT(guild_id, user_id) DO UPDATE SET
-       count = count + 1,
-       updated_at = excluded.updated_at`,
-    guildId,
-    userId,
-    now
-  );
-  const row = await db.get(`SELECT count FROM ng_hits WHERE guild_id = ? AND user_id = ?`, guildId, userId);
-  return Number(row?.count ?? 0);
-}
-
-client.on(Events.MessageCreate, async (message) => {
-  try {
-    // 対象外
-    if (!message.guild) return;
-    if (message.author?.bot) return;
-
-    // NGワード取得
-    const guildId = message.guild.id;
-    const ngList = await getNgWords(guildId);
-    if (!ngList.length) return;
-
-    // 判定
-    const m = matchNg(message.content, ngList);
-    if (!m.hit) return;
-
-    // 設定
-    const st = await getSettings(guildId);
-
-    // ===== ①ログ（削除前に本文を残す） =====
-    const displayName =
-      message.member?.displayName ||
-      message.author.globalName ||
-      message.author.username ||
-      message.author.id;
-
-    const avatar = message.author.displayAvatarURL?.() ?? null;
-
-    const embed = new EmbedBuilder()
-      .setAuthor({ name: displayName, iconURL: avatar || undefined })
-      .setDescription(`🚫 NGワード検出 in <#${message.channelId}>`)
-      .addFields(
-        { name: "Matched", value: m.pattern, inline: true },
-        { name: "User ID", value: message.author.id, inline: true },
-        {
-          name: "Content",
-          value: message.content
-            ? (message.content.length > 900 ? message.content.slice(0, 900) + "…" : message.content)
-            : "（空）",
-          inline: false,
-        }
-      )
-      .setTimestamp(new Date());
-
-    await sendToKindThread(message.guild, "ng", { embeds: [embed] });
-
-    // stats
-    await logEvent(guildId, "ng_detected", message.author.id, {
-      channel_id: message.channelId,
-      matched: m.pattern,
-      message_id: message.id,
-    });
-
-    // ===== ②削除 =====
-    await message.delete().catch(() => null);
-
-    // ===== ③警告（DM→ダメならチャンネルに短く） =====
-    const warnText =
-      `⚠️ NGワードが含まれていたため、メッ
 
 /* =========================
    Web server: admin + API + OAuth
