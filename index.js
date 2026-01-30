@@ -1731,6 +1731,48 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log(`🌐 Listening on ${PORT}`);
 });
 
+async function getMonthlyStats(guildId, monthStr) {
+  if (!db) return null;
+  const range = tokyoMonthRangeUTC(monthStr);
+  if (!range) return null;
+  const { start, end } = range;
+
+  const byTypeRows = await db.all(
+    `SELECT type, COUNT(*) as cnt
+     FROM log_events
+     WHERE guild_id = ? AND ts >= ? AND ts < ?
+     GROUP BY type
+     ORDER BY cnt DESC`,
+    guildId,
+    start,
+    end
+  );
+  const byType = Object.fromEntries(byTypeRows.map((r) => [r.type, Number(r.cnt)]));
+
+  const topNgUsers = await db.all(
+    `SELECT user_id, COUNT(*) as cnt
+     FROM log_events
+     WHERE guild_id = ? AND type = 'ng_detected' AND ts >= ? AND ts < ? AND user_id IS NOT NULL
+     GROUP BY user_id
+     ORDER BY cnt DESC
+     LIMIT 10`,
+    guildId,
+    start,
+    end
+  );
+
+  return {
+    summary: {
+      ngDetected: Number(byType["ng_detected"] ?? 0),
+      timeouts: Number(byType["timeout_applied"] ?? 0),
+      joins: Number(byType["member_join"] ?? 0),
+      leaves: Number(byType["member_leave"] ?? 0),
+      byType,
+    },
+    topNgUsers,
+  };
+}
+
 /* =========================
    Discord Bot 起動（外で1回だけ）
 ========================= */
