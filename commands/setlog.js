@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionsBitField, MessageFlags } from "discord.js";
+import { SlashCommandBuilder, PermissionsBitField, EmbedBuilder } from "discord.js";
 
 export const data = new SlashCommandBuilder()
   .setName("setlog")
@@ -8,17 +8,19 @@ export const data = new SlashCommandBuilder()
   );
 
 export async function execute(interaction, db) {
-  // ★ まずACK（Aパッチが入ってれば二重でも安全）
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
+  // ✅ 権限チェック
   if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageGuild)) {
-    return interaction.editReply({ content: "❌ このコマンドは管理権限（サーバー管理）が必要です" });
+    // 2枚目風：通常メッセージで返す
+    await interaction.publicSend({
+      content: "❌ このコマンドは管理権限（サーバー管理）が必要です",
+    });
+    return;
   }
 
   const ch = interaction.options.getChannel("channel");
-
   if (!ch || !ch.isTextBased()) {
-    return interaction.editReply({ content: "❌ テキストチャンネルを指定してください" });
+    await interaction.publicSend({ content: "❌ テキストチャンネルを指定してください" });
+    return;
   }
 
   await db.run(
@@ -29,5 +31,10 @@ export async function execute(interaction, db) {
     ch.id
   );
 
-  return interaction.editReply({ content: `✅ 管理ログの送信先を ${ch} に設定しました` });
+  // ✅ 2枚目みたいに “ログっぽく” 出す（通常投稿）
+  const embed = new EmbedBuilder()
+    .setDescription(`✅ 管理ログの送信先を ${ch} に設定しました`)
+    .setTimestamp(new Date());
+
+  await interaction.publicSend({ embeds: [embed] });
 }
