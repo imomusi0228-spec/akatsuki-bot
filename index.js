@@ -762,7 +762,7 @@ try {
 function normalize(s) {
   return (s ?? "").toLowerCase();
 }
-function todayKeyTokyo() {
+function todayKeyTokyo2() {
   const dtf = new Intl.DateTimeFormat("sv-SE", {
     timeZone: TIMEZONE,
     year: "numeric",
