@@ -23,93 +23,22 @@ import { open } from "sqlite";
 
 /* =========================
    Log thread helpers (SINGLE SOURCE OF TRUTH)
+   - Threads are separated by kind: vc_in / vc_out / ng
+   - One thread per day per kind
+   - Race-safe (in-process lock + DB claim)
 ========================= */
 
+// 同一プロセス内の同時実行防止
+const _logThreadLocks = new Map();
+
+/**
+ * kind: "vc_in" | "vc_out" | "ng"
+ */
 function threadNameFor(kind, dateKey) {
-  if (kind === "vc") return `VCログ ${dateKey}`;
-  if (kind === "ng") return `NGログ ${dateKey}`;
-  return `ログ ${kind} ${dateKey}`;
-}
-
-async function ensureLogThread(guild, kind) {
-  if (!db) return null;
-
-  const st = await getSettings(guild.id);
-  const logChannelId = st?.log_channel_id;
-  if (!logChannelId) return null;
-
-  const dateKey = todayKeyTokyo();
-  const name = threadNameFor(kind, dateKey);
-
-  // DBチェック
-  const row = await db.get(
-    `SELECT thread_id FROM log_threads WHERE guild_id = ? AND date_key = ? AND kind = ?`,
-    guild.id,
-    dateKey,
-    kind
-  );
-  if (row?.thread_id) {
-    const ch =
-      guild.channels.cache.get(row.thread_id) ||
-      (await guild.channels.fetch(row.thread_id).catch(() => null));
-    if (ch) return ch;
-  }
-
-  const parent =
-    guild.channels.cache.get(logChannelId) ||
-    (await guild.channels.fetch(logChannelId).catch(() => null));
-  if (!parent) return null;
-
-  // 🔴 Forumに同名スレッドが既にあるか確認（ここが肝）
-  if (parent.type === ChannelType.GuildForum) {
-    const existing = parent.threads.cache.find(t => t.name === name);
-    if (existing) {
-      await db.run(
-        `INSERT OR REPLACE INTO log_threads (guild_id, date_key, kind, thread_id)
-         VALUES (?, ?, ?, ?)`,
-        guild.id,
-        dateKey,
-        kind,
-        existing.id
-      );
-      return existing;
-    }
-  }
-
-  // なければ作成
-  let thread = null;
-
-  if (parent.type === ChannelType.GuildForum) {
-    thread = await parent.threads.create({
-      name,
-      autoArchiveDuration: 1440,
-      message: { content: `ログ開始: ${name}` },
-    });
-  } else {
-    thread = await parent.threads.create({
-      name,
-      autoArchiveDuration: 1440,
-    });
-    await thread.send(`ログ開始: ${name}`);
-  }
-
-  await db.run(
-    `INSERT OR REPLACE INTO log_threads (guild_id, date_key, kind, thread_id)
-     VALUES (?, ?, ?, ?)`,
-    guild.id,
-    dateKey,
-    kind,
-    thread.id
-  );
-
-  return thread;
-}
-
-async function sendToKindThread(guild, kind, payload) {
-  const th = await ensureLogThread(guild, kind);
-  if (!th) return false;
-  await th.send(payload).catch(() => null);
-  return true;
+  if (kind === "vc_in") return `VC IN ${dateKey}`;
+  if (kind === "vc_out") return `VC OUT ${dateKey}`;
+  if (kind === "ng") return `NGワード ${dateKey}`;
+  return `LOG ${kind} ${dateKey}`;
 }
 
 function todayKeyTokyo() {
@@ -130,6 +59,205 @@ function tokyoNowLabel() {
     hour12: false,
   }).format(new Date());
   return `今日 ${hm}`;
+}
+
+async function findExistingForumThreadByName(parentForum, name) {
+  // 1) Active threads
+  try {
+    const active = await parentForum.threads.fetchActive();
+    const hit = active?.threads?.find((t) => t.name === name);
+    if (hit) return hit;
+  } catch (_) {}
+
+  // 2) Archived public threads (直近100件)
+  try {
+    const archived = await parentForum.threads.fetchArchived({ type: "public", limit: 100 });
+    const hit = archived?.threads?.find((t) => t.name === name);
+    if (hit) return hit;
+  } catch (_) {}
+
+  // 3) 最後に cache（保険）
+  try {
+    const hit = parentForum.threads.cache.find((t) => t.name === name);
+    if (hit) return hit;
+  } catch (_) {}
+
+  return null;
+}
+
+async function ensureLogThread(guild, kind) {
+  if (!db) return null;
+
+  const st = await getSettings(guild.id);
+  const logChannelId = st?.log_channel_id;
+  if (!logChannelId) return null;
+
+  const dateKey = todayKeyTokyo();
+  const name = threadNameFor(kind, dateKey);
+
+  // ---- in-process lock key
+  const lockKey = `${guild.id}:${kind}:${dateKey}`;
+  if (_logThreadLocks.has(lockKey)) return await _logThreadLocks.get(lockKey);
+
+  const lockedPromise = (async () => {
+    // ---- 1) DBに既存があればそれを優先
+    const row = await db.get(
+      `SELECT thread_id FROM log_threads WHERE guild_id = ? AND date_key = ? AND kind = ?`,
+      guild.id,
+      dateKey,
+      kind
+    );
+
+    if (row?.thread_id && row.thread_id !== "PENDING") {
+      const ch =
+        guild.channels.cache.get(row.thread_id) ||
+        (await guild.channels.fetch(row.thread_id).catch(() => null));
+      if (ch) return ch;
+    }
+
+    // ---- 2) DB claim（複数インスタンス対策）
+    // まだ行がない場合だけ PENDING を先取りして、作成担当を「なるべく」1つにする
+    try {
+      await db.run(
+        `INSERT OR IGNORE INTO log_threads (guild_id, date_key, kind, thread_id)
+         VALUES (?, ?, ?, ?)`,
+        guild.id,
+        dateKey,
+        kind,
+        "PENDING"
+      );
+    } catch (_) {}
+
+    // ---- 3) 親チャンネル取得
+    const parent =
+      guild.channels.cache.get(logChannelId) ||
+      (await guild.channels.fetch(logChannelId).catch(() => null));
+    if (!parent) return null;
+
+    // ---- 4) Forumなら「同名スレが既にあるか」を fetch までして探す
+    if (parent.type === ChannelType.GuildForum) {
+      const existing = await findExistingForumThreadByName(parent, name);
+      if (existing) {
+        await db.run(
+          `UPDATE log_threads SET thread_id = ? WHERE guild_id = ? AND date_key = ? AND kind = ?`,
+          existing.id,
+          guild.id,
+          dateKey,
+          kind
+        );
+        return existing;
+      }
+    }
+
+    // ---- 5) ここまで来たら作成
+    let thread = null;
+
+    if (parent.type === ChannelType.GuildForum) {
+      thread = await parent.threads.create({
+        name,
+        autoArchiveDuration: 1440,
+        message: { content: `ログ開始: ${name}` },
+      });
+    } else {
+      thread = await parent.threads.create({
+        name,
+        autoArchiveDuration: 1440,
+      });
+      await thread.send(`ログ開始: ${name}`);
+    }
+
+    await db.run(
+      `UPDATE log_threads SET thread_id = ? WHERE guild_id = ? AND date_key = ? AND kind = ?`,
+      thread.id,
+      guild.id,
+      dateKey,
+      kind
+    );
+
+    return thread;
+  })();
+
+  _logThreadLocks.set(lockKey, lockedPromise);
+
+  try {
+    return await lockedPromise;
+  } finally {
+    _logThreadLocks.delete(lockKey);
+  }
+}
+
+async function sendToKindThread(guild, kind, payload) {
+  const th = await ensureLogThread(guild, kind);
+  if (!th) return false;
+  await th.send(payload).catch(() => null);
+  return true;
+}
+
+/* =========================
+   VC log message builder (plain text like your 2nd screenshot)
+========================= */
+
+function vcText(member, action, channelName) {
+  // action: "joined" | "left"
+  // 例: "@乱重@Mana left voice channel 🔇 総合雑談VC"
+  const m = member?.toString?.() ?? "@unknown";
+  if (action === "joined") return `${m} joined voice channel 🔊 ${channelName}`;
+  if (action === "left") return `${m} left voice channel 🔇 ${channelName}`;
+  return `${m} voice channel ${channelName}`;
+}
+
+/* =========================
+   Example: voiceStateUpdate handler
+   - IN  -> kind "vc_in"
+   - OUT -> kind "vc_out"
+   - move -> OUT(old) then IN(new)
+========================= */
+
+// client.on("voiceStateUpdate", async (oldState, newState) => {
+async function onVoiceStateUpdate(oldState, newState) {
+  const guild = newState.guild || oldState.guild;
+  if (!guild) return;
+
+  const member = newState.member || oldState.member;
+  const oldCh = oldState.channel;
+  const newCh = newState.channel;
+
+  // join
+  if (!oldCh && newCh) {
+    await sendToKindThread(guild, "vc_in", vcText(member, "joined", newCh.name));
+    return;
+  }
+
+  // leave
+  if (oldCh && !newCh) {
+    await sendToKindThread(guild, "vc_out", vcText(member, "left", oldCh.name));
+    return;
+  }
+
+  // move
+  if (oldCh && newCh && oldCh.id !== newCh.id) {
+    await sendToKindThread(guild, "vc_out", vcText(member, "left", oldCh.name));
+    await sendToKindThread(guild, "vc_in", vcText(member, "joined", newCh.name));
+  }
+}
+// });
+
+/* =========================
+   Example: NG word logging (plain text)
+   - kind "ng"
+========================= */
+
+// どこかで NG 判定したときにこう呼ぶだけ
+async function logNgWord(message, hitWord) {
+  const guild = message.guild;
+  if (!guild) return;
+
+  const author = message.author?.toString?.() ?? "@unknown";
+  const chName = message.channel?.name ? `#${message.channel.name}` : "unknown-channel";
+  const now = tokyoNowLabel();
+
+  const text = `${now} ${author} NGワード検出「${hitWord}」 in ${chName}\n${message.content}`;
+  await sendToKindThread(guild, "ng", text);
 }
 
 /* =========================
@@ -1145,7 +1273,6 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
         .setDescription(`**${who}** が入室\n🔗 ${newCh} (${vcLink(newCh)})`)
         .setTimestamp(new Date());
 
-      await sendToKindThread(guild, "vc", { embeds: [embedIn] }).catch(() => null);
       await logEvent(guild.id, "vc_in", member.id, { channel_id: newCh.id }).catch(() => null);
       return;
     }
@@ -1158,7 +1285,6 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
         .setDescription(`**${who}** が退室\n🔗 ${oldCh} (${vcLink(oldCh)})`)
         .setTimestamp(new Date());
 
-      await sendToKindThread(guild, "vc", { embeds: [embedOut] }).catch(() => null);
       await logEvent(guild.id, "vc_out", member.id, { channel_id: oldCh.id }).catch(() => null);
       return;
     }
@@ -1173,7 +1299,6 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
         )
         .setTimestamp(new Date());
 
-      await sendToKindThread(guild, "vc", { embeds: [embedMove] }).catch(() => null);
       await logEvent(guild.id, "vc_move", member.id, { from: oldCh.id, to: newCh.id }).catch(() => null);
     }
   } catch (e) {
