@@ -1307,7 +1307,11 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
 });
 
 /* =========================
-   Ready / Commands  (NO EPHEMERAL / NO REPLY UI)
+   Ready / Commands (NO EPHEMERAL / NO REPLY UI)
+   - Always ACK once (public) to avoid "応答しませんでした"
+   - Immediately delete the reply UI
+   - Provide publicSend() for normal messages
+   - Make reply/defer/edit/followUp safe no-ops to avoid 40060 errors
 ========================= */
 client.once(Events.ClientReady, (c) => {
   console.log(`✅ Logged in as ${c.user.tag}`);
@@ -1319,11 +1323,7 @@ client.on("interactionCreate", async (interaction) => {
   const isUnknown = (err) => err?.code === 10062 || err?.rawError?.code === 10062;
   const isAlreadyAcked = (err) => {
     const c = err?.code ?? err?.rawError?.code ?? err?.name;
-    return (
-      c === 40060 ||
-      c === "InteractionAlreadyReplied" ||
-      String(c).includes("AlreadyReplied")
-    );
+    return c === 40060 || c === "InteractionAlreadyReplied" || String(c).includes("AlreadyReplied");
   };
 
   // ✅ 2枚目の見た目：通常メッセージ送信用
@@ -1331,20 +1331,47 @@ client.on("interactionCreate", async (interaction) => {
     return await interaction.channel?.send(payload).catch(() => null);
   };
 
-  // ✅ Discordの「応答しませんでした」を出さないためのACK（未ACKの時だけ）
-  try {
-    if (!interaction.deferred && !interaction.replied) {
-      await interaction.deferReply();
-    }
-  } catch (e) {
-    if (!(isUnknown(e) || isAlreadyAcked(e))) throw e;
-  }
+  // ✅ 以後はコマンド側が間違って reply/defer しても落ちないように無害化
+  const safeNoop = async () => null;
 
-  // ✅ コマンド返信UIを残さない（できる時だけ消す）
-  try {
-    if (interaction.deferred || interaction.replied) {
-      await interaction.deleteReply().catch(() => null);
+  // deferReplyだけは「未ACKの時だけ」本物を呼ぶ。それ以外は握り潰す
+  const origDefer = interaction.deferReply.bind(interaction);
+  interaction.deferReply = async (payload = {}) => {
+    try {
+      if (interaction.deferred || interaction.replied) return null;
+      return await origDefer(payload).catch(() => null);
+    } catch (e) {
+      if (isUnknown(e) || isAlreadyAcked(e)) return null;
+      return null;
     }
+  };
+
+  // reply/editReply/followUp は禁止（＝使っても落ちないように no-op）
+  interaction.reply = safeNoop;
+  interaction.editReply = safeNoop;
+  interaction.followUp = safeNoop;
+
+  // deleteReply は「できるなら消す」だけ
+  const origDelete = interaction.deleteReply?.bind(interaction);
+  interaction.deleteReply = async () => {
+    try {
+      if (!origDelete) return null;
+      if (!interaction.deferred && !interaction.replied) return null;
+      return await origDelete().catch(() => null);
+    } catch (e) {
+      if (isUnknown(e) || isAlreadyAcked(e)) return null;
+      return null;
+    }
+  };
+
+  // ✅ Discordの「応答しませんでした」を回避：最初に必ずACK（public）
+  try {
+    await interaction.deferReply();
+  } catch {}
+
+  // ✅ 返信UIは残さない
+  try {
+    await interaction.deleteReply();
   } catch {}
 
   try {
