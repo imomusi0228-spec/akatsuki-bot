@@ -1314,24 +1314,46 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     const timeLabel = tokyoNowLabel();
     const idLine = `${member.id}・${timeLabel}`;
 
-    // IN
-await sendToKindThread(guild, "vc", { embeds: [embedIn] });
+    // IN (null -> channel)
+    if (!oldCh && newCh) {
+      const embedIn = new EmbedBuilder()
+        .setColor(0x2ecc71) // green
+        .setAuthor({ name: authorName, iconURL: avatar || undefined })
+        .setDescription(`@${displayName} joined voice channel 🔊 <#${newCh.id}>`)
+        .addFields({ name: "ID", value: idLine, inline: false })
+        .setTimestamp(new Date());
 
-// OUT
-await sendToKindThread(guild, "vc", { embeds: [embedOut] });
+      await sendToKindThread(guild, "vc", { embeds: [embedIn] });
+      await logEvent(guild.id, "vc_in", member.id, { to: newCh.id });
+      return;
+    }
 
+    // OUT (channel -> null)
+    if (oldCh && !newCh) {
+      const embedOut = new EmbedBuilder()
+        .setColor(0xe74c3c) // red
+        .setAuthor({ name: authorName, iconURL: avatar || undefined })
+        .setDescription(`@${displayName} left voice channel 🔇 <#${oldCh.id}>`)
+        .addFields({ name: "ID", value: idLine, inline: false })
+        .setTimestamp(new Date());
 
-    // MOVE
+      await sendToKindThread(guild, "vc", { embeds: [embedOut] });
+      await logEvent(guild.id, "vc_out", member.id, { from: oldCh.id });
+      return;
+    }
+
+    // MOVE (channel -> channel)
     if (oldCh && newCh) {
-      const embed = new EmbedBuilder()
+      const embedMove = new EmbedBuilder()
         .setColor(0x3498db) // blue
         .setAuthor({ name: authorName, iconURL: avatar || undefined })
         .setDescription(`@${displayName} moved voice channel 🔊 <#${oldCh.id}> → <#${newCh.id}>`)
         .addFields({ name: "ID", value: idLine, inline: false })
         .setTimestamp(new Date());
 
-      await sendToKindThread(guild, "vc", { embeds: [embed] });
+      await sendToKindThread(guild, "vc", { embeds: [embedMove] });
       await logEvent(guild.id, "vc_move", member.id, { from: oldCh.id, to: newCh.id });
+      return;
     }
   } catch (e) {
     console.error("voiceStateUpdate log error:", e);
