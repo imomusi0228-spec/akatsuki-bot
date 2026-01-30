@@ -1627,8 +1627,7 @@ const server = http.createServer(async (req, res) => {
         const guilds = intersectUserBotGuilds(userGuilds);
         return json(res, { ok: true, guilds });
       }
-
-      if (pathname === "/api/stats") {
+if (pathname === "/api/stats") {
   const guildId = u.searchParams.get("guild") || "";
   const month = u.searchParams.get("month") || "";
   const chk = requireGuildAllowed(guildId);
@@ -1637,7 +1636,6 @@ const server = http.createServer(async (req, res) => {
   const stats = await getMonthlyStats(guildId, month);
   if (!stats) return json(res, { ok: false, error: "no_stats" }, 400);
 
-  // ★ Top NG Users の user_id を「表示名 (@username)」に変換
   const guild =
     client.guilds.cache.get(guildId) ||
     (await client.guilds.fetch(guildId).catch(() => null));
@@ -1645,11 +1643,8 @@ const server = http.createServer(async (req, res) => {
   if (guild && Array.isArray(stats.topNgUsers)) {
     const named = [];
     for (const row of stats.topNgUsers) {
-      const label = await resolveUserLabel(guild, row.user_id); // ←文字列が返る
-      named.push({
-        ...row,            // user_id / cnt は残す
-        user_label: label, // 表示用
-      });
+      const label = await resolveUserLabel(guild, row.user_id); // ←文字列
+      named.push({ ...row, user_label: label });
     }
     stats.topNgUsers = named;
   }
