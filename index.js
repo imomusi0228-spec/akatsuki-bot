@@ -1333,13 +1333,23 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
+client.on(Events.MessageCreate, (m) => {
+  if (!m.guild || m.author?.bot) return;
+  console.log("🧪 Message seen:", {
+    guild: m.guild.id,
+    channel: m.channelId,
+    author: m.author.id,
+    len: (m.content || "").length,
+    contentHead: (m.content || "").slice(0, 30),
+  });
+});
+
 /* =========================
    Log threads (date x kind) using DB log_threads(kind)
    - VC logs -> kind="vc"
    - NG logs -> kind="ng"
 ========================= */
 
-// 日付キー（東京）
 function todayKeyTokyo() {
   const dtf = new Intl.DateTimeFormat("sv-SE", {
     timeZone: TIMEZONE,
@@ -1350,13 +1360,23 @@ function todayKeyTokyo() {
   return dtf.format(new Date()); // YYYY-MM-DD
 }
 
+function tokyoNowLabel() {
+  const now = new Date();
+  const hm = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: TIMEZONE,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: false,
+  }).format(now);
+  return `今日 ${hm}`;
+}
+
 function threadNameFor(kind, dateKey) {
   if (kind === "vc") return `🎙 VCログ ${dateKey}`;
   if (kind === "ng") return `🚫 NGログ ${dateKey}`;
   return `📌 ${kind} ${dateKey}`;
 }
 
-// log_channel_id 配下に「日付×kind」のスレッドを作って返す（DBに thread_id を保存）
 async function ensureLogThread(guild, kind) {
   if (!db) return null;
 
@@ -1366,7 +1386,6 @@ async function ensureLogThread(guild, kind) {
 
   const dateKey = todayKeyTokyo();
 
-  // DBに記録済みなら復元
   const row = await db.get(
     `SELECT thread_id FROM log_threads WHERE guild_id = ? AND date_key = ? AND kind = ?`,
     guild.id,
@@ -1379,11 +1398,8 @@ async function ensureLogThread(guild, kind) {
     if (cached) return cached;
     const fetched = await guild.channels.fetch(row.thread_id).catch(() => null);
     if (fetched) return fetched;
-
-    // 取れなかった場合は再作成に進む（DBは後で置き換える）
   }
 
-  // 親チャンネル取得
   const parent =
     guild.channels.cache.get(logChannelId) ||
     (await guild.channels.fetch(logChannelId).catch(() => null));
@@ -1392,7 +1408,6 @@ async function ensureLogThread(guild, kind) {
   const name = threadNameFor(kind, dateKey);
   let thread = null;
 
-  // Forum: thread作成は threads.create({ message })
   if (parent.type === ChannelType.GuildForum) {
     thread = await parent.threads
       .create({
@@ -1402,9 +1417,7 @@ async function ensureLogThread(guild, kind) {
         reason: "Create daily log thread",
       })
       .catch(() => null);
-  }
-  // Text: parent.threads.create()
-  else if (parent.threads?.create) {
+  } else if (parent.threads?.create) {
     thread = await parent.threads
       .create({
         name,
@@ -1413,17 +1426,13 @@ async function ensureLogThread(guild, kind) {
       })
       .catch(() => null);
 
-    if (thread) {
-      await thread.send({ content: `ログ開始: ${name}` }).catch(() => null);
-    }
+    if (thread) await thread.send({ content: `ログ開始: ${name}` }).catch(() => null);
   } else {
-    // スレッドを作れないチャンネル種別
     return null;
   }
 
   if (!thread) return null;
 
-  // DBに保存（同日の同kindは上書き）
   await db.run(
     `INSERT OR REPLACE INTO log_threads (guild_id, date_key, kind, thread_id) VALUES (?, ?, ?, ?)`,
     guild.id,
@@ -1444,8 +1453,10 @@ async function sendToKindThread(guild, kind, payload) {
 
 /* =========================
    VC Join/Leave -> kind="vc"
-   - display name
-   - VC channel link (<#id>)
+   - display name in body: @表示名
+   - VC link: <#channelId>
+   - Tokyo time label: 今日 9:10
+   - Color: IN green / OUT red / MOVE blue
 ========================= */
 client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
   try {
@@ -1457,20 +1468,22 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
 
     const oldCh = oldState.channel;
     const newCh = newState.channel;
-
     if (oldCh?.id === newCh?.id) return;
 
-    const displayName = member.displayName || member.user.username || member.id;
-    const avatar = member.user.displayAvatarURL?.() ?? null;
+    const authorName = member.user?.username || member.id;
+    const displayName = member.displayName || authorName;
+    const avatar = member.user?.displayAvatarURL?.() ?? null;
 
-    const nowStr = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+    const timeLabel = tokyoNowLabel();
+    const idLine = `${member.id}・${timeLabel}`;
 
     // IN
     if (!oldCh && newCh) {
       const embed = new EmbedBuilder()
-        .setAuthor({ name: displayName, iconURL: avatar || undefined })
-        .setDescription(`joined voice channel ${`<#${newCh.id}>`}`)
-        .addFields({ name: "ID", value: `${member.id}・今日 ${nowStr}`, inline: false })
+        .setColor(000ff7f) // green
+        .setAuthor({ name: authorName, iconURL: avatar || undefined })
+        .setDescription(`@${displayName} joined voice channel 🔊 <#${newCh.id}>`)
+        .addFields({ name: "ID", value: idLine, inline: false })
         .setTimestamp(new Date());
 
       await sendToKindThread(guild, "vc", { embeds: [embed] });
@@ -1481,9 +1494,10 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     // OUT
     if (oldCh && !newCh) {
       const embed = new EmbedBuilder()
-        .setAuthor({ name: displayName, iconURL: avatar || undefined })
-        .setDescription(`left voice channel ${`<#${oldCh.id}>`}`)
-        .addFields({ name: "ID", value: `${member.id}・今日 ${nowStr}`, inline: false })
+        .setColor(0x95a5a6) // gray
+        .setAuthor({ name: authorName, iconURL: avatar || undefined })
+        .setDescription(`@${displayName} left voice channel 🔊 <#${oldCh.id}>`)
+        .addFields({ name: "ID", value: idLine, inline: false })
         .setTimestamp(new Date());
 
       await sendToKindThread(guild, "vc", { embeds: [embed] });
@@ -1491,12 +1505,13 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
       return;
     }
 
-    // MOVE（欲しければONのまま）
+    // MOVE
     if (oldCh && newCh) {
       const embed = new EmbedBuilder()
-        .setAuthor({ name: displayName, iconURL: avatar || undefined })
-        .setDescription(`moved voice channel ${`<#${oldCh.id}> → <#${newCh.id}>`}`)
-        .addFields({ name: "ID", value: `${member.id}・今日 ${nowStr}`, inline: false })
+        .setColor(0x3498db) // blue
+        .setAuthor({ name: authorName, iconURL: avatar || undefined })
+        .setDescription(`@${displayName} moved voice channel 🔊 <#${oldCh.id}> → <#${newCh.id}>`)
+        .addFields({ name: "ID", value: idLine, inline: false })
         .setTimestamp(new Date());
 
       await sendToKindThread(guild, "vc", { embeds: [embed] });
@@ -1509,9 +1524,9 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
 
 /* =========================
    NG detection -> kind="ng"
-   - delete message
-   - warn DM (fallback short mention)
-   - save deleted content BEFORE delete (Embed)
+   - log BEFORE delete (keep deleted content)
+   - warn DM (fallback mention)
+   - Color: NG orange / Timeout purple
 ========================= */
 
 function matchNg(content, ngList) {
@@ -1564,25 +1579,27 @@ client.on(Events.MessageCreate, async (message) => {
 
     const st = await getSettings(guildId);
 
-    // ===== ① NGログ（削除前に本文を残す） =====
-    const displayName =
-      message.member?.displayName ||
-      message.author.globalName ||
-      message.author.username ||
-      message.author.id;
+    const member = message.member;
+    const authorName = message.author?.username || message.author?.id;
+    const displayName = member?.displayName || message.author?.globalName || authorName;
+    const avatar = message.author?.displayAvatarURL?.() ?? null;
 
-    const avatar = message.author.displayAvatarURL?.() ?? null;
+    const timeLabel = tokyoNowLabel();
+    const idLine = `${message.author.id}・${timeLabel}`;
+    const content = message.content || "";
 
+    // ===== ① NGログ（削除前） =====
     const embed = new EmbedBuilder()
-      .setAuthor({ name: displayName, iconURL: avatar || undefined })
-      .setDescription(`🚫 NGワード検出 in <#${message.channelId}>`)
+      .setColor(0xe74c3c) // red
+      .setAuthor({ name: authorName, iconURL: avatar || undefined })
+      .setDescription(`@${displayName} NG word detected in <#${message.channelId}>`)
       .addFields(
         { name: "Matched", value: m.pattern, inline: true },
-        { name: "User ID", value: message.author.id, inline: true },
+        { name: "ID", value: idLine, inline: true },
         {
           name: "Content",
-          value: message.content
-            ? (message.content.length > 900 ? message.content.slice(0, 900) + "…" : message.content)
+          value: content
+            ? (content.length > 900 ? content.slice(0, 900) + "…" : content)
             : "（空）",
           inline: false,
         }
@@ -1620,9 +1637,9 @@ client.on(Events.MessageCreate, async (message) => {
     const timeoutMin = Number(st.timeout_minutes ?? DEFAULT_TIMEOUT_MIN);
 
     if (count >= threshold) {
-      const member = await message.guild.members.fetch(message.author.id).catch(() => null);
-      if (member?.moderatable) {
-        await member.timeout(timeoutMin * 60_000, "NGワード検出の累積").catch(() => null);
+      const mem = await message.guild.members.fetch(message.author.id).catch(() => null);
+      if (mem?.moderatable) {
+        await mem.timeout(timeoutMin * 60_000, "NGワード検出の累積").catch(() => null);
 
         await logEvent(guildId, "timeout_applied", message.author.id, {
           minutes: timeoutMin,
@@ -1630,13 +1647,14 @@ client.on(Events.MessageCreate, async (message) => {
           count,
         });
 
-        // タイムアウトもNGスレッドに追記（欲しいなら）
         const embed2 = new EmbedBuilder()
-          .setAuthor({ name: displayName, iconURL: avatar || undefined })
-          .setDescription(`⏱️ Timeout applied`)
+          .setColor(0x8e44ad) // purple
+          .setAuthor({ name: authorName, iconURL: avatar || undefined })
+          .setDescription(`@${displayName} timeout applied`)
           .addFields(
             { name: "Count", value: String(count), inline: true },
-            { name: "Duration(min)", value: String(timeoutMin), inline: true }
+            { name: "Duration(min)", value: String(timeoutMin), inline: true },
+            { name: "ID", value: idLine, inline: false }
           )
           .setTimestamp(new Date());
 
