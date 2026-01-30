@@ -1557,6 +1557,81 @@ client.on(Events.MessageCreate, async (message) => {
 ========================= */
 const PORT = Number(process.env.PORT || 3000);
 
+/**
+ * 月次統計: log_threads から集計
+ * 返り値は /api/stats の後続処理が落ちない形に合わせる
+ *
+ * 想定カラム:
+ * - log_threads.guild_id (TEXT)
+ * - log_threads.kind (TEXT) 例: "ng", "timeout", "info" など
+ * - log_threads.user_id (TEXT) あるなら topNgUsers に使う（無ければ空）
+ * - log_threads.created_at (ISO文字列推奨) 例: "2026-01-31T12:34:56.000Z"
+ */
+async function getMonthlyStats({ db, guildId, ym }) {
+  if (!db || !guildId || !ym) return null;
+
+  // created_at が ISO文字列の想定で月フィルタ
+  const byKindRows = await db.all(
+    `
+    SELECT kind, COUNT(*) AS cnt
+    FROM log_threads
+    WHERE guild_id = ?
+      AND strftime('%Y-%m', created_at) = ?
+    GROUP BY kind
+    ORDER BY cnt DESC
+    `,
+    [guildId, ym]
+  );
+
+  const totalRow = await db.get(
+    `
+    SELECT COUNT(*) AS total
+    FROM log_threads
+    WHERE guild_id = ?
+      AND strftime('%Y-%m', created_at) = ?
+    `,
+    [guildId, ym]
+  );
+
+  // kind別
+  const byKind = Object.fromEntries(
+    byKindRows.map((r) => [r.kind ?? "unknown", Number(r.cnt || 0)])
+  );
+
+  // NGユーザー上位（kind='ng' がある前提。無いなら空で返す）
+  // user_id カラムが無い/違う場合でも落ちないよう try/catch
+  let topNgUsers = [];
+  try {
+    const topRows = await db.all(
+      `
+      SELECT user_id, COUNT(*) AS cnt
+      FROM log_threads
+      WHERE guild_id = ?
+        AND strftime('%Y-%m', created_at) = ?
+        AND kind = 'ng'
+        AND user_id IS NOT NULL AND user_id <> ''
+      GROUP BY user_id
+      ORDER BY cnt DESC
+      LIMIT 10
+      `,
+      [guildId, ym]
+    );
+    topNgUsers = topRows.map((r) => ({
+      user_id: String(r.user_id),
+      count: Number(r.cnt || 0),
+    }));
+  } catch (e) {
+    topNgUsers = [];
+  }
+
+  return {
+    ym,
+    total: Number(totalRow?.total || 0),
+    byKind,
+    topNgUsers, // 後続で resolveUserLabel される
+  };
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     // ===== ここに今のルーティング処理をそのまま貼る =====
@@ -1710,34 +1785,40 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (pathname === "/api/stats") {
-        const guildId = u.searchParams.get("guild") || "";
-        const month = u.searchParams.get("month") || "";
-        const chk = requireGuildAllowed(guildId);
-        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
+  const guildId = u.searchParams.get("guild") || "";
+  const month = u.searchParams.get("month") || ""; // 例 "2026-01"
+  const chk = requireGuildAllowed(guildId);
+  if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
 
-        const stats = await getMonthlyStats(guildId, month);
-        if (!stats) return json(res, { ok: false, error: "no_stats" }, 400);
+  // month の簡易バリデーション
+  if (!/^\d{4}-\d{2}$/.test(month)) {
+    return json(res, { ok: false, error: "invalid_month_format", hint: "use YYYY-MM (e.g. 2026-01)" }, 400);
+  }
 
-        const guild =
-          client.guilds.cache.get(guildId) ||
-          (await client.guilds.fetch(guildId).catch(() => null));
+  // ✅ db を渡す版で呼び出す
+  const stats = await getMonthlyStats({ db, guildId, ym: month });
+  if (!stats) return json(res, { ok: false, error: "no_stats" }, 400);
 
-        if (guild && Array.isArray(stats.topNgUsers)) {
-          const named = [];
-          for (const row of stats.topNgUsers) {
-            const uinfo = await resolveUserLabel(guild, row.user_id);
-            named.push({
-              ...row,
-              user_label: uinfo.user_label,
-              display_name: uinfo.display_name,
-              username: uinfo.username,
-            });
-          }
-          stats.topNgUsers = named;
-        }
+  const guild =
+    client.guilds.cache.get(guildId) ||
+    (await client.guilds.fetch(guildId).catch(() => null));
 
-        return json(res, { ok: true, stats });
-      }
+  if (guild && Array.isArray(stats.topNgUsers)) {
+    const named = [];
+    for (const row of stats.topNgUsers) {
+      const uinfo = await resolveUserLabel(guild, row.user_id);
+      named.push({
+        ...row,
+        user_label: uinfo.user_label,
+        display_name: uinfo.display_name,
+        username: uinfo.username,
+      });
+    }
+    stats.topNgUsers = named;
+  }
+
+  return json(res, { ok: true, stats });
+}
 
       if (pathname === "/api/ngwords") {
         const guildId = u.searchParams.get("guild") || "";
