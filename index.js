@@ -289,7 +289,7 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
     <div class="card">
       <h3>Top NG Users</h3>
       <table>
-        <thead><tr><th>User ID</th><th>Count</th></tr></thead>
+        <thead><tr><th>User</th><th>Count</th></tr></thead>
         <tbody id="topNg"></tbody>
       </table>
     </div>
@@ -478,6 +478,14 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
           renderByTypeTable(byType);
 
         const top = stats.stats?.topNgUsers ?? [];
+        $("topNg").innerHTML = top.map(x =>
+          '<tr>' +
+          '<td>' + (x.user_label || (x.display_name ? (x.display_name + ' (@' + (x.username||'') + ')') : x.user_id)) + '</td>' +
+          '<td>' + (x.cnt ?? 0) + '</td>' +
+          '</tr>'
+          ).join("") || '<tr><td colspan="2" class="muted">（なし）</td></tr>';
+
+
         // ★ここが「Web側（表示）」の修正箇所：user_label（表示名）優先、なければuser_id
         $("topNg").innerHTML = top.map(x =>
           '<tr><td>' + (x.user_label || x.user_id) + '</td><td>' + (x.cnt ?? 0) + '</td></tr>'
@@ -1636,6 +1644,7 @@ if (pathname === "/api/stats") {
   const stats = await getMonthlyStats(guildId, month);
   if (!stats) return json(res, { ok: false, error: "no_stats" }, 400);
 
+  // ★ user_id -> 表示名(@username) を解決して返す
   const guild =
     client.guilds.cache.get(guildId) ||
     (await client.guilds.fetch(guildId).catch(() => null));
@@ -1643,8 +1652,13 @@ if (pathname === "/api/stats") {
   if (guild && Array.isArray(stats.topNgUsers)) {
     const named = [];
     for (const row of stats.topNgUsers) {
-      const label = await resolveUserLabel(guild, row.user_id); // ←文字列
-      named.push({ ...row, user_label: label });
+      const uinfo = await resolveUserLabel(guild, row.user_id);
+      named.push({
+        ...row, // user_id/cntは残す
+        user_label: uinfo.user_label,
+        display_name: uinfo.display_name,
+        username: uinfo.username,
+      });
     }
     stats.topNgUsers = named;
   }
@@ -1731,6 +1745,27 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log(`🌐 Listening on ${PORT}`);
 });
 
+async function resolveUserLabel(guild, userId) {
+  try {
+    const member = await guild.members.fetch(userId);
+    const display_name = member.displayName || member.user.globalName || member.user.username || userId;
+    const username = member.user.username || "";
+    return {
+      user_id: userId,
+      display_name,
+      username,
+      user_label: `${display_name} (@${username})`,
+    };
+  } catch {
+    return {
+      user_id: userId,
+      display_name: `Unknown`,
+      username: "",
+      user_label: `Unknown (${userId})`,
+    };
+  }
+}
+
 async function getMonthlyStats(guildId, monthStr) {
   if (!db) return null;
   const range = tokyoMonthRangeUTC(monthStr);
@@ -1752,7 +1787,9 @@ async function getMonthlyStats(guildId, monthStr) {
   const topNgUsers = await db.all(
     `SELECT user_id, COUNT(*) as cnt
      FROM log_events
-     WHERE guild_id = ? AND type = 'ng_detected' AND ts >= ? AND ts < ? AND user_id IS NOT NULL
+     WHERE guild_id = ? AND type = 'ng_detected'
+       AND ts >= ? AND ts < ?
+       AND user_id IS NOT NULL
      GROUP BY user_id
      ORDER BY cnt DESC
      LIMIT 10`,
