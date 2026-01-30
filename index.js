@@ -1552,31 +1552,65 @@ client.on(Events.MessageCreate, async (message) => {
   }
 });
 
-/* =========================
-   Web server: admin + API + OAuth
-========================= */
-const PORT = Number(process.env.PORT || 3000);
-
-/**
- * 月次統計: log_threads から集計
- * 返り値は /api/stats の後続処理が落ちない形に合わせる
- *
- * 想定カラム:
- * - log_threads.guild_id (TEXT)
- * - log_threads.kind (TEXT) 例: "ng", "timeout", "info" など
- * - log_threads.user_id (TEXT) あるなら topNgUsers に使う（無ければ空）
- * - log_threads.created_at (ISO文字列推奨) 例: "2026-01-31T12:34:56.000Z"
- */
+// ===== 月次統計（log_threads）=====
+// 置き場所：const server = http.createServer(...) の前
 async function getMonthlyStats({ db, guildId, ym }) {
   if (!db || !guildId || !ym) return null;
 
-  // created_at が ISO文字列の想定で月フィルタ
+  const cols = await db.all("PRAGMA table_info(log_threads)");
+  const colNames = cols.map((c) => String(c.name));
+
+  // 日時カラムを自動検出
+  const dateCandidates = [
+    "created_at",
+    "createdAt",
+    "created",
+    "timestamp",
+    "ts",
+    "time",
+    "created_ms",
+    "createdAtMs",
+    "created_time",
+  ];
+  const dateCol = dateCandidates.find((n) => colNames.includes(n));
+  if (!dateCol) {
+    throw new Error(`no date column in log_threads. columns=${colNames.join(",")}`);
+  }
+
+  // user_id を自動検出（あれば topNgUsers を作る）
+  const userCandidates = ["user_id", "userId", "author_id", "authorId", "member_id", "memberId"];
+  const userCol = userCandidates.find((n) => colNames.includes(n)) || null;
+
+  // サンプル値から ISO / unix秒 / unixms を推定
+  const sampleRow = await db.get(
+    `SELECT ${dateCol} AS v FROM log_threads WHERE ${dateCol} IS NOT NULL LIMIT 1`
+  );
+  const v = sampleRow?.v;
+
+  // 月判定の式を決める
+  let monthExpr;
+  if (typeof v === "number") {
+    monthExpr =
+      v > 1e12
+        ? `strftime('%Y-%m', datetime(${dateCol}/1000, 'unixepoch'))` // ms
+        : `strftime('%Y-%m', datetime(${dateCol}, 'unixepoch'))`;     // sec
+  } else if (typeof v === "string" && /^\d+$/.test(v.trim())) {
+    const n = Number(v.trim());
+    monthExpr =
+      n > 1e12
+        ? `strftime('%Y-%m', datetime(${dateCol}/1000, 'unixepoch'))`
+        : `strftime('%Y-%m', datetime(${dateCol}, 'unixepoch'))`;
+  } else {
+    monthExpr = `strftime('%Y-%m', ${dateCol})`; // ISO/日時文字列
+  }
+
+  // kind別集計
   const byKindRows = await db.all(
     `
     SELECT kind, COUNT(*) AS cnt
     FROM log_threads
     WHERE guild_id = ?
-      AND strftime('%Y-%m', created_at) = ?
+      AND ${monthExpr} = ?
     GROUP BY kind
     ORDER BY cnt DESC
     `,
@@ -1588,317 +1622,55 @@ async function getMonthlyStats({ db, guildId, ym }) {
     SELECT COUNT(*) AS total
     FROM log_threads
     WHERE guild_id = ?
-      AND strftime('%Y-%m', created_at) = ?
+      AND ${monthExpr} = ?
     `,
     [guildId, ym]
   );
 
-  // kind別
   const byKind = Object.fromEntries(
     byKindRows.map((r) => [r.kind ?? "unknown", Number(r.cnt || 0)])
   );
 
-  // NGユーザー上位（kind='ng' がある前提。無いなら空で返す）
-  // user_id カラムが無い/違う場合でも落ちないよう try/catch
+  // NGユーザー上位（userCol がある時だけ）
   let topNgUsers = [];
-  try {
-    const topRows = await db.all(
-      `
-      SELECT user_id, COUNT(*) AS cnt
-      FROM log_threads
-      WHERE guild_id = ?
-        AND strftime('%Y-%m', created_at) = ?
-        AND kind = 'ng'
-        AND user_id IS NOT NULL AND user_id <> ''
-      GROUP BY user_id
-      ORDER BY cnt DESC
-      LIMIT 10
-      `,
-      [guildId, ym]
-    );
-    topNgUsers = topRows.map((r) => ({
-      user_id: String(r.user_id),
-      count: Number(r.cnt || 0),
-    }));
-  } catch (e) {
-    topNgUsers = [];
+  if (userCol) {
+    try {
+      const topRows = await db.all(
+        `
+        SELECT ${userCol} AS user_id, COUNT(*) AS cnt
+        FROM log_threads
+        WHERE guild_id = ?
+          AND ${monthExpr} = ?
+          AND kind = 'ng'
+          AND ${userCol} IS NOT NULL AND ${userCol} <> ''
+        GROUP BY ${userCol}
+        ORDER BY cnt DESC
+        LIMIT 10
+        `,
+        [guildId, ym]
+      );
+
+      topNgUsers = topRows.map((r) => ({
+        user_id: String(r.user_id),
+        count: Number(r.cnt || 0),
+      }));
+    } catch {
+      topNgUsers = [];
+    }
   }
 
   return {
     ym,
     total: Number(totalRow?.total || 0),
     byKind,
-    topNgUsers, // 後続で resolveUserLabel される
+    topNgUsers,
   };
 }
 
-const server = http.createServer(async (req, res) => {
-  try {
-    // ===== ここに今のルーティング処理をそのまま貼る =====
-
-    const u = new URL(req.url || "/", baseUrl(req));
-    const pathname = u.pathname;
-
-    // health (Render)
-    if (pathname === "/health") return text(res, "ok", 200);
-
-    // token auth
-    const tokenQ = u.searchParams.get("token") || "";
-    const tokenAuthed = ADMIN_TOKEN && tokenQ === ADMIN_TOKEN;
-
-    // OAuth session
-    const sess = await getSession(req);
-    const oauthReady = !!(CLIENT_ID && CLIENT_SECRET && (PUBLIC_URL || req.headers.host));
-    const isAuthed = !!sess || tokenAuthed;
-
-    // ===== OAuth endpoints =====
-    if (pathname === "/login") {
-      if (!oauthReady) {
-        return text(res, "OAuth not configured. Set DISCORD_CLIENT_ID/SECRET and PUBLIC_URL.", 500);
-      }
-      const state = rand(12);
-      states.set(state, Date.now());
-
-      const redirectUri = OAUTH_REDIRECT_URI || `${baseUrl(req)}${REDIRECT_PATH}`;
-      const authUrl =
-        "https://discord.com/oauth2/authorize" +
-        `?client_id=${encodeURIComponent(CLIENT_ID)}` +
-        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-        `&response_type=code` +
-        `&scope=${encodeURIComponent(OAUTH_SCOPES)}` +
-        `&state=${encodeURIComponent(state)}`;
-
-      res.writeHead(302, { Location: authUrl });
-      return res.end();
-    }
-
-    if (pathname === REDIRECT_PATH) {
-      if (!oauthReady) return text(res, "OAuth is not configured.", 500);
-
-      const code = u.searchParams.get("code") || "";
-      const state = u.searchParams.get("state") || "";
-      const created = states.get(state);
-      if (!code || !state || !created) return text(res, "Invalid OAuth state/code", 400);
-      states.delete(state);
-
-      const redirectUri = OAUTH_REDIRECT_URI || `${baseUrl(req)}${REDIRECT_PATH}`;
-
-      const body = new URLSearchParams();
-      body.set("client_id", CLIENT_ID);
-      body.set("client_secret", CLIENT_SECRET);
-      body.set("grant_type", "authorization_code");
-      body.set("code", code);
-      body.set("redirect_uri", redirectUri);
-
-      const tr = await fetch("https://discord.com/api/v10/oauth2/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body,
-      });
-      if (!tr.ok) return text(res, `Token exchange failed: ${tr.status}`, 500);
-      const tok = await tr.json();
-
-      const accessToken = tok.access_token;
-      const expiresIn = Number(tok.expires_in || 3600);
-
-      const user = await discordApi(accessToken, "/users/@me");
-      const sid = rand(24);
-
-      sessions.set(sid, {
-        accessToken,
-        user,
-        guilds: null,
-        guildsFetchedAt: 0,
-        expiresAt: Date.now() + expiresIn * 1000,
-      });
-
-      setCookie(res, "sid", sid, { maxAge: expiresIn });
-      res.writeHead(302, { Location: "/admin" });
-      return res.end();
-    }
-
-    if (pathname === "/logout") {
-      if (sess?.sid) sessions.delete(sess.sid);
-      delCookie(res, "sid");
-      res.writeHead(302, { Location: "/" });
-      return res.end();
-    }
-
-    // ===== Pages =====
-    if (pathname === "/") {
-      return html(res, renderHomeHTML({
-        title: "Akatsuki Bot",
-        links: [
-          { label: "Admin", href: "/admin" },
-          { label: "Health", href: "/health" },
-        ],
-      }));
-    }
-
-    if (pathname === "/admin") {
-      if (!isAuthed) {
-        return html(res, renderNeedLoginHTML({ oauthReady, tokenEnabled: !!ADMIN_TOKEN }));
-      }
-      const user = sess?.user || null;
-      return html(res, renderAdminHTML({ user, oauth: !!sess, tokenAuthed: !!tokenAuthed }));
-    }
-
-    // ===== APIs =====
-    if (pathname.startsWith("/api/")) {
-      if (!isAuthed) return json(res, { ok: false, error: "unauthorized" }, 401);
-
-      // OAuth時は「Bot入り + 管理権限がある鯖」だけ許可
-      let allowedGuildIds = null;
-      if (sess) {
-        const userGuilds = await ensureGuildsForSession(sess);
-        const allowed = intersectUserBotGuilds(userGuilds);
-        allowedGuildIds = new Set(allowed.map((g) => g.id));
-      }
-
-      function requireGuildAllowed(guildId) {
-        if (!guildId) return { ok: false, status: 400, error: "missing guild" };
-        if (allowedGuildIds && !allowedGuildIds.has(guildId)) return { ok: false, status: 403, error: "forbidden guild" };
-        return { ok: true };
-      }
-
-      if (pathname === "/api/health") return json(res, { ok: true });
-
-      if (pathname === "/api/me") {
-        return json(res, {
-          ok: true,
-          oauth: !!sess,
-          user: sess?.user
-            ? { id: sess.user.id, username: sess.user.username, global_name: sess.user.global_name }
-            : null,
-          botGuildCount: client.guilds.cache.size,
-        });
-      }
-
-      if (pathname === "/api/guilds") {
-        if (!sess) {
-          const guilds = client.guilds.cache.map((g) => ({ id: g.id, name: g.name }));
-          return json(res, { ok: true, guilds });
-        }
-        const userGuilds = await ensureGuildsForSession(sess);
-        const guilds = intersectUserBotGuilds(userGuilds);
-        return json(res, { ok: true, guilds });
-      }
-
-      if (pathname === "/api/stats") {
-  const guildId = u.searchParams.get("guild") || "";
-  const month = u.searchParams.get("month") || ""; // 例 "2026-01"
-  const chk = requireGuildAllowed(guildId);
-  if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
-
-  // month の簡易バリデーション
-  if (!/^\d{4}-\d{2}$/.test(month)) {
-    return json(res, { ok: false, error: "invalid_month_format", hint: "use YYYY-MM (e.g. 2026-01)" }, 400);
-  }
-
-  // ✅ db を渡す版で呼び出す
-  const stats = await getMonthlyStats({ db, guildId, ym: month });
-  if (!stats) return json(res, { ok: false, error: "no_stats" }, 400);
-
-  const guild =
-    client.guilds.cache.get(guildId) ||
-    (await client.guilds.fetch(guildId).catch(() => null));
-
-  if (guild && Array.isArray(stats.topNgUsers)) {
-    const named = [];
-    for (const row of stats.topNgUsers) {
-      const uinfo = await resolveUserLabel(guild, row.user_id);
-      named.push({
-        ...row,
-        user_label: uinfo.user_label,
-        display_name: uinfo.display_name,
-        username: uinfo.username,
-      });
-    }
-    stats.topNgUsers = named;
-  }
-
-  return json(res, { ok: true, stats });
-}
-
-      if (pathname === "/api/ngwords") {
-        const guildId = u.searchParams.get("guild") || "";
-        const chk = requireGuildAllowed(guildId);
-        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
-
-        const words = await getNgWords(guildId);
-        return json(res, { ok: true, count: words.length, words });
-      }
-
-      if (pathname === "/api/ngwords/add" && req.method === "POST") {
-        const body = await readJson(req);
-        const guildId = String(body.guild || "");
-        const word = String(body.word || "");
-        const chk = requireGuildAllowed(guildId);
-        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
-
-        const r = await addNgWord(guildId, word);
-        return json(res, r, r.ok ? 200 : 400);
-      }
-
-      if (pathname === "/api/ngwords/remove" && req.method === "POST") {
-        const body = await readJson(req);
-        const guildId = String(body.guild || "");
-        const word = String(body.word || "");
-        const chk = requireGuildAllowed(guildId);
-        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
-
-        const r = await removeNgWord(guildId, word);
-        return json(res, r, r.ok ? 200 : 400);
-      }
-
-      if (pathname === "/api/ngwords/clear" && req.method === "POST") {
-        const body = await readJson(req);
-        const guildId = String(body.guild || "");
-        const chk = requireGuildAllowed(guildId);
-        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
-
-        const r = await clearNgWords(guildId);
-        return json(res, r, r.ok ? 200 : 400);
-      }
-
-      if (pathname === "/api/settings") {
-        const guildId = u.searchParams.get("guild") || "";
-        const chk = requireGuildAllowed(guildId);
-        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
-
-        const settings = await getSettings(guildId);
-        return json(res, { ok: true, settings });
-      }
-
-      if (pathname === "/api/settings/update" && req.method === "POST") {
-        const body = await readJson(req);
-        const guildId = String(body.guild || "");
-        const chk = requireGuildAllowed(guildId);
-        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
-
-        const r = await updateSettings(guildId, {
-          ng_threshold: Number(body.ng_threshold),
-          timeout_minutes: Number(body.timeout_minutes),
-        });
-        return json(res, r, r.ok ? 200 : 400);
-      }
-
-      return json(res, { ok: false, error: "not_found" }, 404);
-    }
-
-    // fallback
-    return text(res, "Not Found", 404);
-
-  } catch (err) {
-    console.error("HTTP server error:", err);
-    return text(res, "Internal Server Error", 500);
-  }
-});
-
-// listen は外で1回だけ
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`🌐 Listening on ${PORT}`);
-});
+/* =========================
+   Web server: admin + API + OAuth
+========================= */
+const PORT = Number(process.env.PORT || 3000);
 
 /* =========================
    Discord Bot 起動（外で1回だけ）
