@@ -463,6 +463,7 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
       const stats = await api("/api/stats?guild=" + encodeURIComponent(guildId) + "&month=" + encodeURIComponent(month));
       if (!stats.ok) {
         $("summary").innerHTML = '<div class="err">stats取得失敗: ' + (stats.error || "unknown") + '</div>';
+        $("topNg").innerHTML = "";
       } else {
         const summary = stats.stats?.summary ?? {};
         const byType = summary.byType ?? {};
@@ -477,7 +478,10 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
           renderByTypeTable(byType);
 
         const top = stats.stats?.topNgUsers ?? [];
-        $("topNg").innerHTML = top.map(x => '<tr><td>' + (x.user_label || x.user_id) + '</td><td>' + x.cnt + '</td></tr>').join("");
+        // ★ここが「Web側（表示）」の修正箇所：user_label（表示名）優先、なければuser_id
+        $("topNg").innerHTML = top.map(x =>
+          '<tr><td>' + (x.user_label || x.user_id) + '</td><td>' + (x.cnt ?? 0) + '</td></tr>'
+        ).join("") || '<tr><td colspan="2" class="muted">（なし）</td></tr>';
       }
 
       // ngwords
@@ -486,11 +490,11 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
         $("ngwords").textContent = "取得失敗: " + (ng.error || "unknown");
         showStatus("ngStatus", "取得失敗: " + (ng.error || "unknown"), true);
       } else {
-       $("ngwords").textContent = (ng.words || []).map(w =>
-  (w.kind === "regex"
-    ? "/" + w.word + "/" + (w.flags || "")
-    : w.word)
-).join(String.fromCharCode(10)) || "（なし）";
+        $("ngwords").textContent = (ng.words || []).map(w =>
+          (w.kind === "regex"
+            ? "/" + w.word + "/" + (w.flags || "")
+            : w.word)
+        ).join(String.fromCharCode(10)) || "（なし）";
 
         showStatus("ngStatus", "取得OK（" + (ng.count ?? (ng.words||[]).length) + "件）", false);
       }
@@ -954,59 +958,6 @@ async function logEvent(guildId, type, userId = null, metaObj = null) {
       Date.now()
     );
   } catch {}
-}
-
-async function resolveUserLabel(guild, userId) {
-  try {
-    const member = await guild.members.fetch(userId);
-    const display = member.displayName;
-    const username = member.user.username;
-    return `${display} (@${username})`;
-  } catch {
-    return `Unknown (${userId})`;
-  }
-}
-
-async function getMonthlyStats(guildId, monthStr) {
-  if (!db) return null;
-  const range = tokyoMonthRangeUTC(monthStr);
-  if (!range) return null;
-  const { start, end } = range;
-
-  const byTypeRows = await db.all(
-    `SELECT type, COUNT(*) as cnt
-     FROM log_events
-     WHERE guild_id = ? AND ts >= ? AND ts < ?
-     GROUP BY type
-     ORDER BY cnt DESC`,
-    guildId,
-    start,
-    end
-  );
-  const byType = Object.fromEntries(byTypeRows.map((r) => [r.type, Number(r.cnt)]));
-
-  const topNgUsers = await db.all(
-    `SELECT user_id, COUNT(*) as cnt
-     FROM log_events
-     WHERE guild_id = ? AND type = 'ng_detected' AND ts >= ? AND ts < ? AND user_id IS NOT NULL
-     GROUP BY user_id
-     ORDER BY cnt DESC
-     LIMIT 10`,
-    guildId,
-    start,
-    end
-  );
-
-  return {
-    summary: {
-      ngDetected: Number(byType["ng_detected"] ?? 0),
-      timeouts: Number(byType["timeout_applied"] ?? 0),
-      joins: Number(byType["member_join"] ?? 0),
-      leaves: Number(byType["member_leave"] ?? 0),
-      byType,
-    },
-    topNgUsers,
-  };
 }
 
 /* =========================
@@ -1686,23 +1637,22 @@ const server = http.createServer(async (req, res) => {
   const stats = await getMonthlyStats(guildId, month);
   if (!stats) return json(res, { ok: false, error: "no_stats" }, 400);
 
-  // ★ ここから追加：user_id -> 表示名(@username)
-  const guild = client.guilds.cache.get(guildId) || (await client.guilds.fetch(guildId).catch(() => null));
+  // ★ Top NG Users の user_id を「表示名 (@username)」に変換
+  const guild =
+    client.guilds.cache.get(guildId) ||
+    (await client.guilds.fetch(guildId).catch(() => null));
 
   if (guild && Array.isArray(stats.topNgUsers)) {
     const named = [];
     for (const row of stats.topNgUsers) {
-      const uinfo = await resolveUserLabel(guild, row.user_id);
+      const label = await resolveUserLabel(guild, row.user_id); // ←文字列が返る
       named.push({
-        ...row,              // user_id / cnt は残す
-        user_label: uinfo.label,
-        display_name: uinfo.display_name,
-        username: uinfo.username,
+        ...row,            // user_id / cnt は残す
+        user_label: label, // 表示用
       });
     }
     stats.topNgUsers = named;
   }
-  // ★ 追加ここまで
 
   return json(res, { ok: true, stats });
 }
