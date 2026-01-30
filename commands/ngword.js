@@ -1,105 +1,203 @@
-import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js";
+// commands/ngword.js
+import {
+  SlashCommandBuilder,
+  PermissionFlagsBits,
+} from "discord.js";
 
 export const data = new SlashCommandBuilder()
   .setName("ngword")
-  .setDescription("NGワードを管理します")
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-  .addSubcommand((sub) =>
-    sub
+  .setDescription("NGワード管理")
+  .addSubcommand((s) =>
+    s
       .setName("add")
       .setDescription("NGワードを追加")
-      .addStringOption((opt) =>
-        opt.setName("word").setDescription("追加するワード").setRequired(true)
+      .addStringOption((o) =>
+        o.setName("word").setDescription("追加するワード（例: ばか / /ばか|あほ/i）").setRequired(true)
       )
   )
-  .addSubcommand((sub) =>
-    sub
+  .addSubcommand((s) =>
+    s
       .setName("remove")
       .setDescription("NGワードを削除")
-      .addStringOption((opt) =>
-        opt.setName("word").setDescription("削除するワード").setRequired(true)
+      .addStringOption((o) =>
+        o.setName("word").setDescription("削除するワード（登録形式のまま）").setRequired(true)
       )
   )
-  .addSubcommand((sub) =>
-    sub.setName("list").setDescription("NGワード一覧を表示（管理者だけ）")
+  .addSubcommand((s) =>
+    s
+      .setName("clear")
+      .setDescription("NGワードを全削除（管理者のみ）")
   )
-  .addSubcommand((sub) =>
-    sub.setName("clear").setDescription("NGワードを全削除（注意）")
+  .addSubcommand((s) =>
+    s
+      .setName("list")
+      .setDescription("NGワード一覧（管理者のみ）")
+  )
+  // 管理者向け（必要なら ManageGuild に変えてOK）
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
+
+function isAdminLike(interaction) {
+  const p = interaction.memberPermissions;
+  return (
+    p?.has(PermissionFlagsBits.Administrator) ||
+    p?.has(PermissionFlagsBits.ManageGuild)
+  );
+}
+
+function parseNgInput(raw) {
+  // index.js 側と同じ規約： /pattern/flags なら regex、それ以外 literal
+  const s = String(raw ?? "").trim();
+  if (!s) return null;
+
+  if (s.startsWith("/") && s.lastIndexOf("/") > 0) {
+    const last = s.lastIndexOf("/");
+    const pattern = s.slice(1, last);
+    const flags = s.slice(last + 1) || "i";
+    if (!pattern.trim()) return null;
+    if (!/^[dgimsuvy]*$/.test(flags)) return null;
+    try { new RegExp(pattern, flags); } catch { return null; }
+    return { kind: "regex", word: pattern, flags };
+  }
+  return { kind: "literal", word: s, flags: "i" };
+}
+
+async function dbAdd(db, guildId, wordRaw) {
+  const parsed = parseNgInput(wordRaw);
+  if (!parsed) return { ok: false, error: "invalid_input" };
+
+  await db.run(
+    `INSERT OR IGNORE INTO ng_words (guild_id, kind, word, flags)
+     VALUES (?, ?, ?, ?)`,
+    guildId,
+    parsed.kind,
+    parsed.word,
+    parsed.flags || "i"
+  );
+  return { ok: true, added: parsed };
+}
+
+async function dbRemove(db, guildId, wordRaw) {
+  const parsed = parseNgInput(wordRaw);
+  if (!parsed) return { ok: false, error: "invalid_input" };
+
+  const r = await db.run(
+    `DELETE FROM ng_words
+     WHERE guild_id = ? AND kind = ? AND word = ?`,
+    guildId,
+    parsed.kind,
+    parsed.word
+  );
+  return { ok: true, deleted: r?.changes ?? 0, target: parsed };
+}
+
+async function dbClear(db, guildId) {
+  await db.run(`DELETE FROM ng_words WHERE guild_id = ?`, guildId);
+  return { ok: true };
+}
+
+async function dbList(db, guildId) {
+  const rows = await db.all(
+    `SELECT kind, word, flags
+     FROM ng_words
+     WHERE guild_id = ?
+     ORDER BY kind ASC, word ASC`,
+    guildId
   );
 
-function isUnknownInteraction(err) {
-  return err?.code === 10062 || err?.rawError?.code === 10062;
+  const words = (rows || [])
+    .map((r) => {
+      const kind = (r.kind || "literal").trim();
+      const w = (r.word || "").trim();
+      const flags = (r.flags || "i").trim();
+      if (!w) return null;
+      return kind === "regex" ? `/${w}/${flags}` : w;
+    })
+    .filter(Boolean);
+
+  return { ok: true, words };
 }
 
 export async function execute(interaction, db) {
-  try {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-  } catch (e) {
-    if (isUnknownInteraction(e)) return;
-    throw e;
-  }
+  // ✅ 返信UIは使わない（index.js側で消してるため）
+  const send = interaction.publicSend
+    ? interaction.publicSend.bind(interaction)
+    : async (payload) => interaction.channel?.send(payload).catch(() => null);
 
   try {
     if (!interaction.guildId) {
-      return await interaction.editReply("❌ サーバー内で実行してください。");
+      await send({ content: "❌ サーバー内で実行してください。" });
+      return;
     }
     if (!db) {
-      return await interaction.editReply("❌ DBが初期化できていません（Renderログ確認）");
+      await send({ content: "❌ DBが初期化できていません（Renderログ確認）" });
+      return;
     }
 
     const sub = interaction.options.getSubcommand();
-    const guildId = interaction.guildId;
+
+    // list/clear は管理者のみ（念のため二重チェック）
+    if ((sub === "list" || sub === "clear") && !isAdminLike(interaction)) {
+      await send({ content: "❌ 管理者権限（ManageGuild/Administrator）が必要です。" });
+      return;
+    }
 
     if (sub === "add") {
       const word = interaction.options.getString("word", true).trim();
-      if (!word) return await interaction.editReply("❌ ワードが空です。");
-
-      await db.run(
-        `INSERT OR IGNORE INTO ng_words (guild_id, word) VALUES (?, ?)`,
-        guildId,
-        word
-      );
-      return await interaction.editReply(`✅ 追加しました：\`${word}\``);
+      if (!word) {
+        await send({ content: "❌ ワードが空です。" });
+        return;
+      }
+      const r = await dbAdd(db, interaction.guildId, word);
+      if (!r.ok) {
+        await send({ content: "❌ 形式が不正です。例: ばか / /ばか|あほ/i" });
+        return;
+      }
+      const shown = r.added.kind === "regex" ? `/${r.added.word}/${r.added.flags}` : r.added.word;
+      await send({ content: `✅ 追加しました：\`${shown}\`` });
+      return;
     }
 
     if (sub === "remove") {
       const word = interaction.options.getString("word", true).trim();
-      await db.run(
-        `DELETE FROM ng_words WHERE guild_id = ? AND word = ?`,
-        guildId,
-        word
-      );
-      return await interaction.editReply(`✅ 削除しました：\`${word}\``);
+      if (!word) {
+        await send({ content: "❌ ワードが空です。" });
+        return;
+      }
+      const r = await dbRemove(db, interaction.guildId, word);
+      if (!r.ok) {
+        await send({ content: "❌ 形式が不正です。登録した形式のまま指定してください。" });
+        return;
+      }
+      if ((r.deleted ?? 0) <= 0) {
+        await send({ content: "⚠️ 見つかりませんでした（登録した形式のまま指定してください）" });
+        return;
+      }
+      const shown = r.target.kind === "regex" ? `/${r.target.word}/${r.target.flags}` : r.target.word;
+      await send({ content: `✅ 削除しました：\`${shown}\`` });
+      return;
     }
 
     if (sub === "clear") {
-      await db.run(`DELETE FROM ng_words WHERE guild_id = ?`, guildId);
-      return await interaction.editReply("✅ NGワードを全削除しました。");
+      await dbClear(db, interaction.guildId);
+      await send({ content: "✅ NGワードを全削除しました。" });
+      return;
     }
 
-    // list
-    const rows = await db.all(
-      `SELECT word FROM ng_words WHERE guild_id = ? ORDER BY word ASC`,
-      guildId
-    );
-    if (!rows.length) {
-      return await interaction.editReply("（空）NGワードは登録されていません。");
+    if (sub === "list") {
+      const r = await dbList(db, interaction.guildId);
+      const words = r.words || [];
+      if (!words.length) {
+        await send({ content: "（空）NGワードは登録されていません。" });
+        return;
+      }
+      const body = words.map((w) => `- ${w}`).join("\n");
+      await send({ content: `📌 NGワード一覧（${words.length}件）\n${body}` });
+      return;
     }
 
-    const words = rows.map((r) => r.word).filter(Boolean);
-
-    // Discordの文字数制限対策：長すぎる場合は途中まで
-    const joined = words.join("\n");
-    const body = joined.length > 1800 ? joined.slice(0, 1800) + "\n...（省略）" : joined;
-
-    return await interaction.editReply(
-      `✅ NGワード一覧（${words.length}件）\n\`\`\`\n${body}\n\`\`\``
-    );
+    await send({ content: "❌ 不明なサブコマンドです。" });
   } catch (e) {
-    if (isUnknownInteraction(e)) return;
-    console.error("ngword error:", e);
-    try {
-      await interaction.editReply(`❌ エラー: ${e?.message ?? e}`);
-    } catch {}
+    console.error("ngword command error:", e);
+    await send({ content: `❌ エラー: ${e?.message ?? String(e)}` });
   }
 }
