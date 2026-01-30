@@ -39,19 +39,20 @@ async function ensureLogThread(guild, kind) {
   if (!logChannelId) return null;
 
   const dateKey = todayKeyTokyo();
+  const name = threadNameFor(kind, dateKey);
 
+  // DBチェック
   const row = await db.get(
     `SELECT thread_id FROM log_threads WHERE guild_id = ? AND date_key = ? AND kind = ?`,
     guild.id,
     dateKey,
     kind
   );
-
   if (row?.thread_id) {
-    const cached = guild.channels.cache.get(row.thread_id);
-    if (cached) return cached;
-    const fetched = await guild.channels.fetch(row.thread_id).catch(() => null);
-    if (fetched) return fetched;
+    const ch =
+      guild.channels.cache.get(row.thread_id) ||
+      (await guild.channels.fetch(row.thread_id).catch(() => null));
+    if (ch) return ch;
   }
 
   const parent =
@@ -59,37 +60,38 @@ async function ensureLogThread(guild, kind) {
     (await guild.channels.fetch(logChannelId).catch(() => null));
   if (!parent) return null;
 
-  const name = threadNameFor(kind, dateKey);
-
-  let thread = null;
-
-  // フォーラム（投稿=スレッド）
+  // 🔴 Forumに同名スレッドが既にあるか確認（ここが肝）
   if (parent.type === ChannelType.GuildForum) {
-    thread = await parent.threads
-      .create({
-        name,
-        autoArchiveDuration: 1440,
-        message: { content: `ログ開始: ${name}` },
-        reason: "Create daily log thread",
-      })
-      .catch(() => null);
-  }
-  // テキスト（チャンネル内スレッド）
-  else if (parent.threads?.create) {
-    thread = await parent.threads
-      .create({
-        name,
-        autoArchiveDuration: 1440,
-        reason: "Create daily log thread",
-      })
-      .catch(() => null);
-
-    if (thread) {
-      await thread.send({ content: `ログ開始: ${name}` }).catch(() => null);
+    const existing = parent.threads.cache.find(t => t.name === name);
+    if (existing) {
+      await db.run(
+        `INSERT OR REPLACE INTO log_threads (guild_id, date_key, kind, thread_id)
+         VALUES (?, ?, ?, ?)`,
+        guild.id,
+        dateKey,
+        kind,
+        existing.id
+      );
+      return existing;
     }
   }
 
-  if (!thread) return null;
+  // なければ作成
+  let thread = null;
+
+  if (parent.type === ChannelType.GuildForum) {
+    thread = await parent.threads.create({
+      name,
+      autoArchiveDuration: 1440,
+      message: { content: `ログ開始: ${name}` },
+    });
+  } else {
+    thread = await parent.threads.create({
+      name,
+      autoArchiveDuration: 1440,
+    });
+    await thread.send(`ログ開始: ${name}`);
+  }
 
   await db.run(
     `INSERT OR REPLACE INTO log_threads (guild_id, date_key, kind, thread_id)
@@ -1148,63 +1150,62 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     if (!guild) return;
 
     const member = newState.member || oldState.member;
-    if (!member || member.user?.bot) return;
+    if (!member) return;
 
     const oldCh = oldState.channel;
     const newCh = newState.channel;
 
-    // 変化なし
-    if (oldCh?.id === newCh?.id) return;
+    // 変化なし（ミュート等）は無視
+    if ((oldCh?.id || null) === (newCh?.id || null)) return;
 
-    const displayName = member.displayName || member.user.username || member.id;
-    const avatar = member.user.displayAvatarURL?.() ?? null;
+    const who = member.displayName || member.user?.username || member.id;
+
+    // VCリンク（Discordクライアントで開ける）
+    const vcLink = (ch) => `https://discord.com/channels/${guild.id}/${ch.id}`;
 
     // IN
     if (!oldCh && newCh) {
-      const embed = new EmbedBuilder()
-        .setAuthor({ name: displayName, iconURL: avatar || undefined })
-        .setDescription(`joined voice channel ${newCh ? `<#${newCh.id}>` : ""}`)
-        .addFields({ name: "ID", value: `${member.id}・今日 ${new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}`, inline: false })
+      const embedIn = new EmbedBuilder()
+        .setColor(0x00ff7f) // #00ff7f
+        .setTitle("VC IN")
+        .setDescription(`**${who}** が入室\n🔗 ${newCh} (${vcLink(newCh)})`)
         .setTimestamp(new Date());
 
-      await sendToKindThread(guild, "vc", { embeds: [embed] });
-
-      await logEvent(guild.id, "vc_join", member.id, { channel_id: newCh.id });
-      // joins/leaves を月次で出したいなら、あなたの集計に合わせて type 名を統一してもOK
+      await sendToKindThread(guild, "vc", { embeds: [embedIn] }).catch(() => null);
+      await logEvent(guild.id, "vc_in", member.id, { channel_id: newCh.id }).catch(() => null);
       return;
     }
 
     // OUT
     if (oldCh && !newCh) {
-      const embed = new EmbedBuilder()
-        .setAuthor({ name: displayName, iconURL: avatar || undefined })
-        .setDescription(`left voice channel ${oldCh ? `<#${oldCh.id}>` : ""}`)
-        .addFields({ name: "ID", value: `${member.id}・今日 ${new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}`, inline: false })
+      const embedOut = new EmbedBuilder()
+        .setColor(0x95a5a6) // gray
+        .setTitle("VC OUT")
+        .setDescription(`**${who}** が退室\n🔗 ${oldCh} (${vcLink(oldCh)})`)
         .setTimestamp(new Date());
 
-      await sendToKindThread(guild, "vc", { embeds: [embed] });
-
-      await logEvent(guild.id, "vc_leave", member.id, { channel_id: oldCh.id });
+      await sendToKindThread(guild, "vc", { embeds: [embedOut] }).catch(() => null);
+      await logEvent(guild.id, "vc_out", member.id, { channel_id: oldCh.id }).catch(() => null);
       return;
     }
 
-    // MOVE（任意：欲しければ）
-    if (oldCh && newCh) {
-      const embed = new EmbedBuilder()
-        .setAuthor({ name: displayName, iconURL: avatar || undefined })
-        .setDescription(`moved voice channel ${`<#${oldCh.id}> → <#${newCh.id}>`}`)
-        .addFields({ name: "ID", value: `${member.id}・今日 ${new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}`, inline: false })
+    // MOVE（VC移動もログしたいなら）
+    if (oldCh && newCh && oldCh.id !== newCh.id) {
+      const embedMove = new EmbedBuilder()
+        .setColor(0x95a5a6)
+        .setTitle("VC MOVE")
+        .setDescription(
+          `**${who}** が移動\n🔗 ${oldCh} (${vcLink(oldCh)}) → ${newCh} (${vcLink(newCh)})`
+        )
         .setTimestamp(new Date());
 
-      await sendToKindThread(guild, "vc", { embeds: [embed] });
-
-      await logEvent(guild.id, "vc_move", member.id, { from: oldCh.id, to: newCh.id });
+      await sendToKindThread(guild, "vc", { embeds: [embedMove] }).catch(() => null);
+      await logEvent(guild.id, "vc_move", member.id, { from: oldCh.id, to: newCh.id }).catch(() => null);
     }
   } catch (e) {
     console.error("voiceStateUpdate log error:", e);
   }
 });
-
 
 /* =========================
    Ready / Commands
