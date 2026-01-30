@@ -1317,25 +1317,35 @@ client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
   const isUnknown = (err) => err?.code === 10062 || err?.rawError?.code === 10062;
+  const isAlreadyAcked = (err) => {
+    const c = err?.code ?? err?.rawError?.code ?? err?.name;
+    return (
+      c === 40060 ||
+      c === "InteractionAlreadyReplied" ||
+      String(c).includes("AlreadyReplied")
+    );
+  };
 
-  // ✅ 通常メッセージ用ヘルパー（2枚目の見た目）
+  // ✅ 2枚目の見た目：通常メッセージ送信用
   interaction.publicSend = async (payload) => {
     return await interaction.channel?.send(payload).catch(() => null);
   };
 
-  // ✅ Discordの「応答しませんでした」を出さないために ACK は必須（public）
+  // ✅ Discordの「応答しませんでした」を出さないためのACK（未ACKの時だけ）
   try {
-    await interaction.deferReply();
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply();
+    }
   } catch (e) {
-    // 既にACK済み等は無視
+    if (!(isUnknown(e) || isAlreadyAcked(e))) throw e;
   }
 
-  // ✅ 返信UIは残さない（消せる時だけ消す）
+  // ✅ コマンド返信UIを残さない（できる時だけ消す）
   try {
-    await interaction.deleteReply();
-  } catch (e) {
-    // 消せない環境もあるので無視
-  }
+    if (interaction.deferred || interaction.replied) {
+      await interaction.deleteReply().catch(() => null);
+    }
+  } catch {}
 
   try {
     const command = client.commands.get(interaction.commandName);
