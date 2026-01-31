@@ -1830,16 +1830,16 @@ if (pathname.startsWith("/api/")) {
     });
   }
 
-  // /api/guilds
+// /api/guilds
 if (pathname === "/api/guilds") {
-  // tokenログイン等（OAuthなし）の時：Botが入ってる鯖一覧（cacheではなくfetchで確実に取得）
+  // tokenログイン等（OAuthなし）の時：Botが入ってる鯖一覧（fetchで確実に取得）
   if (!sess) {
     const col = await client.guilds.fetch().catch(() => null);
     const list = col
       ? Array.from(col.values()).map((g) => ({ id: g.id, name: g.name }))
-      : client.guilds.cache.map((g) => ({ id: g.id, name: g.name })); // 念のため fallback
+      : client.guilds.cache.map((g) => ({ id: g.id, name: g.name }));
 
-    return json(res, { ok: true, guilds: list });
+    return json(res, { ok: true, guilds: list, _debug: { cache: client.guilds.cache.size } });
   }
 
   // OAuthあり：ユーザー所属 && Bot導入 && 権限あり の鯖だけ
