@@ -3,15 +3,23 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="description" content="VC入退室ログ、NGワード検出、管理ログの可視化まで。Discordサーバー管理を自動化する管理専用Bot。" />
-    <title>Akatsuki Bot | Discord管理を自動化</title>
 
-    <!-- OG / Twitter -->
+    <!-- 基本 -->
+    <title>Akatsuki Bot | Discord管理を自動化</title>
+    <meta
+      name="description"
+      content="VC入退室ログ・NGワード検出・管理ログの可視化まで。Discordサーバー管理を“記録と自動対応”で支える管理専用Bot。"
+    />
+
+    <!-- OGP（リンクカード用） -->
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Akatsuki Bot | Discord管理を自動化" />
-    <meta property="og:description" content="VC入退室ログ、NGワード検出、管理ログの可視化まで。管理者が張り付かなくても回るサーバーへ。" />
-    <!-- ↓ 画像を用意したら差し替え（絶対URL推奨） -->
-    <meta property="og:image" content="https://example.com/og.png" />
+    <meta
+      property="og:description"
+      content="VC入退室ログ / NG検出（削除前ログ保存）/ 管理ログの集計表示。管理者が張り付かなくても回るサーバーへ。"
+    />
+    <!-- ★ OGP画像：まずはプレースホルダ。あとで自分のPages URLに差し替え -->
+    <meta property="og:image" content="REPLACE_WITH_OG_IMAGE_ABSOLUTE_URL" />
     <meta name="twitter:card" content="summary_large_image" />
 
     <style>
@@ -69,9 +77,7 @@
         padding:8px 10px; border-radius:12px;
       }
       .navlinks a:hover{background:rgba(255,255,255,.06); color:var(--text)}
-      .cta{
-        display:flex; gap:10px; align-items:center; flex-wrap:wrap;
-      }
+      .cta{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
       .btn{
         display:inline-flex; align-items:center; justify-content:center;
         padding:11px 14px; border-radius:14px; border:1px solid var(--line);
@@ -85,9 +91,7 @@
         box-shadow: 0 16px 40px rgba(124,92,255,.22);
       }
       .btn.primary:hover{filter:brightness(1.05)}
-      .hero{
-        padding:48px 0 18px;
-      }
+      .hero{padding:48px 0 18px;}
       .heroGrid{
         display:grid;
         grid-template-columns: 1.1fr .9fr;
@@ -116,10 +120,7 @@
       @media (max-width: 520px){ h1{font-size:34px} }
       .lead{color:var(--muted); font-size:16px; margin:0 0 16px}
       .heroActions{display:flex; gap:10px; flex-wrap:wrap; margin-top:18px}
-      .mini{
-        padding:18px;
-        display:grid; gap:12px;
-      }
+      .mini{padding:18px; display:grid; gap:12px;}
       .stat{
         display:flex; justify-content:space-between; align-items:center;
         padding:12px 14px;
@@ -136,10 +137,7 @@
       }
       h2{margin:0; font-size:22px}
       .sectionTitle p{margin:0;color:var(--muted); font-size:14px}
-      .grid3{
-        display:grid; grid-template-columns: repeat(3, 1fr);
-        gap:14px;
-      }
+      .grid3{display:grid; grid-template-columns: repeat(3, 1fr); gap:14px;}
       @media (max-width: 920px){ .grid3{grid-template-columns:1fr} }
       .feature{padding:18px}
       .icon{
@@ -154,17 +152,11 @@
       .icon.info{color:var(--info)}
       .feature h3{margin:0 0 6px; font-size:16px}
       .feature p{margin:0; color:var(--muted); font-size:14px}
-      .list{
-        margin:10px 0 0; padding-left:18px; color:var(--muted); font-size:14px;
-      }
-      .split{
-        display:grid; grid-template-columns: 1fr 1fr; gap:14px;
-      }
+      .list{margin:10px 0 0; padding-left:18px; color:var(--muted); font-size:14px;}
+      .split{display:grid; grid-template-columns: 1fr 1fr; gap:14px;}
       @media (max-width: 920px){ .split{grid-template-columns:1fr} }
       .panel{padding:18px}
-      .steps{
-        display:grid; gap:10px; margin-top:10px;
-      }
+      .steps{display:grid; gap:10px; margin-top:10px;}
       .step{
         display:flex; gap:12px; align-items:flex-start;
         padding:12px 14px; border-radius:16px;
@@ -197,12 +189,6 @@
       }
       .foot{display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap}
       .small{font-size:13px}
-      .notice{
-        font-size:12px; color:var(--muted);
-        border:1px dashed var(--line);
-        padding:10px 12px; border-radius:14px;
-        background:rgba(255,255,255,.03);
-      }
       code.inline{
         padding:2px 6px; border-radius:8px;
         background:rgba(255,255,255,.06);
@@ -210,11 +196,16 @@
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
         font-size: 12px;
       }
+      .notice{
+        font-size:12px; color:var(--muted);
+        border:1px dashed var(--line);
+        padding:10px 12px; border-radius:14px;
+        background:rgba(255,255,255,.03);
+      }
     </style>
   </head>
 
   <body>
-    <!-- Header -->
     <header>
       <div class="wrap">
         <div class="nav">
@@ -222,7 +213,7 @@
             <div class="logo">A</div>
             <div>
               <b>Akatsuki Bot</b><br />
-              <span style="color:var(--muted); font-size:12px;">Discord管理を自動化</span>
+              <span style="color:var(--muted); font-size:12px;">VC・NG検出・管理ログを1つに</span>
             </div>
           </a>
 
@@ -235,60 +226,42 @@
           </nav>
 
           <div class="cta">
-            <!-- ↓ ここに招待URLを入れる -->
-            <a class="btn primary" href="REPLACE_WITH_INVITE_URL" target="_blank" rel="noopener">Botを招待する</a>
-            <!-- ↓ 管理画面URLがあるなら入れる（無ければ丸ごと削除OK） -->
-            <a class="btn" href="REPLACE_WITH_DASHBOARD_URL" target="_blank" rel="noopener">管理画面</a>
+            <a class="btn primary" href="https://discord.com/oauth2/authorize?client_id=1466095214161825873&permissions=8&integration_type=0&scope=bot" target="_blank" rel="noopener">Botを招待する</a>
           </div>
         </div>
       </div>
     </header>
 
-    <!-- Hero -->
     <main id="top" class="wrap">
       <section class="hero">
         <div class="heroGrid">
           <div class="card heroMain">
             <div class="badge">🛠 管理専用Bot / VCログ・NG検出・可視化</div>
-            <h1>Discordサーバー管理を、全部“自動化”する</h1>
+            <h1>VC・NG検出・管理ログを<br />1つにまとめるDiscord管理Bot</h1>
             <p class="lead">
-              VC入退室ログ、NGワード検出、管理ログの集計表示まで。
-              <br />管理者が張り付かなくても回るサーバーへ。
+              VC入退室ログ、NGワード検出（削除前ログ保存）、管理ログの集計表示まで。<br />
+              <b>「記録」と「自動対応」</b>で、管理者が張り付かなくても回るサーバーへ。
             </p>
 
             <div class="heroActions">
-              <a class="btn primary" href="REPLACE_WITH_INVITE_URL" target="_blank" rel="noopener">今すぐ導入する</a>
+              <a class="btn primary" href="https://discord.com/oauth2/authorize?client_id=1466095214161825873&permissions=8&integration_type=0&scope=bot" target="_blank" rel="noopener">今すぐ導入する</a>
               <a class="btn" href="#features">できることを見る</a>
             </div>
 
             <div style="margin-top:16px" class="notice">
-              差し替えポイント：<code class="inline">REPLACE_WITH_INVITE_URL</code> と（任意で）<code class="inline">REPLACE_WITH_DASHBOARD_URL</code>、
-              Bot名・OG画像URL。
+              OGP画像を作ったら <code class="inline">REPLACE_WITH_OG_IMAGE_ABSOLUTE_URL</code> をあなたのPages URLに差し替えるだけでカード表示が完成します。
             </div>
           </div>
 
           <aside class="card mini">
-            <div class="stat">
-              <b>VC入退室ログ</b>
-              <span>IN / OUT / MOVEを自動記録</span>
-            </div>
-            <div class="stat">
-              <b>NG検出</b>
-              <span>削除前ログ保存＋自動対応</span>
-            </div>
-            <div class="stat">
-              <b>管理ダッシュボード</b>
-              <span>月別・種類別の集計表示</span>
-            </div>
-            <div class="stat">
-              <b>設計思想</b>
-              <span>“管理者目線”に全振り</span>
-            </div>
+            <div class="stat"><b>VC入退室ログ</b><span>IN / OUT / MOVEを自動記録</span></div>
+            <div class="stat"><b>NG検出</b><span>削除前ログ保存＋自動対応</span></div>
+            <div class="stat"><b>管理ログ</b><span>種類ごとに見返せる</span></div>
+            <div class="stat"><b>運用</b><span>管理者目線の設計</span></div>
           </aside>
         </div>
       </section>
 
-      <!-- Problems -->
       <section id="problems">
         <div class="sectionTitle">
           <h2>こんな悩み、ありませんか？</h2>
@@ -300,15 +273,14 @@
             <li>VCの出入りを把握できていない</li>
             <li>問題発言があっても「後から証拠が残らない」</li>
             <li>管理ログが散らばっていて追えない</li>
-            <li>管理Botが多すぎて設定が地獄</li>
+            <li>管理Botが多すぎて設定がしんどい</li>
           </ul>
           <p style="margin:12px 0 0; color:var(--text); font-weight:800;">
-            👉 Akatsuki Botが、ログと自動対応を1つにまとめます。
+            👉 Akatsuki Botが「ログ」と「自動対応」を1つにまとめます。
           </p>
         </div>
       </section>
 
-      <!-- Features -->
       <section id="features">
         <div class="sectionTitle">
           <h2>Akatsuki Botでできること</h2>
@@ -319,27 +291,27 @@
           <div class="card feature">
             <div class="icon good">VC</div>
             <h3>VC入退室ログの自動記録</h3>
-            <p>IN / OUT / MOVEを自動検知し、専用スレッドへ時刻付きで保存。</p>
+            <p>IN / OUT / MOVE を自動検知し、専用スレッドへ時刻付きで保存します。</p>
             <ul class="list">
               <li>表示名＋ユーザー名で分かりやすく表示</li>
-              <li>「あとから見返せる」ログ設計</li>
+              <li>あとから見返せるログ設計</li>
             </ul>
           </div>
 
           <div class="card feature">
             <div class="icon warn">NG</div>
             <h3>NGワード検出 &amp; 自動対応</h3>
-            <p>登録したNGワードを検出。削除前にログを保存し、回数に応じて自動対応。</p>
+            <p>登録したNGワードを検出。削除前にログ保存し、検出回数に応じて自動対応します。</p>
             <ul class="list">
               <li>削除前ログ保存（証拠が残る）</li>
-              <li>警告・タイムアウトを自動実行</li>
+              <li>自動警告・タイムアウト（運用ルールに合わせやすい）</li>
             </ul>
           </div>
 
           <div class="card feature">
             <div class="icon info">WEB</div>
-            <h3>管理者向けWebダッシュボード</h3>
-            <p>ブラウザからログ確認・集計を可視化。サーバーの状態を一目で把握。</p>
+            <h3>管理ログ確認用Web画面</h3>
+            <p>ブラウザからログ確認・集計を可視化。サーバーの状態を一目で把握できます。</p>
             <ul class="list">
               <li>月別・種類別の集計表示</li>
               <li>Discord外からも確認可能</li>
@@ -348,35 +320,6 @@
         </div>
       </section>
 
-      <!-- Why -->
-      <section id="why">
-        <div class="sectionTitle">
-          <h2>なぜこのBotは「管理が楽」なのか？</h2>
-          <p>運用の現場で“必要な形”に寄せています</p>
-        </div>
-
-        <div class="split">
-          <div class="card panel">
-            <h3 style="margin:0 0 8px;">✔ 設計思想が「管理者目線」</h3>
-            <ul class="list">
-              <li>ログは全部自動</li>
-              <li>人が判断する場面を最小化</li>
-              <li>後追い確認ができる構造</li>
-            </ul>
-          </div>
-
-          <div class="card panel">
-            <h3 style="margin:0 0 8px;">✔ 無駄な機能を入れない</h3>
-            <ul class="list">
-              <li>音楽Botではありません</li>
-              <li>娯楽Botでもありません</li>
-              <li>管理専用に全振り</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <!-- How -->
       <section id="how">
         <div class="sectionTitle">
           <h2>導入はたったの3ステップ</h2>
@@ -387,34 +330,29 @@
           <div class="steps">
             <div class="step">
               <div class="num">1</div>
-              <div>
-                <b>招待リンクをクリック</b><br />
-                <span style="color:var(--muted); font-size:14px;">サーバーを選択して導入します。</span>
-              </div>
+              <div><b>招待リンクをクリック</b><br /><span style="color:var(--muted); font-size:14px;">サーバーを選択して導入します。</span></div>
             </div>
             <div class="step">
               <div class="num">2</div>
-              <div>
-                <b>権限を許可</b><br />
-                <span style="color:var(--muted); font-size:14px;">必要最小限の権限で動作します。</span>
-              </div>
+              <div><b>権限を許可</b><br /><span style="color:var(--muted); font-size:14px;">必要最小限の権限で動作します。</span></div>
             </div>
             <div class="step">
               <div class="num">3</div>
               <div>
                 <b>初期設定コマンドを実行</b><br />
-                <span style="color:var(--muted); font-size:14px;">例：<code class="inline">/setup</code>（あなたのBotの実コマンドに合わせて差し替え）</span>
+                <span style="color:var(--muted); font-size:14px;">
+                  例：<code class="inline">/setup</code>（実コマンドが違うならここだけ差し替え）
+                </span>
               </div>
             </div>
           </div>
 
           <div style="margin-top:14px">
-            <a class="btn primary" href="REPLACE_WITH_INVITE_URL" target="_blank" rel="noopener">Botを招待する</a>
+            <a class="btn primary" href="https://discord.com/oauth2/authorize?client_id=1466095214161825873&permissions=8&integration_type=0&scope=bot" target="_blank" rel="noopener">Botを招待する</a>
           </div>
         </div>
       </section>
 
-      <!-- Security -->
       <section id="security">
         <div class="sectionTitle">
           <h2>セキュリティ・安心設計</h2>
@@ -424,48 +362,13 @@
         <div class="card panel">
           <ul class="list">
             <li>権限は必要最小限のみ要求</li>
-            <li>メッセージ削除前に必ずログ保存</li>
+            <li>メッセージ削除前に必ずログ保存（NG検出時）</li>
             <li>ログは管理目的以外に使用しません</li>
             <li>外部へのデータ共有なし</li>
           </ul>
         </div>
       </section>
 
-      <!-- Recommended -->
-      <section id="recommended">
-        <div class="sectionTitle">
-          <h2>こんなサーバーにおすすめ</h2>
-          <p>VC運用・管理負担・トラブル対策</p>
-        </div>
-
-        <div class="card panel">
-          <ul class="list">
-            <li>中〜大規模Discordサーバー</li>
-            <li>VC利用が多いコミュニティ</li>
-            <li>管理人が常駐できないサーバー</li>
-            <li>トラブル時に「証拠」を残したいサーバー</li>
-          </ul>
-        </div>
-      </section>
-
-      <!-- CTA -->
-      <section id="cta">
-        <div class="card panel" style="padding:22px; display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;">
-          <div>
-            <h2 style="margin:0 0 6px;">管理は「人」じゃなく「仕組み」で</h2>
-            <p style="margin:0; color:var(--muted);">
-              ログを残す。自動で対応する。あとから確認できる。<br />
-              その全部を、1つのBotで。
-            </p>
-          </div>
-          <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <a class="btn primary" href="REPLACE_WITH_INVITE_URL" target="_blank" rel="noopener">今すぐ導入する</a>
-            <a class="btn" href="#faq">FAQを見る</a>
-          </div>
-        </div>
-      </section>
-
-      <!-- FAQ -->
       <section id="faq">
         <div class="sectionTitle">
           <h2>よくある質問</h2>
@@ -475,7 +378,7 @@
         <div class="card faq">
           <details open>
             <summary>Q. 無料ですか？</summary>
-            <p>A. はい。現在は無料で利用できます。（有料化予定があるならここを書き換え）</p>
+            <p>A. はい。現在は無料で利用できます。（将来変えるならここだけ更新）</p>
           </details>
 
           <details>
@@ -485,12 +388,15 @@
 
           <details>
             <summary>Q. 表示名が変わっても追跡できますか？</summary>
-            <p>A. はい。ユーザー識別は内部で保持しているため追跡できます。</p>
+            <p>A. はい。識別情報を元に追跡できるため、表示名が変わっても問題ありません。</p>
           </details>
 
           <details>
-            <summary>Q. どんな権限が必要ですか？</summary>
-            <p>A. 例：メッセージ管理（NG検出時の削除）、タイムアウト付与（自動対応）など。実際に要求している権限に合わせて調整してください。</p>
+            <summary>Q. スラッシュコマンドは使えますか？</summary>
+            <p>
+              A. いまの招待URLは <code class="inline">scope=bot</code> です。もしスラッシュコマンドを使うなら
+              <code class="inline">applications.commands</code> を追加したURLにすると確実です。
+            </p>
           </details>
         </div>
       </section>
@@ -502,18 +408,14 @@
             <span>Discord管理を自動化</span>
           </div>
           <div class="small">
-            <!-- 任意：連絡先やGitHub -->
-            <span>お問い合わせ：<a href="REPLACE_WITH_CONTACT_URL">連絡先リンク</a></span>
+            <span>（任意）GitHub / 連絡先リンクをここに</span>
           </div>
         </div>
-        <p class="small" style="margin:14px 0 0;">
-          © <span id="y"></span> Akatsuki Bot. All rights reserved.
-        </p>
+        <p class="small" style="margin:14px 0 0;">© <span id="y"></span> Akatsuki Bot</p>
       </footer>
     </main>
 
     <script>
-      // Year
       document.getElementById("y").textContent = new Date().getFullYear();
     </script>
   </body>
