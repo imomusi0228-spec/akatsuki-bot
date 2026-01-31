@@ -1998,67 +1998,97 @@ const server = http.createServer(async (req, res) => {
       }
 
       // /api/stats
-      if (pathname === "/api/stats") {
-        const guildId = u.searchParams.get("guild") || "";
-        const month = u.searchParams.get("month") || ""; // YYYY-MM
-        const chk = await requireGuildAllowed(guildId);
-        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
+if (pathname === "/api/stats") {
+  const guildId = u.searchParams.get("guild") || "";
+  const month = u.searchParams.get("month") || ""; // YYYY-MM
+  const chk = await requireGuildAllowed(guildId);
+  if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
 
-        if (!/^\d{4}-\d{2}$/.test(month)) {
-          return json(res, { ok: false, error: "invalid_month_format", hint: "use YYYY-MM" }, 400);
-        }
+  if (!/^\d{4}-\d{2}$/.test(month)) {
+    return json(res, { ok: false, error: "invalid_month_format", hint: "use YYYY-MM" }, 400);
+  }
 
-        const range = tokyoMonthRangeUTC(month);
-        if (!range) return json(res, { ok: false, error: "bad_month" }, 400);
+  const range = tokyoMonthRangeUTC(month);
+  if (!range) return json(res, { ok: false, error: "bad_month" }, 400);
 
-        const rows = await db.all(
-          `SELECT type, COUNT(*) AS cnt
-           FROM log_events
-           WHERE guild_id = ?
-             AND ts >= ?
-             AND ts < ?
-           GROUP BY type`,
-          [guildId, range.start, range.end]
-        );
+  // 月次タイプ集計
+  const rows = await db.all(
+    `SELECT type, COUNT(*) AS cnt
+     FROM log_events
+     WHERE guild_id = ?
+       AND ts >= ?
+       AND ts < ?
+     GROUP BY type`,
+    [guildId, range.start, range.end]
+  );
 
-        const byType = Object.fromEntries(rows.map((r) => [r.type ?? "unknown", Number(r.cnt || 0)]));
+  const byType = Object.fromEntries(rows.map((r) => [r.type ?? "unknown", Number(r.cnt || 0)]));
 
-        const ngDetected = byType.ng_detected ?? byType.ng ?? 0;
-        const timeouts = byType.timeout_applied ?? byType.timeout ?? 0;
-        const joins = byType.member_join ?? byType.join ?? byType.guild_member_add ?? 0;
-        const leaves = byType.member_leave ?? byType.leave ?? byType.guild_member_remove ?? 0;
+  const ngDetected = byType.ng_detected ?? byType.ng ?? 0;
+  const timeouts = byType.timeout_applied ?? byType.timeout ?? 0;
+  const joins = byType.member_join ?? byType.join ?? byType.guild_member_add ?? 0;
+  const leaves = byType.member_leave ?? byType.leave ?? byType.guild_member_remove ?? 0;
 
-        let topNgUsers = [];
-        try {
-          const top = await db.all(
-            `SELECT user_id, COUNT(*) AS cnt
-             FROM log_events
-             WHERE guild_id = ?
-               AND ts >= ? AND ts < ?
-               AND type = 'ng_detected'
-               AND user_id IS NOT NULL AND user_id <> ''
-             GROUP BY user_id
-             ORDER BY cnt DESC
-             LIMIT 10`,
-            [guildId, range.start, range.end]
-          );
+  // ===== Top NG Users（ID→表示名/ユーザー名に解決）=====
+  let topNgUsers = [];
 
-          topNgUsers = top.map((r) => ({
-            user_id: String(r.user_id),
-            cnt: Number(r.cnt || 0),
-          }));
-        } catch {
-          topNgUsers = [];
-        }
+  const top = await db.all(
+    `SELECT user_id, COUNT(*) AS cnt
+     FROM log_events
+     WHERE guild_id = ?
+       AND ts >= ? AND ts < ?
+       AND type = 'ng_detected'
+       AND user_id IS NOT NULL AND user_id <> ''
+     GROUP BY user_id
+     ORDER BY cnt DESC
+     LIMIT 10`,
+    [guildId, range.start, range.end]
+  );
 
-        return json(res, {
-          ok: true,
-          stats: {
-            summary: { ngDetected, timeouts, joins, leaves, byType },
-            topNgUsers,
-          },
-        });
-      }
+  const guild = await client.guilds.fetch(guildId).catch(() => null);
+
+  async function resolveUser(uid) {
+    const id = String(uid || "");
+    if (!id) return { user_id: id, username: null, display_name: null };
+
+    const user =
+      client.users.cache.get(id) ||
+      (await client.users.fetch(id).catch(() => null));
+
+    let member = null;
+    if (guild) {
+      member =
+        guild.members.cache.get(id) ||
+        (await guild.members.fetch(id).catch(() => null));
+    }
+
+    const username = user?.username ?? null;
+    const displayName =
+      member?.displayName ??
+      user?.globalName ??
+      user?.username ??
+      null;
+
+    return { user_id: id, username, display_name: displayName };
+  }
+
+  const resolved = await Promise.all(top.map((r) => resolveUser(r.user_id)));
+
+  topNgUsers = top.map((r, i) => ({
+    user_id: String(r.user_id),
+    username: resolved[i]?.username ?? null,
+    display_name: resolved[i]?.display_name ?? null,
+    cnt: Number(r.cnt || 0),
+  }));
+
+  return json(res, {
+    ok: true,
+    stats: {
+      summary: { ngDetected, timeouts, joins, leaves, byType },
+      topNgUsers,
+    },
+  });
+}
 
       return json(res, { ok: false, error: "not_found" }, 404);
     }
