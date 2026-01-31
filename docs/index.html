@@ -105,7 +105,7 @@
         background: linear-gradient(180deg, rgba(15,23,49,.95), rgba(13,20,43,.9));
         border:1px solid var(--line);
         border-radius:var(--radius);
-        box-shadow: 0 18px 60px rgba(0,0,0,.45);
+        box-shadow: var(--shadow);
       }
       .heroMain{padding:26px}
       .badge{
@@ -205,6 +205,24 @@
         color:var(--muted);
         margin-left:8px;
       }
+      table th, table td{
+        border-bottom: 1px solid var(--line);
+        padding: 12px 10px;
+        text-align:left;
+        color:var(--muted);
+        vertical-align:top;
+      }
+      table th{
+        color:var(--text);
+        font-weight:800;
+        white-space:nowrap;
+      }
+      table td:nth-child(n+2){
+        text-align:center;
+        color:var(--text);
+        white-space:nowrap;
+      }
+      tbody tr:last-child td{border-bottom:none}
     </style>
   </head>
 
@@ -224,13 +242,19 @@
             <a href="#problems">悩み</a>
             <a href="#features">機能</a>
             <a href="#pricing">料金</a>
+            <a href="#compare">比較</a>
             <a href="#how">導入</a>
             <a href="#security">安心</a>
             <a href="#faq">FAQ</a>
           </nav>
 
           <div class="cta">
-            <a class="btn primary" href="https://discord.com/oauth2/authorize?client_id=1466095214161825873&permissions=8&integration_type=0&scope=bot" target="_blank" rel="noopener">Botを招待する</a>
+            <a
+              class="btn primary"
+              href="https://discord.com/oauth2/authorize?client_id=1466095214161825873&permissions=8&integration_type=0&scope=bot%20applications.commands"
+              target="_blank"
+              rel="noopener"
+            >Botを招待する</a>
           </div>
         </div>
       </div>
@@ -248,7 +272,12 @@
             </p>
 
             <div class="heroActions">
-              <a class="btn primary" href="https://discord.com/oauth2/authorize?client_id=1466095214161825873&permissions=8&integration_type=0&scope=bot" target="_blank" rel="noopener">今すぐ導入する</a>
+              <a
+                class="btn primary"
+                href="https://discord.com/oauth2/authorize?client_id=1466095214161825873&permissions=8&integration_type=0&scope=bot%20applications.commands"
+                target="_blank"
+                rel="noopener"
+              >今すぐ導入する</a>
               <a class="btn" href="#pricing">料金を見る</a>
             </div>
           </div>
@@ -331,7 +360,7 @@
           <!-- Free -->
           <div class="card feature">
             <h3>🆓 Free <span class="tag">¥0</span></h3>
-            <p class="lead">まず入れてもらう用・体験プラン</p>
+            <p class="lead">ログを残す運用を、まず始める</p>
             <ul class="list">
               <li>VC入退室ログ（スレッド / チャンネル）</li>
               <li>NGワード検出ログ（削除前ログは残る）</li>
@@ -352,7 +381,7 @@
           <!-- Pro -->
           <div class="card feature" style="outline:2px solid var(--accent)">
             <h3>🟩 Pro <span class="tag">¥680 / 月・¥6,800 / 年</span></h3>
-            <p class="lead"><b>一番おすすめ</b>（個人・小規模サーバー向け）</p>
+            <p class="lead"><b>おすすめ</b>：管理を自動化して、手間を減らす</p>
 
             <ul class="list">
               <li><b>Freeの全機能</b></li>
@@ -369,14 +398,14 @@
             </ul>
 
             <p style="margin:12px 0 0; color:var(--muted); font-size:13px;">
-              🎯 目的：管理の手間を減らしたい人向けの完成形
+              🎯 目的：管理の負担を減らし、運用を安定させたい人向け
             </p>
           </div>
 
           <!-- Pro+ -->
           <div class="card feature">
             <h3>🟦 Pro+ <span class="tag">¥1,480 / 月・¥14,800 / 年</span></h3>
-            <p class="lead">中規模〜ガチ運用向け</p>
+            <p class="lead">本格・複数サーバー運用向け</p>
 
             <ul class="list">
               <li><b>Proの全機能</b></li>
@@ -392,10 +421,101 @@
           </div>
         </div>
 
+        <!-- 課金・安心・制限理由・導線（整合性あり） -->
         <div class="card panel" style="margin-top:14px;">
-          <p style="margin:0; color:var(--muted); font-size:14px;">
-            ※ 料金・提供機能は運用状況に応じて調整する場合があります。導入・相談はDiscordからどうぞ。
+          <p style="margin:0; font-size:14px; color:var(--muted);">
+            💳 <b>課金はどこから？</b><br />
+            有料プラン（Pro / Pro+）への切り替えは、<b>Web管理画面または案内される公式リンク</b>から行えます。
+            まずはFreeで導入し、必要になったタイミングでアップグレードしてください。
           </p>
+        </div>
+
+        <div class="card panel" style="margin-top:14px;">
+          <p style="margin:0; font-size:14px; color:var(--muted);">
+            💬 <b>課金前のご案内</b><br />
+            有料プランは、<b>いつでも停止・ダウングレード可能</b>です。
+            まずはFreeで動作や運用感を確認し、納得した場合のみアップグレードしてください。
+            サービス仕様の大きな変更がある場合は、事前に案内します。
+          </p>
+        </div>
+
+        <p style="margin-top:12px; font-size:13px; color:var(--muted);">
+          ※ Freeプランでは、サーバーへの影響が大きい自動処罰や高度な設定機能を制限しています。
+          まずは「ログを残す運用」を安全に体験してもらうための設計です。
+        </p>
+      </section>
+
+      <!-- 比較表（横並び） -->
+      <section id="compare">
+        <div class="sectionTitle">
+          <h2>プラン比較</h2>
+          <p>必要になったタイミングでアップグレードできます</p>
+        </div>
+
+        <div class="card panel" style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:14px; min-width:780px;">
+            <thead>
+              <tr>
+                <th>機能</th>
+                <th>🆓 Free<br /><span style="font-weight:400;color:var(--muted);">ログ運用を開始</span></th>
+                <th>🟩 Pro<br /><span style="font-weight:400;color:var(--muted);">管理を自動化</span></th>
+                <th>🟦 Pro+<br /><span style="font-weight:400;color:var(--muted);">本格・複数運用</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>VC入退室ログ</td><td>✅</td><td>✅</td><td>✅</td></tr>
+              <tr><td>NG検出ログ（削除前保存）</td><td>✅</td><td>✅</td><td>✅</td></tr>
+              <tr><td>NG自動処罰（警告・タイムアウト）</td><td>❌</td><td>✅</td><td>✅</td></tr>
+              <tr><td>統計・集計（/api/stats 等）</td><td>❌</td><td>✅</td><td>✅</td></tr>
+              <tr><td>Web管理画面</td><td>❌</td><td>✅</td><td>✅（高度設定）</td></tr>
+              <tr><td>設定変更（NG編集・閾値・通知先）</td><td>❌</td><td>✅</td><td>✅</td></tr>
+              <tr><td>サーバー数</td><td>1</td><td>1</td><td>3〜5</td></tr>
+              <tr><td>CSVエクスポート</td><td>❌</td><td>❌</td><td>✅</td></tr>
+              <tr><td>優先サポート</td><td>❌</td><td>❌</td><td>✅</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card panel" style="margin-top:14px;">
+          <p style="margin:0; font-size:14px; color:var(--muted);">
+            📩 <b>Pro / Pro+ にアップグレードした方へ</b><br />
+            アップグレード後は、Web管理画面から各種設定を行えます。
+            設定方法や運用のポイントは、管理画面内の案内をご確認ください。
+            不明点がある場合は、公式案内からお問い合わせいただけます。
+          </p>
+        </div>
+      </section>
+
+      <!-- 導入後ストーリー -->
+      <section id="story">
+        <div class="sectionTitle">
+          <h2>導入後、こう変わります</h2>
+          <p>FreeからProへ。運用の変化</p>
+        </div>
+
+        <div class="card panel">
+          <ol class="list">
+            <li>
+              <b>まずはFreeで導入</b><br />
+              VC入退室ログやNG検出ログが残り、「何が起きているか」が見えるようになります。
+            </li>
+            <li>
+              <b>ログが増えてくる</b><br />
+              問題の傾向や、同じユーザーの繰り返し行動に気づき始めます。
+            </li>
+            <li>
+              <b>管理の手間が増える</b><br />
+              警告・対応を手動で行うのが負担になってきます。
+            </li>
+            <li>
+              <b>Proにアップグレード</b><br />
+              NG自動処罰と統計機能により、管理対応の多くが自動化されます。
+            </li>
+            <li>
+              <b>「管理が回る」状態へ</b><br />
+              管理者が常に張り付かなくても、サーバー運営が安定します。
+            </li>
+          </ol>
         </div>
       </section>
 
@@ -427,7 +547,12 @@
           </div>
 
           <div style="margin-top:14px">
-            <a class="btn primary" href="https://discord.com/oauth2/authorize?client_id=1466095214161825873&permissions=8&integration_type=0&scope=bot" target="_blank" rel="noopener">Botを招待する</a>
+            <a
+              class="btn primary"
+              href="https://discord.com/oauth2/authorize?client_id=1466095214161825873&permissions=8&integration_type=0&scope=bot%20applications.commands"
+              target="_blank"
+              rel="noopener"
+            >Botを招待する</a>
             <a class="btn" href="#pricing">料金プランを見る</a>
           </div>
         </div>
@@ -447,37 +572,105 @@
             <li>外部へのデータ共有なし</li>
           </ul>
         </div>
+
+        <div class="card panel" style="margin-top:14px;">
+          <p style="margin:0; font-size:14px; color:var(--muted);">
+            🔒 <b>Administrator権限を使用する理由</b><br />
+            Akatsuki Bot は、VC状態の正確な取得、NG検出時のメッセージ管理、
+            自動警告・タイムアウトなどの管理機能を安定して提供するため、
+            Administrator 権限を使用しています。<br /><br />
+            取得した権限は<b>管理機能の提供にのみ使用</b>され、
+            メッセージ内容やログが外部へ送信されることはありません。
+          </p>
+        </div>
       </section>
 
       <section id="faq">
         <div class="sectionTitle">
           <h2>よくある質問</h2>
-          <p>運用で気になるところだけ先回り</p>
+          <p>料金・機能・導入で気になる点をまとめました</p>
         </div>
 
         <div class="card faq">
           <details open>
             <summary>Q. まずは無料で使えますか？</summary>
-            <p>A. はい。FreeでVCログ・NG検出ログを試せます。必要になったタイミングでProへアップグレードできます。</p>
-          </details>
-
-          <details>
-            <summary>Q. Proにすると何が一番変わりますか？</summary>
-            <p>A. NG自動処罰（警告・タイムアウト）と、統計・Web管理画面で「運用が回る」状態になります。</p>
-          </details>
-
-          <details>
-            <summary>Q. スラッシュコマンドは使えますか？</summary>
             <p>
-              A. 使う場合は招待URLに <code class="inline">applications.commands</code> を追加するのがおすすめです。
-              （現在のURLは <code class="inline">scope=bot</code> です）
+              A. はい。Freeプランでは、VC入退室ログとNGワード検出ログ（削除前保存）を利用できます。
+              まずは無料で「ログが残る運用」を体験してください。
+            </p>
+          </details>
+
+          <details>
+            <summary>Q. 有料プラン（Pro / Pro+）では何ができますか？</summary>
+            <p>
+              A. Pro以上では、NG自動処罰（警告・タイムアウト）や統計機能、Web管理画面が利用できます。
+              Pro+では複数サーバー管理やCSVエクスポート、優先サポートなど、本格運用向けの機能が追加されます。
+            </p>
+          </details>
+
+          <details>
+            <summary>Q. どのタイミングで有料にするのがおすすめですか？</summary>
+            <p>
+              A. 「警告や処罰を自動化したい」「管理ログを集計して把握したい」と感じたタイミングが、
+              Proへの切り替え目安です。まずはFreeで導入し、必要になったらアップグレードできます。
+            </p>
+          </details>
+
+          <details>
+            <summary>Q. 招待URLに applications.commands は含まれていますか？</summary>
+            <p>
+              A. はい。現在の招待URLには <code class="inline">applications.commands</code> を含めており、
+              スラッシュコマンドを利用できます。
             </p>
           </details>
 
           <details>
             <summary>Q. 管理ログはどれくらい保存されますか？</summary>
-            <p>A. サーバーごとに保存され、削除しない限り残ります。（監査用途の長期保存やCSVはPro+で対応予定）</p>
+            <p>
+              A. ログはサーバーごとに保存され、削除しない限り残ります。
+              監査用途の長期保存やCSVエクスポートはPro+で対応予定です。
+            </p>
           </details>
+        </div>
+      </section>
+
+      <section id="terms">
+        <div class="sectionTitle">
+          <h2>利用について</h2>
+          <p>安心して使ってもらうための最低限のルール</p>
+        </div>
+
+        <div class="card panel">
+          <ul class="list">
+            <li>本Botは現状有姿（as-is）で提供されます。</li>
+            <li>ログは管理目的で保存され、第三者へ共有されることはありません。</li>
+            <li>Discord側の仕様変更や障害により、一部機能が利用できない場合があります。</li>
+            <li>運営者は、本Botの利用によって生じた直接・間接の損害について責任を負いません。</li>
+            <li>不正利用や悪用が確認された場合、利用を制限または停止することがあります。</li>
+            <li>料金・機能・提供内容は、予告のうえ変更される場合があります。</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="law">
+        <div class="sectionTitle">
+          <h2>特定商取引法に基づく表記（簡易）</h2>
+          <p>有料プラン提供に関する最低限の情報</p>
+        </div>
+
+        <div class="card panel">
+          <ul class="list">
+            <li><b>販売事業者名：</b> Akatsuki Bot 運営</li>
+            <li><b>運営責任者：</b> 個人開発者</li>
+            <li><b>所在地：</b> 請求があった場合、遅滞なく開示します</li>
+            <li><b>連絡先：</b> サービス内または案内ページよりお問い合わせください</li>
+            <li><b>販売価格：</b> 各料金プランページに記載</li>
+            <li><b>商品代金以外の必要料金：</b> インターネット接続料金等は利用者負担</li>
+            <li><b>支払方法：</b> オンライン決済（予定）</li>
+            <li><b>支払時期：</b> 各決済手続き時に表示</li>
+            <li><b>提供時期：</b> 決済完了後、即時利用可能</li>
+            <li><b>返品・キャンセル：</b> デジタルサービスのため、原則として返金不可</li>
+          </ul>
         </div>
       </section>
 
@@ -491,7 +684,12 @@
             <span>（任意）GitHub / 連絡先リンクをここに</span>
           </div>
         </div>
-        <p class="small" style="margin:14px 0 0;">© <span id="y"></span> Akatsuki Bot</p>
+
+        <p class="small" style="margin:14px 0 0;">
+          本サービスは個人開発によるものであり、Discord Inc. とは提携・承認・公式関係はありません。
+        </p>
+
+        <p class="small" style="margin:10px 0 0;">© <span id="y"></span> Akatsuki Bot</p>
       </footer>
     </main>
 
@@ -500,4 +698,3 @@
     </script>
   </body>
 </html>
-
