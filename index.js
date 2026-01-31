@@ -424,6 +424,12 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
   </div>
 
 <script>
+const token = new URLSearchParams(location.search).get("token") || "";
+const withToken = (url) => {
+  if (!token) return url;
+  return url + (url.includes("?") ? "&" : "?") + "token=" + encodeURIComponent(token);
+};
+
 (() => {
   const $ = (id) => document.getElementById(id);
 
@@ -435,7 +441,7 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
   }
 
   async function api(path, opts){
-    const r = await fetch(path, opts);
+  const r = await fetch(withToken(path), opts);
     const text = await r.text().catch(() => "");
     let data = null;
     try { data = text ? JSON.parse(text) : null; } catch {
@@ -1675,7 +1681,7 @@ const PORT = Number(process.env.PORT || 10000);
 const server = http.createServer(async (req, res) => {
   try {
     const u = new URL(req.url || "/", baseUrl(req));
-    const pathname = u.pathname;
+    const pathname = (u.pathname || "/").replace(/\/+$/, "") || "/";
 
     // health (Render)
     if (pathname === "/health") return text(res, "ok", 200);
