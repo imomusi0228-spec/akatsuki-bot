@@ -1673,18 +1673,145 @@ async function getMonthlyStats({ db, guildId, ym }) {
 const PORT = Number(process.env.PORT || 10000);
 
 const server = http.createServer(async (req, res) => {
+  try {
+    const u = new URL(req.url || "/", baseUrl(req));
+    const pathname = u.pathname;
 
+    // health (Render)
+    if (pathname === "/health") return text(res, "ok", 200);
+
+    // token auth
+    const tokenQ = u.searchParams.get("token") || "";
+    const tokenAuthed = ADMIN_TOKEN && tokenQ === ADMIN_TOKEN;
+
+    // OAuth session（/admin と /api/ と /logout のときだけ読む）
+    let sess = null;
+    if (pathname === "/admin" || pathname.startsWith("/api/") || pathname === "/logout") {
+      sess = await getSession(req);
+    }
+
+    const oauthReady = !!(CLIENT_ID && CLIENT_SECRET && (PUBLIC_URL || req.headers.host));
+    const isAuthed = !!sess || tokenAuthed;
+
+    // ===== OAuth endpoints =====
+    if (pathname === "/login") {
+      if (!oauthReady) {
+        return text(res, "OAuth not configured. Set DISCORD_CLIENT_ID/SECRET and PUBLIC_URL.", 500);
+      }
+      const state = rand(12);
+      states.set(state, Date.now());
+
+      const redirectUri = OAUTH_REDIRECT_URI || `${baseUrl(req)}${REDIRECT_PATH}`;
+      const authUrl =
+        "https://discord.com/oauth2/authorize" +
+        `?client_id=${encodeURIComponent(CLIENT_ID)}` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&response_type=code` +
+        `&scope=${encodeURIComponent(OAUTH_SCOPES)}` +
+        `&state=${encodeURIComponent(state)}`;
+
+      res.writeHead(302, { Location: authUrl });
+      return res.end();
+    }
+
+    if (pathname === REDIRECT_PATH) {
+      if (!oauthReady) return text(res, "OAuth is not configured.", 500);
+
+      const code = u.searchParams.get("code") || "";
+      const state = u.searchParams.get("state") || "";
+      const created = states.get(state);
+      if (!code || !state || !created) return text(res, "Invalid OAuth state/code", 400);
+      states.delete(state);
+
+      const redirectUri = OAUTH_REDIRECT_URI || `${baseUrl(req)}${REDIRECT_PATH}`;
+
+      const body = new URLSearchParams();
+      body.set("client_id", CLIENT_ID);
+      body.set("client_secret", CLIENT_SECRET);
+      body.set("grant_type", "authorization_code");
+      body.set("code", code);
+      body.set("redirect_uri", redirectUri);
+
+      const tr = await fetch("https://discord.com/api/v10/oauth2/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
+      });
+      if (!tr.ok) return text(res, `Token exchange failed: ${tr.status}`, 500);
+      const tok = await tr.json();
+
+      const accessToken = tok.access_token;
+      const expiresIn = Number(tok.expires_in || 3600);
+
+      const user = await discordApi(accessToken, "/users/@me");
+      const sid = rand(24);
+
+      sessions.set(sid, {
+        accessToken,
+        user,
+        guilds: null,
+        guildsFetchedAt: 0,
+        expiresAt: Date.now() + expiresIn * 1000,
+      });
+
+      setCookie(res, "sid", sid, { maxAge: expiresIn });
+      res.writeHead(302, { Location: "/admin" });
+      return res.end();
+    }
+
+    if (pathname === "/logout") {
+      if (sess?.sid) sessions.delete(sess.sid);
+      delCookie(res, "sid");
+      res.writeHead(302, { Location: "/" });
+      return res.end();
+    }
+
+    // ===== Pages =====
+    if (pathname === "/") {
+      return html(
+        res,
+        renderHomeHTML({
+          title: "Akatsuki Bot",
+          links: [
+            { label: "Admin", href: "/admin" },
+            { label: "Health", href: "/health" },
+          ],
+        })
+      );
+    }
+
+    if (pathname === "/admin") {
+      if (!isAuthed) {
+        return html(res, renderNeedLoginHTML({ oauthReady, tokenEnabled: !!ADMIN_TOKEN }));
+      }
+      const user = sess?.user || null;
+      return html(res, renderAdminHTML({ user, oauth: !!sess, tokenAuthed: !!tokenAuthed }));
+    }
+
+    // ===== APIs =====
+    if (pathname.startsWith("/api/")) {
+      if (!isAuthed) return json(res, { ok: false, error: "unauthorized" }, 401);
+
+      // ここ以下はあなたの既存 /api 実装をそのまま残してOK
+      // （/api/health, /api/me, /api/guilds, /api/stats, ...）
+      // 省略せず “いま動いてる既存のまま” 붙けてください
+    }
+
+    return text(res, "Not Found", 404);
+  } catch (err) {
+    console.error("HTTP server error:", err);
+    return json(
+      res,
+      { ok: false, error: "internal_error", message: err?.message || "Internal Server Error" },
+      500
+    );
+  }
 });
 
+// ★★★ これが最重要：Render で外部公開されるよう 0.0.0.0 で listen ★★★
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`🌐 Listening on ${PORT}`);
 });
-
-// OAuth session（/admin と /api/ のときだけ読む）
-let sess = null;
-if (pathname === "/admin" || pathname.startsWith("/api/") || pathname === "/logout") {
-  sess = await getSession(req);
-}
 
 /* =========================
    Discord Bot 起動（外で1回だけ）
