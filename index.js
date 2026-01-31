@@ -1680,6 +1680,12 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log(`🌐 Listening on ${PORT}`);
 });
 
+// OAuth session（/admin と /api/ のときだけ読む）
+let sess = null;
+if (pathname === "/admin" || pathname.startsWith("/api/") || pathname === "/logout") {
+  sess = await getSession(req);
+}
+
 /* =========================
    Discord Bot 起動（外で1回だけ）
 ========================= */
