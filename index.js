@@ -1661,15 +1661,64 @@ topNgUsers = topRows.map((r) => {
    - ★ 重複宣言しない（PORT/server はここで1回だけ）
    - ★ /admin は「OAuth or（任意で）token」どっちでもOK
    - ★ tokenログインでも cookie セッションを発行して /api を安定化（重要）
+   - ★ intersectUserBotGuilds 未定義を解消（ここで定義）
 ========================= */
 
 const PORT = Number(process.env.PORT || 10000);
 
-// ★ cookie secure 判定
+// ★ cookie secure 判定（Render など reverse proxy 対応）
 function isHttps(req) {
   const xfProto = (req.headers["x-forwarded-proto"] || "").toString().split(",")[0].trim();
   if (xfProto) return xfProto === "https";
   return !!req.socket?.encrypted;
+}
+
+// ★ OAuthスコープ/リダイレクト（既存の同名 const を再宣言しない）
+const oauthScopesLocal = (process.env.OAUTH_SCOPES || "identify guilds").trim();
+const oauthRedirectUriLocal = (process.env.OAUTH_REDIRECT_URI || "").trim();
+
+// ★ ユーザー所属ギルド × Botが入っているギルド を交差
+//   - ManageGuild または Administrator 権限のあるものだけ
+function intersectUserBotGuilds(userGuilds) {
+  if (!Array.isArray(userGuilds)) return [];
+
+  // Botが入ってるGuild ID
+  const botGuildIds = new Set(client.guilds.cache.map((g) => g.id));
+
+  return userGuilds
+    .filter((g) => {
+      const perms = Number(g.permissions || 0);
+
+      // Discord permission bits
+      const ADMINISTRATOR = 0x8;
+      const MANAGE_GUILD = 0x20;
+
+      const hasManage = (perms & ADMINISTRATOR) === ADMINISTRATOR || (perms & MANAGE_GUILD) === MANAGE_GUILD;
+      return hasManage && botGuildIds.has(g.id);
+    })
+    .map((g) => ({ id: g.id, name: g.name }));
+}
+
+/**
+ * ユーザー所属ギルド（OAuth）× Botが入っているギルド を intersect して返す
+ * - ManageGuild または Administrator 権限があるギルドのみ
+ * - 返り値は [{id,name}] 形式
+ */
+function intersectUserBotGuilds(userGuilds) {
+  if (!Array.isArray(userGuilds)) return [];
+
+  const botGuildIds = new Set(client.guilds.cache.map((g) => g.id));
+
+  const ADMINISTRATOR = 0x8;
+  const MANAGE_GUILD = 0x20;
+
+  return userGuilds
+    .filter((g) => {
+      const perms = Number(g.permissions || 0);
+      const hasManage = (perms & ADMINISTRATOR) === ADMINISTRATOR || (perms & MANAGE_GUILD) === MANAGE_GUILD;
+      return hasManage && botGuildIds.has(g.id);
+    })
+    .map((g) => ({ id: g.id, name: g.name }));
 }
 
 const server = http.createServer(async (req, res) => {
@@ -1705,7 +1754,6 @@ const server = http.createServer(async (req, res) => {
     if (pathname === "/admin" && tokenAuthed && !sess) {
       const sid = rand(24);
       sessions.set(sid, {
-        // tokenモード
         tokenMode: true,
         accessToken: null,
         user: null,
@@ -1714,7 +1762,6 @@ const server = http.createServer(async (req, res) => {
         expiresAt: Date.now() + 7 * 24 * 3600 * 1000, // 7日
       });
 
-      // setCookie() が options を受け取る前提（あなたの既存実装）
       setCookie(res, "sid", sid, {
         maxAge: 7 * 24 * 3600,
         httpOnly: true,
@@ -1722,13 +1769,12 @@ const server = http.createServer(async (req, res) => {
         secure: isHttps(req),
       });
 
-      // tokenをクエリから消して /admin に飛ばす
       res.writeHead(302, { Location: "/admin" });
       return res.end();
     }
 
-    // 認証判定：tokenは「そのリクエストのURLに付いてる場合」だけ。
-    // ただし上でtoken→sess化するので、通常は sess が立つ。
+    // 認証判定：tokenは「そのリクエストURLに付いてる場合」だけ。
+    // ただし上で token→sess 化するので通常は sess が立つ。
     const isAuthed = tokenAuthed || !!sess;
 
     // ===== OAuth endpoints =====
@@ -1740,16 +1786,15 @@ const server = http.createServer(async (req, res) => {
       const state = rand(12);
       states.set(state, Date.now());
 
-      // redirectUri は PUBLIC_URL を優先（Render固定URLで安定）
       const publicBase = inferredPublicUrl || baseUrl(req);
-      const redirectUri = OAUTH_REDIRECT_URI || `${publicBase}${REDIRECT_PATH}`;
+      const redirectUri = oauthRedirectUriLocal || `${publicBase}${REDIRECT_PATH}`;
 
       const authUrl =
         "https://discord.com/oauth2/authorize" +
         `?client_id=${encodeURIComponent(CLIENT_ID)}` +
         `&redirect_uri=${encodeURIComponent(redirectUri)}` +
         `&response_type=code` +
-        `&scope=${encodeURIComponent(OAUTH_SCOPES)}` +
+        `&scope=${encodeURIComponent(oauthScopesLocal)}` +
         `&state=${encodeURIComponent(state)}`;
 
       res.writeHead(302, { Location: authUrl });
@@ -1766,7 +1811,7 @@ const server = http.createServer(async (req, res) => {
       states.delete(state);
 
       const publicBase = inferredPublicUrl || baseUrl(req);
-      const redirectUri = OAUTH_REDIRECT_URI || `${publicBase}${REDIRECT_PATH}`;
+      const redirectUri = oauthRedirectUriLocal || `${publicBase}${REDIRECT_PATH}`;
 
       const body = new URLSearchParams();
       body.set("client_id", CLIENT_ID);
@@ -1785,6 +1830,7 @@ const server = http.createServer(async (req, res) => {
 
       const user = await discordApi(tok.access_token, "/users/@me");
       const sid = rand(24);
+
       sessions.set(sid, {
         tokenMode: false,
         accessToken: tok.access_token,
@@ -1859,12 +1905,10 @@ const server = http.createServer(async (req, res) => {
         if (!guildId) return { ok: false, status: 400, error: "missing_guild" };
 
         if (allowedGuildIds) {
-          // OAuth
           if (!allowedGuildIds.has(guildId)) return { ok: false, status: 403, error: "forbidden_guild" };
           return { ok: true };
         }
 
-        // token（or tokenMode sess）
         const inGuild = await isBotInGuild(guildId);
         if (!inGuild) return { ok: false, status: 403, error: "bot_not_in_guild" };
         return { ok: true };
@@ -1965,7 +2009,6 @@ const server = http.createServer(async (req, res) => {
         const chk = await requireGuildAllowed(guildId);
         if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
 
-        // ★ log_channel_id を勝手に null にしない
         const cur = await getSettings(guildId);
 
         const r = await updateSettings(guildId, {
@@ -2039,7 +2082,6 @@ const server = http.createServer(async (req, res) => {
         });
       }
 
-      // API fallback
       return json(res, { ok: false, error: "not_found" }, 404);
     }
 
