@@ -862,7 +862,7 @@ try {
 /* =========================
    Discord client
 ========================= */
-const client = new Client({
+const client = new DiscordClient({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
@@ -1674,32 +1674,26 @@ async function getMonthlyStats({ db, guildId, ym }) {
 }
 
 /* =========================
-   Web server: admin + API + OAuth
+   Web server (FIXED)
 ========================= */
+
 const PORT = Number(process.env.PORT || 10000);
 
 const server = http.createServer(async (req, res) => {
   try {
-    const u = new URL(req.url || "/", baseUrl(req));
+    const u = new URL(req.url || "/", `http://${req.headers.host}`);
     const pathname = (u.pathname || "/").replace(/\/+$/, "") || "/";
 
-    if (pathname === "/health") return text(res, "ok", 200);
-
-    const tokenQ = u.searchParams.get("token") || "";
-    const tokenAuthed = !!(ADMIN_TOKEN && tokenQ === ADMIN_TOKEN);
-
-    let sess = null;
-    if (pathname === "/admin" || pathname.startsWith("/api/") || pathname === "/logout") {
-      sess = await getSession(req);
+    // health
+    if (pathname === "/health") {
+      res.writeHead(200, { "Content-Type": "text/plain" });
+      return res.end("ok");
     }
 
-    const oauthReady = !!(CLIENT_ID && CLIENT_SECRET && (PUBLIC_URL || req.headers.host));
-    const isAuthed = tokenAuthed || !!sess;
-
-    // ===== Pages =====
+    // top page
     if (pathname === "/") {
-  res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-  return res.end(`<!doctype html>
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      return res.end(`<!doctype html>
 <html lang="ja">
 <head>
 <meta charset="utf-8">
@@ -1713,49 +1707,21 @@ const server = http.createServer(async (req, res) => {
   </ul>
 </body>
 </html>`);
-}
+    }
 
+    // admin (debug)
     if (pathname === "/admin") {
-      if (!isAuthed) {
-        return html(res, renderNeedLoginHTML({
-          oauthReady,
-          tokenEnabled: !!ADMIN_TOKEN,
-        }));
-      }
-      return html(res, renderAdminHTML({
-        user: sess?.user || null,
-        oauth: !!sess,
-        tokenAuthed,
-      }));
+      res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+      return res.end("ADMIN OK");
     }
 
-    // ===== API =====
-    if (pathname === "/api/guilds") {
-      if (tokenAuthed && !sess) {
-        const col = await client.guilds.fetch();
-        const list = Array.from(col.values()).map(g => ({
-          id: g.id,
-          name: g.name,
-        }));
-        return json(res, { ok: true, guilds: list });
-      }
-
-      if (!sess) return json(res, { ok: false, error: "unauthorized" }, 401);
-      const userGuilds = await ensureGuildsForSession(sess);
-      const guilds = intersectUserBotGuilds(userGuilds);
-      return json(res, { ok: true, guilds });
-    }
-
-    if (pathname.startsWith("/api/")) {
-      if (!isAuthed) return json(res, { ok: false, error: "unauthorized" }, 401);
-      return json(res, { ok: false, error: "not_found" }, 404);
-    }
-
-    return text(res, "Not Found", 404);
-
+    // fallback
+    res.writeHead(404, { "Content-Type": "text/plain" });
+    res.end("Not Found");
   } catch (err) {
     console.error("HTTP server error:", err);
-    return json(res, { ok: false, error: "internal_error" }, 500);
+    res.writeHead(500, { "Content-Type": "text/plain" });
+    res.end("Internal Server Error");
   }
 });
 
@@ -1766,6 +1732,8 @@ server.listen(PORT, "0.0.0.0", () => {
 /* =========================
    Discord Bot
 ========================= */
+import { Client as DiscordClient, GatewayIntentBits as Intents } from "discord.js";
+
 const discordToken =
   process.env.DISCORD_TOKEN ||
   process.env.BOT_TOKEN ||
@@ -1780,7 +1748,7 @@ if (!discordToken) {
 client.once("ready", async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
   const col = await client.guilds.fetch();
-  console.log("🏠 Bot is in guilds:", col.size);
+  console.log("🏠 Bot guild count:", col.size);
 });
 
 client.login(discordToken).catch((e) => {
