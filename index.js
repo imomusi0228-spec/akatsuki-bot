@@ -862,7 +862,7 @@ try {
 /* =========================
    Discord client
 ========================= */
-const client = new DiscordClient({
+const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
@@ -1674,54 +1674,189 @@ async function getMonthlyStats({ db, guildId, ym }) {
 }
 
 /* =========================
-   Web server (FIXED)
+   Web server: admin + API + OAuth（機能は既存のまま使う）
+   - ★ 重複宣言しない（PORT/server はここで1回だけ）
+   - ★ /admin は「OAuth or（任意で）token」どっちでもOK
 ========================= */
-
 const PORT = Number(process.env.PORT || 10000);
 
 const server = http.createServer(async (req, res) => {
   try {
-    const u = new URL(req.url || "/", `http://${req.headers.host}`);
+    const u = new URL(req.url || "/", baseUrl(req));
     const pathname = (u.pathname || "/").replace(/\/+$/, "") || "/";
 
     // health
-    if (pathname === "/health") {
-      res.writeHead(200, { "Content-Type": "text/plain" });
-      return res.end("ok");
+    if (pathname === "/health") return text(res, "ok", 200);
+
+    // token auth（使いたくないなら ADMIN_TOKEN を空にすれば無効になる）
+    const tokenQ = u.searchParams.get("token") || "";
+    const tokenAuthed = !!(ADMIN_TOKEN && tokenQ === ADMIN_TOKEN);
+
+    // session（必要なときだけ読む）
+    let sess = null;
+    if (
+      pathname === "/admin" ||
+      pathname.startsWith("/api/") ||
+      pathname === "/logout" ||
+      pathname === "/login" ||
+      pathname === REDIRECT_PATH
+    ) {
+      sess = await getSession(req);
     }
 
-    // top page
+    const oauthReady = !!(CLIENT_ID && CLIENT_SECRET && (PUBLIC_URL || req.headers.host));
+    const isAuthed = tokenAuthed || !!sess;
+
+    // ===== OAuth endpoints =====
+    if (pathname === "/login") {
+      if (!oauthReady) {
+        return text(res, "OAuth not configured. Set DISCORD_CLIENT_ID/SECRET and PUBLIC_URL.", 500);
+      }
+
+      const state = rand(12);
+      states.set(state, Date.now());
+
+      const redirectUri = OAUTH_REDIRECT_URI || `${baseUrl(req)}${REDIRECT_PATH}`;
+      const authUrl =
+        "https://discord.com/oauth2/authorize" +
+        `?client_id=${encodeURIComponent(CLIENT_ID)}` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&response_type=code` +
+        `&scope=${encodeURIComponent(OAUTH_SCOPES)}` +
+        `&state=${encodeURIComponent(state)}`;
+
+      res.writeHead(302, { Location: authUrl });
+      return res.end();
+    }
+
+    if (pathname === REDIRECT_PATH) {
+      if (!oauthReady) return text(res, "OAuth is not configured.", 500);
+
+      const code = u.searchParams.get("code") || "";
+      const state = u.searchParams.get("state") || "";
+      const created = states.get(state);
+      if (!code || !state || !created) return text(res, "Invalid OAuth state/code", 400);
+      states.delete(state);
+
+      const redirectUri = OAUTH_REDIRECT_URI || `${baseUrl(req)}${REDIRECT_PATH}`;
+
+      const body = new URLSearchParams();
+      body.set("client_id", CLIENT_ID);
+      body.set("client_secret", CLIENT_SECRET);
+      body.set("grant_type", "authorization_code");
+      body.set("code", code);
+      body.set("redirect_uri", redirectUri);
+
+      const tr = await fetch("https://discord.com/api/v10/oauth2/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
+      });
+      if (!tr.ok) return text(res, `Token exchange failed: ${tr.status}`, 500);
+      const tok = await tr.json();
+
+      const user = await discordApi(tok.access_token, "/users/@me");
+      const sid = rand(24);
+      sessions.set(sid, {
+        accessToken: tok.access_token,
+        user,
+        guilds: null,
+        guildsFetchedAt: 0,
+        expiresAt: Date.now() + Number(tok.expires_in || 3600) * 1000,
+      });
+
+      setCookie(res, "sid", sid, { maxAge: Number(tok.expires_in || 3600) });
+      res.writeHead(302, { Location: "/admin" });
+      return res.end();
+    }
+
+    if (pathname === "/logout") {
+      if (sess?.sid) sessions.delete(sess.sid);
+      delCookie(res, "sid");
+      res.writeHead(302, { Location: "/" });
+      return res.end();
+    }
+
+    // ===== Pages =====
     if (pathname === "/") {
-      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      return res.end(`<!doctype html>
-<html lang="ja">
-<head>
-<meta charset="utf-8">
-<title>Akatsuki Bot</title>
-</head>
-<body>
-  <h2>Akatsuki Bot</h2>
-  <ul>
-    <li><a href="/admin">Admin</a></li>
-    <li><a href="/health">Health</a></li>
-  </ul>
-</body>
-</html>`);
+      return html(
+        res,
+        renderHomeHTML({
+          title: "Akatsuki Bot",
+          links: [
+            { label: "Admin", href: "/admin" },
+            { label: "Health", href: "/health" },
+          ],
+        })
+      );
     }
 
-    // admin (debug)
     if (pathname === "/admin") {
-      res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
-      return res.end("ADMIN OK");
+      if (!isAuthed) {
+        return html(res, renderNeedLoginHTML({ oauthReady, tokenEnabled: !!ADMIN_TOKEN }));
+      }
+      return html(res, renderAdminHTML({ user: sess?.user || null, oauth: !!sess, tokenAuthed }));
     }
 
-    // fallback
-    res.writeHead(404, { "Content-Type": "text/plain" });
-    res.end("Not Found");
+    // ===== APIs =====
+    if (pathname.startsWith("/api/")) {
+      if (!isAuthed) return json(res, { ok: false, error: "unauthorized" }, 401);
+
+      // OAuth時は「Bot入り + 管理権限がある鯖」だけ許可（既存関数を使う）
+      let allowedGuildIds = null;
+      if (sess) {
+        const userGuilds = await ensureGuildsForSession(sess);
+        const allowed = intersectUserBotGuilds(userGuilds);
+        allowedGuildIds = new Set(allowed.map((g) => g.id));
+      }
+
+      const requireGuildAllowed = (guildId) => {
+        if (!guildId) return { ok: false, status: 400, error: "missing guild" };
+        if (allowedGuildIds && !allowedGuildIds.has(guildId)) {
+          return { ok: false, status: 403, error: "forbidden guild" };
+        }
+        return { ok: true };
+      };
+
+      if (pathname === "/api/health") return json(res, { ok: true });
+
+      if (pathname === "/api/me") {
+        return json(res, {
+          ok: true,
+          oauth: !!sess,
+          user: sess?.user
+            ? { id: sess.user.id, username: sess.user.username, global_name: sess.user.global_name }
+            : null,
+          botGuildCount: client.guilds.cache.size,
+        });
+      }
+
+      // /api/guilds（既存仕様のまま）
+      if (pathname === "/api/guilds") {
+        if (!sess) {
+          // tokenログイン等（OAuthなし）の時：Botが入ってる鯖一覧
+          const col = await client.guilds.fetch().catch(() => null);
+          const list = col
+            ? Array.from(col.values()).map((g) => ({ id: g.id, name: g.name }))
+            : client.guilds.cache.map((g) => ({ id: g.id, name: g.name }));
+          return json(res, { ok: true, guilds: list });
+        }
+        const userGuilds = await ensureGuildsForSession(sess);
+        const guilds = intersectUserBotGuilds(userGuilds);
+        return json(res, { ok: true, guilds });
+      }
+
+      // ↓↓ ここから下は「あなたの既存API群をそのまま貼り直す」だけでOK
+      // 既に index.js にある /api/stats /api/ngwords /api/settings... を
+      // いままで通り置いてあるなら、そのまま動く（ここは削らない）
+
+      return json(res, { ok: false, error: "not_found" }, 404);
+    }
+
+    return text(res, "Not Found", 404);
   } catch (err) {
     console.error("HTTP server error:", err);
-    res.writeHead(500, { "Content-Type": "text/plain" });
-    res.end("Internal Server Error");
+    return json(res, { ok: false, error: "internal_error", message: err?.message || "Internal Server Error" }, 500);
   }
 });
 
@@ -1730,10 +1865,8 @@ server.listen(PORT, "0.0.0.0", () => {
 });
 
 /* =========================
-   Discord Bot
+   Discord Bot login（★必ず1回だけ）
 ========================= */
-import { Client as DiscordClient, GatewayIntentBits as Intents } from "discord.js";
-
 const discordToken =
   process.env.DISCORD_TOKEN ||
   process.env.BOT_TOKEN ||
@@ -1747,10 +1880,12 @@ if (!discordToken) {
 
 client.once("ready", async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
-  const col = await client.guilds.fetch();
-  console.log("🏠 Bot guild count:", col.size);
+  try {
+    const col = await client.guilds.fetch();
+    console.log("🏠 Bot guild count:", col.size);
+  } catch (e) {
+    console.error("❌ guilds.fetch failed:", e);
+  }
 });
 
-client.login(discordToken).catch((e) => {
-  console.error("❌ Discord login failed:", e);
-});
+await client.login(discordToken);
