@@ -1088,8 +1088,7 @@ async function clearNgWords(guildId) {
 }
 
 /* =========================
-   logEvent (duration_ms 対応)
-   - meta は JSON 文字列で保存
+   Event logging (stats)
 ========================= */
 async function logEvent(guildId, type, userId, meta = {}, durationMs = null) {
   if (!db) return;
@@ -1097,7 +1096,6 @@ async function logEvent(guildId, type, userId, meta = {}, durationMs = null) {
   const ts = Date.now();
   const metaJson = JSON.stringify(meta ?? {});
 
-  // ✅ あなたの getMonthlyStats が meta を参照してるので meta で保存
   await db.run(
     `INSERT INTO log_events (guild_id, type, user_id, ts, meta, duration_ms)
      VALUES (?, ?, ?, ?, ?, ?)`,
@@ -1273,9 +1271,6 @@ function resolveUserLabel(guild, userId) {
    - Provide publicSend() for normal messages
    - DO NOT rely on interaction.reply/editReply/followUp in commands
 ========================= */
-client.once(Events.ClientReady, (c) => {
-  console.log(`✅ Logged in as ${c.user.tag}`);
-});
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -2233,14 +2228,9 @@ if (!discordToken) {
   process.exit(1);
 }
 
-client.once("ready", async () => {
+client.once(Events.ClientReady, () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
-  try {
-    const col = await client.guilds.fetch();
-    console.log("🏠 Bot guild count:", col.size);
-  } catch (e) {
-    console.error("❌ guilds.fetch failed:", e);
-  }
+  console.log(`🏠 Bot guild count: ${client.guilds.cache.size}`);
 });
 
 await client.login(discordToken);
