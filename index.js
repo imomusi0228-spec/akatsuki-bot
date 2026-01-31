@@ -1698,14 +1698,22 @@ const server = http.createServer(async (req, res) => {
 
     // ===== Pages =====
     if (pathname === "/") {
-      return html(res, renderHomeHTML({
-        title: "Akatsuki Bot",
-        links: [
-          { label: "Admin", href: "/admin" },
-          { label: "Health", href: "/health" },
-        ],
-      }));
-    }
+  res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+  return res.end(`<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Akatsuki Bot</title>
+</head>
+<body>
+  <h2>Akatsuki Bot</h2>
+  <ul>
+    <li><a href="/admin">Admin</a></li>
+    <li><a href="/health">Health</a></li>
+  </ul>
+</body>
+</html>`);
+}
 
     if (pathname === "/admin") {
       if (!isAuthed) {
