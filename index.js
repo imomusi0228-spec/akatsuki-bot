@@ -1670,7 +1670,15 @@ async function getMonthlyStats({ db, guildId, ym }) {
 /* =========================
    Web server: admin + API + OAuth
 ========================= */
-const PORT = Number(process.env.PORT || 3000);
+const PORT = Number(process.env.PORT || 10000);
+
+const server = http.createServer(async (req, res) => {
+
+});
+
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`🌐 Listening on ${PORT}`);
+});
 
 /* =========================
    Discord Bot 起動（外で1回だけ）
