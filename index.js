@@ -1670,23 +1670,55 @@ client.on(Events.MessageCreate, async (message) => {
   }
 });
 
-// ===== 月次統計（log_threads）=====
-// 置き場所：const server = http.createServer(...) の前
+async function getVcUserMonthLive(guildId, userId, ym) {
+  const range = tokyoMonthRangeUTC(ym);
+  if (!range) return null;
+
+  const row = await db.get(
+    `SELECT
+       COALESCE(SUM(COALESCE(duration_ms, 0)), 0) AS dur,
+       COUNT(*) AS cnt
+     FROM log_events
+     WHERE guild_id = ?
+       AND user_id = ?
+       AND ts >= ?
+       AND ts < ?
+       AND type IN ('vc_out', 'vc_move')`,
+    [guildId, userId, range.start, range.end]
+  );
+
+  let durMs = Number(row?.dur || 0);
+  const cnt = Number(row?.cnt || 0);
+
+  const sess = await db.get(
+    `SELECT join_ts FROM vc_sessions WHERE guild_id=? AND user_id=?`,
+    [guildId, userId]
+  );
+
+  if (sess?.join_ts) {
+    const now = Date.now();
+    const extra = overlapMs(Number(sess.join_ts), now, range.start, range.end);
+    durMs += extra;
+  }
+
+  return { durMs, cnt };
+}
+
+function safeJsonParse(s) {
+  try { return JSON.parse(s); } catch { return null; }
+}
+
 async function getMonthlyStats({ db, guildId, ym }) {
   if (!db || !guildId || !ym) return null;
-  if (!/^\d{4}-\d{2}$/.test(ym)) return null;
 
-  // ts は ms 前提
-  const start = Date.parse(`${ym}-01T00:00:00.000+09:00`);
-  const end = Date.parse(`${ym}-01T00:00:00.000+09:00`);
-  // end を翌月に
-  const d = new Date(start);
-  d.setMonth(d.getMonth() + 1);
-  const endMs = d.getTime();
+  const range = tokyoMonthRangeUTC(ym);
+  if (!range) return null;
 
-  // 今月のイベント全部
+  const { start, end } = range;
+
+  // 今月のイベント全部（必要なら meta も読む）
   const rows = await db.all(
-    `SELECT type, user_id, meta, ts
+    `SELECT type, user_id, meta, ts, duration_ms
        FROM log_events
       WHERE guild_id = ?
         AND ts >= ?
@@ -1694,7 +1726,7 @@ async function getMonthlyStats({ db, guildId, ym }) {
       ORDER BY ts DESC`,
     guildId,
     start,
-    endMs
+    end
   );
 
   const byType = {};
@@ -1722,19 +1754,19 @@ async function getMonthlyStats({ db, guildId, ym }) {
       LIMIT 10`,
     guildId,
     start,
-    endMs
+    end
   );
 
   const guild = client.guilds.cache.get(guildId);
 
-topNgUsers = topRows.map((r) => {
-  const uid = String(r.user_id);
-  return {
-    user_id: uid,
-    user_label: guild ? resolveUserLabel(guild, uid) : uid,
-    cnt: Number(r.cnt || 0),
-  };
-});
+  const topNgUsers = topRows.map((r) => {
+    const uid = String(r.user_id);
+    return {
+      user_id: uid,
+      user_label: guild ? resolveUserLabel(guild, uid) : uid,
+      cnt: Number(r.cnt || 0),
+    };
+  });
 
   return { ym, summary, topNgUsers };
 }
