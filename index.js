@@ -1487,7 +1487,7 @@ client.on(Events.MessageCreate, async (message) => {
 
     // ===== ① NGログ（削除前） =====
     const embed = new EmbedBuilder()
-      ..setColor(0xe74c3c) // 🔴 NG RED
+      .setColor(0xe74c3c) 
       .setAuthor({ name: authorName, iconURL: avatar || undefined })
       .setDescription(`@${displayName} NG word detected in <#${message.channelId}>`)
       .addFields(
