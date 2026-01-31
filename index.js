@@ -1272,20 +1272,6 @@ client.on("interactionCreate", async (interaction) => {
 });
 
 /* =========================
-   Message debug log (必要なら残す)
-========================= */
-client.on(Events.MessageCreate, (m) => {
-  if (!m.guild || m.author?.bot) return;
-  console.log("🧪 Message seen:", {
-    guild: m.guild.id,
-    channel: m.channelId,
-    author: m.author.id,
-    len: (m.content || "").length,
-    contentHead: (m.content || "").slice(0, 30),
-  });
-});
-
-/* =========================
    VC Join/Leave -> kind="vc_in" / kind="vc_out"
    - スレ分け：IN / OUT（MOVEは両方に出す）
 ========================= */
@@ -1372,6 +1358,14 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
    - Color: NG orange / Timeout purple
    - includes message debug log (A案)
 ========================= */
+function escapeRegExp(s = "") {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isKatakanaOnly(s = "") {
+  // カタカナ/長音/中点 だけで構成されるか
+  return /^[\u30A0-\u30FF\u30FC\u30FB]+$/u.test(String(s));
+}
 
 function matchNg(content, ngList) {
   const text = String(content ?? "");

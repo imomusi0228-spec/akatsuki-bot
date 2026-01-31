@@ -2,6 +2,7 @@ import {
   SlashCommandBuilder,
   PermissionFlagsBits,
   EmbedBuilder,
+  MessageFlags,
 } from "discord.js";
 
 const TIMEZONE = "Asia/Tokyo";
@@ -68,7 +69,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction, db) {
   // ✅ まずACK（これで「応答しませんでした」通知が消える）
   try {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   } catch (e) {
     if (isUnknownInteraction(e)) return;
     throw e;

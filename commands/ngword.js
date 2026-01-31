@@ -1,5 +1,9 @@
 // commands/ngword.js
-import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import {
+  SlashCommandBuilder,
+  PermissionFlagsBits,
+  MessageFlags,
+} from "discord.js";
 
 function isUnknownInteraction(err) {
   return err?.code === 10062 || err?.rawError?.code === 10062;
@@ -118,7 +122,7 @@ async function dbList(db, guildId) {
 export async function execute(interaction, db) {
   // ✅ これがないと「応答しませんでした」が出る
   try {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   } catch (e) {
     if (isUnknownInteraction(e)) return;
     throw e;

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionsBitField, EmbedBuilder } from "discord.js";
+import { SlashCommandBuilder, PermissionsBitField, EmbedBuilder, MessageFlags } from "discord.js";
 
 export const data = new SlashCommandBuilder()
   .setName("setlog")
@@ -9,7 +9,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction, db) {
   // ✅ まず3秒以内にACK（これがないと例の通知が出る）
-  await interaction.deferReply({ ephemeral: true }).catch(() => null);
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => null);
 
   // ✅ 権限チェック
   if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageGuild)) {
