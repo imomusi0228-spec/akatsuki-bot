@@ -1970,6 +1970,23 @@ console.log("DISCORD_TOKEN exists:", !!discordToken);
 client.on("error", (e) => console.error("Discord client error:", e));
 client.on("shardError", (e) => console.error("Discord shard error:", e));
 
+client.once("ready", async () => {
+  console.log(`✅ Logged in as ${client.user.tag}`);
+
+  try {
+    const col = await client.guilds.fetch();
+    console.log("🏠 guilds.fetch() count =", col.size);
+    console.log(
+      "🏠 guilds =",
+      Array.from(col.values()).map(g => `${g.name}(${g.id})`).join(", ")
+    );
+  } catch (e) {
+    console.error("❌ guilds.fetch failed:", e);
+  }
+});
+
+await client.login(DISCORD_TOKEN);
+
 if (!discordToken) {
   console.error("❌ Discord token is missing");
 } else {
