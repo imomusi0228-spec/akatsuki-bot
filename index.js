@@ -818,6 +818,15 @@ async function runDbMigrations(db) {
   // ここに既存の ensureColumn(...) などがあるはず
   await ensureColumn(db, "log_events", "duration_ms", "INTEGER");
 
+  // log_events の列不足を補う（既存DB互換）
+await ensureColumn(db, "log_events", "type", "TEXT");
+await ensureColumn(db, "log_events", "user_id", "TEXT");
+await ensureColumn(db, "log_events", "meta", "TEXT");
+await ensureColumn(db, "log_events", "ts", "INTEGER");
+
+// VC集計用（既に入れてるならOK）
+await ensureColumn(db, "log_events", "duration_ms", "INTEGER");
+
   // ✅ VCセッションのマイグレーションは runDbMigrations の中で呼ぶ
   await migrateVcSessions(db);
 
