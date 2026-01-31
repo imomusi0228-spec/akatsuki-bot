@@ -1,7 +1,6 @@
 import {
   SlashCommandBuilder,
   PermissionFlagsBits,
-  MessageFlags,
   EmbedBuilder,
 } from "discord.js";
 
@@ -67,8 +66,9 @@ export const data = new SlashCommandBuilder()
   );
 
 export async function execute(interaction, db) {
+  // ✅ まずACK（これで「応答しませんでした」通知が消える）
   try {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await interaction.deferReply({ ephemeral: true });
   } catch (e) {
     if (isUnknownInteraction(e)) return;
     throw e;
@@ -124,7 +124,6 @@ export async function execute(interaction, db) {
           return `${t} 🟦 OUT ${u} ← **${name}** ${dur}`;
         }
 
-        // vc_move_merged
         const route = meta.route || "?";
         return `${t} 🔁 MOVE ${u} **${route}**`;
       });
@@ -220,8 +219,12 @@ export async function execute(interaction, db) {
   } catch (e) {
     if (isUnknownInteraction(e)) return;
     console.error("vc error:", e);
+
+    // ✅ ここも事故りにくくする
     try {
       await interaction.editReply(`エラー: ${e?.message ?? e}`);
-    } catch {}
+    } catch {
+      // editReplyすら無理なら諦め（ここでthrowするとログだけ増える）
+    }
   }
 }

@@ -5,7 +5,12 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  MessageFlags,
 } from "discord.js";
+
+function isUnknownInteraction(err) {
+  return err?.code === 10062 || err?.rawError?.code === 10062;
+}
 
 export const data = new SlashCommandBuilder()
   .setName("admin")
@@ -13,33 +18,58 @@ export const data = new SlashCommandBuilder()
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
 export async function execute(interaction) {
-  // interactionCreate 側で interaction.publicSend を生やしている前提
-
-  const isAdmin =
-    interaction.memberPermissions?.has(PermissionFlagsBits.Administrator) ||
-    interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild);
-
-  if (!isAdmin) {
-    await interaction.publicSend({ content: "❌ 管理者権限が必要です。" });
-    return;
+  // ✅ まず3秒以内にACK（これがないと通知が出る）
+  try {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  } catch (e) {
+    if (isUnknownInteraction(e)) return;
+    throw e;
   }
 
-  // ★常にトップページへ（そこからOAuthログイン→/adminへ）
-  // configBaseUrl があるなら優先
-  const base = interaction.client?.configBaseUrl || null;
+  // publicSend が無い環境でも動くように保険
+  const sendPublic =
+    interaction.publicSend
+      ? interaction.publicSend.bind(interaction)
+      : async (payload) => interaction.channel?.send(payload).catch(() => null);
 
-  // フォールバック（PUBLIC_URL を推奨）
-  const url = base || process.env.PUBLIC_URL || "https://YOUR-RENDER-URL.onrender.com";
+  const finish = async (msg = "OK") => {
+    try {
+      await interaction.editReply(msg);
+      setTimeout(() => interaction.deleteReply().catch(() => {}), 1500);
+    } catch {}
+  };
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setLabel("管理画面を開く")
-      .setStyle(ButtonStyle.Link)
-      .setURL(url)
-  );
+  try {
+    const isAdmin =
+      interaction.memberPermissions?.has(PermissionFlagsBits.Administrator) ||
+      interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild);
 
-  await interaction.publicSend({
-    content: `🔐 管理者用ページはこちら\n${url}`,
-    components: [row],
-  });
+    if (!isAdmin) {
+      await finish("❌ 管理者権限が必要です。");
+      return;
+    }
+
+    // ★常にトップページへ（そこからOAuthログイン→/adminへ）
+    const base =
+      interaction.client?.configBaseUrl ||
+      process.env.PUBLIC_URL ||
+      "https://YOUR-RENDER-URL.onrender.com";
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setLabel("管理画面を開く")
+        .setStyle(ButtonStyle.Link)
+        .setURL(base)
+    );
+
+    await sendPublic({
+      content: `🔐 管理者用ページはこちら\n${base}`,
+      components: [row],
+    });
+
+    await finish("✅ 送信しました");
+  } catch (e) {
+    console.error("admin command error:", e);
+    await finish(`❌ エラー: ${e?.message ?? String(e)}`);
+  }
 }
