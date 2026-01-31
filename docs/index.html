@@ -3,13 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta property="og:image" content="https://imomusi0228-spec.github.io/akatsuki-bot/og.png" />
 
     <!-- 基本 -->
     <title>Akatsuki Bot | Discord管理を自動化</title>
     <meta
       name="description"
-      content="VC入退室ログ・NGワード検出・管理ログの可視化まで。Discordサーバー管理を“記録と自動対応”で支える管理専用Bot。"
+      content="VC入退室ログ・NGワード検出ログ・管理ログの可視化まで。Discordサーバー管理を“記録と運用設計”で支える管理専用Bot。"
     />
 
     <!-- OGP（リンクカード用） -->
@@ -17,9 +16,8 @@
     <meta property="og:title" content="Akatsuki Bot | Discord管理を自動化" />
     <meta
       property="og:description"
-      content="VC入退室ログ / NG検出（削除前ログ保存）/ 管理ログの集計表示。管理者が張り付かなくても回るサーバーへ。"
+      content="VC入退室ログ / NG検出ログ（削除前保存）/ 管理ログの集計表示。管理者が張り付かなくても回るサーバーへ。"
     />
-    <!-- ★ OGP画像：まずはプレースホルダ。あとで自分のPages URLに差し替え -->
     <meta property="og:image" content="https://imomusi0228-spec.github.io/akatsuki-bot/og.png" />
     <meta name="twitter:card" content="summary_large_image" />
 
@@ -107,7 +105,7 @@
         background: linear-gradient(180deg, rgba(15,23,49,.95), rgba(13,20,43,.9));
         border:1px solid var(--line);
         border-radius:var(--radius);
-        box-shadow: var(--shadow);
+        box-shadow: 0 18px 60px rgba(0,0,0,.45);
       }
       .heroMain{padding:26px}
       .badge{
@@ -154,8 +152,6 @@
       .feature h3{margin:0 0 6px; font-size:16px}
       .feature p{margin:0; color:var(--muted); font-size:14px}
       .list{margin:10px 0 0; padding-left:18px; color:var(--muted); font-size:14px;}
-      .split{display:grid; grid-template-columns: 1fr 1fr; gap:14px;}
-      @media (max-width: 920px){ .split{grid-template-columns:1fr} }
       .panel{padding:18px}
       .steps{display:grid; gap:10px; margin-top:10px;}
       .step{
@@ -197,11 +193,17 @@
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
         font-size: 12px;
       }
-      .notice{
-        font-size:12px; color:var(--muted);
-        border:1px dashed var(--line);
-        padding:10px 12px; border-radius:14px;
-        background:rgba(255,255,255,.03);
+      .tag{
+        display:inline-flex;
+        align-items:center;
+        gap:8px;
+        padding:6px 10px;
+        border-radius:999px;
+        border:1px solid var(--line);
+        background:rgba(255,255,255,.05);
+        font-size:12px;
+        color:var(--muted);
+        margin-left:8px;
       }
     </style>
   </head>
@@ -221,6 +223,7 @@
           <nav class="navlinks" aria-label="ページ内リンク">
             <a href="#problems">悩み</a>
             <a href="#features">機能</a>
+            <a href="#pricing">料金</a>
             <a href="#how">導入</a>
             <a href="#security">安心</a>
             <a href="#faq">FAQ</a>
@@ -237,28 +240,24 @@
       <section class="hero">
         <div class="heroGrid">
           <div class="card heroMain">
-            <div class="badge">🛠 管理専用Bot / VCログ・NG検出・可視化</div>
+            <div class="badge">🛠 管理専用Bot / VCログ・NG検出ログ・可視化</div>
             <h1>VC・NG検出・管理ログを<br />1つにまとめるDiscord管理Bot</h1>
             <p class="lead">
-              VC入退室ログ、NGワード検出（削除前ログ保存）、管理ログの集計表示まで。<br />
-              <b>「記録」と「自動対応」</b>で、管理者が張り付かなくても回るサーバーへ。
+              VC入退室ログ、NGワード検出ログ（削除前保存）、管理ログの集計表示まで。<br />
+              <b>「記録を残す」</b>ことを軸に、管理者が張り付かなくても回るサーバーへ。
             </p>
 
             <div class="heroActions">
               <a class="btn primary" href="https://discord.com/oauth2/authorize?client_id=1466095214161825873&permissions=8&integration_type=0&scope=bot" target="_blank" rel="noopener">今すぐ導入する</a>
-              <a class="btn" href="#features">できることを見る</a>
-            </div>
-
-            <div style="margin-top:16px" class="notice">
-              OGP画像を作ったら <code class="inline">REPLACE_WITH_OG_IMAGE_ABSOLUTE_URL</code> をあなたのPages URLに差し替えるだけでカード表示が完成します。
+              <a class="btn" href="#pricing">料金を見る</a>
             </div>
           </div>
 
           <aside class="card mini">
             <div class="stat"><b>VC入退室ログ</b><span>IN / OUT / MOVEを自動記録</span></div>
-            <div class="stat"><b>NG検出</b><span>削除前ログ保存＋自動対応</span></div>
-            <div class="stat"><b>管理ログ</b><span>種類ごとに見返せる</span></div>
-            <div class="stat"><b>運用</b><span>管理者目線の設計</span></div>
+            <div class="stat"><b>NG検出ログ</b><span>削除前保存で証拠が残る</span></div>
+            <div class="stat"><b>集計</b><span>月次・種別で見返せる</span></div>
+            <div class="stat"><b>プラン</b><span>Free → Proで拡張</span></div>
           </aside>
         </div>
       </section>
@@ -277,7 +276,7 @@
             <li>管理Botが多すぎて設定がしんどい</li>
           </ul>
           <p style="margin:12px 0 0; color:var(--text); font-weight:800;">
-            👉 Akatsuki Botが「ログ」と「自動対応」を1つにまとめます。
+            👉 Akatsuki Botが「ログを残す」「あとから追える」運用を作ります。
           </p>
         </div>
       </section>
@@ -285,46 +284,125 @@
       <section id="features">
         <div class="sectionTitle">
           <h2>Akatsuki Botでできること</h2>
-          <p>必要な管理機能だけを、分かりやすく</p>
+          <p>まずはFreeで“ログの価値”を体験できます</p>
         </div>
 
         <div class="grid3">
           <div class="card feature">
             <div class="icon good">VC</div>
             <h3>VC入退室ログの自動記録</h3>
-            <p>IN / OUT / MOVE を自動検知し、専用スレッドへ時刻付きで保存します。</p>
+            <p>IN / OUT / MOVE を自動検知し、専用スレッド/チャンネルへ時刻付きで保存します。</p>
             <ul class="list">
               <li>表示名＋ユーザー名で分かりやすく表示</li>
-              <li>あとから見返せるログ設計</li>
+              <li>VCリンク付きで追いやすい</li>
             </ul>
           </div>
 
           <div class="card feature">
             <div class="icon warn">NG</div>
-            <h3>NGワード検出 &amp; 自動対応</h3>
-            <p>登録したNGワードを検出。削除前にログ保存し、検出回数に応じて自動対応します。</p>
+            <h3>NGワード検出ログ</h3>
+            <p>NGワードを検出し、削除前ログを保存。後から状況を確認できます。</p>
             <ul class="list">
               <li>削除前ログ保存（証拠が残る）</li>
-              <li>自動警告・タイムアウト（運用ルールに合わせやすい）</li>
+              <li>運用ルールの見直しにも使える</li>
             </ul>
           </div>
 
           <div class="card feature">
-            <div class="icon info">WEB</div>
-            <h3>管理ログ確認用Web画面</h3>
-            <p>ブラウザからログ確認・集計を可視化。サーバーの状態を一目で把握できます。</p>
+            <div class="icon info">ST</div>
+            <h3>管理ログの集計（Pro以上）</h3>
+            <p>月次・種別・ユーザー別の集計で、「何が起きているか」を把握しやすくします。</p>
             <ul class="list">
-              <li>月別・種類別の集計表示</li>
-              <li>Discord外からも確認可能</li>
+              <li>月次統計 / 種別集計 / ユーザー別NG回数</li>
+              <li>Web管理画面で設定も可能（Pro以上）</li>
             </ul>
           </div>
+        </div>
+      </section>
+
+      <!-- 料金プラン -->
+      <section id="pricing">
+        <div class="sectionTitle">
+          <h2>料金プラン</h2>
+          <p>無料で試して、必要になったらアップグレード</p>
+        </div>
+
+        <div class="grid3">
+          <!-- Free -->
+          <div class="card feature">
+            <h3>🆓 Free <span class="tag">¥0</span></h3>
+            <p class="lead">まず入れてもらう用・体験プラン</p>
+            <ul class="list">
+              <li>VC入退室ログ（スレッド / チャンネル）</li>
+              <li>NGワード検出ログ（削除前ログは残る）</li>
+              <li>Botの基本動作・通知</li>
+            </ul>
+            <ul class="list">
+              <li>❌ NG自動処罰（警告・タイムアウト）</li>
+              <li>❌ 統計API（/api/stats）</li>
+              <li>❌ Web管理画面</li>
+              <li>❌ 設定変更（NG編集・閾値）</li>
+              <li>❌ CSV/エクスポート</li>
+            </ul>
+            <p style="margin:12px 0 0; color:var(--muted); font-size:13px;">
+              🎯 目的：無料で価値を体験／導入・拡散用
+            </p>
+          </div>
+
+          <!-- Pro -->
+          <div class="card feature" style="outline:2px solid var(--accent)">
+            <h3>🟩 Pro <span class="tag">¥680 / 月・¥6,800 / 年</span></h3>
+            <p class="lead"><b>一番おすすめ</b>（個人・小規模サーバー向け）</p>
+
+            <ul class="list">
+              <li><b>Freeの全機能</b></li>
+              <li><b>✅ NG自動処罰</b>（回数ベース例：3回で処罰 / タイムアウト時間設定）</li>
+              <li><b>✅ 統計機能</b>（月次統計 / 種別集計 / ユーザー別NG回数）</li>
+              <li><b>✅ Web管理画面</b>（NGワード追加・編集 / 閾値 / 通知先設定）</li>
+              <li><b>✅ 対象：1サーバー</b></li>
+            </ul>
+
+            <ul class="list">
+              <li>❌ 複数サーバー管理</li>
+              <li>❌ CSV/ログエクスポート</li>
+              <li>❌ 優先サポート</li>
+            </ul>
+
+            <p style="margin:12px 0 0; color:var(--muted); font-size:13px;">
+              🎯 目的：管理の手間を減らしたい人向けの完成形
+            </p>
+          </div>
+
+          <!-- Pro+ -->
+          <div class="card feature">
+            <h3>🟦 Pro+ <span class="tag">¥1,480 / 月・¥14,800 / 年</span></h3>
+            <p class="lead">中規模〜ガチ運用向け</p>
+
+            <ul class="list">
+              <li><b>Proの全機能</b></li>
+              <li><b>✅ 複数サーバー管理</b>（3〜5サーバー ※運用に合わせて調整可）</li>
+              <li><b>✅ 監査・エクスポート</b>（CSVエクスポート / 監査用途の保存）</li>
+              <li><b>✅ 高度な運用向け</b>（より細かい設定・将来拡張枠）</li>
+              <li><b>✅ 優先サポート</b>（問い合わせ優先対応）</li>
+            </ul>
+
+            <p style="margin:12px 0 0; color:var(--muted); font-size:13px;">
+              🎯 目的：配信者・運営チーム・複数コミュニティ管理者向け
+            </p>
+          </div>
+        </div>
+
+        <div class="card panel" style="margin-top:14px;">
+          <p style="margin:0; color:var(--muted); font-size:14px;">
+            ※ 料金・提供機能は運用状況に応じて調整する場合があります。導入・相談はDiscordからどうぞ。
+          </p>
         </div>
       </section>
 
       <section id="how">
         <div class="sectionTitle">
           <h2>導入はたったの3ステップ</h2>
-          <p>面倒な設定は最小限。すぐ動く</p>
+          <p>まずはFreeでログを取り始めるのが最短</p>
         </div>
 
         <div class="card panel">
@@ -335,7 +413,7 @@
             </div>
             <div class="step">
               <div class="num">2</div>
-              <div><b>権限を許可</b><br /><span style="color:var(--muted); font-size:14px;">必要最小限の権限で動作します。</span></div>
+              <div><b>権限を許可</b><br /><span style="color:var(--muted); font-size:14px;">必要な権限で動作します。</span></div>
             </div>
             <div class="step">
               <div class="num">3</div>
@@ -350,6 +428,7 @@
 
           <div style="margin-top:14px">
             <a class="btn primary" href="https://discord.com/oauth2/authorize?client_id=1466095214161825873&permissions=8&integration_type=0&scope=bot" target="_blank" rel="noopener">Botを招待する</a>
+            <a class="btn" href="#pricing">料金プランを見る</a>
           </div>
         </div>
       </section>
@@ -362,8 +441,8 @@
 
         <div class="card panel">
           <ul class="list">
-            <li>権限は必要最小限のみ要求</li>
-            <li>メッセージ削除前に必ずログ保存（NG検出時）</li>
+            <li>権限は機能提供のために必要な範囲で要求します</li>
+            <li>NG検出時は削除前ログを保存し、後から確認できる形で残します</li>
             <li>ログは管理目的以外に使用しません</li>
             <li>外部へのデータ共有なし</li>
           </ul>
@@ -378,26 +457,26 @@
 
         <div class="card faq">
           <details open>
-            <summary>Q. 無料ですか？</summary>
-            <p>A. はい。現在は無料で利用できます。（将来変えるならここだけ更新）</p>
+            <summary>Q. まずは無料で使えますか？</summary>
+            <p>A. はい。FreeでVCログ・NG検出ログを試せます。必要になったタイミングでProへアップグレードできます。</p>
           </details>
 
           <details>
-            <summary>Q. 管理ログはどれくらい保存されますか？</summary>
-            <p>A. サーバーごとに保存され、削除しない限り残ります。（保存方針があるなら追記）</p>
-          </details>
-
-          <details>
-            <summary>Q. 表示名が変わっても追跡できますか？</summary>
-            <p>A. はい。識別情報を元に追跡できるため、表示名が変わっても問題ありません。</p>
+            <summary>Q. Proにすると何が一番変わりますか？</summary>
+            <p>A. NG自動処罰（警告・タイムアウト）と、統計・Web管理画面で「運用が回る」状態になります。</p>
           </details>
 
           <details>
             <summary>Q. スラッシュコマンドは使えますか？</summary>
             <p>
-              A. いまの招待URLは <code class="inline">scope=bot</code> です。もしスラッシュコマンドを使うなら
-              <code class="inline">applications.commands</code> を追加したURLにすると確実です。
+              A. 使う場合は招待URLに <code class="inline">applications.commands</code> を追加するのがおすすめです。
+              （現在のURLは <code class="inline">scope=bot</code> です）
             </p>
+          </details>
+
+          <details>
+            <summary>Q. 管理ログはどれくらい保存されますか？</summary>
+            <p>A. サーバーごとに保存され、削除しない限り残ります。（監査用途の長期保存やCSVはPro+で対応予定）</p>
           </details>
         </div>
       </section>
@@ -421,3 +500,4 @@
     </script>
   </body>
 </html>
+
