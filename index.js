@@ -800,28 +800,6 @@ async function runDbMigrations(db) {
   await ensureColumn(db, "log_events", "duration_ms", "INTEGER");
 }
 
-// =========================
-// DB open & migrate
-// =========================
-try {
-  db = await open({
-    filename: path.join(__dirname, "data.db"),
-    driver: sqlite3.Database,
-  });
-
-  // ★ 重要：空DBでも落ちないように “先に作る”
-  await ensureBaseTables(db);
-
-  // ★ その後に移行＆追加
-  await migrateLogThreadsKind(db);
-  await runDbMigrations(db);
-
-  console.log("✅ DB ready");
-} catch (e) {
-  console.error("❌ DB open failed:", e);
-  process.exit(1);
-}
-
   /* =========================
    VC sessions (IN中でも集計するため)
 ========================= */
