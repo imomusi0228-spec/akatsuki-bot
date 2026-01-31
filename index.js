@@ -1699,28 +1699,6 @@ function intersectUserBotGuilds(userGuilds) {
     .map((g) => ({ id: g.id, name: g.name }));
 }
 
-/**
- * ユーザー所属ギルド（OAuth）× Botが入っているギルド を intersect して返す
- * - ManageGuild または Administrator 権限があるギルドのみ
- * - 返り値は [{id,name}] 形式
- */
-function intersectUserBotGuilds(userGuilds) {
-  if (!Array.isArray(userGuilds)) return [];
-
-  const botGuildIds = new Set(client.guilds.cache.map((g) => g.id));
-
-  const ADMINISTRATOR = 0x8;
-  const MANAGE_GUILD = 0x20;
-
-  return userGuilds
-    .filter((g) => {
-      const perms = Number(g.permissions || 0);
-      const hasManage = (perms & ADMINISTRATOR) === ADMINISTRATOR || (perms & MANAGE_GUILD) === MANAGE_GUILD;
-      return hasManage && botGuildIds.has(g.id);
-    })
-    .map((g) => ({ id: g.id, name: g.name }));
-}
-
 const server = http.createServer(async (req, res) => {
   try {
     const u = new URL(req.url || "/", baseUrl(req));
