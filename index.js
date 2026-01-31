@@ -1436,39 +1436,51 @@ client.on(Events.MessageCreate, async (message) => {
   try {
     if (!message.guild || message.author?.bot) return;
 
-    /* ===== 🧪 message debug log ===== */
+    // ★ ここが 0 なら「Message Content Intent がOFF」濃厚
+    const contentText = message.content ?? "";
+
     console.log("🧪 Message seen:", {
       guild: message.guild.id,
       channel: message.channelId,
       author: message.author.id,
-      len: (message.content || "").length,
-      contentHead: (message.content || "").slice(0, 30),
+      len: contentText.length,
+      contentHead: contentText.slice(0, 30),
     });
 
     if (!markNgProcessed(message.id)) return;
 
     const guildId = message.guild.id;
+
+    // NG一覧
     const ngList = await getNgWords(guildId);
     if (!ngList.length) return;
 
-    const m = matchNg(message.content, ngList);
+    // 本文が取れてない（intent OFFなど）
+    if (!contentText) {
+      console.warn("⚠️ message.content is empty. (Message Content Intent OFF?)", {
+        guildId,
+        channelId: message.channelId,
+        authorId: message.author.id,
+      });
+      return;
+    }
+
+    const m = matchNg(contentText, ngList);
     if (!m.hit) return;
 
     const st = await getSettings(guildId);
 
     const member = message.member;
     const authorName = message.author?.username || message.author?.id;
-    const displayName =
-      member?.displayName || message.author?.globalName || authorName;
+    const displayName = member?.displayName || message.author?.globalName || authorName;
     const avatar = message.author?.displayAvatarURL?.() ?? null;
 
     const timeLabel = tokyoNowLabel();
     const idLine = `${message.author.id}・${timeLabel}`;
-    const content = message.content || "";
 
-    /* ===== ① NGログ（削除前） ===== */
+    // ===== ① NGログ（削除前） =====
     const embed = new EmbedBuilder()
-      .setColor(0xe67e22) // NG orange
+      .setColor(0xe67e22)
       .setAuthor({ name: authorName, iconURL: avatar || undefined })
       .setDescription(`@${displayName} NG word detected in <#${message.channelId}>`)
       .addFields(
@@ -1476,11 +1488,7 @@ client.on(Events.MessageCreate, async (message) => {
         { name: "ID", value: idLine, inline: true },
         {
           name: "Content",
-          value: content
-            ? content.length > 900
-              ? content.slice(0, 900) + "…"
-              : content
-            : "（空）",
+          value: contentText.length > 900 ? contentText.slice(0, 900) + "…" : contentText,
           inline: false,
         }
       )
@@ -1494,10 +1502,25 @@ client.on(Events.MessageCreate, async (message) => {
       message_id: message.id,
     });
 
-    /* ===== ② 削除 ===== */
-    await message.delete().catch(() => null);
+    // ===== ② 削除（失敗理由を必ず出す） =====
+    const delOk = await message.delete().then(() => true).catch((e) => {
+      console.error("❌ NG delete failed:", {
+        code: e?.code,
+        name: e?.name,
+        message: e?.message,
+      });
+      return false;
+    });
 
-    /* ===== ③ 個人警告（DM → fallback mention） ===== */
+    if (!delOk) {
+      // ここが出るなら 99% 権限（Manage Messages） or チャンネル上書き
+      await message.channel
+        .send("⚠️ NG検知したけど削除できません。Botに「メッセージ管理」権限があるか確認してください。")
+        .then((msg) => setTimeout(() => msg.delete().catch(() => null), 8000))
+        .catch(() => null);
+    }
+
+    // ===== ③ 個人警告（DM → fallback mention） =====
     const warnText =
       `⚠️ **NGワード警告**\n` +
       `あなたのメッセージは削除されました。\n\n` +
@@ -1512,45 +1535,44 @@ client.on(Events.MessageCreate, async (message) => {
     if (!dmOk) {
       await message.channel
         .send({ content: `<@${message.author.id}> ${warnText}` })
-        .then((msg) =>
-          setTimeout(() => msg.delete().catch(() => null), 10_000)
-        )
+        .then((msg) => setTimeout(() => msg.delete().catch(() => null), 10_000))
         .catch(() => null);
     }
 
-    /* ===== ④ 回数加算 → 閾値でタイムアウト ===== */
+    // ===== ④ 回数加算 → 閾値でタイムアウト =====
     const count = await incNgHit(guildId, message.author.id);
     const threshold = Number(st.ng_threshold ?? DEFAULT_NG_THRESHOLD);
     const timeoutMin = Number(st.timeout_minutes ?? DEFAULT_TIMEOUT_MIN);
 
     if (count >= threshold) {
-      const mem = await message.guild.members
-        .fetch(message.author.id)
-        .catch(() => null);
+      const mem = await message.guild.members.fetch(message.author.id).catch(() => null);
 
       if (mem?.moderatable) {
-        await mem
-          .timeout(timeoutMin * 60_000, "NGワード検出の累積")
-          .catch(() => null);
-
-        await logEvent(guildId, "timeout_applied", message.author.id, {
-          minutes: timeoutMin,
-          threshold,
-          count,
+        const ok = await mem.timeout(timeoutMin * 60_000, "NGワード検出の累積").then(() => true).catch((e) => {
+          console.error("❌ timeout failed:", e?.code, e?.message);
+          return false;
         });
 
-        const embed2 = new EmbedBuilder()
-          .setColor(0x8e44ad) // timeout purple
-          .setAuthor({ name: authorName, iconURL: avatar || undefined })
-          .setDescription(`@${displayName} timeout applied`)
-          .addFields(
-            { name: "Count", value: String(count), inline: true },
-            { name: "Duration(min)", value: String(timeoutMin), inline: true },
-            { name: "ID", value: idLine, inline: false }
-          )
-          .setTimestamp(new Date());
+        if (ok) {
+          await logEvent(guildId, "timeout_applied", message.author.id, {
+            minutes: timeoutMin,
+            threshold,
+            count,
+          });
 
-        await sendToKindThread(message.guild, "ng", { embeds: [embed2] });
+          const embed2 = new EmbedBuilder()
+            .setColor(0x8e44ad)
+            .setAuthor({ name: authorName, iconURL: avatar || undefined })
+            .setDescription(`@${displayName} timeout applied`)
+            .addFields(
+              { name: "Count", value: String(count), inline: true },
+              { name: "Duration(min)", value: String(timeoutMin), inline: true },
+              { name: "ID", value: idLine, inline: false }
+            )
+            .setTimestamp(new Date());
+
+          await sendToKindThread(message.guild, "ng", { embeds: [embed2] });
+        }
       }
     }
   } catch (e) {
@@ -1562,115 +1584,63 @@ client.on(Events.MessageCreate, async (message) => {
 // 置き場所：const server = http.createServer(...) の前
 async function getMonthlyStats({ db, guildId, ym }) {
   if (!db || !guildId || !ym) return null;
+  if (!/^\d{4}-\d{2}$/.test(ym)) return null;
 
-  const cols = await db.all("PRAGMA table_info(log_threads)");
-  const colNames = cols.map((c) => String(c.name));
+  // ts は ms 前提
+  const start = Date.parse(`${ym}-01T00:00:00.000+09:00`);
+  const end = Date.parse(`${ym}-01T00:00:00.000+09:00`);
+  // end を翌月に
+  const d = new Date(start);
+  d.setMonth(d.getMonth() + 1);
+  const endMs = d.getTime();
 
-  // 日時カラムを自動検出
-  const dateCandidates = [
-    "created_at",
-    "createdAt",
-    "created",
-    "timestamp",
-    "ts",
-    "time",
-    "created_ms",
-    "createdAtMs",
-    "created_time",
-  ];
-  const dateCol = dateCandidates.find((n) => colNames.includes(n));
-  if (!dateCol) {
-    throw new Error(`no date column in log_threads. columns=${colNames.join(",")}`);
-  }
-
-  // user_id を自動検出（あれば topNgUsers を作る）
-  const userCandidates = ["user_id", "userId", "author_id", "authorId", "member_id", "memberId"];
-  const userCol = userCandidates.find((n) => colNames.includes(n)) || null;
-
-  // サンプル値から ISO / unix秒 / unixms を推定
-  const sampleRow = await db.get(
-    `SELECT ${dateCol} AS v FROM log_threads WHERE ${dateCol} IS NOT NULL LIMIT 1`
-  );
-  const v = sampleRow?.v;
-
-  // 月判定の式を決める
-  let monthExpr;
-  if (typeof v === "number") {
-    monthExpr =
-      v > 1e12
-        ? `strftime('%Y-%m', datetime(${dateCol}/1000, 'unixepoch'))` // ms
-        : `strftime('%Y-%m', datetime(${dateCol}, 'unixepoch'))`;     // sec
-  } else if (typeof v === "string" && /^\d+$/.test(v.trim())) {
-    const n = Number(v.trim());
-    monthExpr =
-      n > 1e12
-        ? `strftime('%Y-%m', datetime(${dateCol}/1000, 'unixepoch'))`
-        : `strftime('%Y-%m', datetime(${dateCol}, 'unixepoch'))`;
-  } else {
-    monthExpr = `strftime('%Y-%m', ${dateCol})`; // ISO/日時文字列
-  }
-
-  // kind別集計
-  const byKindRows = await db.all(
-    `
-    SELECT kind, COUNT(*) AS cnt
-    FROM log_threads
-    WHERE guild_id = ?
-      AND ${monthExpr} = ?
-    GROUP BY kind
-    ORDER BY cnt DESC
-    `,
-    [guildId, ym]
+  // 今月のイベント全部
+  const rows = await db.all(
+    `SELECT type, user_id, meta, ts
+       FROM log_events
+      WHERE guild_id = ?
+        AND ts >= ?
+        AND ts < ?
+      ORDER BY ts DESC`,
+    guildId,
+    start,
+    endMs
   );
 
-  const totalRow = await db.get(
-    `
-    SELECT COUNT(*) AS total
-    FROM log_threads
-    WHERE guild_id = ?
-      AND ${monthExpr} = ?
-    `,
-    [guildId, ym]
-  );
+  const byType = {};
+  for (const r of rows) byType[r.type] = (byType[r.type] || 0) + 1;
 
-  const byKind = Object.fromEntries(
-    byKindRows.map((r) => [r.kind ?? "unknown", Number(r.cnt || 0)])
-  );
-
-  // NGユーザー上位（userCol がある時だけ）
-  let topNgUsers = [];
-  if (userCol) {
-    try {
-      const topRows = await db.all(
-        `
-        SELECT ${userCol} AS user_id, COUNT(*) AS cnt
-        FROM log_threads
-        WHERE guild_id = ?
-          AND ${monthExpr} = ?
-          AND kind = 'ng'
-          AND ${userCol} IS NOT NULL AND ${userCol} <> ''
-        GROUP BY ${userCol}
-        ORDER BY cnt DESC
-        LIMIT 10
-        `,
-        [guildId, ym]
-      );
-
-      topNgUsers = topRows.map((r) => ({
-        user_id: String(r.user_id),
-        count: Number(r.cnt || 0),
-      }));
-    } catch {
-      topNgUsers = [];
-    }
-  }
-
-  return {
-    ym,
-    total: Number(totalRow?.total || 0),
-    byKind,
-    topNgUsers,
+  const summary = {
+    ngDetected: byType["ng_detected"] || 0,
+    timeouts: byType["timeout_applied"] || 0,
+    joins: byType["vc_in"] || 0,
+    leaves: byType["vc_out"] || 0,
+    byType,
   };
+
+  // Top NG Users（今月）
+  const topRows = await db.all(
+    `SELECT user_id, COUNT(*) AS cnt
+       FROM log_events
+      WHERE guild_id = ?
+        AND ts >= ?
+        AND ts < ?
+        AND type = 'ng_detected'
+        AND user_id IS NOT NULL AND user_id <> ''
+      GROUP BY user_id
+      ORDER BY cnt DESC
+      LIMIT 10`,
+    guildId,
+    start,
+    endMs
+  );
+
+  const topNgUsers = topRows.map((r) => ({
+    user_id: String(r.user_id),
+    cnt: Number(r.cnt || 0),
+  }));
+
+  return { ym, summary, topNgUsers };
 }
 
 /* =========================
