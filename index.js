@@ -749,6 +749,41 @@ try {
     driver: sqlite3.Database,
   });
 
+  /* =========================
+   VC sessions (IN中でも集計するため)
+========================= */
+async function migrateVcSessions(db) {
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS vc_sessions (
+      guild_id   TEXT NOT NULL,
+      user_id    TEXT NOT NULL,
+      channel_id TEXT,
+      join_ts    INTEGER NOT NULL,
+      PRIMARY KEY (guild_id, user_id)
+    );
+  `);
+
+  // log_events に duration_ms が無いなら追加（あれば無視）
+  try { await db.exec(`ALTER TABLE log_events ADD COLUMN duration_ms INTEGER;`); } catch (_) {}
+}
+
+function overlapMs(aStart, aEnd, bStart, bEnd) {
+  const s = Math.max(aStart, bStart);
+  const e = Math.min(aEnd, bEnd);
+  return Math.max(0, e - s);
+}
+
+function fmtHMS(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const ss = s % 60;
+  return `${h}:${String(m).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+}
+
+// 起動時に1回
+await migrateVcSessions(db);
+
   await db.exec(`
     CREATE TABLE IF NOT EXISTS settings (
       guild_id TEXT PRIMARY KEY,
@@ -1053,21 +1088,26 @@ async function clearNgWords(guildId) {
 }
 
 /* =========================
-   Event logging (stats)
+   logEvent (duration_ms 対応)
+   - meta は JSON 文字列で保存
 ========================= */
-async function logEvent(guildId, type, userId = null, metaObj = null) {
-  try {
-    if (!db) return;
-    const meta = metaObj ? JSON.stringify(metaObj) : null;
-    await db.run(
-      "INSERT INTO log_events (guild_id, type, user_id, meta, ts) VALUES (?, ?, ?, ?, ?)",
-      guildId,
-      type,
-      userId,
-      meta,
-      Date.now()
-    );
-  } catch {}
+async function logEvent(guildId, type, userId, meta = {}, durationMs = null) {
+  if (!db) return;
+
+  const ts = Date.now();
+  const metaJson = JSON.stringify(meta ?? {});
+
+  // ✅ あなたの getMonthlyStats が meta を参照してるので meta で保存
+  await db.run(
+    `INSERT INTO log_events (guild_id, type, user_id, ts, meta, duration_ms)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    guildId,
+    type,
+    userId,
+    ts,
+    metaJson,
+    durationMs
+  );
 }
 
 /* =========================
@@ -1287,6 +1327,7 @@ client.on("interactionCreate", async (interaction) => {
 /* =========================
    VC Join/Leave -> kind="vc_in" / kind="vc_out"
    - スレ分け：IN / OUT（MOVEは両方に出す）
+   - 追加：vc_sessions で入室中も集計できるようにする
 ========================= */
 client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
   try {
@@ -1302,6 +1343,8 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     // 変化なし（ミュート等）は無視
     if ((oldCh?.id || null) === (newCh?.id || null)) return;
 
+    if (!db) return;
+
     const authorName = member.user?.username || member.id;
     const displayName = member.displayName || member.user?.globalName || authorName;
     const avatar = member.user?.displayAvatarURL?.() ?? null;
@@ -1309,45 +1352,84 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     const timeLabel = tokyoNowLabel();
     const idLine = `${member.id}・${timeLabel}`;
 
+    const now = Date.now();
+    const guildId = guild.id;
+    const userId = member.id;
+
+    // 現在のセッション（あれば）
+    const sess = await db.get(
+      `SELECT join_ts, channel_id FROM vc_sessions WHERE guild_id=? AND user_id=?`,
+      [guildId, userId]
+    );
+
     // IN (null -> channel)
     if (!oldCh && newCh) {
+      // セッション開始（取りこぼし/再起動対策で upsert）
+      await db.run(
+        `INSERT INTO vc_sessions (guild_id, user_id, channel_id, join_ts)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(guild_id, user_id) DO UPDATE SET
+           channel_id=excluded.channel_id,
+           join_ts=excluded.join_ts`,
+        [guildId, userId, newCh.id, now]
+      );
+
       const embedIn = new EmbedBuilder()
-        .setColor(0x2ecc71) // green
+        .setColor(0x2ecc71)
         .setAuthor({ name: authorName, iconURL: avatar || undefined })
         .setDescription(`@${displayName} joined voice channel 🔊 <#${newCh.id}>`)
         .addFields({ name: "ID", value: idLine, inline: false })
         .setTimestamp(new Date());
 
       await sendToKindThread(guild, "vc_in", { embeds: [embedIn] });
-      await logEvent(guild.id, "vc_in", member.id, { to: newCh.id });
+      await logEvent(guildId, "vc_in", userId, { to: newCh.id });
       return;
     }
 
     // OUT (channel -> null)
     if (oldCh && !newCh) {
+      const joinTs = sess?.join_ts ? Number(sess.join_ts) : null;
+      const durationMs = joinTs ? Math.max(0, now - joinTs) : null;
+
+      // セッション削除
+      await db.run(`DELETE FROM vc_sessions WHERE guild_id=? AND user_id=?`, [guildId, userId]);
+
       const embedOut = new EmbedBuilder()
-        .setColor(0xe74c3c) // red
+        .setColor(0xe74c3c)
         .setAuthor({ name: authorName, iconURL: avatar || undefined })
         .setDescription(`@${displayName} left voice channel 🔇 <#${oldCh.id}>`)
         .addFields({ name: "ID", value: idLine, inline: false })
         .setTimestamp(new Date());
 
       await sendToKindThread(guild, "vc_out", { embeds: [embedOut] });
-      await logEvent(guild.id, "vc_out", member.id, { from: oldCh.id });
+      await logEvent(guildId, "vc_out", userId, { from: oldCh.id }, durationMs);
       return;
     }
 
     // MOVE (channel -> channel) → OUTにもINにも出す
     if (oldCh && newCh && oldCh.id !== newCh.id) {
+      const joinTs = sess?.join_ts ? Number(sess.join_ts) : null;
+      const durationMs = joinTs ? Math.max(0, now - joinTs) : null;
+
+      // 新チャンネルでセッション再開始
+      await db.run(
+        `INSERT INTO vc_sessions (guild_id, user_id, channel_id, join_ts)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(guild_id, user_id) DO UPDATE SET
+           channel_id=excluded.channel_id,
+           join_ts=excluded.join_ts`,
+        [guildId, userId, newCh.id, now]
+      );
+
       const embedMoveOut = new EmbedBuilder()
-        .setColor(0x95a5a6) // gray
+        .setColor(0x95a5a6)
         .setAuthor({ name: authorName, iconURL: avatar || undefined })
         .setDescription(`@${displayName} left voice channel 🔇 <#${oldCh.id}>（MOVE）`)
         .addFields({ name: "ID", value: idLine, inline: false })
         .setTimestamp(new Date());
 
       const embedMoveIn = new EmbedBuilder()
-        .setColor(0x2ecc71) // green
+        .setColor(0x2ecc71)
         .setAuthor({ name: authorName, iconURL: avatar || undefined })
         .setDescription(`@${displayName} joined voice channel 🔊 <#${newCh.id}>（MOVE）`)
         .addFields({ name: "ID", value: idLine, inline: false })
@@ -1356,7 +1438,8 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
       await sendToKindThread(guild, "vc_out", { embeds: [embedMoveOut] });
       await sendToKindThread(guild, "vc_in", { embeds: [embedMoveIn] });
 
-      await logEvent(guild.id, "vc_move", member.id, { from: oldCh.id, to: newCh.id });
+      // MOVEログ（旧VC分の確定滞在を duration_ms に入れる）
+      await logEvent(guildId, "vc_move", userId, { from: oldCh.id, to: newCh.id }, durationMs);
       return;
     }
   } catch (e) {
