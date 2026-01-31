@@ -800,7 +800,7 @@ async function runDbMigrations(db) {
   await ensureColumn(db, "log_events", "duration_ms", "INTEGER");
 }
 
-  /* =========================
+/* =========================
    VC sessions (IN中でも集計するため)
 ========================= */
 async function migrateVcSessions(db) {
@@ -940,7 +940,7 @@ await migrateVcSessions(db);
   `);
 
 // =========================
-// DB init
+// DB init (ONLY ONCE)
 // =========================
 const DB_PATH =
   process.env.SQLITE_PATH ||
@@ -959,7 +959,7 @@ try {
   console.log("✅ DB ready:", DB_PATH);
 } catch (e) {
   console.error("❌ DB init failed:", e?.message ?? e);
-  db = null;
+  db = null; // 起動は継続（ログ機能だけ無効）
 }
 
 /* =========================
