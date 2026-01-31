@@ -711,8 +711,50 @@ const __dirname = path.dirname(__filename);
 ========================= */
 let db = null;
 
+async function tableExists(db, name) {
+  const row = await db.get(
+    `SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
+    [name]
+  );
+  return !!row;
+}
+
+// まず “最低限のテーブル” を作る（空DBでも起動できるようにする）
+async function ensureBaseTables(db) {
+  // ログ本体
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS log_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guild_id TEXT NOT NULL,
+      user_id TEXT,
+      type TEXT,
+      ts INTEGER NOT NULL,
+      channel_id TEXT,
+      thread_id TEXT,
+      message_id TEXT,
+      content TEXT,
+      duration_ms INTEGER
+    );
+  `);
+
+  // 旧スキーマ（kind無し）をまず作っておく
+  // ※ ここから migrateLogThreadsKind で kind 対応に置き換える
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS log_threads (
+      guild_id TEXT NOT NULL,
+      date_key TEXT NOT NULL,
+      thread_id TEXT NOT NULL,
+      PRIMARY KEY (guild_id, date_key)
+    );
+  `);
+}
+
+// 旧 log_threads → kind 対応へ移行
 async function migrateLogThreadsKind(db) {
   try {
+    // 新規DBなどで log_threads が無いなら移行不要
+    if (!(await tableExists(db, "log_threads"))) return;
+
     const cols = await db.all(`PRAGMA table_info(log_threads);`);
     const hasKind = cols.some((c) => c.name === "kind");
     if (hasKind) return;
@@ -741,8 +783,11 @@ async function migrateLogThreadsKind(db) {
   }
 }
 
-
+// カラム追加（存在チェック付き）
 async function ensureColumn(db, table, column, typeSql) {
+  // テーブルが無いなら何もしない（落とさない）
+  if (!(await tableExists(db, table))) return;
+
   const cols = await db.all(`PRAGMA table_info(${table})`);
   const exists = cols.some((c) => c.name === column);
   if (exists) return;
@@ -764,7 +809,10 @@ try {
     driver: sqlite3.Database,
   });
 
-  // ★★★ ここ！！！ ★★★
+  // ★ 重要：空DBでも落ちないように “先に作る”
+  await ensureBaseTables(db);
+
+  // ★ その後に移行＆追加
   await migrateLogThreadsKind(db);
   await runDbMigrations(db);
 
