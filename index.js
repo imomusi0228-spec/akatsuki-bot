@@ -1688,25 +1688,22 @@ const server = http.createServer(async (req, res) => {
 
     // token auth
     const tokenQ = u.searchParams.get("token") || "";
-    const tokenAuthed = ADMIN_TOKEN && tokenQ === ADMIN_TOKEN;
+    const tokenAuthed = !!(ADMIN_TOKEN && tokenQ === ADMIN_TOKEN);
 
-    // OAuth session（/admin と /api/ と /logout のときだけ読む）
+    // OAuth session（必要なときだけ）
     let sess = null;
     if (pathname === "/admin" || pathname.startsWith("/api/") || pathname === "/logout") {
       sess = await getSession(req);
     }
 
     const oauthReady = !!(CLIENT_ID && CLIENT_SECRET && (PUBLIC_URL || req.headers.host));
-    const isAuthed = !!sess || tokenAuthed;
+    const isAuthed = tokenAuthed || !!sess;
 
     // ===== OAuth endpoints =====
     if (pathname === "/login") {
-      if (!oauthReady) {
-        return text(res, "OAuth not configured. Set DISCORD_CLIENT_ID/SECRET and PUBLIC_URL.", 500);
-      }
+      if (!oauthReady) return text(res, "OAuth not configured.", 500);
       const state = rand(12);
       states.set(state, Date.now());
-
       const redirectUri = OAUTH_REDIRECT_URI || `${baseUrl(req)}${REDIRECT_PATH}`;
       const authUrl =
         "https://discord.com/oauth2/authorize" +
@@ -1715,14 +1712,12 @@ const server = http.createServer(async (req, res) => {
         `&response_type=code` +
         `&scope=${encodeURIComponent(OAUTH_SCOPES)}` +
         `&state=${encodeURIComponent(state)}`;
-
       res.writeHead(302, { Location: authUrl });
       return res.end();
     }
 
     if (pathname === REDIRECT_PATH) {
       if (!oauthReady) return text(res, "OAuth is not configured.", 500);
-
       const code = u.searchParams.get("code") || "";
       const state = u.searchParams.get("state") || "";
       const created = states.get(state);
@@ -1730,7 +1725,6 @@ const server = http.createServer(async (req, res) => {
       states.delete(state);
 
       const redirectUri = OAUTH_REDIRECT_URI || `${baseUrl(req)}${REDIRECT_PATH}`;
-
       const body = new URLSearchParams();
       body.set("client_id", CLIENT_ID);
       body.set("client_secret", CLIENT_SECRET);
@@ -1746,21 +1740,17 @@ const server = http.createServer(async (req, res) => {
       if (!tr.ok) return text(res, `Token exchange failed: ${tr.status}`, 500);
       const tok = await tr.json();
 
-      const accessToken = tok.access_token;
-      const expiresIn = Number(tok.expires_in || 3600);
-
-      const user = await discordApi(accessToken, "/users/@me");
+      const user = await discordApi(tok.access_token, "/users/@me");
       const sid = rand(24);
-
       sessions.set(sid, {
-        accessToken,
+        accessToken: tok.access_token,
         user,
         guilds: null,
         guildsFetchedAt: 0,
-        expiresAt: Date.now() + expiresIn * 1000,
+        expiresAt: Date.now() + (Number(tok.expires_in || 3600) * 1000),
       });
 
-      setCookie(res, "sid", sid, { maxAge: expiresIn });
+      setCookie(res, "sid", sid, { maxAge: Number(tok.expires_in || 3600) });
       res.writeHead(302, { Location: "/admin" });
       return res.end();
     }
@@ -1774,187 +1764,62 @@ const server = http.createServer(async (req, res) => {
 
     // ===== Pages =====
     if (pathname === "/") {
-      return html(
-        res,
-        renderHomeHTML({
-          title: "Akatsuki Bot",
-          links: [
-            { label: "Admin", href: "/admin" },
-            { label: "Health", href: "/health" },
-          ],
-        })
-      );
+      return html(res, renderHomeHTML({
+        title: "Akatsuki Bot",
+        links: [{ label: "Admin", href: "/admin" }, { label: "Health", href: "/health" }],
+      }));
     }
 
     if (pathname === "/admin") {
       if (!isAuthed) {
         return html(res, renderNeedLoginHTML({ oauthReady, tokenEnabled: !!ADMIN_TOKEN }));
       }
-      const user = sess?.user || null;
-      return html(res, renderAdminHTML({ user, oauth: !!sess, tokenAuthed: !!tokenAuthed }));
+      return html(res, renderAdminHTML({ user: sess?.user || null, oauth: !!sess, tokenAuthed }));
     }
 
-    // ===== APIs =====
-if (pathname.startsWith("/api/")) {
-  // まず認証チェック（ここが最重要）
-  if (!isAuthed) return json(res, { ok: false, error: "unauthorized" }, 401);
+        // ===== APIs =====
 
-  // OAuth時は「Bot入り + 管理権限がある鯖」だけ許可
-  let allowedGuildIds = null;
-  if (sess) {
-    const userGuilds = await ensureGuildsForSession(sess);
-    const allowed = intersectUserBotGuilds(userGuilds);
-    allowedGuildIds = new Set(allowed.map((g) => g.id));
-  }
+    // ★ /api/guilds は最優先（認証より前） ★
+    if (pathname === "/api/guilds") {
+      if (tokenAuthed && !sess) {
+        const col = await client.guilds.fetch().catch(() => null);
+        const list = col
+          ? Array.from(col.values()).map(g => ({ id: g.id, name: g.name }))
+          : client.guilds.cache.map(g => ({ id: g.id, name: g.name }));
+        return json(res, { ok: true, guilds: list });
+      }
 
-  function requireGuildAllowed(guildId) {
-    if (!guildId) return { ok: false, status: 400, error: "missing guild" };
-    if (allowedGuildIds && !allowedGuildIds.has(guildId)) {
-      return { ok: false, status: 403, error: "forbidden guild" };
-    }
-    return { ok: true };
-  }
-
-  // /api/health
-  if (pathname === "/api/health") return json(res, { ok: true });
-
-  // /api/me
-  if (pathname === "/api/me") {
-    return json(res, {
-      ok: true,
-      oauth: !!sess,
-      user: sess?.user
-        ? { id: sess.user.id, username: sess.user.username, global_name: sess.user.global_name }
-        : null,
-      botGuildCount: client.guilds.cache.size,
-    });
-  }
-
-// /api/guilds
-if (pathname === "/api/guilds") {
-  // tokenログイン等（OAuthなし）の時：Botが入ってる鯖一覧（fetchで確実に取得）
-  if (!sess) {
-    const col = await client.guilds.fetch().catch(() => null);
-    const list = col
-      ? Array.from(col.values()).map((g) => ({ id: g.id, name: g.name }))
-      : client.guilds.cache.map((g) => ({ id: g.id, name: g.name }));
-
-    return json(res, { ok: true, guilds: list, _debug: { cache: client.guilds.cache.size } });
-  }
-
-  // OAuthあり：ユーザー所属 && Bot導入 && 権限あり の鯖だけ
-  const userGuilds = await ensureGuildsForSession(sess);
-  const guilds = intersectUserBotGuilds(userGuilds);
-  return json(res, { ok: true, guilds });
-}
-
-  // /api/stats
-  if (pathname === "/api/stats") {
-    const guildId = u.searchParams.get("guild") || "";
-    const month = u.searchParams.get("month") || ""; // 例 "2026-01"
-    const chk = requireGuildAllowed(guildId);
-    if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
-
-    if (!/^\d{4}-\d{2}$/.test(month)) {
-      return json(res, { ok: false, error: "invalid_month_format", hint: "use YYYY-MM (e.g. 2026-01)" }, 400);
+      if (!sess) return json(res, { ok: false, error: "unauthorized" }, 401);
+      const userGuilds = await ensureGuildsForSession(sess);
+      const guilds = intersectUserBotGuilds(userGuilds);
+      return json(res, { ok: true, guilds });
     }
 
-    const stats = await getMonthlyStats({ db, guildId, ym: month });
-    if (!stats) return json(res, { ok: false, error: "no_stats" }, 400);
+    // ---- 認証必須API ----
+    if (pathname.startsWith("/api/")) {
+      if (!isAuthed) return json(res, { ok: false, error: "unauthorized" }, 401);
 
-    const guild =
-      client.guilds.cache.get(guildId) ||
-      (await client.guilds.fetch(guildId).catch(() => null));
+      if (pathname === "/api/health") {
+        return json(res, { ok: true });
+      }
 
-    if (guild && Array.isArray(stats.topNgUsers)) {
-      const named = [];
-      for (const row of stats.topNgUsers) {
-        const uinfo = await resolveUserLabel(guild, row.user_id);
-        named.push({
-          ...row,
-          user_label: uinfo.user_label,
-          display_name: uinfo.display_name,
-          username: uinfo.username,
+      if (pathname === "/api/me") {
+        return json(res, {
+          ok: true,
+          oauth: !!sess,
+          user: sess?.user || null,
+          botGuildCount: client.guilds.cache.size,
         });
       }
-      stats.topNgUsers = named;
+
+      return json(res, { ok: false, error: "not_found" }, 404);
     }
 
-    return json(res, { ok: true, stats });
-  }
+    return text(res, "Not Found", 404);
 
-  // /api/ngwords
-  if (pathname === "/api/ngwords") {
-    const guildId = u.searchParams.get("guild") || "";
-    const chk = requireGuildAllowed(guildId);
-    if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
-
-    const words = await getNgWords(guildId);
-    return json(res, { ok: true, count: words.length, words });
-  }
-
-  // /api/ngwords/add
-  if (pathname === "/api/ngwords/add" && req.method === "POST") {
-    const body = await readJson(req);
-    const guildId = String(body.guild || "");
-    const word = String(body.word || "");
-    const chk = requireGuildAllowed(guildId);
-    if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
-
-    const r = await addNgWord(guildId, word);
-    return json(res, r, r.ok ? 200 : 400);
-  }
-
-  // /api/ngwords/remove
-  if (pathname === "/api/ngwords/remove" && req.method === "POST") {
-    const body = await readJson(req);
-    const guildId = String(body.guild || "");
-    const word = String(body.word || "");
-    const chk = requireGuildAllowed(guildId);
-    if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
-
-    const r = await removeNgWord(guildId, word);
-    return json(res, r, r.ok ? 200 : 400);
-  }
-
-  // /api/ngwords/clear
-  if (pathname === "/api/ngwords/clear" && req.method === "POST") {
-    const body = await readJson(req);
-    const guildId = String(body.guild || "");
-    const chk = requireGuildAllowed(guildId);
-    if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
-
-    const r = await clearNgWords(guildId);
-    return json(res, r, r.ok ? 200 : 400);
-  }
-
-  // /api/settings
-  if (pathname === "/api/settings") {
-    const guildId = u.searchParams.get("guild") || "";
-    const chk = requireGuildAllowed(guildId);
-    if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
-
-    const settings = await getSettings(guildId);
-    return json(res, { ok: true, settings });
-  }
-
-  // /api/settings/update
-  if (pathname === "/api/settings/update" && req.method === "POST") {
-    const body = await readJson(req);
-    const guildId = String(body.guild || "");
-    const chk = requireGuildAllowed(guildId);
-    if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
-
-    const r = await updateSettings(guildId, {
-      ng_threshold: Number(body.ng_threshold),
-      timeout_minutes: Number(body.timeout_minutes),
-    });
-    return json(res, r, r.ok ? 200 : 400);
-  }
-
-  // API fallback（必ずJSONで返す：bad_json防止）
-  return json(res, { ok: false, error: "not_found" }, 404);
-}
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`🌐 Listening on ${PORT}`);
+});
 
 /* =========================
    Discord Bot 起動（外で1回だけ）
@@ -2004,8 +1869,3 @@ if (!discordToken) {
     );
   }
 }); // ← ★ createServer の閉じ
-
-// ★★★ Render 用：必ず listen ★★★
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`🌐 Listening on ${PORT}`);
-});
