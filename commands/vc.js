@@ -85,57 +85,55 @@ export async function execute(interaction, db) {
     const sub = interaction.options.getSubcommand();
     const guildId = interaction.guildId;
 
-    // =========================
-    // /vc recent
-    // =========================
     if (sub === "recent") {
-      const limit = interaction.options.getInteger("limit") ?? 10;
+  const limit = interaction.options.getInteger("limit") ?? 10;
 
-      const rows = await db.all(
-        `SELECT type, user_id, meta, ts
-           FROM log_events
-          WHERE guild_id = ?
-            AND type IN ('vc_join', 'vc_session_end', 'vc_move_merged')
-          ORDER BY ts DESC
-          LIMIT ?`,
-        guildId,
-        limit
-      );
+  const rows = await db.all(
+    `SELECT type, user_id, meta, ts
+       FROM log_events
+      WHERE guild_id = ?
+        AND type IN ('vc_in', 'vc_out', 'vc_move')
+      ORDER BY ts DESC
+      LIMIT ?`,
+    guildId,
+    limit
+  );
 
-      if (!rows.length) {
-        return await interaction.editReply(
-          "直近ログがありません。\n（Bot起動後に誰かがVCに入って→出ると貯まります）"
-        );
-      }
+  if (!rows.length) {
+    return await interaction.editReply(
+      "直近ログがありません。\n（DBにVCイベントが記録されていない可能性があります）"
+    );
+  }
 
-      const lines = rows.map((r) => {
-        const t = `<t:${Math.floor(r.ts / 1000)}:R>`;
-        const meta = safeJsonParse(r.meta) || {};
-        const u = r.user_id ? `<@${r.user_id}>` : "(unknown user)";
+  const lines = rows.map((r) => {
+    const t = `<t:${Math.floor(r.ts / 1000)}:R>`;
+    const meta = safeJsonParse(r.meta) || {};
+    const u = r.user_id ? `<@${r.user_id}>` : "(unknown user)";
 
-        if (r.type === "vc_join") {
-          const name = meta.channelName || (meta.channelId ? `#${meta.channelId}` : "?");
-          return `${t} 🟦 IN  ${u} → **${name}**`;
-        }
-
-        if (r.type === "vc_session_end") {
-          const name = meta.channelName || (meta.channelId ? `#${meta.channelId}` : "?");
-          const dur = meta.durationMs != null ? `（${msToHuman(meta.durationMs)}）` : "";
-          return `${t} 🟦 OUT ${u} ← **${name}** ${dur}`;
-        }
-
-        const route = meta.route || "?";
-        return `${t} 🔁 MOVE ${u} **${route}**`;
-      });
-
-      const embed = new EmbedBuilder()
-        .setTitle(`📜 VCログ（直近${rows.length}件）`)
-        .setColor(0x3498db)
-        .setDescription(lines.join("\n"))
-        .setTimestamp(new Date());
-
-      return await interaction.editReply({ embeds: [embed] });
+    if (r.type === "vc_in") {
+      const ch = meta.to ? `<#${meta.to}>` : (meta.channelId ? `<#${meta.channelId}>` : "?");
+      return `${t} 🟩 IN  ${u} → ${ch}`;
     }
+
+    if (r.type === "vc_out") {
+      const ch = meta.from ? `<#${meta.from}>` : (meta.channelId ? `<#${meta.channelId}>` : "?");
+      const dur = meta.durationMs != null ? `（${msToHuman(meta.durationMs)}）` : "";
+      return `${t} 🟥 OUT ${u} ← ${ch} ${dur}`;
+    }
+
+    // vc_move
+    const route =
+      meta.from && meta.to ? `<#${meta.from}> → <#${meta.to}>` : (meta.route || "?");
+    return `${t} 🔁 MOVE ${u} ${route}`;
+  });
+
+  const embed = new EmbedBuilder()
+    .setTitle(`📜 VCログ（直近${rows.length}件）`)
+    .setDescription(lines.join("\n"))
+    .setTimestamp(new Date());
+
+  return await interaction.editReply({ embeds: [embed] });
+}
 
     // =========================
     // /vc top
