@@ -966,7 +966,7 @@ await migrateVcSessions(db);
 // =========================
 const DB_PATH =
   process.env.SQLITE_PATH ||
-  (process.env.RENDER ? "/var/data/data.db" : path.join(__dirname, "data.db"));
+  (process.env.RENDER ? "/tmp/data.db" : path.join(__dirname, "data.db"));
 
 try {
   db = await open({
@@ -974,10 +974,7 @@ try {
     driver: sqlite3.Database,
   });
 
-  // ★ まず空DBでも落ちないようにテーブル作成（先に！）
   await ensureBaseTables(db);
-
-  // ★ その後に移行＆追加
   await migrateLogThreadsKind(db);
   await runDbMigrations(db);
 
