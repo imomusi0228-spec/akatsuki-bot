@@ -1205,12 +1205,25 @@ async function ensureGuildsForSession(s) {
   return await p;
 }
 
-function intersectUserBotGuilds(userGuilds) {
-  const botSet = new Set(client.guilds.cache.map((g) => g.id));
-  return (userGuilds || [])
-    .filter((g) => botSet.has(g.id))
-    .filter((g) => hasAdminPerm(g.permissions))
-    .map((g) => ({ id: g.id, name: g.name, owner: !!g.owner, permissions: g.permissions }));
+function resolveUserLabel(guild, userId) {
+  try {
+    // ギルドメンバー優先（表示名あり）
+    const mem = guild.members.cache.get(userId);
+    if (mem) {
+      const display = mem.displayName;
+      const username = mem.user.username;
+      return `${display} (@${username})`;
+    }
+
+    // 次にユーザーキャッシュ
+    const u = client.users.cache.get(userId);
+    if (u) {
+      return `${u.username} (@${u.username})`;
+    }
+  } catch {}
+
+  // 最後の保険
+  return userId;
 }
 
 /* =========================
@@ -1629,10 +1642,16 @@ async function getMonthlyStats({ db, guildId, ym }) {
     endMs
   );
 
-  const topNgUsers = topRows.map((r) => ({
-    user_id: String(r.user_id),
+  const guild = client.guilds.cache.get(guildId);
+
+topNgUsers = topRows.map((r) => {
+  const uid = String(r.user_id);
+  return {
+    user_id: uid,
+    user_label: guild ? resolveUserLabel(guild, uid) : uid,
     cnt: Number(r.cnt || 0),
-  }));
+  };
+});
 
   return { ym, summary, topNgUsers };
 }
