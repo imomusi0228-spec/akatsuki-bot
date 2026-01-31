@@ -796,10 +796,6 @@ async function ensureColumn(db, table, column, typeSql) {
   console.log(`✅ Migrated: ${table}.${column} added (${typeSql})`);
 }
 
-async function runDbMigrations(db) {
-  await ensureColumn(db, "log_events", "duration_ms", "INTEGER");
-}
-
 /* =========================
    VC sessions (IN中でも集計するため)
 ========================= */
@@ -818,22 +814,12 @@ async function migrateVcSessions(db) {
   try { await db.exec(`ALTER TABLE log_events ADD COLUMN duration_ms INTEGER;`); } catch (_) {}
 }
 
-function overlapMs(aStart, aEnd, bStart, bEnd) {
-  const s = Math.max(aStart, bStart);
-  const e = Math.min(aEnd, bEnd);
-  return Math.max(0, e - s);
-}
+async function runDbMigrations(db) {
+  // ここに既存の ensureColumn(...) などがあるはず
+  await ensureColumn(db, "log_events", "duration_ms", "INTEGER");
 
-function fmtHMS(ms) {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const ss = s % 60;
-  return `${h}:${String(m).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
-}
-
-// 起動時に1回
-await migrateVcSessions(db);
+  // ✅ VCセッションのマイグレーションは runDbMigrations の中で呼ぶ
+  await migrateVcSessions(db);
 
   await db.exec(`
     CREATE TABLE IF NOT EXISTS settings (
@@ -870,15 +856,6 @@ await migrateVcSessions(db);
       count INTEGER DEFAULT 0,
       updated_at INTEGER,
       PRIMARY KEY (guild_id, user_id)
-    );
-  `);
-
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS log_threads (
-      guild_id TEXT,
-      date_key TEXT,
-      thread_id TEXT,
-      PRIMARY KEY (guild_id, date_key)
     );
   `);
 
@@ -927,17 +904,9 @@ await migrateVcSessions(db);
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_log_events_guild_type_ts ON log_events (guild_id, type, ts);`);
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_vc_month_guild_month ON vc_stats_month (guild_id, month_key);`);
 
+  // ✅ log_threads は「kind付き」1本に統一。移行関数に任せる
   await migrateLogThreadsKind(db);
-
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS log_threads (
-      guild_id TEXT,
-      date_key TEXT,
-      kind TEXT,
-      thread_id TEXT,
-      PRIMARY KEY (guild_id, date_key, kind)
-    );
-  `);
+}
 
 // =========================
 // DB init (ONLY ONCE)
