@@ -1831,18 +1831,22 @@ if (pathname.startsWith("/api/")) {
   }
 
   // /api/guilds
-  if (pathname === "/api/guilds") {
-    // tokenログイン等（OAuthなし）の時：Botが入ってる鯖一覧
-    if (!sess) {
-      const guilds = client.guilds.cache.map((g) => ({ id: g.id, name: g.name }));
-      return json(res, { ok: true, guilds });
-    }
+if (pathname === "/api/guilds") {
+  // tokenログイン等（OAuthなし）の時：Botが入ってる鯖一覧（cacheではなくfetchで確実に取得）
+  if (!sess) {
+    const col = await client.guilds.fetch().catch(() => null);
+    const list = col
+      ? Array.from(col.values()).map((g) => ({ id: g.id, name: g.name }))
+      : client.guilds.cache.map((g) => ({ id: g.id, name: g.name })); // 念のため fallback
 
-    // OAuthあり：ユーザー所属 && Bot導入 && 権限あり の鯖だけ
-    const userGuilds = await ensureGuildsForSession(sess);
-    const guilds = intersectUserBotGuilds(userGuilds);
-    return json(res, { ok: true, guilds });
+    return json(res, { ok: true, guilds: list });
   }
+
+  // OAuthあり：ユーザー所属 && Bot導入 && 権限あり の鯖だけ
+  const userGuilds = await ensureGuildsForSession(sess);
+  const guilds = intersectUserBotGuilds(userGuilds);
+  return json(res, { ok: true, guilds });
+}
 
   // /api/stats
   if (pathname === "/api/stats") {
