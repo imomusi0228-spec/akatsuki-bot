@@ -1795,29 +1795,162 @@ const server = http.createServer(async (req, res) => {
     }
 
     // ===== APIs =====
-    if (pathname.startsWith("/api/")) {
-      if (!isAuthed) return json(res, { ok: false, error: "unauthorized" }, 401);
+if (pathname.startsWith("/api/")) {
+  // まず認証チェック（ここが最重要）
+  if (!isAuthed) return json(res, { ok: false, error: "unauthorized" }, 401);
 
-      // ここ以下はあなたの既存 /api 実装をそのまま残してOK
-      // （/api/health, /api/me, /api/guilds, /api/stats, ...）
-      // 省略せず “いま動いてる既存のまま” 붙けてください
+  // OAuth時は「Bot入り + 管理権限がある鯖」だけ許可
+  let allowedGuildIds = null;
+  if (sess) {
+    const userGuilds = await ensureGuildsForSession(sess);
+    const allowed = intersectUserBotGuilds(userGuilds);
+    allowedGuildIds = new Set(allowed.map((g) => g.id));
+  }
+
+  function requireGuildAllowed(guildId) {
+    if (!guildId) return { ok: false, status: 400, error: "missing guild" };
+    if (allowedGuildIds && !allowedGuildIds.has(guildId)) {
+      return { ok: false, status: 403, error: "forbidden guild" };
+    }
+    return { ok: true };
+  }
+
+  // /api/health
+  if (pathname === "/api/health") return json(res, { ok: true });
+
+  // /api/me
+  if (pathname === "/api/me") {
+    return json(res, {
+      ok: true,
+      oauth: !!sess,
+      user: sess?.user
+        ? { id: sess.user.id, username: sess.user.username, global_name: sess.user.global_name }
+        : null,
+      botGuildCount: client.guilds.cache.size,
+    });
+  }
+
+  // /api/guilds
+  if (pathname === "/api/guilds") {
+    // tokenログイン等（OAuthなし）の時：Botが入ってる鯖一覧
+    if (!sess) {
+      const guilds = client.guilds.cache.map((g) => ({ id: g.id, name: g.name }));
+      return json(res, { ok: true, guilds });
     }
 
-    return text(res, "Not Found", 404);
-  } catch (err) {
-    console.error("HTTP server error:", err);
-    return json(
-      res,
-      { ok: false, error: "internal_error", message: err?.message || "Internal Server Error" },
-      500
-    );
+    // OAuthあり：ユーザー所属 && Bot導入 && 権限あり の鯖だけ
+    const userGuilds = await ensureGuildsForSession(sess);
+    const guilds = intersectUserBotGuilds(userGuilds);
+    return json(res, { ok: true, guilds });
   }
-});
 
-// ★★★ これが最重要：Render で外部公開されるよう 0.0.0.0 で listen ★★★
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`🌐 Listening on ${PORT}`);
-});
+  // /api/stats
+  if (pathname === "/api/stats") {
+    const guildId = u.searchParams.get("guild") || "";
+    const month = u.searchParams.get("month") || ""; // 例 "2026-01"
+    const chk = requireGuildAllowed(guildId);
+    if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
+
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      return json(res, { ok: false, error: "invalid_month_format", hint: "use YYYY-MM (e.g. 2026-01)" }, 400);
+    }
+
+    const stats = await getMonthlyStats({ db, guildId, ym: month });
+    if (!stats) return json(res, { ok: false, error: "no_stats" }, 400);
+
+    const guild =
+      client.guilds.cache.get(guildId) ||
+      (await client.guilds.fetch(guildId).catch(() => null));
+
+    if (guild && Array.isArray(stats.topNgUsers)) {
+      const named = [];
+      for (const row of stats.topNgUsers) {
+        const uinfo = await resolveUserLabel(guild, row.user_id);
+        named.push({
+          ...row,
+          user_label: uinfo.user_label,
+          display_name: uinfo.display_name,
+          username: uinfo.username,
+        });
+      }
+      stats.topNgUsers = named;
+    }
+
+    return json(res, { ok: true, stats });
+  }
+
+  // /api/ngwords
+  if (pathname === "/api/ngwords") {
+    const guildId = u.searchParams.get("guild") || "";
+    const chk = requireGuildAllowed(guildId);
+    if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
+
+    const words = await getNgWords(guildId);
+    return json(res, { ok: true, count: words.length, words });
+  }
+
+  // /api/ngwords/add
+  if (pathname === "/api/ngwords/add" && req.method === "POST") {
+    const body = await readJson(req);
+    const guildId = String(body.guild || "");
+    const word = String(body.word || "");
+    const chk = requireGuildAllowed(guildId);
+    if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
+
+    const r = await addNgWord(guildId, word);
+    return json(res, r, r.ok ? 200 : 400);
+  }
+
+  // /api/ngwords/remove
+  if (pathname === "/api/ngwords/remove" && req.method === "POST") {
+    const body = await readJson(req);
+    const guildId = String(body.guild || "");
+    const word = String(body.word || "");
+    const chk = requireGuildAllowed(guildId);
+    if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
+
+    const r = await removeNgWord(guildId, word);
+    return json(res, r, r.ok ? 200 : 400);
+  }
+
+  // /api/ngwords/clear
+  if (pathname === "/api/ngwords/clear" && req.method === "POST") {
+    const body = await readJson(req);
+    const guildId = String(body.guild || "");
+    const chk = requireGuildAllowed(guildId);
+    if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
+
+    const r = await clearNgWords(guildId);
+    return json(res, r, r.ok ? 200 : 400);
+  }
+
+  // /api/settings
+  if (pathname === "/api/settings") {
+    const guildId = u.searchParams.get("guild") || "";
+    const chk = requireGuildAllowed(guildId);
+    if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
+
+    const settings = await getSettings(guildId);
+    return json(res, { ok: true, settings });
+  }
+
+  // /api/settings/update
+  if (pathname === "/api/settings/update" && req.method === "POST") {
+    const body = await readJson(req);
+    const guildId = String(body.guild || "");
+    const chk = requireGuildAllowed(guildId);
+    if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
+
+    const r = await updateSettings(guildId, {
+      ng_threshold: Number(body.ng_threshold),
+      timeout_minutes: Number(body.timeout_minutes),
+    });
+    return json(res, r, r.ok ? 200 : 400);
+  }
+
+  // API fallback（必ずJSONで返す：bad_json防止）
+  return json(res, { ok: false, error: "not_found" }, 404);
+}
 
 /* =========================
    Discord Bot 起動（外で1回だけ）
@@ -1840,3 +1973,18 @@ if (!discordToken) {
     console.error("❌ Discord login failed:", e);
   });
 }
+
+  } catch (err) {
+    console.error("HTTP server error:", err);
+    return json(
+      res,
+      { ok: false, error: "internal_error", message: err?.message || "Internal Server Error" },
+      500
+    );
+  }
+}); // ← ★ createServer の閉じ
+
+// ★★★ Render 用：必ず listen ★★★
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`🌐 Listening on ${PORT}`);
+});
