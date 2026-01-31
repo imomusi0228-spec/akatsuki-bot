@@ -190,7 +190,6 @@ async function sendToKindThread(guild, kind, payload) {
   const th = await ensureLogThread(guild, kind);
   if (!th) return false;
   await th.send(payload).catch(() => null);
-  return true;
 }
 
 /* =========================
@@ -523,7 +522,6 @@ const withToken = (url) => {
           }
           sel.disabled = false;
           showStatus("guildStatus", "取得OK", false);
-          return true;
         }
         sel.disabled = false;
         const opt = document.createElement("option");
@@ -743,11 +741,38 @@ async function migrateLogThreadsKind(db) {
   }
 }
 
+
+async function ensureColumn(db, table, column, typeSql) {
+  const cols = await db.all(`PRAGMA table_info(${table})`);
+  const exists = cols.some((c) => c.name === column);
+  if (exists) return;
+
+  await db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${typeSql}`);
+  console.log(`✅ Migrated: ${table}.${column} added (${typeSql})`);
+}
+
+async function runDbMigrations(db) {
+  await ensureColumn(db, "log_events", "duration_ms", "INTEGER");
+}
+
+// =========================
+// DB open & migrate
+// =========================
 try {
   db = await open({
     filename: path.join(__dirname, "data.db"),
     driver: sqlite3.Database,
   });
+
+  // ★★★ ここ！！！ ★★★
+  await migrateLogThreadsKind(db);
+  await runDbMigrations(db);
+
+  console.log("✅ DB ready");
+} catch (e) {
+  console.error("❌ DB open failed:", e);
+  process.exit(1);
+}
 
   /* =========================
    VC sessions (IN中でも集計するため)
@@ -888,6 +913,18 @@ await migrateVcSessions(db);
     );
   `);
 
+// =========================
+// DB init
+// =========================
+try {
+  db = await open({
+    filename: path.join(__dirname, "data.db"),
+    driver: sqlite3.Database,
+  });
+
+  await migrateLogThreadsKind(db);
+  await runDbMigrations(db);
+
   console.log("✅ DB ready");
 } catch (e) {
   console.error("❌ DB init failed:", e?.message ?? e);
@@ -980,7 +1017,6 @@ function markNgProcessed(messageId) {
   for (const [k, t] of ngProcessed) if (now - t > NG_DEDUPE_TTL) ngProcessed.delete(k);
   if (ngProcessed.has(messageId)) return false; // もう処理済み
   ngProcessed.set(messageId, now);
-  return true;
 }
 
 async function getSettings(guildId) {
@@ -1983,11 +2019,20 @@ const server = http.createServer(async (req, res) => {
       // Botが入ってる鯖だけOKにする
       async function isBotInGuild(guildId) {
         if (!guildId) return false;
-        if (client.guilds.cache.has(guildId)) return true;
-        const col = await client.guilds.fetch().catch(() => null);
-        if (col && col.has(guildId)) return true;
-        return false;
-      }
+
+        // ① まずキャッシュを見る（速い）
+        if (client.guilds.cache.has(guildId)) {
+          return true;
+        }
+
+        // ② 無ければ API から取得
+        const guilds = await client.guilds.fetch().catch(() => null);
+        if (guilds && guilds.has(guildId)) {
+          return true;
+        }
+
+  return false;
+}
 
       async function requireGuildAllowed(guildId) {
         if (!guildId) return { ok: false, status: 400, error: "missing_guild" };
