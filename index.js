@@ -1048,6 +1048,16 @@ await ensureColumn(db, "log_events", "duration_ms", "INTEGER");
 // =========================
 // DB init (ONLY ONCE) + Ready gate
 // =========================
+
+// Renderで /var/data が無い場合に備える
+if (process.env.RENDER) {
+  try {
+    fs.mkdirSync("/var/data", { recursive: true });
+  } catch (e) {
+    console.error("❌ mkdir /var/data failed:", e?.message ?? e);
+  }
+}
+
 const DB_PATH =
   process.env.SQLITE_PATH ||
   (process.env.RENDER ? "/var/data/data.db" : path.join(__dirname, "data.db"));
