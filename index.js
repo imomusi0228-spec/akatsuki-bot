@@ -22,22 +22,25 @@ import sqlite3 from "sqlite3";
 import { open } from "sqlite";
 
 /* =========================
-   Log thread helpers (SINGLE SOURCE OF TRUTH)
-   - Threads are separated by kind: vc_in / vc_out / ng
+   Log thread helpers (DISKなしでも動く版)
+   - Threads are separated by kind (vc_in / vc_out / ng / settings ...)
    - One thread per day per kind
-   - Race-safe (in-process lock + DB claim + last-minute recheck)
+   - Race-safe (in-process lock)
+   - DBがあれば thread_id を保存（なければ毎回探索で復元）
+   - 親チャンネルは settings.log_channel_id（DB）→ env LOG_CHANNEL_ID → 探索
 ========================= */
 
 // 同一プロセス内の同時実行防止
 const _logThreadLocks = new Map();
 
 /**
- * kind: "vc_in" | "vc_out" | "ng"
+ * kind: "vc_in" | "vc_out" | "ng" | "settings" | ...
  */
 function threadNameFor(kind, dateKey) {
   if (kind === "vc_in") return `VC IN ${dateKey}`;
   if (kind === "vc_out") return `VC OUT ${dateKey}`;
   if (kind === "ng") return `NGワード ${dateKey}`;
+  if (kind === "settings") return `SETTINGS ${dateKey}`;
   return `LOG ${kind} ${dateKey}`;
 }
 
@@ -51,16 +54,6 @@ function todayKeyTokyo() {
   return dtf.format(new Date()); // YYYY-MM-DD
 }
 
-function tokyoNowLabel() {
-  const hm = new Intl.DateTimeFormat("ja-JP", {
-    timeZone: TIMEZONE,
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date());
-  return `今日 ${hm}`;
-}
-
 async function findExistingForumThreadByName(parentForum, name) {
   // 1) Active threads
   try {
@@ -71,7 +64,10 @@ async function findExistingForumThreadByName(parentForum, name) {
 
   // 2) Archived public threads
   try {
-    const archived = await parentForum.threads.fetchArchived({ type: "public", limit: 100 });
+    const archived = await parentForum.threads.fetchArchived({
+      type: "public",
+      limit: 100,
+    });
     const hit = archived?.threads?.find((t) => t.name === name);
     if (hit) return hit;
   } catch (_) {}
@@ -86,7 +82,7 @@ async function findExistingForumThreadByName(parentForum, name) {
 }
 
 async function findExistingTextThreadByName(parent, name) {
-  // Text系で threads API が無いチャンネル種別対策
+  // Text系チャンネルのスレッド用（GuildText / News など）
   if (!parent?.threads?.fetchActive) return null;
 
   // 1) Active threads
@@ -98,7 +94,10 @@ async function findExistingTextThreadByName(parent, name) {
 
   // 2) Archived public threads
   try {
-    const archived = await parent.threads.fetchArchived({ type: "public", limit: 100 });
+    const archived = await parent.threads.fetchArchived({
+      type: "public",
+      limit: 100,
+    });
     const hit = archived?.threads?.find((t) => t.name === name);
     if (hit) return hit;
   } catch (_) {}
@@ -112,13 +111,106 @@ async function findExistingTextThreadByName(parent, name) {
   return null;
 }
 
+/** DBから log_channel_id を取る（DBが死んでても落とさない） */
+async function getLogChannelIdSafe(guildId) {
+  // 1) DB settings
+  try {
+    if (db) {
+      const row = await db.get(
+        `SELECT log_channel_id FROM settings WHERE guild_id = ?`,
+        guildId
+      );
+      const v = String(row?.log_channel_id || "").trim();
+      if (v) return v;
+    }
+  } catch (_) {}
+
+  // 2) env
+  const envId = String(process.env.LOG_CHANNEL_ID || "").trim();
+  if (envId) return envId;
+
+  return null;
+}
+
+/** 保険：VC/NG/SETTINGSっぽいスレがある親チャンネルを探す（重いので最後） */
+function looksLikeLogThreadName(name = "") {
+  const n = String(name || "");
+  return (
+    n.startsWith("VC IN ") ||
+    n.startsWith("VC OUT ") ||
+    n.startsWith("NGワード ") ||
+    n.startsWith("SETTINGS ") ||
+    n.startsWith("LOG ")
+  );
+}
+
+async function findParentBySearchingThreads(guild) {
+  const col = await guild.channels.fetch().catch(() => null);
+  const chans = col ? Array.from(col.values()) : Array.from(guild.channels.cache.values());
+
+  for (const ch of chans) {
+    if (!ch) continue;
+
+    // Forum
+    if (ch.type === ChannelType.GuildForum) {
+      try {
+        const active = await ch.threads.fetchActive();
+        if (active?.threads?.some((t) => looksLikeLogThreadName(t.name))) return ch;
+
+        const archived = await ch.threads.fetchArchived({ type: "public", limit: 50 });
+        if (archived?.threads?.some((t) => looksLikeLogThreadName(t.name))) return ch;
+      } catch (_) {}
+    }
+
+    // Text + thread
+    if (ch.threads?.fetchActive) {
+      try {
+        const active = await ch.threads.fetchActive();
+        if (active?.threads?.some((t) => looksLikeLogThreadName(t.name))) return ch;
+
+        const archived = await ch.threads.fetchArchived({ type: "public", limit: 50 });
+        if (archived?.threads?.some((t) => looksLikeLogThreadName(t.name))) return ch;
+      } catch (_) {}
+    }
+  }
+
+  return null;
+}
+
+/** thread_id をDBに保存（DBがある時だけ） */
+async function dbSaveThreadIdSafe(guildId, dateKey, kind, threadId) {
+  try {
+    if (!db) return;
+    await db.run(
+      `INSERT OR REPLACE INTO log_threads (guild_id, date_key, kind, thread_id)
+       VALUES (?, ?, ?, ?)`,
+      guildId,
+      dateKey,
+      kind,
+      threadId
+    );
+  } catch (_) {}
+}
+
+/** thread_id をDBから読む（DBがある時だけ） */
+async function dbGetThreadIdSafe(guildId, dateKey, kind) {
+  try {
+    if (!db) return null;
+    const row = await db.get(
+      `SELECT thread_id FROM log_threads WHERE guild_id = ? AND date_key = ? AND kind = ?`,
+      guildId,
+      dateKey,
+      kind
+    );
+    const id = String(row?.thread_id || "").trim();
+    if (!id || id === "PENDING") return null;
+    return id;
+  } catch (_) {
+    return null;
+  }
+}
+
 async function ensureLogThread(guild, kind) {
-  if (!db) return null;
-
-  const st = await getSettings(guild.id);
-  const logChannelId = st?.log_channel_id;
-  if (!logChannelId) return null;
-
   const dateKey = todayKeyTokyo();
   const name = threadNameFor(kind, dateKey);
 
@@ -127,102 +219,71 @@ async function ensureLogThread(guild, kind) {
   if (_logThreadLocks.has(lockKey)) return await _logThreadLocks.get(lockKey);
 
   const lockedPromise = (async () => {
-    // ---- 1) DBに既存があればそれを優先
-    const row = await db.get(
-      `SELECT thread_id FROM log_threads WHERE guild_id = ? AND date_key = ? AND kind = ?`,
-      guild.id,
-      dateKey,
-      kind
-    );
+    // ---- 0) 親チャンネルIDを決める（DB → env → 探索）
+    let logChannelId = await getLogChannelIdSafe(guild.id);
 
-    if (row?.thread_id && row.thread_id !== "PENDING") {
+    // logChannelId が無いなら最後の保険で探索
+    let parent = null;
+
+    if (logChannelId) {
+      parent =
+        guild.channels.cache.get(logChannelId) ||
+        (await guild.channels.fetch(logChannelId).catch(() => null));
+    }
+
+    if (!parent) {
+      parent = await findParentBySearchingThreads(guild);
+      // ここで見つかった場合、IDを env/DB に保存はしない（Diskなしで変わるので）
+    }
+
+    if (!parent) return null;
+
+    // ---- 1) DBに既存 thread_id があればそれを優先（DBがある時だけ）
+    const savedThreadId = await dbGetThreadIdSafe(guild.id, dateKey, kind);
+    if (savedThreadId) {
       const ch =
-        guild.channels.cache.get(row.thread_id) ||
-        (await guild.channels.fetch(row.thread_id).catch(() => null));
+        guild.channels.cache.get(savedThreadId) ||
+        (await guild.channels.fetch(savedThreadId).catch(() => null));
       if (ch) return ch;
     }
 
-    // ---- 2) DB claim（複数インスタンスが同時に走るのを軽減）
-    // まだ行がない場合だけ PENDING を先取り
-    try {
-      await db.run(
-        `INSERT OR IGNORE INTO log_threads (guild_id, date_key, kind, thread_id)
-         VALUES (?, ?, ?, ?)`,
-        guild.id,
-        dateKey,
-        kind,
-        "PENDING"
-      );
-    } catch (_) {}
-
-    // ---- 3) 親チャンネル取得
-    const parent =
-      guild.channels.cache.get(logChannelId) ||
-      (await guild.channels.fetch(logChannelId).catch(() => null));
-    if (!parent) return null;
-
-    // ---- 4) まず「既にあるか」を探す（Forum / Text）
+    // ---- 2) まず「既にあるか」を探す（Forum / Text）
     if (parent.type === ChannelType.GuildForum) {
       const existing = await findExistingForumThreadByName(parent, name);
       if (existing) {
-        await db.run(
-          `UPDATE log_threads SET thread_id = ? WHERE guild_id = ? AND date_key = ? AND kind = ?`,
-          existing.id,
-          guild.id,
-          dateKey,
-          kind
-        );
+        await dbSaveThreadIdSafe(guild.id, dateKey, kind, existing.id);
         return existing;
       }
     } else {
       const existing = await findExistingTextThreadByName(parent, name);
       if (existing) {
-        await db.run(
-          `UPDATE log_threads SET thread_id = ? WHERE guild_id = ? AND date_key = ? AND kind = ?`,
-          existing.id,
-          guild.id,
-          dateKey,
-          kind
-        );
+        await dbSaveThreadIdSafe(guild.id, dateKey, kind, existing.id);
         return existing;
       }
     }
 
     // ✅ 最終防衛：作成直前にもう一回「存在チェック」
-    // （旧/新インスタンスが同時に走る瞬間の二重作成をかなり抑える）
     if (parent.type === ChannelType.GuildForum) {
       const ex2 = await findExistingForumThreadByName(parent, name);
       if (ex2) {
-        await db.run(
-          `UPDATE log_threads SET thread_id = ? WHERE guild_id = ? AND date_key = ? AND kind = ?`,
-          ex2.id,
-          guild.id,
-          dateKey,
-          kind
-        );
+        await dbSaveThreadIdSafe(guild.id, dateKey, kind, ex2.id);
         return ex2;
       }
     } else {
       const ex2 = await findExistingTextThreadByName(parent, name);
       if (ex2) {
-        await db.run(
-          `UPDATE log_threads SET thread_id = ? WHERE guild_id = ? AND date_key = ? AND kind = ?`,
-          ex2.id,
-          guild.id,
-          dateKey,
-          kind
-        );
+        await dbSaveThreadIdSafe(guild.id, dateKey, kind, ex2.id);
         return ex2;
       }
     }
 
-    // ✅ 作成できない親チャンネルなら中止（落下防止）
+    // ✅ 作成できない親チャンネルなら中止
     if (parent.type !== ChannelType.GuildForum && !parent?.threads?.create) {
       console.warn("⚠️ log parent cannot create threads:", parent?.type, parent?.id);
       return null;
     }
 
-    // ---- 5) ここまで来たら作成
+    // ---- 3) 作成
     let thread = null;
 
     if (parent.type === ChannelType.GuildForum) {
@@ -239,14 +300,7 @@ async function ensureLogThread(guild, kind) {
       await thread.send(`ログ開始: ${name}`);
     }
 
-    await db.run(
-      `UPDATE log_threads SET thread_id = ? WHERE guild_id = ? AND date_key = ? AND kind = ?`,
-      thread.id,
-      guild.id,
-      dateKey,
-      kind
-    );
-
+    await dbSaveThreadIdSafe(guild.id, dateKey, kind, thread.id);
     return thread;
   })();
 
@@ -996,7 +1050,7 @@ await ensureColumn(db, "log_events", "duration_ms", "INTEGER");
 // =========================
 const DB_PATH =
   process.env.SQLITE_PATH ||
-  (process.env.RENDER ? "/tmp/data.db" : path.join(__dirname, "data.db"));
+  (process.env.RENDER ? "/var/data/data.db" : path.join(__dirname, "data.db"));
 
 try {
   db = await open({
