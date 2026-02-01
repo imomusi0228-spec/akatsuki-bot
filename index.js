@@ -1046,27 +1046,31 @@ await ensureColumn(db, "log_events", "duration_ms", "INTEGER");
 }
 
 // =========================
-// DB init (ONLY ONCE)
+// DB init (ONLY ONCE) + Ready gate
 // =========================
 const DB_PATH =
   process.env.SQLITE_PATH ||
   (process.env.RENDER ? "/var/data/data.db" : path.join(__dirname, "data.db"));
 
-try {
-  db = await open({
-    filename: DB_PATH,
-    driver: sqlite3.Database,
-  });
+const dbReady = (async () => {
+  try {
+    db = await open({
+      filename: DB_PATH,
+      driver: sqlite3.Database,
+    });
 
-  await ensureBaseTables(db);
-  await migrateLogThreadsKind(db);
-  await runDbMigrations(db);
+    await ensureBaseTables(db);
+    await migrateLogThreadsKind(db);
+    await runDbMigrations(db);
 
-  console.log("✅ DB ready:", DB_PATH);
-} catch (e) {
-  console.error("❌ DB init failed:", e?.message ?? e);
-  db = null; // 起動は継続（ログ機能だけ無効）
-}
+    console.log("✅ DB ready:", DB_PATH);
+    return true;
+  } catch (e) {
+    console.error("❌ DB init failed:", e?.message ?? e);
+    db = null; // 起動は継続（ログ機能だけ無効）
+    return false;
+  }
+})();
 
 /* =========================
    Discord client
@@ -2237,6 +2241,12 @@ const server = http.createServer(async (req, res) => {
 
       // /api/stats
 if (pathname === "/api/stats") {
+    // ✅ DBが準備できる前に叩かれても落とさない
+  const ok = await dbReady;
+  if (!ok || !db) {
+    return json(res, { ok: false, error: "db_not_ready" }, 503);
+  }
+
   const guildId = u.searchParams.get("guild") || "";
   const month = u.searchParams.get("month") || ""; // YYYY-MM
   const chk = await requireGuildAllowed(guildId);
