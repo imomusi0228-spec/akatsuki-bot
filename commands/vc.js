@@ -2,6 +2,16 @@ import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
 
 const TIMEZONE = "Asia/Tokyo";
 
+function tokyoNowLabel() {
+  const hm = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: TIMEZONE,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date());
+  return `今日 ${hm}`;
+}
+
 function monthKeyTokyo(date = new Date()) {
   const dtf = new Intl.DateTimeFormat("sv-SE", {
     timeZone: TIMEZONE,
@@ -12,7 +22,7 @@ function monthKeyTokyo(date = new Date()) {
 }
 
 function tokyoMonthRangeUTC(monthStr) {
-  const [y, m] = String(monthStr || "").split("-").map((x) => Number(x));
+  const [y, m] = monthStr.split("-").map((x) => Number(x));
   if (!y || !m) return null;
   const start = Date.UTC(y, m - 1, 1, -9, 0, 0, 0);
   const end = Date.UTC(m === 12 ? y + 1 : y, m === 12 ? 0 : m, 1, -9, 0, 0, 0);
@@ -34,16 +44,6 @@ function overlapMs(aStart, aEnd, bStart, bEnd) {
   const s = Math.max(aStart, bStart);
   const e = Math.min(aEnd, bEnd);
   return Math.max(0, e - s);
-}
-
-function fmtHHMMTokyo(ts) {
-  const t = new Date(Number(ts || 0));
-  return new Intl.DateTimeFormat("ja-JP", {
-    timeZone: TIMEZONE,
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(t);
 }
 
 async function resolveUserLabel(guild, userId) {
@@ -68,11 +68,25 @@ async function resolveUserLabel(guild, userId) {
   return id;
 }
 
+/** 直近イベントを「人間向け文字列」に */
+async function formatVcEventLine(guild, e) {
+  const label = await resolveUserLabel(guild, e.user_id);
+  const ch = e.channel_id ? `<#${e.channel_id}>` : "unknown";
+  const when = e.ts ? `<t:${Math.floor(e.ts / 1000)}:R>` : "";
+  if (e.type === "vc_in") return `${when} **${label}** joined 🔊 ${ch}`;
+  if (e.type === "vc_out") return `${when} **${label}** left 🔇 ${ch}`;
+  if (e.type === "vc_move") {
+    const from = e.from ? `<#${e.from}>` : "unknown";
+    const to = e.to ? `<#${e.to}>` : "unknown";
+    return `${when} **${label}** moved ${from} → ${to}`;
+  }
+  return `${when} ${label} ${e.type}`;
+}
+
 async function getUserMonthLive(db, guildId, userId, ym) {
   const range = tokyoMonthRangeUTC(ym);
   if (!range) return null;
 
-  // 確定滞在：vc_out / vc_move の duration_ms を合算
   const row = await db.get(
     `SELECT COALESCE(SUM(COALESCE(duration_ms, 0)), 0) AS dur
      FROM log_events
@@ -83,9 +97,8 @@ async function getUserMonthLive(db, guildId, userId, ym) {
     [guildId, userId, range.start, range.end]
   );
 
-  // 回数：vc_in / vc_move を数える（入室ベース）
   const row2 = await db.get(
-    `SELECT COUNT(*) AS cnt_in_move
+    `SELECT COUNT(*) AS cnt
      FROM log_events
      WHERE guild_id = ?
        AND user_id = ?
@@ -95,13 +108,13 @@ async function getUserMonthLive(db, guildId, userId, ym) {
   );
 
   let durMs = Number(row?.dur || 0);
-  const cnt = Number(row2?.cnt_in_move || 0);
+  const cnt = Number(row2?.cnt || 0);
 
-  // 入室中セッションがある場合、今この瞬間までを加算（今月分だけ）
   const sess = await db.get(
     `SELECT join_ts FROM vc_sessions WHERE guild_id=? AND user_id=?`,
     [guildId, userId]
   );
+
   if (sess?.join_ts) {
     const now = Date.now();
     durMs += overlapMs(Number(sess.join_ts), now, range.start, range.end);
@@ -116,7 +129,7 @@ async function getUserTotal(db, guildId, userId) {
      FROM log_events
      WHERE guild_id = ?
        AND user_id = ?
-       AND type IN ('vc_out','vc_move')`,
+       AND type IN ('vc_out', 'vc_move')`,
     [guildId, userId]
   );
 
@@ -125,14 +138,13 @@ async function getUserTotal(db, guildId, userId) {
      FROM log_events
      WHERE guild_id = ?
        AND user_id = ?
-       AND type IN ('vc_in','vc_move')`,
+       AND type IN ('vc_in', 'vc_move')`,
     [guildId, userId]
   );
 
   let durMs = Number(row?.dur || 0);
   const cnt = Number(row2?.cnt || 0);
 
-  // 入室中は累計にも加算
   const sess = await db.get(
     `SELECT join_ts FROM vc_sessions WHERE guild_id=? AND user_id=?`,
     [guildId, userId]
@@ -147,36 +159,33 @@ async function getUserTotal(db, guildId, userId) {
 export const data = new SlashCommandBuilder()
   .setName("vc")
   .setDescription("VC統計")
-  .addSubcommand((s) =>
-    s.setName("top").setDescription("今月のVC滞在時間Topを表示")
-  )
+  .addSubcommand((s) => s.setName("top").setDescription("今月のVC滞在時間Topを表示"))
   .addSubcommand((s) =>
     s
       .setName("user")
       .setDescription("指定ユーザーの今月/累計を表示")
-      .addUserOption((o) =>
-        o.setName("target").setDescription("対象ユーザー").setRequired(true)
-      )
+      .addUserOption((o) => o.setName("target").setDescription("対象ユーザー").setRequired(true))
   )
   .addSubcommand((s) =>
-    s.setName("recent").setDescription("最近のVC入退室ログ（最新10件）")
+    s
+      .setName("recent")
+      .setDescription("最近のVCログ（みなしで入室中も表示）")
+      .addIntegerOption((o) =>
+        o.setName("limit").setDescription("表示件数(1〜20)").setRequired(false)
+      )
   );
 
 export async function execute(interaction, db) {
-  if (!db) {
-    return interaction.reply({ content: "❌ DBが準備できていません。", ephemeral: true });
-  }
+  if (!db) return interaction.reply({ content: "❌ DBが準備できていません。", ephemeral: true });
 
-  const sub = interaction.options.getSubcommand();
   const guild = interaction.guild;
-  if (!guild) {
-    return interaction.reply({ content: "❌ サーバー内で実行してください。", ephemeral: true });
-  }
+  if (!guild) return interaction.reply({ content: "❌ サーバー内で実行してください。", ephemeral: true });
 
   const guildId = guild.id;
+  const sub = interaction.options.getSubcommand();
   const ym = monthKeyTokyo(new Date());
 
-  // ---- /vc user
+  // ===== /vc user =====
   if (sub === "user") {
     const target = interaction.options.getUser("target", true);
     const uid = target.id;
@@ -189,19 +198,18 @@ export async function execute(interaction, db) {
       .setTitle(`👤 VC統計：${label}`)
       .setDescription(
         `**今月(${ym})**\n滞在 **${fmtDuration(month?.durMs || 0)}**　回数 **${month?.cnt || 0}回**\n\n` +
-        `**累計**\n滞在 **${fmtDuration(total?.durMs || 0)}**　回数 **${total?.cnt || 0}回**`
+          `**累計**\n滞在 **${fmtDuration(total?.durMs || 0)}**　回数 **${total?.cnt || 0}回**`
       )
       .setTimestamp(new Date());
 
     return interaction.reply({ embeds: [embed] });
   }
 
-  // ---- /vc top
+  // ===== /vc top =====
   if (sub === "top") {
     const range = tokyoMonthRangeUTC(ym);
     if (!range) return interaction.reply({ content: "❌ month range error", ephemeral: true });
 
-    // 確定滞在（vc_out/vc_move）を集計
     const rows = await db.all(
       `SELECT user_id, COALESCE(SUM(COALESCE(duration_ms,0)),0) AS dur
        FROM log_events
@@ -216,11 +224,11 @@ export async function execute(interaction, db) {
     const map = new Map();
     for (const r of rows) map.set(String(r.user_id), Number(r.dur || 0));
 
-    // 入室中セッションを今月分だけ加算
     const sessRows = await db.all(
       `SELECT user_id, join_ts FROM vc_sessions WHERE guild_id = ?`,
       [guildId]
     );
+
     const now = Date.now();
     for (const s of sessRows || []) {
       const uid = String(s.user_id || "");
@@ -235,7 +243,7 @@ export async function execute(interaction, db) {
       .slice(0, 10);
 
     if (!list.length) {
-      return interaction.reply({ content: "今月の集計がまだありません。（VC入退室後に貯まります）" });
+      return interaction.reply({ content: "今月の集計がまだありません。（入室中の人がいれば /vc recent で見れます）" });
     }
 
     const lines = [];
@@ -253,42 +261,83 @@ export async function execute(interaction, db) {
     return interaction.reply({ embeds: [embed] });
   }
 
-  // ---- /vc recent
+  // ===== /vc recent（みなし対応） =====
   if (sub === "recent") {
+    const limitRaw = interaction.options.getInteger("limit") ?? 10;
+    const limit = Math.max(1, Math.min(20, Number(limitRaw || 10)));
+
+    // 直近の VC イベント（vc_in/vc_out/vc_move）
     const rows = await db.all(
       `SELECT type, user_id, ts, meta
        FROM log_events
        WHERE guild_id = ?
          AND type IN ('vc_in','vc_out','vc_move')
        ORDER BY ts DESC
-       LIMIT 10`,
+       LIMIT ?`,
+      [guildId, limit]
+    );
+
+    // meta からチャンネル情報を引っ張る
+    const events = (rows || []).map((r) => {
+      let meta = {};
+      try { meta = r.meta ? JSON.parse(r.meta) : {}; } catch {}
+      return {
+        type: r.type,
+        user_id: String(r.user_id || ""),
+        ts: Number(r.ts || 0),
+        channel_id: meta.to || meta.from || meta.channel_id || null,
+        from: meta.from || null,
+        to: meta.to || null,
+      };
+    });
+
+    // 入室中（vc_sessions）を「みなし recent」として先頭に混ぜる
+    const sessRows = await db.all(
+      `SELECT user_id, channel_id, join_ts
+       FROM vc_sessions
+       WHERE guild_id = ?
+       ORDER BY join_ts DESC`,
       [guildId]
     );
 
-    if (!rows.length) {
-      return interaction.reply({ content: "最近のVCログはまだありません。（VC入退室後に貯まります）" });
-    }
+    const now = Date.now();
+    const assumed = (sessRows || []).slice(0, limit).map((s) => ({
+      type: "vc_in_assumed",
+      user_id: String(s.user_id || ""),
+      ts: Number(s.join_ts || 0),
+      channel_id: String(s.channel_id || ""),
+      from: null,
+      to: null,
+      assumed: true,
+      live_ms: Math.max(0, now - Number(s.join_ts || now)),
+    }));
 
     const lines = [];
-    for (const r of rows) {
-      const label = await resolveUserLabel(guild, r.user_id);
-      const hhmm = fmtHHMMTokyo(r.ts);
 
-      // meta（to/from）を短く表示（あれば）
-      let metaSuffix = "";
-      try {
-        const m = r.meta ? JSON.parse(r.meta) : null;
-        if (m?.from && m?.to) metaSuffix = ` (${m.from}→${m.to})`;
-        else if (m?.to) metaSuffix = ` (to:${m.to})`;
-        else if (m?.from) metaSuffix = ` (from:${m.from})`;
-      } catch {}
+    // みなし（入室中）を先に表示
+    for (const a of assumed) {
+      const label = await resolveUserLabel(guild, a.user_id);
+      const ch = a.channel_id ? `<#${a.channel_id}>` : "unknown";
+      const when = a.ts ? `<t:${Math.floor(a.ts / 1000)}:R>` : "";
+      lines.push(`${when} **${label}** joined 🔊 ${ch} **(みなし/入室中 ${fmtDuration(a.live_ms)})**`);
+    }
 
-      lines.push(`**${hhmm}** ${r.type} - ${label}${metaSuffix}`);
+    // 確定イベント
+    for (const e of events) {
+      if (!e.user_id) continue;
+      lines.push(await formatVcEventLine(guild, e));
+    }
+
+    if (!lines.length) {
+      return interaction.reply({
+        content: "最近のVCログはまだありません。（でも入室中がいれば表示されるはずなので、Bot再起動直後ならもう一度 /vc recent して）",
+      });
     }
 
     const embed = new EmbedBuilder()
-      .setTitle("🕘 VC recent（最新10件）")
-      .setDescription(lines.join("\n"))
+      .setTitle(`🕘 最近のVCログ（みなし含む）`)
+      .setDescription(lines.slice(0, 25).join("\n"))
+      .setFooter({ text: `表示: ${Math.min(lines.length, 25)}件 / ${tokyoNowLabel()}` })
       .setTimestamp(new Date());
 
     return interaction.reply({ embeds: [embed] });
