@@ -25,7 +25,7 @@ import { open } from "sqlite";
    Log thread helpers (SINGLE SOURCE OF TRUTH)
    - Threads are separated by kind: vc_in / vc_out / ng
    - One thread per day per kind
-   - Race-safe (in-process lock + DB claim)
+   - Race-safe (in-process lock + DB claim + last-minute recheck)
 ========================= */
 
 // 同一プロセス内の同時実行防止
@@ -69,16 +69,43 @@ async function findExistingForumThreadByName(parentForum, name) {
     if (hit) return hit;
   } catch (_) {}
 
-  // 2) Archived public threads (直近100件)
+  // 2) Archived public threads
   try {
     const archived = await parentForum.threads.fetchArchived({ type: "public", limit: 100 });
     const hit = archived?.threads?.find((t) => t.name === name);
     if (hit) return hit;
   } catch (_) {}
 
-  // 3) 最後に cache（保険）
+  // 3) Cache fallback
   try {
     const hit = parentForum.threads.cache.find((t) => t.name === name);
+    if (hit) return hit;
+  } catch (_) {}
+
+  return null;
+}
+
+async function findExistingTextThreadByName(parent, name) {
+  // Text系で threads API が無いチャンネル種別対策
+  if (!parent?.threads?.fetchActive) return null;
+
+  // 1) Active threads
+  try {
+    const active = await parent.threads.fetchActive();
+    const hit = active?.threads?.find((t) => t.name === name);
+    if (hit) return hit;
+  } catch (_) {}
+
+  // 2) Archived public threads
+  try {
+    const archived = await parent.threads.fetchArchived({ type: "public", limit: 100 });
+    const hit = archived?.threads?.find((t) => t.name === name);
+    if (hit) return hit;
+  } catch (_) {}
+
+  // 3) Cache fallback
+  try {
+    const hit = parent.threads?.cache?.find((t) => t.name === name);
     if (hit) return hit;
   } catch (_) {}
 
@@ -95,7 +122,7 @@ async function ensureLogThread(guild, kind) {
   const dateKey = todayKeyTokyo();
   const name = threadNameFor(kind, dateKey);
 
-  // ---- in-process lock key
+  // ---- in-process lock key（同一プロセス内の二重作成防止）
   const lockKey = `${guild.id}:${kind}:${dateKey}`;
   if (_logThreadLocks.has(lockKey)) return await _logThreadLocks.get(lockKey);
 
@@ -115,8 +142,8 @@ async function ensureLogThread(guild, kind) {
       if (ch) return ch;
     }
 
-    // ---- 2) DB claim（複数インスタンス対策）
-    // まだ行がない場合だけ PENDING を先取りして、作成担当を「なるべく」1つにする
+    // ---- 2) DB claim（複数インスタンスが同時に走るのを軽減）
+    // まだ行がない場合だけ PENDING を先取り
     try {
       await db.run(
         `INSERT OR IGNORE INTO log_threads (guild_id, date_key, kind, thread_id)
@@ -134,7 +161,7 @@ async function ensureLogThread(guild, kind) {
       (await guild.channels.fetch(logChannelId).catch(() => null));
     if (!parent) return null;
 
-    // ---- 4) Forumなら「同名スレが既にあるか」を fetch までして探す
+    // ---- 4) まず「既にあるか」を探す（Forum / Text）
     if (parent.type === ChannelType.GuildForum) {
       const existing = await findExistingForumThreadByName(parent, name);
       if (existing) {
@@ -147,6 +174,52 @@ async function ensureLogThread(guild, kind) {
         );
         return existing;
       }
+    } else {
+      const existing = await findExistingTextThreadByName(parent, name);
+      if (existing) {
+        await db.run(
+          `UPDATE log_threads SET thread_id = ? WHERE guild_id = ? AND date_key = ? AND kind = ?`,
+          existing.id,
+          guild.id,
+          dateKey,
+          kind
+        );
+        return existing;
+      }
+    }
+
+    // ✅ 最終防衛：作成直前にもう一回「存在チェック」
+    // （旧/新インスタンスが同時に走る瞬間の二重作成をかなり抑える）
+    if (parent.type === ChannelType.GuildForum) {
+      const ex2 = await findExistingForumThreadByName(parent, name);
+      if (ex2) {
+        await db.run(
+          `UPDATE log_threads SET thread_id = ? WHERE guild_id = ? AND date_key = ? AND kind = ?`,
+          ex2.id,
+          guild.id,
+          dateKey,
+          kind
+        );
+        return ex2;
+      }
+    } else {
+      const ex2 = await findExistingTextThreadByName(parent, name);
+      if (ex2) {
+        await db.run(
+          `UPDATE log_threads SET thread_id = ? WHERE guild_id = ? AND date_key = ? AND kind = ?`,
+          ex2.id,
+          guild.id,
+          dateKey,
+          kind
+        );
+        return ex2;
+      }
+    }
+
+    // ✅ 作成できない親チャンネルなら中止（落下防止）
+    if (parent.type !== ChannelType.GuildForum && !parent?.threads?.create) {
+      console.warn("⚠️ log parent cannot create threads:", parent?.type, parent?.id);
+      return null;
     }
 
     // ---- 5) ここまで来たら作成
@@ -190,6 +263,7 @@ async function sendToKindThread(guild, kind, payload) {
   const th = await ensureLogThread(guild, kind);
   if (!th) return false;
   await th.send(payload).catch(() => null);
+  return true;
 }
 
 /* =========================
@@ -1022,10 +1096,12 @@ const NG_DEDUPE_TTL = 30_000;  // 30秒
 
 function markNgProcessed(messageId) {
   const now = Date.now();
-  // 掃除
-  for (const [k, t] of ngProcessed) if (now - t > NG_DEDUPE_TTL) ngProcessed.delete(k);
-  if (ngProcessed.has(messageId)) return false; // もう処理済み
+  for (const [k, t] of ngProcessed) {
+    if (now - t > NG_DEDUPE_TTL) ngProcessed.delete(k);
+  }
+  if (ngProcessed.has(messageId)) return false;
   ngProcessed.set(messageId, now);
+  return true; // ★これが必要
 }
 
 async function getSettings(guildId) {
