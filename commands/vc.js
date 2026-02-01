@@ -1,17 +1,8 @@
-import {
-  SlashCommandBuilder,
-  PermissionFlagsBits,
-  EmbedBuilder,
-  MessageFlags,
-} from "discord.js";
+import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
 
 const TIMEZONE = "Asia/Tokyo";
 
-function isUnknownInteraction(err) {
-  return err?.code === 10062 || err?.rawError?.code === 10062;
-}
-
-function ymTokyo(date = new Date()) {
+function monthKeyTokyo(date = new Date()) {
   const dtf = new Intl.DateTimeFormat("sv-SE", {
     timeZone: TIMEZONE,
     year: "numeric",
@@ -20,210 +11,236 @@ function ymTokyo(date = new Date()) {
   return dtf.format(date); // YYYY-MM
 }
 
-function msToHuman(ms) {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const ss = s % 60;
-  if (h > 0) return `${h}時間${m}分${ss}秒`;
-  if (m > 0) return `${m}分${ss}秒`;
-  return `${ss}秒`;
+function tokyoMonthRangeUTC(monthStr) {
+  const [y, m] = monthStr.split("-").map((x) => Number(x));
+  if (!y || !m) return null;
+  const start = Date.UTC(y, m - 1, 1, -9, 0, 0, 0);
+  const end = Date.UTC(m === 12 ? y + 1 : y, m === 12 ? 0 : m, 1, -9, 0, 0, 0);
+  return { start, end };
 }
 
-function safeJsonParse(s) {
-  try {
-    return JSON.parse(s);
-  } catch {
-    return null;
+function fmtDuration(ms) {
+  ms = Math.max(0, Number(ms || 0));
+  const sec = Math.floor(ms / 1000);
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  if (h > 0) return `${h}時間${m}分${s}秒`;
+  if (m > 0) return `${m}分${s}秒`;
+  return `${s}秒`;
+}
+
+function overlapMs(aStart, aEnd, bStart, bEnd) {
+  const s = Math.max(aStart, bStart);
+  const e = Math.min(aEnd, bEnd);
+  return Math.max(0, e - s);
+}
+
+async function resolveUserLabel(guild, userId) {
+  const id = String(userId || "");
+  if (!id) return "unknown";
+
+  const mem =
+    guild.members.cache.get(id) ||
+    (await guild.members.fetch(id).catch(() => null));
+
+  if (mem) {
+    const display = mem.displayName;
+    const username = mem.user?.username || id;
+    return `${display} (@${username})`;
   }
+
+  const u =
+    guild.client.users.cache.get(id) ||
+    (await guild.client.users.fetch(id).catch(() => null));
+
+  if (u) return `${u.username} (@${u.username})`;
+  return id;
+}
+
+async function getUserMonthLive(db, guildId, userId, ym) {
+  const range = tokyoMonthRangeUTC(ym);
+  if (!range) return null;
+
+  // 確定滞在：vc_out / vc_move の duration_ms を合算
+  const row = await db.get(
+    `SELECT
+       COALESCE(SUM(COALESCE(duration_ms, 0)), 0) AS dur,
+       COUNT(*) AS cnt_out_move
+     FROM log_events
+     WHERE guild_id = ?
+       AND user_id = ?
+       AND ts >= ? AND ts < ?
+       AND type IN ('vc_out', 'vc_move')`,
+    [guildId, userId, range.start, range.end]
+  );
+
+  // 回数：vc_in / vc_move を数える（入室ベース）
+  const row2 = await db.get(
+    `SELECT COUNT(*) AS cnt_in_move
+     FROM log_events
+     WHERE guild_id = ?
+       AND user_id = ?
+       AND ts >= ? AND ts < ?
+       AND type IN ('vc_in', 'vc_move')`,
+    [guildId, userId, range.start, range.end]
+  );
+
+  let durMs = Number(row?.dur || 0);
+  const cnt = Number(row2?.cnt_in_move || 0);
+
+  // 入室中セッションがある場合、今この瞬間までを加算（今月分だけ）
+  const sess = await db.get(
+    `SELECT join_ts FROM vc_sessions WHERE guild_id=? AND user_id=?`,
+    [guildId, userId]
+  );
+  if (sess?.join_ts) {
+    const now = Date.now();
+    durMs += overlapMs(Number(sess.join_ts), now, range.start, range.end);
+  }
+
+  return { durMs, cnt };
+}
+
+async function getUserTotal(db, guildId, userId) {
+  const row = await db.get(
+    `SELECT COALESCE(SUM(COALESCE(duration_ms, 0)), 0) AS dur
+     FROM log_events
+     WHERE guild_id = ?
+       AND user_id = ?
+       AND type IN ('vc_out','vc_move')`,
+    [guildId, userId]
+  );
+
+  const row2 = await db.get(
+    `SELECT COUNT(*) AS cnt
+     FROM log_events
+     WHERE guild_id = ?
+       AND user_id = ?
+       AND type IN ('vc_in','vc_move')`,
+    [guildId, userId]
+  );
+
+  let durMs = Number(row?.dur || 0);
+  const cnt = Number(row2?.cnt || 0);
+
+  // 入室中は累計にも加算
+  const sess = await db.get(
+    `SELECT join_ts FROM vc_sessions WHERE guild_id=? AND user_id=?`,
+    [guildId, userId]
+  );
+  if (sess?.join_ts) {
+    durMs += Math.max(0, Date.now() - Number(sess.join_ts));
+  }
+
+  return { durMs, cnt };
 }
 
 export const data = new SlashCommandBuilder()
   .setName("vc")
-  .setDescription("VCログ/統計")
-  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-  .addSubcommand((sub) =>
-    sub
-      .setName("recent")
-      .setDescription("直近のVCログを表示（IN/MOVE/OUT）")
-      .addIntegerOption((opt) =>
-        opt
-          .setName("limit")
-          .setDescription("表示件数（最大20）")
-          .setMinValue(1)
-          .setMaxValue(20)
-      )
+  .setDescription("VC統計")
+  .addSubcommand((s) =>
+    s
+      .setName("top")
+      .setDescription("今月のVC滞在時間Topを表示")
   )
-  .addSubcommand((sub) =>
-    sub.setName("top").setDescription("今月のVC滞在時間Topを表示（上位10）")
-  )
-  .addSubcommand((sub) =>
-    sub
+  .addSubcommand((s) =>
+    s
       .setName("user")
       .setDescription("指定ユーザーの今月/累計を表示")
-      .addUserOption((opt) =>
-        opt.setName("target").setDescription("対象ユーザー").setRequired(true)
+      .addUserOption((o) =>
+        o.setName("target").setDescription("対象ユーザー").setRequired(true)
       )
   );
 
 export async function execute(interaction, db) {
-  // ✅ まずACK（これで「応答しませんでした」通知が消える）
-  try {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-  } catch (e) {
-    if (isUnknownInteraction(e)) return;
-    throw e;
+  if (!db) {
+    return interaction.reply({ content: "❌ DBが準備できていません。", ephemeral: true });
   }
 
-  try {
-    if (!interaction.guildId) {
-      return await interaction.editReply("サーバー内で実行してください。");
-    }
-    if (!db) {
-      return await interaction.editReply("DBが利用できません（Renderログを確認）。");
-    }
+  const sub = interaction.options.getSubcommand();
+  const guild = interaction.guild;
+  if (!guild) {
+    return interaction.reply({ content: "❌ サーバー内で実行してください。", ephemeral: true });
+  }
 
-    const sub = interaction.options.getSubcommand();
-    const guildId = interaction.guildId;
+  const guildId = guild.id;
+  const ym = monthKeyTokyo(new Date());
 
-    if (sub === "recent") {
-  const limit = interaction.options.getInteger("limit") ?? 10;
+  if (sub === "user") {
+    const target = interaction.options.getUser("target", true);
+    const uid = target.id;
 
-  const rows = await db.all(
-    `SELECT type, user_id, meta, ts
+    const month = await getUserMonthLive(db, guildId, uid, ym);
+    const total = await getUserTotal(db, guildId, uid);
+    const label = await resolveUserLabel(guild, uid);
+
+    const embed = new EmbedBuilder()
+      .setTitle(`👤 VC統計：${label}`)
+      .setDescription(
+        `**今月(${ym})**\n滞在 **${fmtDuration(month?.durMs || 0)}**　回数 **${month?.cnt || 0}回**\n\n` +
+        `**累計**\n滞在 **${fmtDuration(total?.durMs || 0)}**　回数 **${total?.cnt || 0}回**`
+      )
+      .setTimestamp(new Date());
+
+    return interaction.reply({ embeds: [embed] });
+  }
+
+  if (sub === "top") {
+    const range = tokyoMonthRangeUTC(ym);
+    if (!range) return interaction.reply({ content: "❌ month range error", ephemeral: true });
+
+    // 確定滞在（vc_out/vc_move）をまず集計
+    const rows = await db.all(
+      `SELECT user_id, COALESCE(SUM(COALESCE(duration_ms,0)),0) AS dur
        FROM log_events
-      WHERE guild_id = ?
-        AND type IN ('vc_in', 'vc_out', 'vc_move')
-      ORDER BY ts DESC
-      LIMIT ?`,
-    guildId,
-    limit
-  );
-
-  if (!rows.length) {
-    return await interaction.editReply(
-      "直近ログがありません。\n（DBにVCイベントが記録されていない可能性があります）"
+       WHERE guild_id = ?
+         AND ts >= ? AND ts < ?
+         AND type IN ('vc_out','vc_move')
+         AND user_id IS NOT NULL AND user_id <> ''
+       GROUP BY user_id`,
+      [guildId, range.start, range.end]
     );
+
+    const map = new Map();
+    for (const r of rows) map.set(String(r.user_id), Number(r.dur || 0));
+
+    // 入室中セッションを今月分だけ加算
+    const sessRows = await db.all(
+      `SELECT user_id, join_ts FROM vc_sessions WHERE guild_id = ?`,
+      [guildId]
+    );
+    const now = Date.now();
+    for (const s of sessRows || []) {
+      const uid = String(s.user_id || "");
+      if (!uid) continue;
+      const extra = overlapMs(Number(s.join_ts), now, range.start, range.end);
+      map.set(uid, (map.get(uid) || 0) + extra);
+    }
+
+    const list = Array.from(map.entries())
+      .map(([user_id, durMs]) => ({ user_id, durMs }))
+      .sort((a, b) => b.durMs - a.durMs)
+      .slice(0, 10);
+
+    if (!list.length) {
+      return interaction.reply({ content: "今月の集計がまだありません。（VC入退室後に貯まります）" });
+    }
+
+    const lines = [];
+    for (let i = 0; i < list.length; i++) {
+      const it = list[i];
+      const label = await resolveUserLabel(guild, it.user_id);
+      lines.push(`**${i + 1}.** ${label} — **${fmtDuration(it.durMs)}**`);
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle(`🏆 今月(${ym}) VC滞在時間 Top`)
+      .setDescription(lines.join("\n"))
+      .setTimestamp(new Date());
+
+    return interaction.reply({ embeds: [embed] });
   }
 
-  const lines = rows.map((r) => {
-    const t = `<t:${Math.floor(r.ts / 1000)}:R>`;
-    const meta = safeJsonParse(r.meta) || {};
-    const u = r.user_id ? `<@${r.user_id}>` : "(unknown user)";
-
-    if (r.type === "vc_in") {
-      const ch = meta.to ? `<#${meta.to}>` : (meta.channelId ? `<#${meta.channelId}>` : "?");
-      return `${t} 🟩 IN  ${u} → ${ch}`;
-    }
-
-    if (r.type === "vc_out") {
-      const ch = meta.from ? `<#${meta.from}>` : (meta.channelId ? `<#${meta.channelId}>` : "?");
-      const dur = meta.durationMs != null ? `（${msToHuman(meta.durationMs)}）` : "";
-      return `${t} 🟥 OUT ${u} ← ${ch} ${dur}`;
-    }
-
-    // vc_move
-    const route =
-      meta.from && meta.to ? `<#${meta.from}> → <#${meta.to}>` : (meta.route || "?");
-    return `${t} 🔁 MOVE ${u} ${route}`;
-  });
-
-  const embed = new EmbedBuilder()
-    .setTitle(`📜 VCログ（直近${rows.length}件）`)
-    .setDescription(lines.join("\n"))
-    .setTimestamp(new Date());
-
-  return await interaction.editReply({ embeds: [embed] });
-}
-
-    // =========================
-    // /vc top
-    // =========================
-    if (sub === "top") {
-      const monthKey = ymTokyo();
-
-      const rows = await db.all(
-        `SELECT user_id, joins, total_ms
-           FROM vc_stats_month
-          WHERE guild_id = ? AND month_key = ?
-          ORDER BY total_ms DESC
-          LIMIT 10`,
-        guildId,
-        monthKey
-      );
-
-      if (!rows.length) {
-        return await interaction.editReply("今月の集計がまだありません。（VC入退室後に貯まります）");
-      }
-
-      const lines = rows.map((r, i) => {
-        const dur = msToHuman(Number(r.total_ms ?? 0));
-        const joins = Number(r.joins ?? 0);
-        return `**${i + 1}.** <@${r.user_id}>  —  ${dur}（${joins}回）`;
-      });
-
-      const embed = new EmbedBuilder()
-        .setTitle(`🏆 VC滞在時間 Top10（${monthKey}）`)
-        .setColor(0x3498db)
-        .setDescription(lines.join("\n"))
-        .setTimestamp(new Date());
-
-      return await interaction.editReply({ embeds: [embed] });
-    }
-
-    // =========================
-    // /vc user
-    // =========================
-    if (sub === "user") {
-      const user = interaction.options.getUser("target", true);
-      const monthKey = ymTokyo();
-
-      const m = await db.get(
-        `SELECT joins, total_ms
-           FROM vc_stats_month
-          WHERE guild_id = ? AND month_key = ? AND user_id = ?`,
-        guildId,
-        monthKey,
-        user.id
-      );
-
-      const t = await db.get(
-        `SELECT joins, total_ms
-           FROM vc_stats_total
-          WHERE guild_id = ? AND user_id = ?`,
-        guildId,
-        user.id
-      );
-
-      const mJoins = Number(m?.joins ?? 0);
-      const mMs = Number(m?.total_ms ?? 0);
-      const tJoins = Number(t?.joins ?? 0);
-      const tMs = Number(t?.total_ms ?? 0);
-
-      const embed = new EmbedBuilder()
-        .setTitle(`👤 VC統計：${user.tag}`)
-        .setColor(0x3498db)
-        .addFields(
-          { name: `今月(${monthKey}) 滞在`, value: msToHuman(mMs), inline: true },
-          { name: `今月(${monthKey}) 回数`, value: `${mJoins}回`, inline: true },
-          { name: "累計 滞在", value: msToHuman(tMs), inline: true },
-          { name: "累計 回数", value: `${tJoins}回`, inline: true }
-        )
-        .setTimestamp(new Date());
-
-      return await interaction.editReply({ embeds: [embed] });
-    }
-
-    return await interaction.editReply("不明なサブコマンドです。");
-  } catch (e) {
-    if (isUnknownInteraction(e)) return;
-    console.error("vc error:", e);
-
-    // ✅ ここも事故りにくくする
-    try {
-      await interaction.editReply(`エラー: ${e?.message ?? e}`);
-    } catch {
-      // editReplyすら無理なら諦め（ここでthrowするとログだけ増える）
-    }
-  }
+  return interaction.reply({ content: "❌ unknown subcommand", ephemeral: true });
 }
