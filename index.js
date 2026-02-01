@@ -2190,8 +2190,13 @@ if (pathname === "/api/stats") {
 
   const ngDetected = byType.ng_detected ?? byType.ng ?? 0;
   const timeouts = byType.timeout_applied ?? byType.timeout ?? 0;
-  const joins = byType.member_join ?? byType.join ?? byType.guild_member_add ?? 0;
-  const leaves = byType.member_leave ?? byType.leave ?? byType.guild_member_remove ?? 0;
+
+  // ✅ VC 入退室を「Join/Leave」として表示する
+  const joins  = byType.vc_in  ?? 0;
+  const leaves = byType.vc_out ?? 0;
+
+  // （任意）MOVEもカードで出したいなら summary に追加してもOK
+  // const moves  = byType.vc_move ?? 0;
 
   // ===== Top NG Users（ID→表示名/ユーザー名に解決）=====
   let topNgUsers = [];
