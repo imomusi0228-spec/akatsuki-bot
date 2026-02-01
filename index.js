@@ -1453,113 +1453,57 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     const member = newState.member || oldState.member;
     if (!member || member.user?.bot) return;
 
-    const oldCh = oldState.channel;
-    const newCh = newState.channel;
+    const oldCh = oldState.channelId;
+    const newCh = newState.channelId;
 
-    // 変化なし（ミュート等）は無視
-    if ((oldCh?.id || null) === (newCh?.id || null)) return;
+    // ✅ チャンネルが変わってない（mute/deaf等）は全部無視
+    if (oldCh === newCh) return;
 
-    if (!db) return;
-
-    const authorName = member.user?.username || member.id;
-    const displayName = member.displayName || member.user?.globalName || authorName;
-    const avatar = member.user?.displayAvatarURL?.() ?? null;
-
+    const who = member.displayName || member.user?.username || member.id;
     const timeLabel = tokyoNowLabel();
-    const idLine = `${member.id}・${timeLabel}`;
 
-    const now = Date.now();
-    const guildId = guild.id;
-    const userId = member.id;
-
-    // 現在のセッション（あれば）
-    const sess = await db.get(
-      `SELECT join_ts, channel_id FROM vc_sessions WHERE guild_id=? AND user_id=?`,
-      [guildId, userId]
-    );
-
-    // IN (null -> channel)
+    // ===== VC IN =====
     if (!oldCh && newCh) {
-      // セッション開始（取りこぼし/再起動対策で upsert）
-      await db.run(
-        `INSERT INTO vc_sessions (guild_id, user_id, channel_id, join_ts)
-         VALUES (?, ?, ?, ?)
-         ON CONFLICT(guild_id, user_id) DO UPDATE SET
-           channel_id=excluded.channel_id,
-           join_ts=excluded.join_ts`,
-        [guildId, userId, newCh.id, now]
-      );
-
       const embedIn = new EmbedBuilder()
-        .setColor(0x2ecc71)
-        .setAuthor({ name: authorName, iconURL: avatar || undefined })
-        .setDescription(`@${displayName} joined voice channel 🔊 <#${newCh.id}>`)
-        .addFields({ name: "ID", value: idLine, inline: false })
+        .setColor(0x00ff7f)
+        .setTitle("VC IN")
+        .setDescription(
+          `**${who}** joined voice channel 🔊 <#${newCh}>\n\nID\n${member.id}・${timeLabel}`
+        )
         .setTimestamp(new Date());
 
       await sendToKindThread(guild, "vc_in", { embeds: [embedIn] });
-      await logEvent(guildId, "vc_in", userId, { to: newCh.id });
       return;
     }
 
-    // OUT (channel -> null)
+    // ===== VC OUT =====
     if (oldCh && !newCh) {
-      const joinTs = sess?.join_ts ? Number(sess.join_ts) : null;
-      const durationMs = joinTs ? Math.max(0, now - joinTs) : null;
-
-      // セッション削除
-      await db.run(`DELETE FROM vc_sessions WHERE guild_id=? AND user_id=?`, [guildId, userId]);
-
       const embedOut = new EmbedBuilder()
-        .setColor(0xe74c3c)
-        .setAuthor({ name: authorName, iconURL: avatar || undefined })
-        .setDescription(`@${displayName} left voice channel 🔇 <#${oldCh.id}>`)
-        .addFields({ name: "ID", value: idLine, inline: false })
+        .setColor(0xff6b6b)
+        .setTitle("VC OUT")
+        .setDescription(
+          `**${who}** left voice channel 🔇 <#${oldCh}>\n\nID\n${member.id}・${timeLabel}`
+        )
         .setTimestamp(new Date());
 
       await sendToKindThread(guild, "vc_out", { embeds: [embedOut] });
-      await logEvent(guildId, "vc_out", userId, { from: oldCh.id }, durationMs);
       return;
     }
 
-    // MOVE (channel -> channel) → OUTにもINにも出す
-    if (oldCh && newCh && oldCh.id !== newCh.id) {
-      const joinTs = sess?.join_ts ? Number(sess.join_ts) : null;
-      const durationMs = joinTs ? Math.max(0, now - joinTs) : null;
-
-      // 新チャンネルでセッション再開始
-      await db.run(
-        `INSERT INTO vc_sessions (guild_id, user_id, channel_id, join_ts)
-         VALUES (?, ?, ?, ?)
-         ON CONFLICT(guild_id, user_id) DO UPDATE SET
-           channel_id=excluded.channel_id,
-           join_ts=excluded.join_ts`,
-        [guildId, userId, newCh.id, now]
-      );
-
-      const embedMoveOut = new EmbedBuilder()
-        .setColor(0x95a5a6)
-        .setAuthor({ name: authorName, iconURL: avatar || undefined })
-        .setDescription(`@${displayName} left voice channel 🔇 <#${oldCh.id}>（MOVE）`)
-        .addFields({ name: "ID", value: idLine, inline: false })
+    // ===== VC MOVE =====
+    if (oldCh && newCh && oldCh !== newCh) {
+      const embedMove = new EmbedBuilder()
+        .setColor(0x4dabf7)
+        .setTitle("VC MOVE")
+        .setDescription(
+          `**${who}** moved voice channel\n<#${oldCh}> → <#${newCh}>\n\nID\n${member.id}・${timeLabel}`
+        )
         .setTimestamp(new Date());
 
-      const embedMoveIn = new EmbedBuilder()
-        .setColor(0x2ecc71)
-        .setAuthor({ name: authorName, iconURL: avatar || undefined })
-        .setDescription(`@${displayName} joined voice channel 🔊 <#${newCh.id}>（MOVE）`)
-        .addFields({ name: "ID", value: idLine, inline: false })
-        .setTimestamp(new Date());
-
-      await sendToKindThread(guild, "vc_out", { embeds: [embedMoveOut] });
-      await sendToKindThread(guild, "vc_in", { embeds: [embedMoveIn] });
-
-      // MOVEログ（旧VC分の確定滞在を duration_ms に入れる）
-      await logEvent(guildId, "vc_move", userId, { from: oldCh.id, to: newCh.id }, durationMs);
-      return;
+      await sendToKindThread(guild, "vc_move", { embeds: [embedMove] });
     }
   } catch (e) {
-    console.error("voiceStateUpdate log error:", e);
+    console.error("VoiceStateUpdate error:", e);
   }
 });
 
