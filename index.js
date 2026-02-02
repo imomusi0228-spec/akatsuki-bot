@@ -997,18 +997,27 @@ const dbReady = (async () => {
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     let pool = null;
+    let client = null;
     try {
       console.log(`⏳ DB Connection attempt ${attempt}/${MAX_RETRIES}...`);
       pool = new Pool({
         connectionString: DATABASE_URL,
         ssl: { rejectUnauthorized: false }, // Supabase/Neon向けに保険
-        connectionTimeoutMillis: 30000, // 30sec timeout
-        max: 5, // Reduce max connections to avoid exhaustion
+        connectionTimeoutMillis: 30000,
+        idleTimeoutMillis: 30000,
+        max: 5,
         keepAlive: true,
       });
 
-      // 接続テスト
-      await pool.query("SELECT 1");
+      // 接続テスト: test-db.js と同じ方式 (QueryではなくConnect)
+      client = await pool.connect();
+
+      console.log("  ✅ Connected. Verifying query...");
+      await client.query("SELECT 1");
+
+      // クライアントを一度リリース
+      client.release();
+      client = null;
 
       // ✅ 一時変数で初期化（まだグローバル db には入れない）
       const _db = makeDb(pool);
@@ -1027,14 +1036,16 @@ const dbReady = (async () => {
       const errMsg = e?.message || String(e);
       console.warn(`⚠️ DB connection attempt ${attempt}/${MAX_RETRIES} failed: ${errMsg}`);
 
-      // ❌ 失敗したPoolは必ず閉じる (Resource Cleanup)
+      if (client) {
+        try { client.release(); } catch (_) { }
+      }
       if (pool) {
         try { await pool.end(); } catch (_) { }
       }
 
       if (attempt < MAX_RETRIES) {
-        // Wait 2s before retry
-        await new Promise((res) => setTimeout(res, 2000));
+        // Wait 3s before retry
+        await new Promise((res) => setTimeout(res, 3000));
       }
     }
   }
