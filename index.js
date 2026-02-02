@@ -1458,6 +1458,15 @@ client.on(Events.MessageCreate, async (message) => {
             count,
           });
 
+          // ✅ 修正: タイムアウト成功時に違反カウントをリセット
+          if (db) {
+            await db.run(
+              `DELETE FROM ng_hits WHERE guild_id = $1 AND user_id = $2`,
+              guildId,
+              message.author.id
+            ).catch(() => { });
+          }
+
           const embed2 = new EmbedBuilder()
             .setColor(0x8e44ad)
             .setAuthor({ name: authorName, iconURL: avatar || undefined })
@@ -2001,8 +2010,8 @@ const server = http.createServer(async (req, res) => {
         );
 
         const byType = Object.fromEntries(rows.map((r) => [r.type ?? "unknown", Number(r.cnt || 0)]));
-        const ngDetected = byType.ng_detected ?? byType.ng ?? 0;
-        const timeouts = byType.timeout_applied ?? byType.timeout ?? 0;
+        const ngDetected = byType.ng_detected ?? 0;
+        const timeouts = (byType.timeout_applied ?? 0) + (byType.timeout ?? 0);
         const joins = byType.vc_in ?? 0;
         const leaves = byType.vc_out ?? 0;
 
@@ -2210,4 +2219,23 @@ client.once(Events.ClientReady, () => {
   }, 5000);
 });
 
-await client.login(discordToken);
+async function startBot() {
+  const MAX_RETRIES = 5;
+  for (let i = 1; i <= MAX_RETRIES; i++) {
+    try {
+      console.log(`📡 Discord Login attempt ${i}/${MAX_RETRIES}...`);
+      await client.login(discordToken);
+      return;
+    } catch (err) {
+      console.error(`❌ Login attempt ${i} failed:`, err.message);
+      if (i === MAX_RETRIES) {
+        console.error("❌ Max retries reached. Exiting.");
+        process.exit(1);
+      }
+      console.log("⏳ Retrying in 5 seconds...");
+      await new Promise(r => setTimeout(r, 5000));
+    }
+  }
+}
+
+await startBot();
