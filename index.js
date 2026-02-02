@@ -526,7 +526,7 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
 </head>
 <body>
   <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:12px;">
-    <h2>Akatsuki Admin</h2>
+    <h2>Akatsuki Bot 管理画面</h2>
     <div style="text-align:right; font-size:12px;">
       ${user ? `<span style="margin-right:8px;">${userLabel}</span>` : ``}
       ${oauth ? `<a href="/logout">ログアウト</a>` : ``}
