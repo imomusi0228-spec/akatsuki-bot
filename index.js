@@ -20,7 +20,7 @@ import {
 
 import pg from "pg";
 const { Pool } = pg;
-import { getLicenseTierStrict } from "./service/license.js";
+import { getLicenseTierStrict, setTierOverride, getLicenseTier } from "./service/license.js";
 
 /* =========================
    Log thread helpers (DISKなしでも動く版)
@@ -994,7 +994,7 @@ async function runDbMigrations(db) {
   return true;
 }
 
-import { setTierOverride, getLicenseTier, getLicenseTierStrict } from "./service/license.js";
+
 
 // Re-export for compatibility if needed elsewhere, but ideally update consumers.
 export { setTierOverride, getLicenseTier, getLicenseTierStrict };
