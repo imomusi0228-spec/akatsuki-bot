@@ -38,7 +38,8 @@ async function setConfig(db, guildId, { weeks, introChId, targetRoleId }) {
     );
 }
 
-import { isTierAtLeast, checkActivityStats } from "../index.js";
+import { isTierAtLeast } from "../utils/common.js";
+import { checkActivityStats } from "../service/activity.js";
 
 export async function execute(interaction, db) {
     // Check Tier: Pro or Higher required

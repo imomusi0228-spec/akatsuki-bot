@@ -1013,13 +1013,7 @@ export async function getLicenseTier(guildId) {
   return row.tier || "free";
 }
 
-// Helper to check if tier is enough
-export function isTierAtLeast(currentTier, requiredTier) {
-  const levels = { "free": 0, "pro": 1, "pro_plus": 2 };
-  const c = levels[currentTier] ?? 0;
-  const r = levels[requiredTier] ?? 0;
-  return c >= r;
-}
+
 
 export async function checkLicense(guildId) {
   // Simple check for "Is Active" (Tier > Free? Or just "Is Allowed to use Bot"?)

@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, PermissionFlagsBits, ChannelType } from "discord.js";
-import { isTierAtLeast } from "../index.js";
+import { isTierAtLeast } from "../utils/common.js";
 
 export const data = new SlashCommandBuilder()
   .setName("scan")
