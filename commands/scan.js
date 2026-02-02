@@ -135,42 +135,42 @@ export async function execute(interaction, db) {
             continue;
           }
 
-          // --- Parse VC ---
-          const content = m.content || "";
+          // --- Parse VC (Embeds) ---
+          if (m.embeds.length > 0) {
+            const emb = m.embeds[0];
+            const title = emb.title || "";
+            const desc = emb.description || "";
 
-          if (content.includes("入室しました")) {
-            const username = parseUserFromContent(content);
-            const uid = await findUserIdByName(guild, username);
+            // Extract ID: "ID\n123456789012345678・..."
+            const idMatch = desc.match(/ID\n(\d+)/);
+            const uid = idMatch ? idMatch[1] : null;
+
             if (uid) {
-              await db.run(
-                "INSERT INTO log_events (guild_id, type, user_id, ts, meta) VALUES ($1, 'vc_in', $2, $3, $4)",
-                guild.id, uid, ts, JSON.stringify({ message_id: m.id })
-              );
-              count++;
-            }
-          } else if (content.includes("退出しました")) {
-            const username = parseUserFromContent(content);
-            const durMs = parseDuration(content);
-            const uid = await findUserIdByName(guild, username);
-            if (uid) {
-              await db.run(
-                "INSERT INTO log_events (guild_id, type, user_id, ts, duration_ms, meta) VALUES ($1, 'vc_out', $2, $3, $4, $5)",
-                guild.id, uid, ts, durMs, JSON.stringify({ message_id: m.id })
-              );
-              count++;
-            }
-          } else if (content.includes("移動しました")) {
-            const username = parseUserFromContent(content);
-            const durMs = parseDuration(content);
-            const uid = await findUserIdByName(guild, username);
-            if (uid) {
-              await db.run(
-                "INSERT INTO log_events (guild_id, type, user_id, ts, duration_ms, meta) VALUES ($1, 'vc_move', $2, $3, $4, $5)",
-                guild.id, uid, ts, durMs, JSON.stringify({ message_id: m.id })
-              );
-              count++;
+              if (title === "VC IN") {
+                await db.run(
+                  "INSERT INTO log_events (guild_id, type, user_id, ts, meta) VALUES ($1, 'vc_in', $2, $3, $4)",
+                  guild.id, uid, ts, JSON.stringify({ message_id: m.id })
+                );
+                count++;
+              } else if (title === "VC OUT") {
+                // Note: Duration cannot be recovered easily if not in text, set to 0 or null
+                await db.run(
+                  "INSERT INTO log_events (guild_id, type, user_id, ts, duration_ms, meta) VALUES ($1, 'vc_out', $2, $3, $4, $5)",
+                  guild.id, uid, ts, 0, JSON.stringify({ message_id: m.id })
+                );
+                count++;
+              } else if (title === "VC MOVE") {
+                await db.run(
+                  "INSERT INTO log_events (guild_id, type, user_id, ts, duration_ms, meta) VALUES ($1, 'vc_move', $2, $3, $4, $5)",
+                  guild.id, uid, ts, 0, JSON.stringify({ message_id: m.id })
+                );
+                count++;
+              }
             }
           }
+
+          // Legacy text parsing (fallback if needed, or remove)
+          // Removing legacy text parsing as it conflicts with Embed logic (empty matches)
 
           // --- Parse NG ---
           if (m.embeds.length > 0) {

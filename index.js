@@ -1794,7 +1794,7 @@ const server = http.createServer(async (req, res) => {
         const chk = await requireGuildAllowed(guildId);
         if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
 
-        const words = await getNgWords(guildId);
+        const words = await getNgWords(db, guildId);
         return json(res, { ok: true, count: words.length, words });
       }
 
@@ -1806,7 +1806,7 @@ const server = http.createServer(async (req, res) => {
         const chk = await requireGuildAllowed(guildId);
         if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
 
-        const r = await addNgWord(guildId, word);
+        const r = await addNgWord(db, guildId, word);
         return json(res, r, r.ok ? 200 : 400);
       }
 
@@ -1818,7 +1818,7 @@ const server = http.createServer(async (req, res) => {
         const chk = await requireGuildAllowed(guildId);
         if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
 
-        const r = await removeNgWord(guildId, word);
+        const r = await removeNgWord(db, guildId, word);
         return json(res, r, r.ok ? 200 : 400);
       }
 
