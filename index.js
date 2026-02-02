@@ -1136,35 +1136,51 @@ function overlapMs(start1, end1, start2, end2) {
 }
 
 /* =========================
-   Settings / NG
+   Settings / NG (with Cache)
 ========================= */
+const settingsCache = new Map(); // guildId -> { data, ts }
+const ngWordsCache = new Map();  // guildId -> { data, ts }
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+function invalidateCache(guildId) {
+  settingsCache.delete(guildId);
+  ngWordsCache.delete(guildId);
+}
+
 async function getSettings(guildId) {
-  if (!db) {
-    return {
-      log_channel_id: null,
-      ng_threshold: DEFAULT_NG_THRESHOLD,
-      timeout_minutes: DEFAULT_TIMEOUT_MIN,
-    };
+  // 1. Check cache
+  const cached = settingsCache.get(guildId);
+  if (cached && (Date.now() - cached.ts < CACHE_TTL_MS)) {
+    return cached.data;
   }
 
+  // 2. Default fallback
+  const dflt = {
+    log_channel_id: null,
+    ng_threshold: DEFAULT_NG_THRESHOLD,
+    timeout_minutes: DEFAULT_TIMEOUT_MIN,
+  };
+
+  if (!db) return dflt;
+
+  // 3. Fetch DB
   const row = await db.get(
     "SELECT * FROM settings WHERE guild_id = $1",
     guildId
   );
 
-  if (!row) {
-    return {
-      log_channel_id: null,
-      ng_threshold: DEFAULT_NG_THRESHOLD,
-      timeout_minutes: DEFAULT_TIMEOUT_MIN,
+  let result = dflt;
+  if (row) {
+    result = {
+      log_channel_id: row.log_channel_id ?? null,
+      ng_threshold: Number(row.ng_threshold ?? DEFAULT_NG_THRESHOLD),
+      timeout_minutes: Number(row.timeout_minutes ?? DEFAULT_TIMEOUT_MIN),
     };
   }
 
-  return {
-    log_channel_id: row.log_channel_id ?? null,
-    ng_threshold: Number(row.ng_threshold ?? DEFAULT_NG_THRESHOLD),
-    timeout_minutes: Number(row.timeout_minutes ?? DEFAULT_TIMEOUT_MIN),
-  };
+  // 4. Set cache
+  settingsCache.set(guildId, { data: result, ts: Date.now() });
+  return result;
 }
 
 async function updateSettings(
@@ -1189,12 +1205,20 @@ async function updateSettings(
     Number.isFinite(tm) ? tm : DEFAULT_TIMEOUT_MIN
   );
 
+  invalidateCache(guildId); // Clear cache
   return { ok: true };
 }
 
 async function getNgWords(guildId) {
+  // 1. Check cache
+  const cached = ngWordsCache.get(guildId);
+  if (cached && (Date.now() - cached.ts < CACHE_TTL_MS)) {
+    return cached.data;
+  }
+
   if (!db) return [];
 
+  // 2. Fetch DB
   const rows = await db.all(
     `SELECT kind, word, flags
        FROM ng_words
@@ -1203,7 +1227,7 @@ async function getNgWords(guildId) {
     guildId
   );
 
-  return (rows || [])
+  const result = (rows || [])
     .map((r) => ({
       kind: (r.kind || "literal").trim(),
       word: (r.word || "").trim(),
@@ -1213,6 +1237,10 @@ async function getNgWords(guildId) {
       (x) =>
         x.word.length > 0 && (x.kind === "literal" || x.kind === "regex")
     );
+
+  // 3. Set cache
+  ngWordsCache.set(guildId, { data: result, ts: Date.now() });
+  return result;
 }
 
 async function addNgWord(guildId, raw) {
@@ -1232,6 +1260,7 @@ async function addNgWord(guildId, raw) {
     parsed.flags || "i"
   );
 
+  invalidateCache(guildId); // Clear cache
   return { ok: true, added: parsed };
 }
 
@@ -1289,13 +1318,16 @@ async function removeNgWord(guildId, raw) {
     }
   }
 
+  invalidateCache(guildId); // Clear cache
   return { ok: true, deleted: r?.changes ?? 0, recalculated, target: parsed };
 }
+
 
 async function clearNgWords(guildId) {
   if (!db) return { ok: false, error: "db_not_ready" };
 
   await db.run(`DELETE FROM ng_words WHERE guild_id = $1`, guildId);
+  invalidateCache(guildId); // Clear cache
   return { ok: true };
 }
 
