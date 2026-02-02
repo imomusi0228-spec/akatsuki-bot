@@ -1393,7 +1393,16 @@ client.on(Events.MessageCreate, async (message) => {
     if (count >= threshold) {
       const mem = await message.guild.members.fetch(message.author.id).catch(() => null);
 
-      if (mem?.moderatable) {
+      if (mem) {
+        if (!mem.moderatable) {
+          // 権限不足で処分できない場合（サーバー所有者やBotより上位の役職）
+          await logEvent(guildId, "timeout_failed_hierarchy", message.author.id, { threshold, count });
+          await message.channel.send(`⚠️ <@${message.author.id}> はサーバー所有者またはBotより上位の役職のため、自動処分（タイムアウト）をスキップしました。`)
+            .then(m => setTimeout(() => m.delete().catch(() => { }), 10000))
+            .catch(() => { });
+          return;
+        }
+
         const ok = await mem.timeout(timeoutMin * 60_000, "NGワード検出の累積").then(() => true).catch((e) => {
           console.error("❌ timeout failed:", e?.code, e?.message);
           return false;
