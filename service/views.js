@@ -514,7 +514,7 @@ export function renderAdminSettingsHTML({ user }) {
 }
 
 export function renderAdminActivityHTML({ user }) {
-  const content = \`
+  const content = `
     <div class="row" style="display:flex; gap:12px; margin-bottom:16px;">
         <select id="guild" style="max-width:250px; padding:10px;"></select>
         <button id="reload" class="btn">更新</button>
@@ -561,14 +561,14 @@ export function renderAdminActivityHTML({ user }) {
         </table>
       </div>
     </div>
-  \`;
+  `;
 
-  const scripts = \`
+  const scripts = `
   <script>
-    \${COMMON_SCRIPT}
+    ${COMMON_SCRIPT}
     initActivity();
   </script>
-  \`;
+  `;
 
   return renderLayout({ title: "アクティビティ", content, user, activeTab: "activity", oauth: true, scripts });
 }
