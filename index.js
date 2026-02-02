@@ -682,15 +682,7 @@ try {
 function normalize(s) {
   return (s ?? "").toLowerCase();
 }
-function todayKeyTokyo2() {
-  const dtf = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-  return dtf.format(new Date()); // YYYY-MM-DD
-}
+// todayKeyTokyo2 was a duplicate of todayKeyTokyo
 function monthKeyTokyo(date = new Date()) {
   const dtf = new Intl.DateTimeFormat("sv-SE", {
     timeZone: TIMEZONE,
