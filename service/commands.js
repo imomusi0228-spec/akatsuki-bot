@@ -14,17 +14,15 @@ import { isTierAtLeast } from "../utils/common.js";
 // Command Definitions
 const COMMANDS = {
     free: [
-        cmdDebug,
         cmdSetlog,
         cmdVc,
         cmdPing,
         cmdNgword,
-        cmdLicense,
-        cmdAdmin, // Freeでも表示させる
-        cmdUntimeout
+        cmdAdmin // Freeでも表示させる
     ],
     pro: [
-        cmdActivity
+        cmdActivity,
+        cmdUntimeout
     ],
     pro_plus: [
         cmdScan

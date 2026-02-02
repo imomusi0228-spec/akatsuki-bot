@@ -27,6 +27,7 @@ import {
   renderAdminDashboardHTML,
   renderAdminSettingsHTML,
   renderAdminActivityHTML,
+  renderPublicGuideHTML,
   escapeHTML
 } from "./service/views.js";
 import { syncGuildCommands, clearGlobalCommands } from "./service/commands.js";
@@ -1762,6 +1763,11 @@ const server = http.createServer(async (req, res) => {
       delCookie(res, "sid");
       res.writeHead(302, { Location: "/" });
       return res.end();
+    }
+
+    // 公開ガイドページ
+    if (pathname === "/features" || pathname === "/guide") {
+      return html(res, renderPublicGuideHTML());
     }
 
     // ===== Pages =====
