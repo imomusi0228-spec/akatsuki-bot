@@ -41,26 +41,35 @@ export async function execute(interaction, db) {
     }
 
     if (sub === "status") {
-        const isFree = (process.env.FREE_GUILD_IDS || "").includes(guild.id);
-        let dbLic = null;
-        let valid = false;
+        const isProPlusWhitelisted = (process.env.PRO_PLUS_GUILD_IDS || "").split(",").map(s => s.trim()).includes(guild.id);
+        const isFreeWhitelisted = (process.env.FREE_GUILD_IDS || "").split(",").map(s => s.trim()).includes(guild.id);
 
+        let dbLic = null;
         if (db) {
-            dbLic = await db.get("SELECT * FROM licenses WHERE guild_id=$1", guild.id);
+            dbLic = await db.get("SELECT * FROM licenses WHERE guild_id=$4", guild.id);
         }
 
         let tier = "free";
-        if (isFree) {
-            valid = true;
-            tier = "pro_plus (whitelist)";
+        let source = "Default";
+        let valid = true; // Default is free/none but functional
+
+        if (isProPlusWhitelisted) {
+            tier = "pro_plus";
+            source = "Whitelist (Pro+)";
+        } else if (isFreeWhitelisted) {
+            tier = "free";
+            source = "Whitelist (Free)";
         } else if (dbLic) {
             if (!dbLic.expires_at || Number(dbLic.expires_at) > Date.now()) {
-                valid = true;
                 tier = dbLic.tier || "free";
+                source = "Database License";
+            } else {
+                tier = "free";
+                source = "Database (Expired)";
             }
         }
 
-        const type = isFree ? "Free Tier (Whitelist)" : (dbLic ? `License: ${tier.toUpperCase()}` : "No License");
+        const type = source;
         let expireStr = "なし";
         if (dbLic?.expires_at) {
             expireStr = new Date(Number(dbLic.expires_at)).toLocaleString("ja-JP");

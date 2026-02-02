@@ -19,8 +19,12 @@ export async function getLicenseTier(guildId, db) {
     if (tierOverrides.has(guildId)) return tierOverrides.get(guildId);
 
     // 1. Check Whitelist (Env) -> Pro+ (Unlimited)
-    const proPlus = (process.env.PRO_PLUS_GUILD_IDS || process.env.FREE_GUILD_IDS || "").split(",").map(s => s.trim());
+    const proPlus = (process.env.PRO_PLUS_GUILD_IDS || "").split(",").map(s => s.trim());
     if (proPlus.includes(guildId)) return "pro_plus";
+
+    // 1b. Check Whitelist (Env) -> Free (Explicitly allowed)
+    const freeIds = (process.env.FREE_GUILD_IDS || "").split(",").map(s => s.trim());
+    if (freeIds.includes(guildId)) return "free";
 
     // 2. Check DB
     if (!db) return "free";
@@ -44,8 +48,11 @@ export async function getLicenseTierStrict(guildId, db) {
     // 0. Check Override
     if (tierOverrides.has(guildId)) return tierOverrides.get(guildId);
 
-    const proPlus = (process.env.PRO_PLUS_GUILD_IDS || process.env.FREE_GUILD_IDS || "").split(",").map(s => s.trim());
+    const proPlus = (process.env.PRO_PLUS_GUILD_IDS || "").split(",").map(s => s.trim());
     if (proPlus.includes(guildId)) return "pro_plus";
+
+    const freeIds = (process.env.FREE_GUILD_IDS || "").split(",").map(s => s.trim());
+    if (freeIds.includes(guildId)) return "free";
 
     // DBがない場合は Free として扱う（DBレス運用対応）
     if (!db) return "free";
