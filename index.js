@@ -513,7 +513,13 @@ async function ensureBaseTables(db) {
     CREATE TABLE IF NOT EXISTS licenses(
   guild_id TEXT PRIMARY KEY,
   notes TEXT,
-  expires_at BIGINT
+  expires_at BIGINT,
+  tier TEXT DEFAULT 'free'
+);
+
+    CREATE TABLE IF NOT EXISTS processed_messages(
+  message_id TEXT PRIMARY KEY,
+  processed_at BIGINT
 );
 `);
 }
@@ -731,6 +737,32 @@ function markNgProcessed(msgId) {
     for (let i = 0; i < 200; i++) _ngProcessedCache.delete(it.next().value);
   }
   return true;
+}
+
+// ✅ DBを使った排他制御（重複防止の完全版）
+async function acquireMessageLock(messageId) {
+  if (!db) return markNgProcessed(messageId); // DBがない場合は既存のメモリチェック
+
+  try {
+    // 古いレコードの削除（メンテナンス）- 10分以上前
+    // ※ 1%の確率で実行（毎回呼ぶと重いため）
+    if (Math.random() < 0.01) {
+      db.run("DELETE FROM processed_messages WHERE processed_at < $1", Date.now() - 600000).catch(() => { });
+    }
+
+    // INSERT成功ならロック取得、失敗（重複）ならロック済み
+    await db.run("INSERT INTO processed_messages (message_id, processed_at) VALUES ($1, $2)", messageId, Date.now());
+    return true;
+  } catch (e) {
+    // Postgres unique_violation: 23505
+    if (String(e?.code) === '23505') return false;
+
+    // SQLite constraint failed (if using sqlite locally for test)
+    if (String(e?.message).includes('UNIQUE constraint failed')) return false;
+
+    console.warn("DB Lock error, fallback to memory:", e.message);
+    return markNgProcessed(messageId); // DBエラー時はメモリにフォールバック
+  }
 }
 
 // parseNgInput moved to service/ng.js but might be used by commands/ngword.js (which now imports it from service/ng.js)
@@ -1258,7 +1290,8 @@ client.on(Events.MessageCreate, async (message) => {
       contentHead: contentText.slice(0, 30),
     });
 
-    if (!markNgProcessed(message.id)) return;
+    // ✅ DBロックで重複排除
+    if (!(await acquireMessageLock(message.id))) return;
 
     const guildId = message.guild.id;
 
