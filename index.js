@@ -1658,6 +1658,16 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
         .setTimestamp(new Date());
 
       await sendToKindThread(guild, "vc_in", { embeds: [embedIn] });
+
+      // DB保存
+      if (db) {
+        await db.run(
+          `INSERT INTO vc_sessions (guild_id, user_id, channel_id, join_ts) VALUES ($1, $2, $3, $4)
+           ON CONFLICT (guild_id, user_id) DO UPDATE SET channel_id=EXCLUDED.channel_id, join_ts=EXCLUDED.join_ts`,
+          guild.id, member.id, newCh, Date.now()
+        );
+        await logEvent(guild.id, "vc_in", member.id, { channel_id: newCh });
+      }
       return;
     }
 
@@ -1672,6 +1682,19 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
         .setTimestamp(new Date());
 
       await sendToKindThread(guild, "vc_out", { embeds: [embedOut] });
+
+      // DB保存 & 精算
+      if (db) {
+        const sess = await db.get(`SELECT join_ts FROM vc_sessions WHERE guild_id=$1 AND user_id=$2`, guild.id, member.id);
+        if (sess) {
+          const durationMs = Date.now() - Number(sess.join_ts);
+          await logEvent(guild.id, "vc_out", member.id, { channel_id: oldCh, duration_ms: durationMs }, durationMs);
+          await db.run(`DELETE FROM vc_sessions WHERE guild_id=$1 AND user_id=$2`, guild.id, member.id);
+        } else {
+          // セッションなし（再起動後など）
+          await logEvent(guild.id, "vc_out", member.id, { channel_id: oldCh, error: "no_session" });
+        }
+      }
       return;
     }
 
@@ -1686,6 +1709,15 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
         .setTimestamp(new Date());
 
       await sendToKindThread(guild, "vc_move", { embeds: [embedMove] });
+
+      // DB更新
+      if (db) {
+        await db.run(
+          `UPDATE vc_sessions SET channel_id=$1 WHERE guild_id=$2 AND user_id=$3`,
+          newCh, guild.id, member.id
+        );
+        await logEvent(guild.id, "vc_move", member.id, { from: oldCh, to: newCh });
+      }
     }
   } catch (e) {
     console.error("VoiceStateUpdate error:", e);
