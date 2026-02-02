@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js";
 import { setTierOverride } from "../service/license.js";
 
 export const data = new SlashCommandBuilder()
@@ -26,13 +26,13 @@ export async function execute(interaction) {
         setTierOverride(guildId, null);
         await interaction.reply({
             content: "✅ プランオーバーライドを解除しました。実際のプランが適用されます。",
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
         });
     } else {
         setTierOverride(guildId, t);
         await interaction.reply({
             content: `🔧 プランを **${t.toUpperCase()}** に固定しました。\n(/ping などで確認できます。Bot再起動でリセットされます)`,
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
         });
     }
 }

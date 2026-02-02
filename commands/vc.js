@@ -1,4 +1,4 @@
-﻿import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+﻿import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from "discord.js";
 
 const TIMEZONE = "Asia/Tokyo";
 
@@ -169,12 +169,12 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction, db) {
   if (!db) {
-    return interaction.reply({ content: "❌ DBが準備できていません。", ephemeral: true });
+    return interaction.reply({ content: "❌ DBが準備できていません。", flags: MessageFlags.Ephemeral });
   }
 
   const guild = interaction.guild;
   if (!guild) {
-    return interaction.reply({ content: "❌ サーバー内で実行してください。", ephemeral: true });
+    return interaction.reply({ content: "❌ サーバー内で実行してください。", flags: MessageFlags.Ephemeral });
   }
 
   const sub = interaction.options.getSubcommand();
@@ -202,7 +202,7 @@ export async function execute(interaction, db) {
 
   if (sub === "top") {
     const range = tokyoMonthRangeUTC(ym);
-    if (!range) return interaction.reply({ content: "❌ month range error", ephemeral: true });
+    if (!range) return interaction.reply({ content: "❌ month range error", flags: MessageFlags.Ephemeral });
 
     // 確定滞在（vc_out/vc_move）を集計
     const rows = await db.all(
@@ -258,5 +258,5 @@ export async function execute(interaction, db) {
     return interaction.reply({ embeds: [embed] });
   }
 
-  return interaction.reply({ content: "❌ unknown subcommand", ephemeral: true });
+  return interaction.reply({ content: "❌ unknown subcommand", flags: MessageFlags.Ephemeral });
 }

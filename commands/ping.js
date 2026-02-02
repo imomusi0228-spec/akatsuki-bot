@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { SlashCommandBuilder, MessageFlags } from "discord.js";
 
 export const data = new SlashCommandBuilder()
   .setName("ping")
@@ -18,6 +18,6 @@ export async function execute(interaction) {
     content:
       `🏓 Pong!\n` +
       `現在のプラン: **${status}**`,
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 }

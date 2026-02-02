@@ -996,6 +996,7 @@ const dbReady = (async () => {
     const pool = new Pool({
       connectionString: DATABASE_URL,
       ssl: { rejectUnauthorized: false }, // Supabase/Neon向けに保険
+      connectionTimeoutMillis: 10000, // 10sec timeout
     });
 
     // 接続テスト
@@ -1016,6 +1017,9 @@ const dbReady = (async () => {
       console.warn(`⚠️ DB connection failed (${msg}). Running without database.`);
     } else {
       console.error("❌ DB init failed:", msg);
+      if (e.errors) {
+        e.errors.forEach((err, i) => console.error(`  [${i}] ${err.message} (${err.address})`));
+      }
     }
     console.log("💡 ヒント: データベースを使用しない場合は、環境変数 DATABASE_URL を削除または空にしてください。");
     db = null;

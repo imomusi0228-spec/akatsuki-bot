@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits, ChannelType } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags } from "discord.js";
 import { isTierAtLeast } from "../utils/common.js";
 
 export const data = new SlashCommandBuilder()
@@ -59,12 +59,12 @@ async function findUserIdByName(guild, username) {
 }
 
 export async function execute(interaction, db) {
-  if (!db) return interaction.reply({ content: "❌ データベースに接続できていません。", ephemeral: true });
+  if (!db) return interaction.reply({ content: "❌ データベースに接続できていません。", flags: MessageFlags.Ephemeral });
 
   // Check Tier: Pro+ required
   const tier = interaction.userTier || "free";
   if (!isTierAtLeast(tier, "pro_plus")) {
-    return interaction.reply({ content: "🔒 この機能は **Pro+プラン** 以上で利用可能です。", ephemeral: true });
+    return interaction.reply({ content: "🔒 この機能は **Pro+プラン** 以上で利用可能です。", flags: MessageFlags.Ephemeral });
   }
 
   await interaction.deferReply();

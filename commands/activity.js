@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits, AttachmentBuilder } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits, AttachmentBuilder, MessageFlags } from "discord.js";
 
 export const data = new SlashCommandBuilder()
     .setName("activity")
@@ -42,19 +42,19 @@ import { isTierAtLeast } from "../utils/common.js";
 import { checkActivityStats } from "../service/activity.js";
 
 export async function execute(interaction, db) {
-    if (!db) return interaction.reply({ content: "❌ データベースに接続できていません。", ephemeral: true });
+    if (!db) return interaction.reply({ content: "❌ データベースに接続できていません。", flags: MessageFlags.Ephemeral });
 
     // Check Tier: Pro or Higher required
     const tier = interaction.userTier || "free";
     if (!isTierAtLeast(tier, "pro")) {
-        return interaction.reply({ content: "🔒 この機能は **Proプラン** 以上で利用可能です。", ephemeral: true });
+        return interaction.reply({ content: "🔒 この機能は **Proプラン** 以上で利用可能です。", flags: MessageFlags.Ephemeral });
     }
 
     const sub = interaction.options.getSubcommand();
     const guild = interaction.guild;
 
     if (sub === "config") {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const weeks = interaction.options.getInteger("weeks");
         const introCh = interaction.options.getChannel("intro_channel");

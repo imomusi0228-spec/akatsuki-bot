@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js";
 
 
 // Owner check helper (Replace with your own ID or implement admin check)
@@ -36,7 +36,7 @@ export async function execute(interaction, db) {
 
     // DB required for updates
     if (!db && sub === "add") {
-        return interaction.reply({ content: "❌ データベースに接続できていません。", ephemeral: true });
+        return interaction.reply({ content: "❌ データベースに接続できていません。", flags: MessageFlags.Ephemeral });
     }
 
     if (sub === "status") {
@@ -92,11 +92,11 @@ export async function execute(interaction, db) {
     if (sub === "add") {
         // Owner Check
         if (OWNER_ID && interaction.user.id !== OWNER_ID) {
-            return interaction.reply({ content: "❌ このコマンドはBot管理者のみ実行可能です。", ephemeral: true });
+            return interaction.reply({ content: "❌ このコマンドはBot管理者のみ実行可能です。", flags: MessageFlags.Ephemeral });
         }
         // Fallback check
         if (!OWNER_ID && !interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
-            return interaction.reply({ content: "❌ 管理者権限が必要です。", ephemeral: true });
+            return interaction.reply({ content: "❌ 管理者権限が必要です。", flags: MessageFlags.Ephemeral });
         }
 
         const targetGid = interaction.options.getString("guild_id");
