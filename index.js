@@ -1203,18 +1203,22 @@ function isKatakanaOnly(s = "") {
 }
 
 /**
- * @returns {string[]} マッチしたパターンの配列
+ * @returns {string[]} マッチしたパターンの配列（重複を許容）
  */
 function matchNg(content, ngList) {
   const text = String(content ?? "");
-  const hits = new Set();
+  const hits = [];
 
   // 1. Regex patterns
   for (const w of ngList) {
     if (w.kind === "regex") {
       try {
-        const re = new RegExp(w.word, w.flags || "i");
-        if (re.test(text)) hits.add(`/${w.word}/${w.flags || "i"}`);
+        const re = new RegExp(w.word, (w.flags || "i").includes("g") ? w.flags : (w.flags || "i") + "g");
+        let m;
+        while ((m = re.exec(text)) !== null) {
+          hits.push(`/${w.word}/${w.flags || "i"}`);
+          if (re.lastIndex === m.index) re.lastIndex++; // Avoid infinite loops for zero-width matches
+        }
       } catch { }
     }
   }
@@ -1235,7 +1239,11 @@ function matchNg(content, ngList) {
     // Try to partition the block *entirely* using known NG words
     const partition = findNgPartition(blockLower, katakanaNg);
     if (partition) {
-      partition.forEach(w => hits.add(w));
+      partition.forEach(w => {
+        // Find original casing if needed, but here we just use the registered word
+        const found = ngList.find(x => x.kind !== "regex" && x.word.toLowerCase() === w.toLowerCase());
+        hits.push(found ? found.word : w);
+      });
     }
   }
 
@@ -1243,12 +1251,16 @@ function matchNg(content, ngList) {
   const textLower = text.toLowerCase();
   for (const w of otherNg) {
     const needle = String(w.word ?? "").toLowerCase();
-    if (needle && textLower.includes(needle)) {
-      hits.add(w.word);
+    if (needle) {
+      let pos = textLower.indexOf(needle);
+      while (pos !== -1) {
+        hits.push(w.word);
+        pos = textLower.indexOf(needle, pos + needle.length);
+      }
     }
   }
 
-  return Array.from(hits);
+  return hits;
 }
 
 /**
@@ -1910,6 +1922,26 @@ const server = http.createServer(async (req, res) => {
         if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
 
         const r = await clearNgWords(db, guildId);
+
+        // ✅ 追加: Discord上のタイムアウトを全員分解除
+        if (r.ok) {
+          try {
+            const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
+            if (guild) {
+              const members = await guild.members.fetch();
+              for (const member of members.values()) {
+                if (member.communicationDisabledUntilTimestamp && member.communicationDisabledUntilTimestamp > Date.now()) {
+                  if (member.moderatable) {
+                    await member.timeout(null, "NGワード全削除に伴う一斉解除").catch(() => { });
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.error("Failed to clear timeouts for guild:", guildId, e);
+          }
+        }
+
         return json(res, r, r.ok ? 200 : 400);
       }
 
