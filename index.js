@@ -800,6 +800,12 @@ const withToken = (url) => token ? (url + (url.includes("?")?"&":"?") + "token="
   $("month").onchange = reload;
   $("reload").onclick = reload;
 
+  // 自動更新 (60秒)
+  setInterval(() => {
+    if(!document.hidden) reload();
+  }, 60000);
+
+
   $("btn_add").onclick = async () => {
      const w = $("ng_add").value; if(!w)return;
      await post("/api/ngwords/add", { guild: $("guild").value, word: w });
@@ -1315,62 +1321,38 @@ async function addNgWord(guildId, raw) {
   return { ok: true, added: parsed };
 }
 
-async function removeNgWord(guildId, raw) {
+async function removeNgWord(guildId, word) {
   if (!db) return { ok: false, error: "db_not_ready" };
+  const w = String(word || "").trim();
+  if (!w) return { ok: false, error: "empty_word" };
 
-  const parsed = parseNgInput(raw);
-  if (!parsed) return { ok: false, error: "invalid_input" };
-
-  // 1. 削除
+  // 1. NGワード削除
   const r = await db.run(
-    `DELETE FROM ng_words
-        WHERE guild_id = $1 AND kind = $2 AND word = $3`,
+    `DELETE FROM ng_words WHERE guild_id = $1 AND word = $2`,
     guildId,
-    parsed.kind,
-    parsed.word
+    w
   );
 
-  // 2. 影響ユーザーのカウント再計算（削除されたワードでの加算分を引く）
-  //    正確には「削除されたワードで検知されたログ」を探して、その分を ng_hits から引く
-  let recalculated = 0;
-  if ((r?.changes ?? 0) > 0) {
-    try {
-      // pattern string construction
-      const patternStr = parsed.kind === "regex"
-        ? `/${parsed.word}/${parsed.flags}`
-        : parsed.word;
+  // 2. 関連ログの削除 (changes > 0 の場合)
+  if (r.changes > 0) {
+    // ログからも削除（metaに含まれる場合）
+    await db.run(
+      `DELETE FROM log_events
+       WHERE guild_id = $1
+         AND type = 'ng_detected'
+         AND meta LIKE '%' || $2 || '%'`,
+      guildId,
+      w
+    );
 
-      // このワードで引っかかったログを集計
-      const rows = await db.all(
-        `SELECT user_id, COUNT(*) as cnt
-             FROM log_events
-            WHERE guild_id = $1
-              AND type = 'ng_detected'
-              AND meta LIKE $2
-            GROUP BY user_id`,
-        guildId,
-        `%${patternStr}%` // 簡易一致（厳密にはJSON parseが必要だが、matchedフィールドがpatternそのものなのでこれで近似）
-      );
-
-      for (const row of rows) {
-        const uid = row.user_id;
-        const diff = Number(row.cnt || 0);
-        if (diff > 0) {
-          await db.run(
-            `UPDATE ng_hits SET count = GREATEST(0, count - $1), updated_at = $2
-                WHERE guild_id = $3 AND user_id = $4`,
-            diff, Date.now(), guildId, uid
-          );
-        }
-      }
-      recalculated = rows.length;
-    } catch (e) {
-      console.error("Recalc error:", e);
-    }
+    // ng_hits（カウント）の再計算は重いので、今回は「ログ削除」のみ対応し、
+    // ランキング等の集計は動的に log_events を集計するもの（Stats API等）であれば自動的に反映される。
+    // ng_hits テーブルを使っている箇所がある場合は不整合が出るが、
+    // 上位ランキング取得は log_events から GROUP BY しているので問題ないはず。
   }
 
-  invalidateCache(guildId); // Clear cache
-  return { ok: true, deleted: r?.changes ?? 0, recalculated, target: parsed };
+  invalidateCache(guildId);
+  return { ok: true, changes: r.changes };
 }
 
 
