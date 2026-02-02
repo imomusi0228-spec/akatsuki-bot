@@ -875,16 +875,18 @@ async function addNgWord(guildId, raw) {
   return { ok: true, added: parsed };
 }
 
-async function removeNgWord(guildId, word) {
+async function removeNgWord(guildId, raw) {
   if (!db) return { ok: false, error: "db_not_ready" };
-  const w = String(word || "").trim();
-  if (!w) return { ok: false, error: "empty_word" };
+  const parsed = parseNgInput(raw);
+  const word = parsed ? parsed.word : String(raw || "").trim();
+
+  if (!word) return { ok: false, error: "empty_word" };
 
   // 1. NGワード削除
   const r = await db.run(
     `DELETE FROM ng_words WHERE guild_id = $1 AND word = $2`,
     guildId,
-    w
+    word
   );
 
   // 2. 関連ログの削除 (changes > 0 の場合)
@@ -896,13 +898,21 @@ async function removeNgWord(guildId, word) {
          AND type = 'ng_detected'
          AND meta LIKE '%' || $2 || '%'`,
       guildId,
-      w
+      word
     );
 
-    // ng_hits（カウント）の再計算は重いので、今回は「ログ削除」のみ対応し、
-    // ランキング等の集計は動的に log_events を集計するもの（Stats API等）であれば自動的に反映される。
-    // ng_hits テーブルを使っている箇所がある場合は不整合が出るが、
-    // 上位ランキング取得は log_events から GROUP BY しているので問題ないはず。
+    // 3. ng_hitsの完全再計算 (Repair)
+    // まずこのギルドのヒット数を全消去
+    await db.run(`DELETE FROM ng_hits WHERE guild_id = $1`, guildId);
+
+    // ログから再集計して挿入
+    await db.run(`
+      INSERT INTO ng_hits (guild_id, user_id, count, updated_at)
+      SELECT guild_id, user_id, COUNT(*) as cnt, MAX(ts) as last_ts
+      FROM log_events
+      WHERE guild_id = $1 AND type = 'ng_detected'
+      GROUP BY guild_id, user_id
+    `, guildId);
   }
 
   invalidateCache(guildId);
