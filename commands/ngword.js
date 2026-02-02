@@ -71,12 +71,36 @@ export async function execute(interaction, db) {
     }
 
     if (sub === "add") {
-      const word = interaction.options.getString("word", true).trim();
-      const r = await addNgWord(db, interaction.guildId, word);
-      if (!r.ok) return await finish("❌ 形式が不正です。例: ばか / /ばか|あほ/i");
+      const rawInput = interaction.options.getString("word", true);
 
-      const shown = r.added.kind === "regex" ? `/${r.added.word}/${r.added.flags}` : r.added.word;
-      await sendPublic({ content: `✅ 追加しました：\`${shown}\`` });
+      // スペースまたは改行で分割して配列化 (\u3000は全角スペース)
+      const tokens = rawInput.split(/[\s\u3000,\n]+/).filter(t => t.trim().length > 0);
+
+      if (tokens.length === 0) return await finish("❌ 文字列を入力してください。");
+
+      const addedList = [];
+      const failedList = [];
+
+      for (const token of tokens) {
+        const r = await addNgWord(db, interaction.guildId, token);
+        if (r.ok) {
+          const str = r.added.kind === "regex" ? `/${r.added.word}/${r.added.flags}` : r.added.word;
+          addedList.push(str);
+        } else {
+          failedList.push(token);
+        }
+      }
+
+      // 結果表示
+      let msg = "";
+      if (addedList.length > 0) {
+        msg += `✅ **${addedList.length}件** 追加しました：\n\`${addedList.join("`, `")}\`\n`;
+      }
+      if (failedList.length > 0) {
+        msg += `⚠️ **${failedList.length}件** 追加失敗（形式エラー等）：\n\`${failedList.join("`, `")}\``;
+      }
+
+      await sendPublic({ content: msg || "❌ 追加できませんでした。" });
       return await finish("OK");
     }
 
