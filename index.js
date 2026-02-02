@@ -1010,7 +1010,8 @@ const dbReady = (async () => {
     console.log("✅ DB ready (Postgres)");
     return true;
   } catch (e) {
-    console.error("❌ DB init failed:", e?.message ?? e);
+    console.error("❌ DB init failed:", e);
+    console.error("💡 ヒント: データベースを使用しない場合は、環境変数 DATABASE_URL を空にしてください。");
     db = null;
     return false;
   }
@@ -1498,7 +1499,7 @@ client.on("interactionCreate", async (interaction) => {
     // License Check
     const tier = await getLicenseTierStrict(interaction.guildId, db);
     if (tier === "none" && interaction.commandName !== "license") {
-      await interaction.reply({ content: "🚫 このサーバーではライセンスが有効ではありません (License Required)", ephemeral: true });
+      await interaction.reply({ content: "🚫 このサーバーではライセンスが有効ではありません (License Required)", flags: MessageFlags.Ephemeral });
       return;
     }
     // Inject tier into interaction for commands
@@ -1508,7 +1509,7 @@ client.on("interactionCreate", async (interaction) => {
 
     if (!command) {
       // ここは見えるように ephemeral
-      await interaction.reply({ content: `❌ コマンドが見つかりません: /${interaction.commandName}`, ephemeral: true }).catch(() => null);
+      await interaction.reply({ content: `❌ コマンドが見つかりません: /${interaction.commandName}`, flags: MessageFlags.Ephemeral }).catch(() => null);
       return;
     }
 
@@ -1523,7 +1524,7 @@ client.on("interactionCreate", async (interaction) => {
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ content: msg }).catch(() => null);
       } else {
-        await interaction.reply({ content: msg, ephemeral: true }).catch(() => null);
+        await interaction.reply({ content: msg, flags: MessageFlags.Ephemeral }).catch(() => null);
       }
     } catch (e) {
       if (isUnknown(e) || isAlreadyAcked(e)) return;
