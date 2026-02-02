@@ -87,6 +87,252 @@ const COMMON_CSS = `
   }
 `;
 
+const COMMON_SCRIPT = `
+  const $ = (id) => document.getElementById(id);
+  function yyyymmNow(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
+
+  async function api(path){
+    const r = await fetch(path);
+    const t = await r.text();
+    try { return JSON.parse(t); } catch { return { ok:false, error:t }; }
+  }
+  async function post(path, body){
+    const r = await fetch(path, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+    const t = await r.text();
+    try { return JSON.parse(t); } catch { return { ok:false, error:t }; }
+  }
+
+  // --- Common Init ---
+  let _guildsLoaded = false;
+  async function loadGuilds() {
+     if (_guildsLoaded) return true;
+     const sel = $("guild");
+     if(!sel) return false;
+     
+     sel.innerHTML = "<option>読み込み中...</option>";
+     sel.disabled = true;
+     
+     const d = await api("/api/guilds");
+     sel.innerHTML = "";
+     
+     if (d && d.ok && d.guilds && d.guilds.length) {
+       // Restore selection from localStorage if possible
+       const lastGid = localStorage.getItem("last_guild_id");
+       let selectedIndex = 0;
+       
+       d.guilds.forEach((g, i) => {
+         const o = document.createElement("option");
+         o.value = g.id; 
+         o.textContent = g.name;
+         sel.appendChild(o);
+         if(lastGid && g.id === lastGid) selectedIndex = i;
+       });
+       sel.selectedIndex = selectedIndex;
+       
+       sel.disabled = false;
+       _guildsLoaded = true;
+       return true;
+     }
+     
+     if (d && d.ok && (!d.guilds || d.guilds.length === 0)) {
+        const o = document.createElement("option");
+        o.textContent = "（管理可能なサーバーがありません）";
+        sel.appendChild(o);
+        $("guildStatus").textContent = "権限/導入を確認してください";
+        return false;
+     }
+
+     $("guildStatus").textContent = "エラー: " + (d?.error || "unknown");
+     return false;
+  }
+  
+  function saveGuildSelection() {
+     const sel = $("guild");
+     if(sel && sel.value) localStorage.setItem("last_guild_id", sel.value);
+  }
+
+  // --- Page Specific inits ---
+  
+  async function initDashboard() {
+     if(!await loadGuilds()) return;
+     $("month").value = yyyymmNow();
+     
+     const reload = async () => {
+        saveGuildSelection();
+        const gid = $("guild").value;
+        const mon = $("month").value;
+        if(!gid) return;
+        
+        $("summary").innerHTML = "読み込み中...";
+        const res = await api(\`/api/stats?guild=\${gid}&month=\${mon}\`);
+        
+        if (res.ok) {
+           const s = res.stats.summary;
+           const box = (l,v) => \`<div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; text-align:center;"><div style="font-size:24px; font-weight:bold;">\${v}</div><div style="font-size:11px; color:#888;">\${l}</div></div>\`;
+           $("summary").innerHTML = \`<div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; width:100%;">\${box("VC参加", s.joins)} \${box("VC退室", s.leaves)} \${box("タイムアウト", s.timeouts)} \${box("NG検知", s.ngDetected)}</div>\`;
+           
+           let rows = "";
+           (res.stats.topNgUsers || []).forEach(u => {
+              const av = u.avatar_url || "https://cdn.discordapp.com/embed/avatars/0.png";
+              rows += \`<tr><td><div style="display:flex; align-items:center; gap:8px;"><img src="\${av}" style="width:24px; height:24px; border-radius:50%;" /> <span>\${u.display_name}</span></div></td><td style="text-align:right">\${u.cnt}</td></tr>\`;
+           });
+           $("topNg").innerHTML = rows || '<tr><td colspan="2" class="muted" style="text-align:center; padding:10px;">なし</td></tr>';
+        } else {
+           $("summary").innerText = "エラー: " + res.error;
+        }
+     };
+     
+     $("guild").onchange = reload;
+     $("month").onchange = reload;
+     $("reload").onclick = reload;
+     reload(); // initial load
+  }
+
+  async function initSettings() {
+     if(!await loadGuilds()) return;
+     
+     const reload = async () => {
+        saveGuildSelection();
+        const gid = $("guild").value;
+        if(!gid) return;
+        
+        const [ng, st] = await Promise.all([
+          api(\`/api/ngwords?guild=\${gid}\`),
+          api(\`/api/settings?guild=\${gid}\`)
+        ]);
+        
+        if(ng.ok) {
+           $("ngwords").textContent = (ng.words||[]).map(w => w.kind==="regex" ? "/" + w.word + "/" + w.flags : w.word).join("\\n") || "（なし）";
+           $("ngStatus").textContent = (ng.words||[]).length + " words";
+        }
+        
+        if(st.ok && st.settings) {
+           $("settingsBox").innerHTML = "現在の設定"; 
+           $("threshold").value = st.settings.ng_threshold ?? 3;
+           $("timeout").value = st.settings.timeout_minutes ?? 10;
+        }
+     };
+
+     $("guild").onchange = reload;
+     $("reload").onclick = reload;
+     
+     $("btn_add").onclick = async () => {
+        const w = $("ng_add").value; if(!w)return;
+        const res = await post("/api/ngwords/add", { guild: $("guild").value, word: w });
+        if(!res.ok) alert("追加失敗: " + (res.error || "未知のエラー"));
+        $("ng_add").value=""; reload();
+     };
+     $("btn_remove").onclick = async () => {
+        const w = $("ng_remove").value; if(!w)return;
+        const res = await post("/api/ngwords/remove", { guild: $("guild").value, word: w });
+        if(!res.ok) alert("削除失敗: " + (res.error || "未知のエラー"));
+        $("ng_remove").value=""; reload();
+     };
+     $("btn_clear").onclick = async () => {
+        if(!confirm("本当に全削除しますか？"))return;
+        const res = await post("/api/ngwords/clear", { guild: $("guild").value });
+        if(!res.ok) alert("全削除失敗: " + (res.error || "未知のエラー"));
+        reload();
+     };
+     $("btn_save").onclick = async () => {
+        await post("/api/settings/update", {
+           guild: $("guild").value,
+           ng_threshold: $("threshold").value,
+           timeout_minutes: $("timeout").value
+        });
+        alert("設定を保存しました");
+     };
+     
+     reload();
+  }
+  
+  async function initActivity() {
+     if(!await loadGuilds()) return;
+     
+     let currentData = [];
+     let sortKey = "display_name";
+     let sortOrder = 1;
+
+     const renderTable = () => {
+        const el = $("act-rows");
+        el.innerHTML = "";
+        const sorted = [...currentData].sort((a, b) => {
+           const valA = (a[sortKey] || "").toLowerCase();
+           const valB = (b[sortKey] || "").toLowerCase();
+           return valA < valB ? -sortOrder : (valA > valB ? sortOrder : 0);
+        });
+        const updateSortIcon = (id, key) => {
+           const span = $(id);
+           if(span) span.innerText = sortKey === key ? (sortOrder === 1 ? "▲" : "▼") : "";
+        };
+        updateSortIcon("sort-name", "display_name");
+        updateSortIcon("sort-joined", "joined_at");
+
+        let html = "";
+        sorted.forEach(r => {
+           const yes = "<span style='color:var(--success-color)'>Yes</span>";
+           const no = "<span style='color:var(--danger-color)'>No</span>";
+           const av = r.avatar_url || "https://cdn.discordapp.com/embed/avatars/0.png";
+           html += \`<tr>
+             <td><div style="display:flex; align-items:center; gap:8px;"><img src="\${av}" style="width:24px; height:24px; border-radius:50%;" /> <span>\${r.display_name}</span></div></td>
+             <td style="text-align:center;">\${r.last_vc}</td>
+             <td style="text-align:center;">\${r.has_role === "Yes" ? yes : (r.has_role==="No" ? no : "-")}</td>
+             <td style="text-align:center;">\${r.has_intro === "Yes" ? yes : (r.has_intro.includes("No") ? no : "-")}</td>
+             <td style="text-align:center;">\${r.joined_at}</td>
+           </tr>\`;
+        });
+        el.innerHTML = html;
+     };
+
+     const runScan = async () => {
+        saveGuildSelection();
+        const gid = $("guild").value;
+        const el = $("act-rows");
+        const ld = $("act-loading");
+        el.innerHTML = "";
+        ld.style.display = "block";
+        $("csv-tools").style.display = "none";
+        const res = await api(\`/api/activity?guild=\${gid}\`);
+        ld.style.display = "none";
+        if(!res.ok) {
+           el.innerHTML = \`<tr><td colspan="5" style="color:red; text-align:center; padding:20px;">\${res.error}</td></tr>\`;
+           return;
+        }
+        $("act-criteria").innerText = \`判定期間: \${res.config.weeks}週間\`;
+        currentData = res.data || [];
+        if(currentData.length === 0) {
+           el.innerHTML = '<tr><td colspan="5" class="muted" style="text-align:center; padding:20px;">該当者なし</td></tr>';
+           return;
+        }
+        $("csv-tools").style.display = "flex";
+        renderTable();
+     };
+     
+      $("guild").onchange = () => { $("act-rows").innerHTML = '<tr><td colspan="5" class="muted" style="text-align:center; padding:20px;">スキャンしてください</td></tr>'; $("act-criteria").textContent=""; $("csv-tools").style.display="none"; };
+      $("reload").onclick = runScan;
+      $("btn_scan").onclick = runScan;
+
+      $("th-name").onclick = () => {
+         if(sortKey === "display_name") sortOrder *= -1;
+         else { sortKey = "display_name"; sortOrder = 1; }
+         renderTable();
+      };
+      $("th-joined").onclick = () => {
+         if(sortKey === "joined_at") sortOrder *= -1;
+         else { sortKey = "joined_at"; sortOrder = 1; }
+         renderTable();
+      };
+
+      $("btn_csv").onclick = () => {
+           const gid = $("guild").value;
+           if(!gid) return;
+           const role = $("csv-role").value;
+           const intro = $("csv-intro").value;
+           window.location.href = \`/api/activity/download?guild=\${gid}&role=\${role}&intro=\${intro}\`;
+      };
+   }
+`;
+
 function renderLayout({ title, content, user, activeTab, oauth, scripts = "" }) {
   const userLabel = user ? escapeHTML(user.global_name || user.username || user.id) : "";
 
@@ -314,253 +560,3 @@ export function renderAdminActivityHTML({ user }) {
 
   return renderLayout({ title: "アクティビティ", content, user, activeTab: "activity", oauth: true, scripts });
 }
-
-// クライアントサイド共通スクリプト
-const COMMON_SCRIPT = `
-  const $ = (id) => document.getElementById(id);
-  function yyyymmNow(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
-
-  async function api(path){
-    const r = await fetch(path);
-    const t = await r.text();
-    try { return JSON.parse(t); } catch { return { ok:false, error:t }; }
-  }
-  async function post(path, body){
-    const r = await fetch(path, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
-    const t = await r.text();
-    try { return JSON.parse(t); } catch { return { ok:false, error:t }; }
-  }
-
-  // --- Common Init ---
-  let _guildsLoaded = false;
-  async function loadGuilds() {
-     if (_guildsLoaded) return true;
-     const sel = $("guild");
-     if(!sel) return false;
-     
-     sel.innerHTML = "<option>読み込み中...</option>";
-     sel.disabled = true;
-     
-     const d = await api("/api/guilds");
-     sel.innerHTML = "";
-     
-     if (d && d.ok && d.guilds && d.guilds.length) {
-       // Restore selection from localStorage if possible
-       const lastGid = localStorage.getItem("last_guild_id");
-       let selectedIndex = 0;
-       
-       d.guilds.forEach((g, i) => {
-         const o = document.createElement("option");
-         o.value = g.id; 
-         o.textContent = g.name;
-         sel.appendChild(o);
-         if(lastGid && g.id === lastGid) selectedIndex = i;
-       });
-       sel.selectedIndex = selectedIndex;
-       
-       sel.disabled = false;
-       _guildsLoaded = true;
-       return true;
-     }
-     
-     if (d && d.ok && (!d.guilds || d.guilds.length === 0)) {
-        const o = document.createElement("option");
-        o.textContent = "（管理可能なサーバーがありません）";
-        sel.appendChild(o);
-        $("guildStatus").textContent = "権限/導入を確認してください";
-        return false;
-     }
-
-     $("guildStatus").textContent = "エラー: " + (d?.error || "unknown");
-     return false;
-  }
-  
-  function saveGuildSelection() {
-     const sel = $("guild");
-     if(sel && sel.value) localStorage.setItem("last_guild_id", sel.value);
-  }
-
-  // --- Page Specific inits ---
-  
-  async function initDashboard() {
-     if(!await loadGuilds()) return;
-     $("month").value = yyyymmNow();
-     
-     const reload = async () => {
-        saveGuildSelection();
-        const gid = $("guild").value;
-        const mon = $("month").value;
-        if(!gid) return;
-        
-        $("summary").innerHTML = "読み込み中...";
-        const res = await api(\`/api/stats?guild=\${gid}&month=\${mon}\`);
-        
-        if (res.ok) {
-           const s = res.stats.summary;
-           const box = (l,v) => \`<div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; text-align:center;"><div style="font-size:24px; font-weight:bold;">\${v}</div><div style="font-size:11px; color:#888;">\${l}</div></div>\`;
-           $("summary").innerHTML = \`<div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; width:100%;">\${box("VC参加", s.joins)} \${box("VC退室", s.leaves)} \${box("タイムアウト", s.timeouts)} \${box("NG検知", s.ngDetected)}</div>\`;
-           
-           let rows = "";
-           (res.stats.topNgUsers || []).forEach(u => {
-              const av = u.avatar_url || "https://cdn.discordapp.com/embed/avatars/0.png";
-              rows += \`<tr><td><div style="display:flex; align-items:center; gap:8px;"><img src="\${av}" style="width:24px; height:24px; border-radius:50%;" /> <span>\${u.display_name}</span></div></td><td style="text-align:right">\${u.cnt}</td></tr>\`;
-           });
-           $("topNg").innerHTML = rows || '<tr><td colspan="2" class="muted" style="text-align:center; padding:10px;">なし</td></tr>';
-        } else {
-           $("summary").innerText = "エラー: " + res.error;
-        }
-     };
-     
-     $("guild").onchange = reload;
-     $("month").onchange = reload;
-     $("reload").onclick = reload;
-     reload(); // initial load
-  }
-
-  async function initSettings() {
-     if(!await loadGuilds()) return;
-     
-     const reload = async () => {
-        saveGuildSelection();
-        const gid = $("guild").value;
-        if(!gid) return;
-        
-        const [ng, st] = await Promise.all([
-          api(\`/api/ngwords?guild=\${gid}\`),
-          api(\`/api/settings?guild=\${gid}\`)
-        ]);
-        
-        if(ng.ok) {
-           $("ngwords").textContent = (ng.words||[]).map(w => w.kind==="regex" ? "/" + w.word + "/" + w.flags : w.word).join("\\n") || "（なし）";
-           $("ngStatus").textContent = (ng.words||[]).length + " words";
-        }
-        
-        if(st.ok && st.settings) {
-           const log = st.settings.log_channel_id || "未設定"; // TODO: channel name resolve?
-           // Actually dashboard API resolves channel name, but raw settings API might not.
-           // Simplified for now.
-           $("settingsBox").innerHTML = "現在の設定"; 
-           $("threshold").value = st.settings.ng_threshold ?? 3;
-           $("timeout").value = st.settings.timeout_minutes ?? 10;
-        }
-     };
-
-     $("guild").onchange = reload;
-     $("reload").onclick = reload;
-     
-     $("btn_add").onclick = async () => {
-        const w = $("ng_add").value; if(!w)return;
-        const res = await post("/api/ngwords/add", { guild: $("guild").value, word: w });
-        if(!res.ok) alert("追加失敗: " + (res.error || "未知のエラー"));
-        $("ng_add").value=""; reload();
-     };
-     $("btn_remove").onclick = async () => {
-        const w = $("ng_remove").value; if(!w)return;
-        const res = await post("/api/ngwords/remove", { guild: $("guild").value, word: w });
-        if(!res.ok) alert("削除失敗: " + (res.error || "未知のエラー"));
-        $("ng_remove").value=""; reload();
-     };
-     $("btn_clear").onclick = async () => {
-        if(!confirm("本当に全削除しますか？"))return;
-        const res = await post("/api/ngwords/clear", { guild: $("guild").value });
-        if(!res.ok) alert("全削除失敗: " + (res.error || "未知のエラー"));
-        reload();
-     };
-     $("btn_save").onclick = async () => {
-        await post("/api/settings/update", {
-           guild: $("guild").value,
-           ng_threshold: $("threshold").value,
-           timeout_minutes: $("timeout").value
-        });
-        alert("設定を保存しました");
-     };
-     
-     reload();
-  }
-  
-  async function initActivity() {
-     if(!await loadGuilds()) return;
-     
-     let currentData = [];
-     let sortKey = "display_name";
-     let sortOrder = 1;
-
-     const renderTable = () => {
-        const el = $("act-rows");
-        el.innerHTML = "";
-        const sorted = [...currentData].sort((a, b) => {
-           const valA = (a[sortKey] || "").toLowerCase();
-           const valB = (b[sortKey] || "").toLowerCase();
-           return valA < valB ? -sortOrder : (valA > valB ? sortOrder : 0);
-        });
-        const updateSortIcon = (id, key) => {
-           const span = $(id);
-           if(span) span.innerText = sortKey === key ? (sortOrder === 1 ? "▲" : "▼") : "";
-        };
-        updateSortIcon("sort-name", "display_name");
-        updateSortIcon("sort-joined", "joined_at");
-
-        let html = "";
-        sorted.forEach(r => {
-           const yes = "<span style='color:var(--success-color)'>Yes</span>";
-           const no = "<span style='color:var(--danger-color)'>No</span>";
-           const av = r.avatar_url || "https://cdn.discordapp.com/embed/avatars/0.png";
-           html += \`<tr>
-             <td><div style="display:flex; align-items:center; gap:8px;"><img src="\${av}" style="width:24px; height:24px; border-radius:50%;" /> <span>\${r.display_name}</span></div></td>
-             <td style="text-align:center;">\${r.last_vc}</td>
-             <td style="text-align:center;">\${r.has_role === "Yes" ? yes : (r.has_role==="No" ? no : "-")}</td>
-             <td style="text-align:center;">\${r.has_intro === "Yes" ? yes : (r.has_intro.includes("No") ? no : "-")}</td>
-             <td style="text-align:center;">\${r.joined_at}</td>
-           </tr>\`;
-        });
-        el.innerHTML = html;
-     };
-
-     const runScan = async () => {
-        saveGuildSelection();
-        const gid = $("guild").value;
-        const el = $("act-rows");
-        const ld = $("act-loading");
-        el.innerHTML = "";
-        ld.style.display = "block";
-        $("csv-tools").style.display = "none";
-        const res = await api(\`/api/activity?guild=\${gid}\`);
-        ld.style.display = "none";
-        if(!res.ok) {
-           el.innerHTML = \`<tr><td colspan="5" style="color:red; text-align:center; padding:20px;">\${res.error}</td></tr>\`;
-           return;
-        }
-        $("act-criteria").innerText = \`判定期間: \${res.config.weeks}週間\`;
-        currentData = res.data || [];
-        if(currentData.length === 0) {
-           el.innerHTML = '<tr><td colspan="5" class="muted" style="text-align:center; padding:20px;">該当者なし</td></tr>';
-           return;
-        }
-        $("csv-tools").style.display = "flex";
-        renderTable();
-     };
-     
-      $("guild").onchange = () => { $("act-rows").innerHTML = '<tr><td colspan="5" class="muted" style="text-align:center; padding:20px;">スキャンしてください</td></tr>'; $("act-criteria").textContent=""; $("csv-tools").style.display="none"; };
-      $("reload").onclick = runScan;
-      $("btn_scan").onclick = runScan;
-
-      $("th-name").onclick = () => {
-         if(sortKey === "display_name") sortOrder *= -1;
-         else { sortKey = "display_name"; sortOrder = 1; }
-         renderTable();
-      };
-      $("th-joined").onclick = () => {
-         if(sortKey === "joined_at") sortOrder *= -1;
-         else { sortKey = "joined_at"; sortOrder = 1; }
-         renderTable();
-      };
-
-      $("btn_csv").onclick = () => {
-           const gid = $("guild").value;
-           if(!gid) return;
-           const role = $("csv-role").value;
-           const intro = $("csv-intro").value;
-           window.location.href = \`/api/activity/download?guild=\${gid}&role=\${role}&intro=\${intro}\`;
-      };
-   }
-\`;
