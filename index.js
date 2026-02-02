@@ -2103,8 +2103,8 @@ const server = http.createServer(async (req, res) => {
         if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
 
         const tier = await getLicenseTierStrict(guildId, db);
-        if (!isTierAtLeast(tier, "pro")) {
-          return json(res, { ok: false, error: "Upgrade to Pro" });
+        if (!isTierAtLeast(tier, "pro_plus")) {
+          return json(res, { ok: false, error: "Upgrade to Pro+" });
         }
 
         const guild = await client.guilds.fetch(guildId).catch(() => null);
@@ -2129,8 +2129,8 @@ const server = http.createServer(async (req, res) => {
         if (!chk.ok) return text(res, chk.error, chk.status);
 
         const tier = await getLicenseTierStrict(guildId, db);
-        if (!isTierAtLeast(tier, "pro")) {
-          return text(res, "Upgrade to Pro", 403);
+        if (!isTierAtLeast(tier, "pro_plus")) {
+          return text(res, "Upgrade to Pro+", 403);
         }
 
         const guild = await client.guilds.fetch(guildId).catch(() => null);

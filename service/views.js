@@ -294,10 +294,20 @@ const COMMON_SCRIPT = `
         $("csv-tools").style.display = "none";
         const res = await api(\`/api/activity?guild=\${gid}\`);
         ld.style.display = "none";
+        
         if(!res.ok) {
-           el.innerHTML = \`<tr><td colspan="5" style="color:red; text-align:center; padding:20px;">\${res.error}</td></tr>\`;
+           if(res.error === "Upgrade to Pro+") {
+              el.innerHTML = \`<tr><td colspan="5" style="padding:40px; text-align:center;">
+                <div style="font-size:1.2em; font-weight:bold; margin-bottom:8px;">🔒 Pro+ 限定機能</div>
+                <div class="muted" style="margin-bottom:16px;">高度なアクティビティモニター（参加日・ソート・CSV抽出）は Pro+ ティアでご利用いただけます。</div>
+                <a href="https://discord.gg/your-support-server" target="_blank" class="btn btn-primary">プランを確認する</a>
+              </td></tr>\`;
+           } else {
+              el.innerHTML = \`<tr><td colspan="5" style="color:red; text-align:center; padding:20px;">\${res.error}</td></tr>\`;
+           }
            return;
         }
+
         $("act-criteria").innerText = \`判定期間: \${res.config.weeks}週間\`;
         currentData = res.data || [];
         if(currentData.length === 0) {
@@ -313,11 +323,13 @@ const COMMON_SCRIPT = `
       $("btn_scan").onclick = runScan;
 
       $("th-name").onclick = () => {
+         if(currentData.length === 0) return;
          if(sortKey === "display_name") sortOrder *= -1;
          else { sortKey = "display_name"; sortOrder = 1; }
          renderTable();
       };
       $("th-joined").onclick = () => {
+         if(currentData.length === 0) return;
          if(sortKey === "joined_at") sortOrder *= -1;
          else { sortKey = "joined_at"; sortOrder = 1; }
          renderTable();
@@ -502,7 +514,7 @@ export function renderAdminSettingsHTML({ user }) {
 }
 
 export function renderAdminActivityHTML({ user }) {
-  const content = `
+  const content = \`
     <div class="row" style="display:flex; gap:12px; margin-bottom:16px;">
         <select id="guild" style="max-width:250px; padding:10px;"></select>
         <button id="reload" class="btn">更新</button>
@@ -549,14 +561,14 @@ export function renderAdminActivityHTML({ user }) {
         </table>
       </div>
     </div>
-  `;
+  \`;
 
-  const scripts = `
+  const scripts = \`
   <script>
-    ${COMMON_SCRIPT}
+    \${COMMON_SCRIPT}
     initActivity();
   </script>
-  `;
+  \`;
 
   return renderLayout({ title: "アクティビティ", content, user, activeTab: "activity", oauth: true, scripts });
 }
