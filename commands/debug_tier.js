@@ -19,6 +19,15 @@ export const data = new SlashCommandBuilder()
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
 export async function execute(interaction) {
+    const ALLOWED_GUILD_ID = "1467338822051430572";
+
+    if (interaction.guildId !== ALLOWED_GUILD_ID) {
+        return interaction.reply({
+            content: "🚫 このコマンドはこのサーバーでは使用できません。",
+            flags: MessageFlags.Ephemeral,
+        });
+    }
+
     const t = interaction.options.getString("tier");
     const guildId = interaction.guildId;
 
