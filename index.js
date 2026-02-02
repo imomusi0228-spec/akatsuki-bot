@@ -1002,11 +1002,15 @@ const dbReady = (async () => {
     // 接続テスト
     await pool.query("SELECT 1");
 
-    db = makeDb(pool);
+    // ✅ 一時変数で初期化（まだグローバル db には入れない）
+    const _db = makeDb(pool);
 
     // テーブル作成（下のSQLを実行）
-    await ensureBaseTables(db);
-    await runDbMigrations(db);
+    await ensureBaseTables(_db);
+    await runDbMigrations(_db);
+
+    // ✅ ここで初めてグローバルに代入（準備完了）
+    db = _db;
 
     console.log("✅ DB ready (Postgres)");
     return true;
