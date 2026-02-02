@@ -1965,14 +1965,9 @@ function intersectUserBotGuilds(userGuilds) {
 
   return userGuilds
     .filter((g) => {
-      const perms = Number(g.permissions || 0);
-
-      // Discord permission bits
-      const ADMINISTRATOR = 0x8;
-      const MANAGE_GUILD = 0x20;
-
-      const hasManage = (perms & ADMINISTRATOR) === ADMINISTRATOR || (perms & MANAGE_GUILD) === MANAGE_GUILD;
-      return hasManage && botGuildIds.has(g.id);
+      // Use BigInt via hasAdminPerm to safely check permissions
+      // (Number() loses precision for large permission bitfields)
+      return hasAdminPerm(g.permissions) && botGuildIds.has(g.id);
     })
     .map((g) => ({ id: g.id, name: g.name }));
 }
