@@ -1646,7 +1646,7 @@ const server = http.createServer(async (req, res) => {
     // session（必要なときだけ読む）
     let sess = null;
     if (
-      pathname === "/admin" ||
+      pathname.startsWith("/admin") ||
       pathname.startsWith("/api/") ||
       pathname === "/logout" ||
       pathname === "/login" ||
