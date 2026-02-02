@@ -275,10 +275,10 @@ const COMMON_SCRIPT = `
            const av = r.avatar_url || "https://cdn.discordapp.com/embed/avatars/0.png";
            html += \`<tr>
              <td><div style="display:flex; align-items:center; gap:8px;"><img src="\${av}" style="width:24px; height:24px; border-radius:50%;" /> <span>\${r.display_name}</span></div></td>
+             <td style="text-align:center;">\${r.joined_at}</td>
              <td style="text-align:center;">\${r.last_vc}</td>
              <td style="text-align:center;">\${r.has_role === "Yes" ? yes : (r.has_role==="No" ? no : "-")}</td>
              <td style="text-align:center;">\${r.has_intro === "Yes" ? yes : (r.has_intro.includes("No") ? no : "-")}</td>
-             <td style="text-align:center;">\${r.joined_at}</td>
            </tr>\`;
         });
         el.innerHTML = html;
@@ -549,10 +549,10 @@ export function renderAdminActivityHTML({ user }) {
             <thead>
             <tr>
                 <th id="th-name" style="cursor:pointer; user-select:none;">ユーザー <span id="sort-name"></span></th>
+                <th id="th-joined" style="text-align:center; cursor:pointer; user-select:none;">参加日 <span id="sort-joined"></span></th>
                 <th style="text-align:center;">最終VC</th>
                 <th style="text-align:center;">ロール</th>
                 <th style="text-align:center;">自己紹介</th>
-                <th id="th-joined" style="text-align:center; cursor:pointer; user-select:none;">参加日 <span id="sort-joined"></span></th>
             </tr>
             </thead>
             <tbody id="act-rows">
@@ -573,6 +573,7 @@ export function renderAdminActivityHTML({ user }) {
   return renderLayout({ title: "アクティビティ", content, user, activeTab: "activity", oauth: true, scripts });
 }
 
+
 export function renderPublicGuideHTML() {
   return `
 <!DOCTYPE html>
@@ -583,106 +584,167 @@ export function renderPublicGuideHTML() {
   <style>
     ${COMMON_CSS}
     .guide-container { max-width: 800px; margin: 40px auto; padding: 20px; }
-    .tier-badge { padding: 4px 12px; border-radius: 99px; font-size: 0.85em; font-weight: bold; }
-    .tier-free { background: rgba(139, 155, 180, 0.2); color: #8b9bb4; border: 1px solid #8b9bb4; }
-    .tier-pro { background: rgba(0, 186, 124, 0.2); color: var(--success-color); border: 1px solid var(--success-color); }
-    .tier-pro_plus { background: rgba(29, 155, 240, 0.2); color: var(--accent-color); border: 1px solid var(--accent-color); }
-    .cmd-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; margin-bottom: 24px; transition: transform 0.2s; }
-    .cmd-card:hover { transform: translateY(-4px); border-color: var(--accent-color); }
-    .cmd-name { font-family: monospace; font-size: 1.25em; color: var(--accent-color); display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-    .use-case { background: rgba(255,255,255,0.03); border-left: 4px solid var(--accent-color); padding: 12px 16px; margin: 16px 0; border-radius: 0 8px 8px 0; font-size: 0.95em; }
     .hero { text-align: center; padding: 40px 0 60px; }
     .hero h1 { font-size: 2.5em; margin-bottom: 8px; background: linear-gradient(90deg, #fff, var(--accent-color)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .matrix-table th, .matrix-table td { padding: 16px; border-bottom: 1px solid var(--border-color); }
-    .matrix-table tr:hover { background: rgba(255,255,255,0.02); }
+    
+    /* Tabs */
+    .tier-tabs { display: flex; justify-content: center; gap: 16px; margin-bottom: 40px; }
+    .tab-btn {
+      padding: 12px 32px;
+      border-radius: 99px;
+      border: 1px solid var(--border-color);
+      background: rgba(255,255,255,0.05);
+      color: var(--text-secondary);
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 1.1em;
+    }
+    .tab-btn:hover { background: rgba(255,255,255,0.1); transform: translateY(-2px); }
+    .tab-btn.active { border-color: transparent; color: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+    
+    .tab-free.active { background: linear-gradient(135deg, #7f8c8d, #2c3e50); }
+    .tab-pro.active { background: linear-gradient(135deg, #00ba7c, #006442); }
+    .tab-pro_plus.active { background: linear-gradient(135deg, #1d9bf0, #0c4a78); }
+
+    /* Content Sections */
+    .tier-section { display: none; animation: fadeIn 0.4s ease; }
+    .tier-section.active { display: block; }
+
+    .cmd-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+    .cmd-name { font-family: monospace; font-size: 1.4em; color: var(--text-primary); margin-bottom: 12px; display: flex; align-items: center; gap: 12px; }
+    .cmd-badge { font-size: 0.6em; padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.1); }
+    
+    .use-case { 
+      margin-top: 16px; 
+      padding: 16px; 
+      background: rgba(29, 155, 240, 0.05); 
+      border-left: 3px solid var(--accent-color);
+      border-radius: 0 8px 8px 0;
+      font-size: 0.95em;
+      line-height: 1.6;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
 <body>
   <div class="guide-container">
     <div class="hero">
       <h1>Akatsuki Bot Guide</h1>
-      <p class="muted">お嬢のサーバーを、月明かりのように優しく、そして確実に守るための手引き。直感的な操作と、高度な分析をその手に。</p>
+      <p class="muted">お嬢、ならびに管理者の皆様へ。<br>月明かりのような静寂と、鉄壁の守りをご提供いたします。</p>
     </div>
 
-    <section id="tiers" style="margin-bottom: 60px;">
-      <h2>🌙 ティア別機能マトリクス</h2>
-      <table class="matrix-table">
-        <thead>
-          <tr><th>ティア</th><th>解放される特権</th><th>主な役割</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><span class="tier-badge tier-free">Free</span></td>
-            <td><code>/ping</code> <code>/ngword</code> <code>/vc</code> <code>/setlog</code></td>
-            <td class="muted">ボットの基本動作、NGワードによる自動削除、VCの簡易的な滞在確認。</td>
-          </tr>
-          <tr>
-            <td><span class="tier-badge tier-pro">Pro</span></td>
-            <td><code>/activity</code> <strong><code>/untimeout</code></strong> <br><strong>Web管理画面</strong></td>
-            <td class="muted">休眠メンバーの発見、Web上での設定管理、誤検知への迅速な対応特権。</td>
-          </tr>
-          <tr>
-            <td><span class="tier-badge tier-pro_plus">Pro+</span></td>
-            <td><code>/scan</code> <br><strong>高度なWeb分析</strong></td>
-            <td class="muted">過去ログを遡る徹底精査、CSVによる詳細なメンバーデータ抽出・分析。</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    <div class="tier-tabs">
+      <button class="tab-btn tab-free active" onclick="switchTab('free')">Free Tier</button>
+      <button class="tab-btn tab-pro" onclick="switchTab('pro')">Pro Tier</button>
+      <button class="tab-btn tab-pro_plus" onclick="switchTab('pro_plus')">Pro+ Tier</button>
+    </div>
 
-    <section id="commands">
-      <h2>🛠 コマンド詳細ガイド</h2>
+    <!-- FREE TIER -->
+    <div id="section-free" class="tier-section active">
+      <div style="text-align:center; margin-bottom:32px;" class="muted">
+        <p>基本となる「守り」と「可視化」の機能群でございます。<br>まずはここから、快適なサーバー運営をお始めください。</p>
+      </div>
 
       <div class="cmd-card">
-        <div class="cmd-name">/ngword <span class="tier-badge tier-free">Free</span></div>
-        <p>サーバー内で使用を制限したい単語（NGワード）を管理します。正規表現による高度なパターンマッチングもサポートしていますわ。</p>
+        <div class="cmd-name">/ngword <span class="cmd-badge">基本防衛</span></div>
+        <p>サーバーの品位を損なう言葉を検閲・排除いたします。正規表現（Regex）を用いた高度なパターンマッチングも可能でございますので、隠語や表記ゆれにも柔軟に対応可能でございます。</p>
         <div class="use-case">
-          <strong>💡 利用例：荒らし対策</strong><br>
-          「死ね」や「消えろ」などの直接的な暴言はもちろん、<code>/regex/i</code> 形式で登録すれば、隠語や大文字小文字の差異も網羅的に防げます。
+          <strong>🎩 執事の提案：品位ある空間のために</strong><br>
+          「死ね」や「消えろ」といった直接的な暴言はもちろん、<code>/regex/i</code> の形式でご登録いただければ、大文字小文字の違いや、スペースを挟んだ悪意ある投稿も逃さず対処いたします。
         </div>
       </div>
 
       <div class="cmd-card">
-        <div class="cmd-name">/vc <span class="tier-badge tier-free">Free</span></div>
-        <p>メンバーのボイスチャンネル滞在時間を集計・表示します。誰がコミュニティに貢献しているかを可視化いたします。</p>
+        <div class="cmd-name">/vc <span class="cmd-badge">活動記録</span></div>
+        <p>メンバー様のボイスチャンネルにおける滞在時間を集計し、報告させていただきます。誰がコミュニティの盛り上げ役であるか、一目瞭然となります。</p>
         <div class="use-case">
-          <strong>💡 利用例：アクティブ賞の選定</strong><br>
-          月末に <code>/vc top</code> を実行し、最も長く滞在した方を表彰することで、コミュニティの活発化を促せますわ。
+          <strong>🎩 執事の提案：貢献者への称賛</strong><br>
+          月末に <code>/vc top</code> を実行し、最も長く滞在された方を表彰してはいかがでしょうか。皆様のモチベーションを高め、より活気ある社交場となることでしょう。
+        </div>
+      </div>
+      
+      <div class="cmd-card">
+        <div class="cmd-name">/setlog <span class="cmd-badge">記録保管</span></div>
+        <p>わたくしが執り行った処罰（NGワード削除など）や、メンバー様の入退室記録を報告する「日誌」の提出先をご指定いただけます。</p>
+      </div>
+    </div>
+
+    <!-- PRO TIER -->
+    <div id="section-pro" class="tier-section">
+      <div style="text-align:center; margin-bottom:32px;" class="muted">
+        <p>Web管理画面へのアクセス権が解禁されます。<br>「休眠メンバー」の整理や、迅速な処罰解除など、より実務的な管理が可能でございます。</p>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-name">/activity <span class="cmd-badge">休眠管理</span></div>
+        <p>「長期間お姿を見かけない方」をリストアップいたします。期間の定義はWeb管理画面より自由に設定いただけます。</p>
+        <div class="use-case">
+          <strong>🎩 執事の提案：スマートな名簿整理</strong><br>
+          定員のあるサーバーや、アクティブな方のみで交流を深めたい場合にご活用ください。Web画面の「アクティビティモニター」と併用することで、幽霊部員の把握が驚くほどスムーズになります。
         </div>
       </div>
 
       <div class="cmd-card">
-        <div class="cmd-name">/activity <span class="tier-badge tier-pro">Pro</span></div>
-        <p>設定したルール（例：4週間VC不参加）に基づき、サーバーで「今活動していない人」を一覧化します。</p>
+        <div class="cmd-name">アプリ > タイムアウトを解除 <span class="cmd-badge">特権操作</span></div>
+        <p>ユーザー様を右クリック（または長押し）し、「アプリ」メニューから選択するだけで、タイムアウトを即座に解除し、違反カウントも帳消しにいたします。</p>
         <div class="use-case">
-          <strong>💡 利用例：サーバーの整理（デッドウェイトの削減）</strong><br>
-          Web管理画面の「アクティビティモニター」と併用することで、定員のあるサーバーでの枠確保や、幽霊部員の把握が驚くほどスムーズになりますわ。
+          <strong>🎩 執事の提案：慈悲ある救済</strong><br>
+          身内同士の冗談が誤って検閲されてしまった際、管理者の皆様はその場でスマートに、そしてエレガントに救済の手を差し伸べることができます。
         </div>
       </div>
 
       <div class="cmd-card">
-        <div class="cmd-name">アプリ > タイムアウトを解除 <span class="tier-badge tier-pro">Pro</span></div>
-        <p>ユーザーを右クリック（または長押し）して、「アプリ」メニューから瞬時にタイムアウトを解除し、蓄積された違反カウントも消去します。</p>
+        <div class="cmd-name">Web管理画面 <span class="cmd-badge">司令塔</span></div>
+        <p><code>/admin</code> コマンドよりアクセスいただける、専用の執務室でございます。NGワードの一括管理や、アクティビティ状況の視覚的な確認が可能となります。</p>
+      </div>
+    </div>
+
+    <!-- PRO+ TIER -->
+    <div id="section-pro_plus" class="tier-section">
+      <div style="text-align:center; margin-bottom:32px;" class="muted">
+        <p>最上級の「分析」機能をご提供いたします。<br>過去を紐解き、現在を正しく評価するための、最強のツールでございます。</p>
+      </div>
+
+      <div class="cmd-card">
+        <div class="cmd-name">/scan <span class="cmd-badge">過去調査</span></div>
+        <p>過去の全ログを遡り、後から追加されたルールに抵触している発言がないか、徹底的に洗い出します。</p>
         <div class="use-case">
-          <strong>💡 利用例：誤判定の救済</strong><br>
-          身内同士の冗談でNGワードが誤検知され、自動タイムアウトが発動してしまった際、管理者がその場でエレガントに救済することができます。
+          <strong>🎩 執事の提案：完全な潔白の証明</strong><br>
+          「あの騒動の際、他に不穏な動きはなかったか？」……リアルタイムの監視だけでは漏れてしまう過去の痕跡も、わたくしが見つけ出して報告いたします。
         </div>
       </div>
 
       <div class="cmd-card">
-        <div class="cmd-name">/scan <span class="tier-badge tier-pro_plus">Pro+</span></div>
-        <p>過去1週間〜1ヶ月の全てのログを遡り、後から追加したNGワードに抵触していた人がいないかを徹底的に洗い出します。</p>
+        <div class="cmd-name">詳細アクティビティ分析 <span class="cmd-badge">Web機能</span></div>
+        <p>Web管理画面にて、参加日やロール有無など、より詳細な条件でのメンバー抽出・CSVダウンロードが可能となります。</p>
         <div class="use-case">
-          <strong>💡 利用例：事後調査</strong><br>
-          「あの騒動の時、他に不適切な発言をしていた者はいないか？」といった、リアルタイム検知だけでは漏れてしまう過去の痕跡を調査するのに最適です。
+          <strong>🎩 執事の提案：データに基づく運営</strong><br>
+          「自己紹介未記入の方」や「特定のロールを持たない方」だけのリストを作成し、個別にご案内を送るなど、きめ細やかなフォローアップにお役立てください。
         </div>
       </div>
-    </section>
+    </div>
 
-    <footer style="text-align: center; padding-top: 40px; border-top: 1px solid var(--border-color);" class="muted">
+    <footer style="text-align: center; padding-top: 40px; border-top: 1px solid var(--border-color); margin-top:60px;" class="muted">
       <p>&copy; 2026 Akatsuki Bot - お嬢のための、究極の執事サービス。</p>
     </footer>
   </div>
+
+  <script>
+    function switchTab(tier) {
+      // Buttons
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelector('.tab-' + tier).classList.add('active');
+      
+      // Sections
+      document.querySelectorAll('.tier-section').forEach(s => s.classList.remove('active'));
+      document.getElementById('section-' + tier).classList.add('active');
+    }
+  </script>
 </body>
 </html>`;
 }
