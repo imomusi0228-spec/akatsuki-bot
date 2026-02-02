@@ -695,11 +695,16 @@ const withToken = (url) => token ? (url + (url.includes("?")?"&":"?") + "token="
     if(t==='activity') fetchActivity();
   }
 
+  window.switchTab = switchTab;
+  window.fetchActivity = fetchActivity;
+
   async function fetchActivity() {
     const el = document.getElementById("act-rows");
     const ld = document.getElementById("act-loading");
-    const cr = document.getElementById("act-criteria");
+    if(!el || !ld) return;
+    
     el.innerHTML = "";
+    ld.innerText = "読み込み中...";
     ld.style.display = "block";
     
     try {
@@ -723,7 +728,7 @@ const withToken = (url) => token ? (url + (url.includes("?")?"&":"?") + "token="
       let html = "";
       d.data.forEach(r => {
          const avatar = r.avatar_url || "https://cdn.discordapp.com/embed/avatars/0.png";
-         const name = r.display_name ? \`\${r.display_name} (@\${r.username})\` : r.user_id;
+         const name = r.display_name ? \`\${r.display_name} <span class='muted'>(@\${r.username})</span>\` : r.user_id;
          const roleMark = r.has_role === "Yes" ? "<span style='color:#00ff00'>Yes</span>" : (r.has_role === "No" ? "<span style='color:#ff0000'>No</span>" : "-");
          const introMark = r.has_intro === "Yes" ? "<span style='color:#00ff00'>Yes</span>" : (r.has_intro.includes("No") ? "<span style='color:#ff0000'>No</span>" : "-");
          
@@ -737,9 +742,10 @@ const withToken = (url) => token ? (url + (url.includes("?")?"&":"?") + "token="
       el.innerHTML = html;
       
     } catch(e) {
-      ld.innerText = "取得エラー";
+      ld.innerText = "取得エラー: " + e.message;
     }
   }
+
 
   async function reload(){
     if (loading) return;
@@ -2508,7 +2514,7 @@ const server = http.createServer(async (req, res) => {
         const chk = await requireGuildAllowed(guildId);
         if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
 
-        const tier = await getLicenseTierStrict(guildId);
+        const tier = await getLicenseTierStrict(guildId, db);
         if (!isTierAtLeast(tier, "pro")) {
           return json(res, { ok: false, error: "Upgrade to Pro" });
         }
