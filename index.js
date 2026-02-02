@@ -889,31 +889,29 @@ async function removeNgWord(guildId, raw) {
     word
   );
 
-  // 2. 関連ログの削除 (changes > 0 の場合)
-  if (r.changes > 0) {
-    // ログからも削除（metaに含まれる場合）
-    await db.run(
-      `DELETE FROM log_events
-       WHERE guild_id = $1
-         AND type = 'ng_detected'
-         AND meta LIKE '%' || $2 || '%'`,
-      guildId,
-      word
-    );
+  // 2. 関連ログの削除 (Always try to clean up logs, even if word was already gone)
+  // ログからも削除（metaに含まれる場合）
+  await db.run(
+    `DELETE FROM log_events
+     WHERE guild_id = $1
+       AND type = 'ng_detected'
+       AND meta LIKE '%' || $2 || '%'`,
+    guildId,
+    word
+  );
 
-    // 3. ng_hitsの完全再計算 (Repair)
-    // まずこのギルドのヒット数を全消去
-    await db.run(`DELETE FROM ng_hits WHERE guild_id = $1`, guildId);
+  // 3. ng_hitsの完全再計算 (Repair)
+  // まずこのギルドのヒット数を全消去
+  await db.run(`DELETE FROM ng_hits WHERE guild_id = $1`, guildId);
 
-    // ログから再集計して挿入
-    await db.run(`
-      INSERT INTO ng_hits (guild_id, user_id, count, updated_at)
-      SELECT guild_id, user_id, COUNT(*) as cnt, MAX(ts) as last_ts
-      FROM log_events
-      WHERE guild_id = $1 AND type = 'ng_detected'
-      GROUP BY guild_id, user_id
-    `, guildId);
-  }
+  // ログから再集計して挿入
+  await db.run(`
+    INSERT INTO ng_hits (guild_id, user_id, count, updated_at)
+    SELECT guild_id, user_id, COUNT(*) as cnt, MAX(ts) as last_ts
+    FROM log_events
+    WHERE guild_id = $1 AND type = 'ng_detected'
+    GROUP BY guild_id, user_id
+  `, guildId);
 
   invalidateCache(guildId);
   return { ok: true, changes: r.changes };
