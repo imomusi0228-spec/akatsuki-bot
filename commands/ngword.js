@@ -1,4 +1,5 @@
 import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js";
+import { addNgWord, removeNgWord, clearNgWords, getNgWords } from "../service/ng.js";
 
 function isUnknownInteraction(err) {
   return err?.code === 10062 || err?.rawError?.code === 10062;
@@ -38,88 +39,7 @@ function isAdminLike(interaction) {
   return p?.has(PermissionFlagsBits.Administrator) || p?.has(PermissionFlagsBits.ManageGuild);
 }
 
-function parseNgInput(raw) {
-  const s = String(raw ?? "").trim();
-  if (!s) return null;
 
-  // /pattern/flags
-  if (s.startsWith("/") && s.lastIndexOf("/") > 0) {
-    const last = s.lastIndexOf("/");
-    const pattern = s.slice(1, last);
-    const flags = s.slice(last + 1) || "i";
-    if (!pattern.trim()) return null;
-    if (!/^[dgimsuvy]*$/.test(flags)) return null;
-    try {
-      // eslint-disable-next-line no-new
-      new RegExp(pattern, flags);
-    } catch {
-      return null;
-    }
-    return { kind: "regex", word: pattern, flags };
-  }
-
-  return { kind: "literal", word: s, flags: "i" };
-}
-
-async function dbAdd(db, guildId, wordRaw) {
-  const parsed = parseNgInput(wordRaw);
-  if (!parsed) return { ok: false, error: "invalid_input" };
-
-  // ✅ Postgres: INSERT ... ON CONFLICT DO NOTHING
-  await db.run(
-    `INSERT INTO ng_words (guild_id, kind, word, flags)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (guild_id, kind, word) DO NOTHING`,
-    guildId,
-    parsed.kind,
-    parsed.word,
-    parsed.flags || "i"
-  );
-
-  return { ok: true, added: parsed };
-}
-
-async function dbRemove(db, guildId, wordRaw) {
-  const parsed = parseNgInput(wordRaw);
-  if (!parsed) return { ok: false, error: "invalid_input" };
-
-  const r = await db.run(
-    `DELETE FROM ng_words
-      WHERE guild_id = $1 AND kind = $2 AND word = $3`,
-    guildId,
-    parsed.kind,
-    parsed.word
-  );
-
-  return { ok: true, deleted: r?.changes ?? 0, target: parsed };
-}
-
-async function dbClear(db, guildId) {
-  await db.run(`DELETE FROM ng_words WHERE guild_id = $1`, guildId);
-  return { ok: true };
-}
-
-async function dbList(db, guildId) {
-  const rows = await db.all(
-    `SELECT kind, word, flags
-       FROM ng_words
-      WHERE guild_id = $1
-      ORDER BY kind ASC, word ASC`,
-    guildId
-  );
-
-  const words = (rows || [])
-    .map((r) => {
-      const kind = (r.kind || "literal").trim();
-      const w = (r.word || "").trim();
-      const flags = (r.flags || "i").trim();
-      if (!w) return null;
-      return kind === "regex" ? `/${w}/${flags}` : w;
-    })
-    .filter(Boolean);
-
-  return { ok: true, words };
-}
 
 export async function execute(interaction, db) {
   try {
@@ -152,7 +72,7 @@ export async function execute(interaction, db) {
 
     if (sub === "add") {
       const word = interaction.options.getString("word", true).trim();
-      const r = await dbAdd(db, interaction.guildId, word);
+      const r = await addNgWord(db, interaction.guildId, word);
       if (!r.ok) return await finish("❌ 形式が不正です。例: ばか / /ばか|あほ/i");
 
       const shown = r.added.kind === "regex" ? `/${r.added.word}/${r.added.flags}` : r.added.word;
@@ -162,10 +82,12 @@ export async function execute(interaction, db) {
 
     if (sub === "remove") {
       const word = interaction.options.getString("word", true).trim();
-      const r = await dbRemove(db, interaction.guildId, word);
-      if (!r.ok) return await finish("❌ 形式が不正です。登録した形式のまま指定してください。");
+      const r = await removeNgWord(db, interaction.guildId, word);
+      // service/ng.js returns { changes, target }
+      // If validation fails (invalid_input), r.ok false.
+      if (!r.ok) return await finish("❌ 形式が不正、または削除に失敗しました。");
 
-      if ((r.deleted ?? 0) <= 0) {
+      if ((r.changes ?? 0) <= 0) {
         await sendPublic({ content: "⚠️ 見つかりませんでした（登録した形式のまま指定してください）" });
         return await finish("OK");
       }
@@ -176,19 +98,24 @@ export async function execute(interaction, db) {
     }
 
     if (sub === "clear") {
-      await dbClear(db, interaction.guildId);
+      await clearNgWords(db, interaction.guildId);
       await sendPublic({ content: "✅ NGワードを全削除しました。" });
       return await finish("OK");
     }
 
     if (sub === "list") {
-      const r = await dbList(db, interaction.guildId);
-      const words = r.words || [];
+      // getNgWords returns array directly
+      const words = await getNgWords(db, interaction.guildId);
+
       if (!words.length) {
         await sendPublic({ content: "（空）NGワードは登録されていません。" });
         return await finish("OK");
       }
-      const body = words.map((w) => `- ${w}`).join("\n");
+
+      const body = words.map((r) => {
+        return r.kind === "regex" ? `/${r.word}/${r.flags}` : r.word;
+      }).join("\n");
+
       // 文字数オーバー対策
       if (body.length > 1900) {
         const truncated = body.slice(0, 1900) + "\n... (省略されました)";
