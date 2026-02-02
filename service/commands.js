@@ -8,6 +8,7 @@ import { data as cmdScan } from "../commands/scan.js";
 import { data as cmdSetlog } from "../commands/setlog.js";
 import { data as cmdVc } from "../commands/vc.js";
 import { data as cmdDebug } from "../commands/debug_tier.js";
+import { data as cmdUntimeout } from "../commands/untimeout.js";
 import { isTierAtLeast } from "../utils/common.js";
 
 // Command Definitions
@@ -19,7 +20,8 @@ const COMMANDS = {
         cmdPing,
         cmdNgword,
         cmdLicense,
-        cmdAdmin // Freeでも表示させる
+        cmdAdmin, // Freeでも表示させる
+        cmdUntimeout
     ],
     pro: [
         cmdActivity

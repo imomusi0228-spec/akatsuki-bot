@@ -1029,7 +1029,7 @@ function resolveUserLabel(guild, userId) {
    - DO NOT rely on interaction.reply/editReply/followUp in commands
 ========================= */
 client.on("interactionCreate", async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
+  if (!interaction.isChatInputCommand() && !interaction.isUserContextMenuCommand()) return;
 
   const isUnknown = (err) => err?.code === 10062 || err?.rawError?.code === 10062;
   const isAlreadyAcked = (err) => {
