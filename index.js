@@ -20,6 +20,7 @@ import {
 
 import pg from "pg";
 const { Pool } = pg;
+import { getLicenseTierStrict } from "./service/license.js";
 
 /* =========================
    Log thread helpers (DISKなしでも動く版)
