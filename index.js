@@ -421,9 +421,9 @@ function renderHomeHTML({
 <body>
   <div class="card">
     <h1>${escapeHTML(title)}</h1>
-    ${message ? `<p>${escapeHTML(message)}</p>` : `<p>Bot is running.</p>`}
-    ${linkItems ? `<h3>Links</h3><ul>${linkItems}</ul>` : ""}
-    <p class="muted" style="font-size:12px">Server OK</p>
+    ${message ? `<p>${escapeHTML(message)}</p>` : `<p>Botは正常に稼働中です。</p>`}
+    ${linkItems ? `<h3>リンク</h3><ul>${linkItems}</ul>` : ""}
+    <p class="muted" style="font-size:12px">サーバー正常</p>
   </div>
 </body>
 </html>`;
@@ -435,7 +435,7 @@ function renderNeedLoginHTML({ oauthReady, tokenEnabled }) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Login</title>
+  <title>ログイン</title>
   <style>
     body{font-family:system-ui;margin:16px}
     .card{border:1px solid #ddd;border-radius:12px;padding:12px;max-width:860px}
@@ -445,7 +445,7 @@ function renderNeedLoginHTML({ oauthReady, tokenEnabled }) {
 </head>
 <body>
   <div class="card">
-    <h2>Akatsuki Bot 管理画面</h2>
+<h2>Akatsuki Bot 管理画面</h2>
     <p class="muted">Discord OAuthでログインしてください。</p>
     ${oauthReady ? `<a class="btn" href="/login">Discordでログイン</a>` : `<p class="muted">OAuth未設定（DISCORD_CLIENT_ID/SECRET + PUBLIC_URL が必要）</p>`}
     ${tokenEnabled ? `<hr/><p class="muted">（保険）ADMIN_TOKEN方式: <code>/admin?token=XXXX</code></p>` : ``}
@@ -461,7 +461,7 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Akatsuki Admin</title>
+<title>Akatsuki Bot 管理画面</title>
 <style>
   :root {
     --bg-color: #0b1622;
@@ -529,7 +529,7 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
     <h2>Akatsuki Admin</h2>
     <div style="text-align:right; font-size:12px;">
       ${user ? `<span style="margin-right:8px;">${userLabel}</span>` : ``}
-      ${oauth ? `<a href="/logout">Logout</a>` : ``}
+      ${oauth ? `<a href="/logout">ログアウト</a>` : ``}
     </div>
   </div>
 
@@ -539,22 +539,22 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
       <input id="month" type="month" />
       <button id="reload">更新</button>
       <span id="guildStatus" class="muted" style="margin-left:8px;"></span>
-      <button onclick="switchTab('dashboard')" class="tab-btn active" id="btn-dashboard">Dashboard</button>
-      <button onclick="switchTab('settings')" class="tab-btn" id="btn-settings">Settings</button>
-      <button onclick="switchTab('activity')" class="tab-btn" id="btn-activity" style="display:none">Activity</button>
+      <button onclick="switchTab('dashboard')" class="tab-btn active" id="btn-dashboard">ダッシュボード</button>
+      <button onclick="switchTab('settings')" class="tab-btn" id="btn-settings">設定</button>
+      <button onclick="switchTab('activity')" class="tab-btn" id="btn-activity" style="display:none">アクティビティモニター</button>
     </div>
 
     <!-- DASHBOARD -->
     <div id="tab-dashboard" class="tab-content active">
       <div class="card" style="margin-bottom:16px;">
-        <h3>Today's Summary (JST)</h3>
-        <div id="summary">Loading...</div>
+         <h3>本日のサマリー (JST)</h3>
+         <div id="summary">読み込み中...</div>
       </div>
 
       <div class="card">
-        <h3>Top NG Users (30 days)</h3>
-        <table class="data-table">
-          <thead><tr><th>User</th><th style="text-align:right">Count</th></tr></thead>
+         <h3>NGユーザー上位 (30日間)</h3>
+         <table class="data-table">
+           <thead><tr><th>ユーザー</th><th style="text-align:right">回数</th></tr></thead>
           <tbody id="topNg"></tbody>
         </table>
       </div>
@@ -563,23 +563,23 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
     <!-- ACTIVITY -->
     <div id="tab-activity" class="tab-content">
        <div class="card">
-         <h3>Activity Monitor <small id="act-criteria" style="font-weight:normal; font-size:0.8em; color:#8b9bb4"></small></h3>
-         <div id="act-loading">Loading...</div>
+         <h3>アクティビティモニター <small id="act-criteria" style="font-weight:normal; font-size:0.8em; color:#8b9bb4"></small></h3>
+         <div id="act-loading">読み込み中...</div>
          <div class="scroll-table">
            <table class="data-table">
              <thead>
                <tr>
-                 <th>User</th>
-                 <th>Last VC</th>
-                 <th>Target Role</th>
-                 <th>Intro</th>
+                  <th>ユーザー</th>
+                  <th>最終VC</th>
+                  <th>対象ロール</th>
+                  <th>自己紹介</th>
                </tr>
              </thead>
              <tbody id="act-rows"></tbody>
            </table>
          </div>
          <div style="margin-top:8px; text-align:right;">
-            <button class="btn" onclick="fetchActivity()">Refresh</button>
+            <button class="btn" onclick="fetchActivity()">更新</button>
          </div>
        </div>
     </div>
@@ -610,10 +610,10 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
       <div id="settingsBox" style="flex:1;">未取得</div>
       <div style="border-top:1px solid var(--border-color); margin-top:10px; padding-top:10px;">
         <div class="settings-grid">
-           <div class="settings-label">Timeout Count</div>
-           <div><input id="threshold" type="number" min="1" style="width:60px;" /> 回</div>
-           <div class="settings-label">Duration</div>
-           <div><input id="timeout" type="number" min="1" style="width:60px;" /> 分</div>
+            <div class="settings-label">タイムアウト回数</div>
+            <div><input id="threshold" type="number" min="1" style="width:60px;" /> 回</div>
+            <div class="settings-label">期間</div>
+            <div><input id="timeout" type="number" min="1" style="width:60px;" /> 分</div>
         </div>
         <div style="text-align:right; margin-top:8px;">
           <button id="btn_save" style="background:var(--accent-color); border:none; padding:6px 16px;">保存</button>
@@ -658,7 +658,7 @@ const withToken = (url) => token ? (url + (url.includes("?")?"&":"?") + "token="
     const sel = $("guild");
     sel.innerHTML = "";
     sel.disabled = true;
-    $("guildStatus").textContent = "Loading...";
+    $("guildStatus").textContent = "読み込み中...";
 
     const d = await api("/api/guilds");
     if (d && d.ok && d.guilds && d.guilds.length) {
@@ -681,7 +681,7 @@ const withToken = (url) => token ? (url + (url.includes("?")?"&":"?") + "token="
        return false;
     }
 
-    $("guildStatus").textContent = "Error: " + (d?.error || "unknown");
+    $("guildStatus").textContent = "エラー: " + (d?.error || "unknown");
     return false;
   }
 
@@ -706,7 +706,7 @@ const withToken = (url) => token ? (url + (url.includes("?")?"&":"?") + "token="
       const d = await res.json();
       
       if (!d.ok) {
-         ld.innerText = "Error: " + (d.error || "Unknown");
+         ld.innerText = "エラー: " + (d.error || "Unknown");
          return;
       }
       
@@ -714,7 +714,7 @@ const withToken = (url) => token ? (url + (url.includes("?")?"&":"?") + "token="
       cr.innerText = "(Weeks: " + d.config.weeks + ")";
       
       if (d.data.length === 0) {
-         el.innerHTML = "<tr><td colspan='4' class='muted' style='text-align:center'>No inactive members found</td></tr>";
+          el.innerHTML = "<tr><td colspan='4' class='muted' style='text-align:center'>該当するメンバーはいません</td></tr>";
          return;
       }
       
@@ -735,7 +735,7 @@ const withToken = (url) => token ? (url + (url.includes("?")?"&":"?") + "token="
       el.innerHTML = html;
       
     } catch(e) {
-      ld.innerText = "Fetch Error";
+      ld.innerText = "取得エラー";
     }
   }
 
@@ -809,7 +809,7 @@ const withToken = (url) => token ? (url + (url.includes("?")?"&":"?") + "token="
      $("ng_remove").value=""; reload();
   };
   $("btn_clear").onclick = async () => {
-     if(!confirm("Sure?"))return;
+     if(!confirm("本当によろしいですか？"))return;
      await post("/api/ngwords/clear", { guild: $("guild").value });
      reload();
   };
@@ -819,7 +819,7 @@ const withToken = (url) => token ? (url + (url.includes("?")?"&":"?") + "token="
        ng_threshold: $("threshold").value,
        timeout_minutes: $("timeout").value
      });
-     alert("Saved");
+     alert("保存しました");
      reload();
   };
 
@@ -986,9 +986,13 @@ export { setTierOverride, getLicenseTier, getLicenseTierStrict };
 const DATABASE_URL = (process.env.DATABASE_URL || "").trim();
 
 const dbReady = (async () => {
-  try {
-    if (!DATABASE_URL) throw new Error("DATABASE_URL is missing");
+  if (!DATABASE_URL) {
+    console.log("ℹ️ DATABASE_URL が設定されていません。データベースなしで起動します。");
+    db = null;
+    return false;
+  }
 
+  try {
     const pool = new Pool({
       connectionString: DATABASE_URL,
       ssl: { rejectUnauthorized: false }, // Supabase/Neon向けに保険
