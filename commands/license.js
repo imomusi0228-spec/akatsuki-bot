@@ -1,4 +1,5 @@
 import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js";
+import { syncGuildCommands } from "../service/commands.js";
 
 
 // Owner check helper (Replace with your own ID or implement admin check)
@@ -114,6 +115,9 @@ export async function execute(interaction, db) {
        ON CONFLICT (guild_id) DO UPDATE SET expires_at=$2, tier=$3, notes=$4`,
             targetGid, expires, tier, note
         );
+
+        // Sync commands immediately
+        await syncGuildCommands(targetGid, tier);
 
         await interaction.reply({ content: `✅ ライセンスを登録しました。\nTarget: ${targetGid}\nPlan: ${tier}\nDays: ${days}\nExpires: ${expires ? new Date(expires).toLocaleString() : "無期限"}` });
     }
