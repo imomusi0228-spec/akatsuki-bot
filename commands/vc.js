@@ -1,15 +1,22 @@
-﻿// commands/vc.js
-import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+﻿import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
 
 const TIMEZONE = "Asia/Tokyo";
 
 function monthKeyTokyo(date = new Date()) {
-  const dtf = new Intl.DateTimeFormat("sv-SE", {
+  const dtf = new Intl.DateTimeFormat("ja-JP", {
     timeZone: TIMEZONE,
     year: "numeric",
     month: "2-digit",
   });
-  return dtf.format(date); // YYYY-MM
+  // ja-JPのformatter: "2024/02" or "2024年02月" depending on impl
+  // sv-SEの方が安全に YYYY-MM が取れるが、ユーザー要望コードに合わせつつ修正
+  // ここでは sv-SE を使う方が安全
+  const dtf2 = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+  });
+  return dtf2.format(date); // YYYY-MM
 }
 
 function tokyoMonthRangeUTC(monthStr) {
@@ -67,22 +74,28 @@ async function getUserMonthLive(db, guildId, userId, ym) {
   const row = await db.get(
     `SELECT COALESCE(SUM(COALESCE(duration_ms, 0)), 0) AS dur
        FROM log_events
-      WHERE guild_id = ?
-        AND user_id = ?
-        AND ts >= ? AND ts < ?
+      WHERE guild_id = $1
+        AND user_id = $2
+        AND ts >= $3 AND ts < $4
         AND type IN ('vc_out', 'vc_move')`,
-    [guildId, userId, range.start, range.end]
+    guildId,
+    userId,
+    range.start,
+    range.end
   );
 
   // 回数：vc_in / vc_move を数える（入室ベース）
   const row2 = await db.get(
     `SELECT COUNT(*) AS cnt
        FROM log_events
-      WHERE guild_id = ?
-        AND user_id = ?
-        AND ts >= ? AND ts < ?
+      WHERE guild_id = $1
+        AND user_id = $2
+        AND ts >= $3 AND ts < $4
         AND type IN ('vc_in', 'vc_move')`,
-    [guildId, userId, range.start, range.end]
+    guildId,
+    userId,
+    range.start,
+    range.end
   );
 
   let durMs = Number(row?.dur || 0);
@@ -90,8 +103,9 @@ async function getUserMonthLive(db, guildId, userId, ym) {
 
   // 入室中セッションがある場合、今この瞬間までを加算（今月分だけ）
   const sess = await db.get(
-    `SELECT join_ts FROM vc_sessions WHERE guild_id=? AND user_id=?`,
-    [guildId, userId]
+    `SELECT join_ts FROM vc_sessions WHERE guild_id=$1 AND user_id=$2`,
+    guildId,
+    userId
   );
   if (sess?.join_ts) {
     const now = Date.now();
@@ -105,19 +119,21 @@ async function getUserTotal(db, guildId, userId) {
   const row = await db.get(
     `SELECT COALESCE(SUM(COALESCE(duration_ms, 0)), 0) AS dur
        FROM log_events
-      WHERE guild_id = ?
-        AND user_id = ?
+      WHERE guild_id = $1
+        AND user_id = $2
         AND type IN ('vc_out','vc_move')`,
-    [guildId, userId]
+    guildId,
+    userId
   );
 
   const row2 = await db.get(
     `SELECT COUNT(*) AS cnt
        FROM log_events
-      WHERE guild_id = ?
-        AND user_id = ?
+      WHERE guild_id = $1
+        AND user_id = $2
         AND type IN ('vc_in','vc_move')`,
-    [guildId, userId]
+    guildId,
+    userId
   );
 
   let durMs = Number(row?.dur || 0);
@@ -125,8 +141,9 @@ async function getUserTotal(db, guildId, userId) {
 
   // 入室中は累計にも加算
   const sess = await db.get(
-    `SELECT join_ts FROM vc_sessions WHERE guild_id=? AND user_id=?`,
-    [guildId, userId]
+    `SELECT join_ts FROM vc_sessions WHERE guild_id=$1 AND user_id=$2`,
+    guildId,
+    userId
   );
   if (sess?.join_ts) {
     durMs += Math.max(0, Date.now() - Number(sess.join_ts));
@@ -191,12 +208,14 @@ export async function execute(interaction, db) {
     const rows = await db.all(
       `SELECT user_id, COALESCE(SUM(COALESCE(duration_ms,0)),0) AS dur
          FROM log_events
-        WHERE guild_id = ?
-          AND ts >= ? AND ts < ?
+        WHERE guild_id = $1
+          AND ts >= $2 AND ts < $3
           AND type IN ('vc_out','vc_move')
           AND user_id IS NOT NULL AND user_id <> ''
         GROUP BY user_id`,
-      [guildId, range.start, range.end]
+      guildId,
+      range.start,
+      range.end
     );
 
     const map = new Map();
@@ -204,8 +223,8 @@ export async function execute(interaction, db) {
 
     // 入室中セッションを今月分だけ加算
     const sessRows = await db.all(
-      `SELECT user_id, join_ts FROM vc_sessions WHERE guild_id = ?`,
-      [guildId]
+      `SELECT user_id, join_ts FROM vc_sessions WHERE guild_id = $1`,
+      guildId
     );
     const now = Date.now();
     for (const s of sessRows || []) {

@@ -1,4 +1,3 @@
-// commands/ngword.js
 import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 
 function isUnknownInteraction(err) {
@@ -36,10 +35,7 @@ export const data = new SlashCommandBuilder()
 
 function isAdminLike(interaction) {
   const p = interaction.memberPermissions;
-  return (
-    p?.has(PermissionFlagsBits.Administrator) ||
-    p?.has(PermissionFlagsBits.ManageGuild)
-  );
+  return p?.has(PermissionFlagsBits.Administrator) || p?.has(PermissionFlagsBits.ManageGuild);
 }
 
 function parseNgInput(raw) {
@@ -69,14 +65,17 @@ async function dbAdd(db, guildId, wordRaw) {
   const parsed = parseNgInput(wordRaw);
   if (!parsed) return { ok: false, error: "invalid_input" };
 
+  // ✅ Postgres: INSERT ... ON CONFLICT DO NOTHING
   await db.run(
-    `INSERT OR IGNORE INTO ng_words (guild_id, kind, word, flags)
-     VALUES (?, ?, ?, ?)`,
+    `INSERT INTO ng_words (guild_id, kind, word, flags)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (guild_id, kind, word) DO NOTHING`,
     guildId,
     parsed.kind,
     parsed.word,
     parsed.flags || "i"
   );
+
   return { ok: true, added: parsed };
 }
 
@@ -84,19 +83,19 @@ async function dbRemove(db, guildId, wordRaw) {
   const parsed = parseNgInput(wordRaw);
   if (!parsed) return { ok: false, error: "invalid_input" };
 
-  // ※ flags はPKに入ってない想定（あなたのスキーマ通り）
   const r = await db.run(
     `DELETE FROM ng_words
-     WHERE guild_id = ? AND kind = ? AND word = ?`,
+      WHERE guild_id = $1 AND kind = $2 AND word = $3`,
     guildId,
     parsed.kind,
     parsed.word
   );
+
   return { ok: true, deleted: r?.changes ?? 0, target: parsed };
 }
 
 async function dbClear(db, guildId) {
-  await db.run(`DELETE FROM ng_words WHERE guild_id = ?`, guildId);
+  await db.run(`DELETE FROM ng_words WHERE guild_id = $1`, guildId);
   return { ok: true };
 }
 
@@ -104,7 +103,7 @@ async function dbList(db, guildId) {
   const rows = await db.all(
     `SELECT kind, word, flags
        FROM ng_words
-      WHERE guild_id = ?
+      WHERE guild_id = $1
       ORDER BY kind ASC, word ASC`,
     guildId
   );
@@ -123,7 +122,6 @@ async function dbList(db, guildId) {
 }
 
 export async function execute(interaction, db) {
-  // ✅ v14 安定: ephemeral を使う
   try {
     await interaction.deferReply({ ephemeral: true });
   } catch (e) {
@@ -131,7 +129,6 @@ export async function execute(interaction, db) {
     throw e;
   }
 
-  // publicSend があれば使う（あなたの index.js 側の補助）
   const sendPublic = interaction.publicSend
     ? interaction.publicSend.bind(interaction)
     : async (payload) => interaction.channel?.send(payload).catch(() => null);
@@ -139,8 +136,8 @@ export async function execute(interaction, db) {
   const finish = async (msg) => {
     try {
       await interaction.editReply(msg);
-      setTimeout(() => interaction.deleteReply().catch(() => {}), 1200);
-    } catch {}
+      setTimeout(() => interaction.deleteReply().catch(() => { }), 1200);
+    } catch { }
   };
 
   try {
@@ -149,7 +146,6 @@ export async function execute(interaction, db) {
 
     const sub = interaction.options.getSubcommand();
 
-    // list/clear は管理者のみ（念のため二重チェック）
     if ((sub === "list" || sub === "clear") && !isAdminLike(interaction)) {
       return await finish("❌ 管理者権限（ManageGuild/Administrator）が必要です。");
     }
@@ -159,9 +155,7 @@ export async function execute(interaction, db) {
       const r = await dbAdd(db, interaction.guildId, word);
       if (!r.ok) return await finish("❌ 形式が不正です。例: ばか / /ばか|あほ/i");
 
-      const shown =
-        r.added.kind === "regex" ? `/${r.added.word}/${r.added.flags}` : r.added.word;
-
+      const shown = r.added.kind === "regex" ? `/${r.added.word}/${r.added.flags}` : r.added.word;
       await sendPublic({ content: `✅ 追加しました：\`${shown}\`` });
       return await finish("OK");
     }
@@ -176,9 +170,7 @@ export async function execute(interaction, db) {
         return await finish("OK");
       }
 
-      const shown =
-        r.target.kind === "regex" ? `/${r.target.word}/${r.target.flags}` : r.target.word;
-
+      const shown = r.target.kind === "regex" ? `/${r.target.word}/${r.target.flags}` : r.target.word;
       await sendPublic({ content: `✅ 削除しました：\`${shown}\`` });
       return await finish("OK");
     }
@@ -197,7 +189,13 @@ export async function execute(interaction, db) {
         return await finish("OK");
       }
       const body = words.map((w) => `- ${w}`).join("\n");
-      await sendPublic({ content: `📌 NGワード一覧（${words.length}件）\n${body}` });
+      // 文字数オーバー対策
+      if (body.length > 1900) {
+        const truncated = body.slice(0, 1900) + "\n... (省略されました)";
+        await sendPublic({ content: `📌 NGワード一覧（${words.length}件）\n${truncated}` });
+      } else {
+        await sendPublic({ content: `📌 NGワード一覧（${words.length}件）\n${body}` });
+      }
       return await finish("OK");
     }
 

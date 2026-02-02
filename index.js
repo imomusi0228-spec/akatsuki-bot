@@ -18,8 +18,8 @@ import {
   ChannelType, // ← 追加
 } from "discord.js";
 
-import sqlite3 from "sqlite3";
-import { open } from "sqlite";
+import pg from "pg";
+const { Pool } = pg;
 
 /* =========================
    Log thread helpers (DISKなしでも動く版)
@@ -60,7 +60,7 @@ async function findExistingForumThreadByName(parentForum, name) {
     const active = await parentForum.threads.fetchActive();
     const hit = active?.threads?.find((t) => t.name === name);
     if (hit) return hit;
-  } catch (_) {}
+  } catch (_) { }
 
   // 2) Archived public threads
   try {
@@ -70,13 +70,13 @@ async function findExistingForumThreadByName(parentForum, name) {
     });
     const hit = archived?.threads?.find((t) => t.name === name);
     if (hit) return hit;
-  } catch (_) {}
+  } catch (_) { }
 
   // 3) Cache fallback
   try {
     const hit = parentForum.threads.cache.find((t) => t.name === name);
     if (hit) return hit;
-  } catch (_) {}
+  } catch (_) { }
 
   return null;
 }
@@ -90,7 +90,7 @@ async function findExistingTextThreadByName(parent, name) {
     const active = await parent.threads.fetchActive();
     const hit = active?.threads?.find((t) => t.name === name);
     if (hit) return hit;
-  } catch (_) {}
+  } catch (_) { }
 
   // 2) Archived public threads
   try {
@@ -100,13 +100,13 @@ async function findExistingTextThreadByName(parent, name) {
     });
     const hit = archived?.threads?.find((t) => t.name === name);
     if (hit) return hit;
-  } catch (_) {}
+  } catch (_) { }
 
   // 3) Cache fallback
   try {
     const hit = parent.threads?.cache?.find((t) => t.name === name);
     if (hit) return hit;
-  } catch (_) {}
+  } catch (_) { }
 
   return null;
 }
@@ -123,7 +123,7 @@ async function getLogChannelIdSafe(guildId) {
       const v = String(row?.log_channel_id || "").trim();
       if (v) return v;
     }
-  } catch (_) {}
+  } catch (_) { }
 
   // 2) env
   const envId = String(process.env.LOG_CHANNEL_ID || "").trim();
@@ -159,7 +159,7 @@ async function findParentBySearchingThreads(guild) {
 
         const archived = await ch.threads.fetchArchived({ type: "public", limit: 50 });
         if (archived?.threads?.some((t) => looksLikeLogThreadName(t.name))) return ch;
-      } catch (_) {}
+      } catch (_) { }
     }
 
     // Text + thread
@@ -170,7 +170,7 @@ async function findParentBySearchingThreads(guild) {
 
         const archived = await ch.threads.fetchArchived({ type: "public", limit: 50 });
         if (archived?.threads?.some((t) => looksLikeLogThreadName(t.name))) return ch;
-      } catch (_) {}
+      } catch (_) { }
     }
   }
 
@@ -189,7 +189,7 @@ async function dbSaveThreadIdSafe(guildId, dateKey, kind, threadId) {
       kind,
       threadId
     );
-  } catch (_) {}
+  } catch (_) { }
 }
 
 /** thread_id をDBから読む（DBがある時だけ） */
@@ -461,172 +461,195 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Akatsuki Bot Admin</title>
+<title>Akatsuki Admin</title>
 <style>
-  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 16px; }
-  .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
-  select,input,button { padding:8px; }
-  button { cursor:pointer; }
-  .card { border:1px solid #ddd; border-radius:12px; padding:12px; margin:12px 0; }
-  .grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(320px,1fr)); gap:12px; }
-  pre { white-space:pre-wrap; word-break:break-word; }
-  .muted { color:#666; }
-  .err { color:#b00020; font-weight:600; }
-  table { width:100%; border-collapse:collapse; }
-  th,td { border-bottom:1px solid #eee; padding:8px; text-align:left; }
-  .pill{display:inline-block;padding:4px 8px;border:1px solid #ccc;border-radius:999px;font-size:12px}
-  a{color:#0b57d0}
+  :root {
+    --bg-color: #0b1622;
+    --card-bg: #15202b;
+    --text-primary: #ffffff;
+    --text-secondary: #8b9bb4;
+    --border-color: #253341;
+    --accent-color: #1d9bf0;
+    --danger-color: #f4212e;
+  }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    margin: 0;
+    padding: 16px;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+  }
+  a { color: var(--accent-color); text-decoration: none; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px; }
+  select, input, button {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: #000;
+    color: #fff;
+    font-size: 14px;
+  }
+  button { cursor:pointer; background: var(--card-bg); }
+  button:hover { background: #2c3640; }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr)); gap:12px; margin-bottom:12px; }
+  h2, h3 { margin: 0 0 10px 0; font-size: 16px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+  h2 { font-size: 18px; color: var(--text-primary); margin-bottom: 16px; border-bottom: 2px solid var(--border-color); padding-bottom: 8px; display:inline-block;}
+  .muted { color: var(--text-secondary); font-size: 13px; }
+  .err { color: var(--danger-color); font-weight:600; font-size: 13px; }
+  table { width:100%; border-collapse:collapse; font-size: 14px; }
+  th { text-align:left; color: var(--text-secondary); font-weight:normal; border-bottom: 1px solid var(--border-color); padding: 4px; }
+  td { border-bottom: 1px solid var(--border-color); padding: 8px 4px; }
+  tr:last-child td { border-bottom: none; }
+  .pill { display:inline-block; padding:2px 8px; border:1px solid var(--border-color); border-radius:99px; font-size:11px; background: rgba(255,255,255,0.05); }
+  
+  .user-cell { display: flex; align-items: center; gap: 8px; }
+  .avatar { width: 24px; height: 24px; border-radius: 50%; background: #333; object-fit: cover; }
+  
+  .stat-box {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px;
+  }
+  .stat-val { font-size: 20px; font-weight: 700; }
+  .stat-label { font-size: 11px; color: var(--text-secondary); margin-top:2px; }
+
+  .settings-grid { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; align-items: center; font-size: 14px; }
+  .settings-label { color: var(--text-secondary); text-align: right; }
+  .settings-val { font-weight: 600; }
 </style>
 </head>
 <body>
-  <h2>Akatsuki Bot 管理画面</h2>
-
-  <div class="row">
-    <span class="pill">${oauth ? "Discord OAuth" : "Token"} でログイン中</span>
-    ${user ? `<span class="pill">User: ${userLabel}</span>` : ``}
-    ${oauth ? `<a href="/logout">ログアウト</a>` : ``}
-    ${tokenAuthed ? `<span class="pill">tokenAuthed</span>` : ``}
+  <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:12px;">
+    <h2>Akatsuki Admin</h2>
+    <div style="text-align:right; font-size:12px;">
+      ${user ? `<span style="margin-right:8px;">${userLabel}</span>` : ``}
+      ${oauth ? `<a href="/logout">Logout</a>` : ``}
+    </div>
   </div>
 
   <div class="card">
     <div class="row">
-      <label>サーバー:</label>
-      <select id="guild"></select>
-      <label>Month:</label>
+      <select id="guild" style="flex:1; max-width:200px;"></select>
       <input id="month" type="month" />
       <button id="reload">更新</button>
+      <span id="guildStatus" class="muted" style="margin-left:8px;"></span>
+      <button onclick="switchTab('dashboard')" class="tab-btn active" id="btn-dashboard">Dashboard</button>
+      <button onclick="switchTab('settings')" class="tab-btn" id="btn-settings">Settings</button>
+      <button onclick="switchTab('activity')" class="tab-btn" id="btn-activity" style="display:none">Activity</button>
     </div>
-    <div id="guildStatus" class="muted"></div>
-    <p class="muted">※「あなたが所属」かつ「Botが入ってる」かつ「管理権限(Manage Guild / Admin)」の鯖だけ出ます。</p>
-  </div>
 
-  <div class="grid">
-    <div class="card">
-      <h3>月次サマリ</h3>
-      <div id="summary" class="muted">未取得</div>
-      <pre id="debugStats" class="muted" style="margin-top:10px;font-size:12px;display:none;"></pre>
-    </div>
-    <div class="card">
-      <h3>Top NG Users</h3>
-      <table>
-        <thead><tr><th>User</th><th>Count</th></tr></thead>
-        <tbody id="topNg"></tbody>
-      </table>
-    </div>
-  </div>
+    <!-- DASHBOARD -->
+    <div id="tab-dashboard" class="tab-content active">
+      <div class="card" style="margin-bottom:16px;">
+        <h3>Today's Summary (JST)</h3>
+        <div id="summary">Loading...</div>
+      </div>
 
-  <div class="grid">
+      <div class="card">
+        <h3>Top NG Users (30 days)</h3>
+        <table class="data-table">
+          <thead><tr><th>User</th><th style="text-align:right">Count</th></tr></thead>
+          <tbody id="topNg"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ACTIVITY -->
+    <div id="tab-activity" class="tab-content">
+       <div class="card">
+         <h3>Activity Monitor <small id="act-criteria" style="font-weight:normal; font-size:0.8em; color:#8b9bb4"></small></h3>
+         <div id="act-loading">Loading...</div>
+         <div class="scroll-table">
+           <table class="data-table">
+             <thead>
+               <tr>
+                 <th>User</th>
+                 <th>Last VC</th>
+                 <th>Target Role</th>
+                 <th>Intro</th>
+               </tr>
+             </thead>
+             <tbody id="act-rows"></tbody>
+           </table>
+         </div>
+         <div style="margin-top:8px; text-align:right;">
+            <button class="btn" onclick="fetchActivity()">Refresh</button>
+         </div>
+       </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="tab-settings" class="tab-content">
     <div class="card">
       <h3>NGワード</h3>
-      <pre id="ngwords" class="muted">未取得</pre>
       <div class="row">
-        <input id="ng_add" placeholder="追加（例: ばか / /ばか|あほ/i）" style="flex:1;min-width:240px" />
-        <button id="btn_add">追加</button>
+        <input id="ng_add" placeholder="追加（例: ばか）" style="flex:1;" />
+        <button id="btn_add">＋</button>
       </div>
       <div class="row">
-        <input id="ng_remove" placeholder="削除（登録した形式のまま）" style="flex:1;min-width:240px" />
-        <button id="btn_remove">削除</button>
+        <input id="ng_remove" placeholder="削除（登録形式）" style="flex:1;" />
+        <button id="btn_remove">−</button>
       </div>
-      <div class="row">
-        <button id="btn_clear" style="border:1px solid #f00;">全削除</button>
-        <span class="muted">※戻せません</span>
+      <div style="max-height:150px; overflow-y:auto; background:rgba(0,0,0,0.2); padding:8px; border-radius:4px; margin-top:8px;">
+        <pre id="ngwords" style="margin:0; font-family:monospace; font-size:13px; color:#ccc;">未取得</pre>
       </div>
-      <div id="ngStatus" class="muted"></div>
+      <div class="row" style="margin-top:8px; justify-content:space-between;">
+        <span id="ngStatus" class="muted"></span>
+        <button id="btn_clear" style="color:var(--danger-color); border-color:var(--danger-color); font-size:11px; padding:2px 6px;">全削除</button>
+      </div>
     </div>
 
-    <div class="card">
+    <div class="card" style="display:flex; flex-direction:column;">
       <h3>NG検知の自動処分</h3>
-      <div id="settingsBox" class="muted">未取得</div>
-
-      <div class="row" style="margin-top:10px;">
-        <label>何回でタイムアウト？</label>
-        <input id="threshold" type="number" min="1" step="1" />
-        <label>タイムアウト時間（分）</label>
-        <input id="timeout" type="number" min="1" step="1" />
-        <button id="btn_save">保存</button>
+      <div id="settingsBox" style="flex:1;">未取得</div>
+      <div style="border-top:1px solid var(--border-color); margin-top:10px; padding-top:10px;">
+        <div class="settings-grid">
+           <div class="settings-label">Timeout Count</div>
+           <div><input id="threshold" type="number" min="1" style="width:60px;" /> 回</div>
+           <div class="settings-label">Duration</div>
+           <div><input id="timeout" type="number" min="1" style="width:60px;" /> 分</div>
+        </div>
+        <div style="text-align:right; margin-top:8px;">
+          <button id="btn_save" style="background:var(--accent-color); border:none; padding:6px 16px;">保存</button>
+        </div>
+        <div id="settingsStatus" class="muted" style="text-align:right; margin-top:4px;"></div>
       </div>
-      <p class="muted">例：3回で10分タイムアウト</p>
-      <div id="settingsStatus" class="muted"></div>
     </div>
   </div>
 
 <script>
 const token = new URLSearchParams(location.search).get("token") || "";
-const withToken = (url) => {
-  if (!token) return url;
-  return url + (url.includes("?") ? "&" : "?") + "token=" + encodeURIComponent(token);
-};
+const withToken = (url) => token ? (url + (url.includes("?")?"&":"?") + "token=" + EncodeURIComponent(token)) : url;
 
 (() => {
   const $ = (id) => document.getElementById(id);
+  function yyyymmNow(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
 
-  function yyyymmNow(){
-    const dt = new Date();
-    const y = dt.getFullYear();
-    const m = String(dt.getMonth()+1).padStart(2,"0");
-    return y + "-" + m;
+  async function api(path){
+    const r = await fetch(path); // cookie auth mainly
+    const t = await r.text();
+    try { return JSON.parse(t); } catch { return { ok:false, error:t }; }
+  }
+  async function post(path, body){
+    const r = await fetch(path, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+    const t = await r.text();
+    try { return JSON.parse(t); } catch { return { ok:false, error:t }; }
   }
 
-  async function api(path, opts){
-  const r = await fetch(withToken(path), opts);
-    const text = await r.text().catch(() => "");
-    let data = null;
-    try { data = text ? JSON.parse(text) : null; } catch {
-      data = { ok:false, error:"bad_json", raw:text, _httpStatus:r.status };
-      return data;
-    }
-    if (!r.ok && data && data.ok !== true) data._httpStatus = r.status;
-    return data;
+  function statBox(label, val) {
+    return \`<div class="stat-box"><div class="stat-val">\${val}</div><div class="stat-label">\${label}</div></div>\`;
   }
 
-  async function postJson(path, body){
-    return api(path, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-  }
-
-  function showStatus(id, msg, isErr){
-    const el = $(id);
-    if (!el) return;
-    el.className = isErr ? "err" : "muted";
-    el.textContent = msg || "";
-  }
-
-  function card(label, value){
-    return (
-      '<div style="border:1px solid #eee;border-radius:12px;padding:10px;">' +
-        '<div style="color:#666;font-size:12px;">' + label + '</div>' +
-        '<div style="font-size:22px;font-weight:700;">' + value + '</div>' +
-      '</div>'
-    );
-  }
-
-  function renderByTypeTable(obj){
-    const keys = Object.keys(obj || {});
-    if (!keys.length) return '<div class="muted">（今月のイベントはまだありません）</div>';
-    const rows = keys
-      .sort((a,b)=> (obj[b]??0)-(obj[a]??0))
-      .map(k => '<tr><td>' + k + '</td><td>' + obj[k] + '</td></tr>')
-      .join("");
-    return (
-      '<table>' +
-        '<thead><tr><th>type</th><th>count</th></tr></thead>' +
-        '<tbody>' + rows + '</tbody>' +
-      '</table>'
-    );
-  }
-
-  function renderSettingsBox(s){
-    const logCh = s.log_channel_id ? s.log_channel_id : "未設定（/setlog で設定）";
-    return (
-      '<table><tbody>' +
-        '<tr><td style="width:220px;">管理ログ チャンネルID</td><td><b>' + logCh + '</b></td></tr>' +
-        '<tr><td>NG検知 → タイムアウトまで</td><td><b>' + (s.ng_threshold ?? 3) + ' 回</b></td></tr>' +
-        '<tr><td>タイムアウト時間</td><td><b>' + (s.timeout_minutes ?? 10) + ' 分</b></td></tr>' +
-      '</tbody></table>'
-    );
+  function renderUserRow(u) {
+    const avatar = u.avatar_url || "https://cdn.discordapp.com/embed/avatars/0.png";
+    const name = u.display_name ? \`\${u.display_name} <span style="opacity:0.5">(@\${u.username||""})</span>\` : u.user_id;
+    return \`<tr><td><div class="user-cell"><img src="\${avatar}" class="avatar"/><div>\${name}</div></div></td><td style="text-align:right">\${u.cnt}</td></tr>\`;
   }
 
   let loading = false;
@@ -635,173 +658,174 @@ const withToken = (url) => {
     const sel = $("guild");
     sel.innerHTML = "";
     sel.disabled = true;
+    $("guildStatus").textContent = "Loading...";
 
-    showStatus("guildStatus", "サーバー一覧を取得中...", false);
-
-    for (let i = 0; i < 10; i++) {
-      const data = await api("/api/guilds");
-      if (data && data.ok && Array.isArray(data.guilds)) {
-        if (data.guilds.length > 0) {
-          for (const g of data.guilds) {
-            const opt = document.createElement("option");
-            opt.value = g.id;
-            opt.textContent = String(g.name) + " (" + String(g.id) + ")";
-            sel.appendChild(opt);
-          }
-          sel.disabled = false;
-          showStatus("guildStatus", "取得OK", false);
-        }
-        sel.disabled = false;
-        const opt = document.createElement("option");
-        opt.value = "";
-        opt.textContent = "（0件：権限/導入状況を確認）";
-        sel.appendChild(opt);
-        showStatus("guildStatus", "0件でした（権限/導入状況を確認）", true);
-        return false;
-      }
-
-      if (data && data.error) {
-        showStatus("guildStatus", "取得失敗: " + data.error + (data._httpStatus ? " (HTTP " + data._httpStatus + ")" : ""), true);
-      } else {
-        showStatus("guildStatus", "取得失敗: unknown", true);
-      }
-      await new Promise((r)=>setTimeout(r,800));
+    const d = await api("/api/guilds");
+    if (d && d.ok && d.guilds && d.guilds.length) {
+       d.guilds.forEach(g => {
+         const o = document.createElement("option");
+         o.value = g.id; o.textContent = g.name;
+         sel.appendChild(o);
+       });
+       sel.disabled = false;
+       $("guildStatus").textContent = "";
+       return true;
+    }
+    
+    // 0件のケース
+    if (d && d.ok && (!d.guilds || d.guilds.length === 0)) {
+       const o = document.createElement("option");
+       o.textContent = "（管理可能なサーバーがありません）";
+       sel.appendChild(o);
+       $("guildStatus").textContent = "権限/導入を確認してください";
+       return false;
     }
 
-    sel.disabled = false;
-    const opt = document.createElement("option");
-    opt.value = "";
-    opt.textContent = "（取得できませんでした。/api/guilds を確認）";
-    sel.appendChild(opt);
-    showStatus("guildStatus", "取得できませんでした。/api/guilds を直接開いて確認してください。", true);
+    $("guildStatus").textContent = "Error: " + (d?.error || "unknown");
     return false;
+  }
+
+  function switchTab(t) {
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('tab-'+t).classList.add('active');
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('btn-'+t).classList.add('active');
+    if(t==='activity') fetchActivity();
+  }
+
+  async function fetchActivity() {
+    const el = document.getElementById("act-rows");
+    const ld = document.getElementById("act-loading");
+    const cr = document.getElementById("act-criteria");
+    el.innerHTML = "";
+    ld.style.display = "block";
+    
+    try {
+      const gid = $("guild").value;
+      const res = await fetch(\`/api/activity?guild=\${gid}\`); // Use appropriate auth
+      const d = await res.json();
+      
+      if (!d.ok) {
+         ld.innerText = "Error: " + (d.error || "Unknown");
+         return;
+      }
+      
+      ld.style.display = "none";
+      cr.innerText = "(Weeks: " + d.config.weeks + ")";
+      
+      if (d.data.length === 0) {
+         el.innerHTML = "<tr><td colspan='4' class='muted' style='text-align:center'>No inactive members found</td></tr>";
+         return;
+      }
+      
+      let html = "";
+      d.data.forEach(r => {
+         const avatar = r.avatar_url || "https://cdn.discordapp.com/embed/avatars/0.png";
+         const name = r.display_name ? \`\${r.display_name} (@\${r.username})\` : r.user_id;
+         const roleMark = r.has_role === "Yes" ? "<span style='color:#00ff00'>Yes</span>" : (r.has_role === "No" ? "<span style='color:#ff0000'>No</span>" : "-");
+         const introMark = r.has_intro === "Yes" ? "<span style='color:#00ff00'>Yes</span>" : (r.has_intro.includes("No") ? "<span style='color:#ff0000'>No</span>" : "-");
+         
+         html += \`<tr>
+           <td><div class="user-cell"><img src="\${avatar}" class="avatar"/><div>\${name}</div></div></td>
+           <td>\${r.last_vc}</td>
+           <td>\${roleMark}</td>
+           <td>\${introMark}</td>
+         </tr>\`;
+      });
+      el.innerHTML = html;
+      
+    } catch(e) {
+      ld.innerText = "Fetch Error";
+    }
   }
 
   async function reload(){
     if (loading) return;
     loading = true;
-    try{
-      const guildId = $("guild").value;
-      const month = $("month").value;
-      if (!guildId || !month) {
-        $("summary").textContent = "サーバーと月を選んでください";
-        return;
+    try {
+      const gid = $("guild").value;
+      const mon = $("month").value;
+      if (!gid) return;
+
+      const [stats, ng, st] = await Promise.all([
+        api(\`/api/stats?guild=\${gid}&month=\${mon}\`),
+        api(\`/api/ngwords?guild=\${gid}\`),
+        api(\`/api/settings?guild=\${gid}\`)
+      ]);
+
+      // Summary
+      if (stats.ok) {
+        const s = stats.stats.summary;
+        $("summary").innerHTML = \`<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">\${statBox("VC IN", s.joins)} \${statBox("VC OUT", s.leaves)} \${statBox("TIMEOUT", s.timeouts)} \${statBox("NG WORD", s.ngDetected)}</div>\`;
+        
+        let rows = "";
+        (stats.stats.topNgUsers || []).forEach(u => rows += renderUserRow(u));
+        $("topNg").innerHTML = rows || '<tr><td colspan="2" class="muted" style="text-align:center">なし</td></tr>';
+
+        // Settings info from Stats (channel name)
+        const sInfo = stats.stats.settings_info || {};
+        if (st.ok && st.settings) {
+           const logChName = sInfo.log_channel_name ? \`#\${sInfo.log_channel_name}\` : (st.settings.log_channel_id || "未設定");
+           $("settingsBox").innerHTML = \`
+             <div class="settings-grid" style="margin-bottom:8px;">
+               <div class="settings-label">Log Channel</div><div class="settings-val">\${logChName}</div>
+             </div>
+           \`;
+           $("threshold").value = st.settings.ng_threshold ?? 3;
+           $("timeout").value = st.settings.timeout_minutes ?? 10;
+        }
+
+        // Activity tab visibility
+        if (stats.tier && (stats.tier === "pro" || stats.tier === "pro_plus")) {
+          $("btn-activity").style.display = "inline-block";
+        } else {
+          $("btn-activity").style.display = "none";
+        }
       }
 
-      // stats
-      const stats = await api("/api/stats?guild=" + encodeURIComponent(guildId) + "&month=" + encodeURIComponent(month));
-      if (!stats || !stats.ok) {
-        $("summary").innerHTML = '<div class="err">stats取得失敗: ' + (stats?.error || "unknown") + '</div>';
-        // デバッグ表示（bad_jsonならrawが入る）
-        const dbg = $("debugStats");
-        dbg.style.display = "block";
-        dbg.textContent = JSON.stringify(stats, null, 2);
-        $("topNg").innerHTML = '<tr><td colspan="2" class="muted">（未取得）</td></tr>';
-      } else {
-        $("debugStats").style.display = "none";
-        const summary = stats.stats?.summary ?? {};
-        const byType = summary.byType ?? {};
-        $("summary").innerHTML =
-          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:10px;">' +
-            card("NG検知", summary.ngDetected ?? 0) +
-            card("Timeout", summary.timeouts ?? 0) +
-            card("Join", summary.joins ?? 0) +
-            card("Leave", summary.leaves ?? 0) +
-          '</div>' +
-          '<div style="font-weight:600;margin:6px 0;">内訳（byType）</div>' +
-          renderByTypeTable(byType);
-
-        const top = stats.stats?.topNgUsers ?? [];
-        $("topNg").innerHTML = top.map(x =>
-          '<tr>' +
-            '<td>' + (x.user_label || (x.display_name ? (x.display_name + ' (@' + (x.username||'') + ')') : x.user_id)) + '</td>' +
-            '<td>' + (x.cnt ?? 0) + '</td>' +
-          '</tr>'
-        ).join("") || '<tr><td colspan="2" class="muted">（なし）</td></tr>';
+      // NG Words
+      if (ng.ok) {
+        $("ngwords").textContent = (ng.words||[]).map(w => w.kind==="regex" ? \`/\${w.word}/\${w.flags}\` : w.word).join("\\n") || "（なし）";
+        $("ngStatus").textContent = \`\${(ng.words||[]).length} words\`;
       }
 
-      // ngwords
-      const ng = await api("/api/ngwords?guild=" + encodeURIComponent(guildId));
-      if (!ng || !ng.ok) {
-        $("ngwords").textContent = "取得失敗: " + (ng?.error || "unknown");
-        showStatus("ngStatus", "取得失敗: " + (ng?.error || "unknown"), true);
-      } else {
-        $("ngwords").textContent = (ng.words || []).map(w =>
-          (w.kind === "regex"
-            ? "/" + w.word + "/" + (w.flags || "")
-            : w.word)
-        ).join(String.fromCharCode(10)) || "（なし）";
-
-        showStatus("ngStatus", "取得OK（" + (ng.count ?? (ng.words||[]).length) + "件）", false);
-      }
-
-      // settings
-      const st = await api("/api/settings?guild=" + encodeURIComponent(guildId));
-      if (!st || !st.ok) {
-        $("settingsBox").innerHTML = '<div class="err">取得失敗: ' + (st?.error || "unknown") + '</div>';
-        showStatus("settingsStatus", "設定取得失敗: " + (st?.error || "unknown"), true);
-      } else {
-        const s = st.settings ?? { log_channel_id:null, ng_threshold:3, timeout_minutes:10 };
-        $("settingsBox").innerHTML = renderSettingsBox(s);
-        $("threshold").value = s.ng_threshold ?? 3;
-        $("timeout").value = s.timeout_minutes ?? 10;
-        showStatus("settingsStatus", "取得OK", false);
-      }
     } finally {
       loading = false;
     }
   }
 
-  $("reload").addEventListener("click", reload);
-  $("guild").addEventListener("change", reload);
-  $("month").addEventListener("change", reload);
+  $("guild").onchange = reload;
+  $("month").onchange = reload;
+  $("reload").onclick = reload;
 
-  $("btn_add").addEventListener("click", async () => {
-    const guildId = $("guild").value;
-    const word = $("ng_add").value;
-    if (!guildId) return alert("サーバーを選んでください");
-    if (!word.trim()) return alert("ワードを入力してください");
-    const r = await postJson("/api/ngwords/add", { guild: guildId, word: word.trim() });
-    if (!r.ok) alert("追加失敗: " + (r.error || "unknown"));
-    $("ng_add").value = "";
-    await reload();
-  });
+  $("btn_add").onclick = async () => {
+     const w = $("ng_add").value; if(!w)return;
+     await post("/api/ngwords/add", { guild: $("guild").value, word: w });
+     $("ng_add").value=""; reload();
+  };
+  $("btn_remove").onclick = async () => {
+     const w = $("ng_remove").value; if(!w)return;
+     await post("/api/ngwords/remove", { guild: $("guild").value, word: w });
+     $("ng_remove").value=""; reload();
+  };
+  $("btn_clear").onclick = async () => {
+     if(!confirm("Sure?"))return;
+     await post("/api/ngwords/clear", { guild: $("guild").value });
+     reload();
+  };
+  $("btn_save").onclick = async () => {
+     await post("/api/settings/update", {
+       guild: $("guild").value,
+       ng_threshold: $("threshold").value,
+       timeout_minutes: $("timeout").value
+     });
+     alert("Saved");
+     reload();
+  };
 
-  $("btn_remove").addEventListener("click", async () => {
-    const guildId = $("guild").value;
-    const word = $("ng_remove").value;
-    if (!guildId) return alert("サーバーを選んでください");
-    if (!word.trim()) return alert("ワードを入力してください");
-    const r = await postJson("/api/ngwords/remove", { guild: guildId, word: word.trim() });
-    if (!r.ok) alert("削除失敗: " + (r.error || "unknown"));
-    $("ng_remove").value = "";
-    await reload();
-  });
-
-  $("btn_clear").addEventListener("click", async () => {
-    if (!confirm("NGワードを全削除します。よろしいですか？")) return;
-    const guildId = $("guild").value;
-    if (!guildId) return alert("サーバーを選んでください");
-    const r = await postJson("/api/ngwords/clear", { guild: guildId });
-    if (!r.ok) alert("全削除失敗: " + (r.error || "unknown"));
-    await reload();
-  });
-
-  $("btn_save").addEventListener("click", async () => {
-    const guildId = $("guild").value;
-    if (!guildId) return alert("サーバーを選んでください");
-    const ng_threshold = Number($("threshold").value);
-    const timeout_minutes = Number($("timeout").value);
-    const r = await postJson("/api/settings/update", { guild: guildId, ng_threshold, timeout_minutes });
-    if (!r.ok) return alert("保存失敗: " + (r.error || "unknown"));
-    await reload();
-    alert("保存しました");
-  });
-
-  (async () => {
+  (async()=>{
     $("month").value = yyyymmNow();
-    await loadGuilds();
-    await reload();
+    if(await loadGuilds()) reload();
   })();
 })();
 </script>
@@ -835,249 +859,253 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /* =========================
-   DB
+   DB (Postgres)
 ========================= */
 let db = null;
 
-async function tableExists(db, name) {
-  const row = await db.get(
-    `SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
-    [name]
-  );
-  return !!row;
+function makeDb(pool) {
+  return {
+    async get(sql, ...params) {
+      const r = await pool.query(sql, params.flat());
+      return r.rows[0] ?? null;
+    },
+    async all(sql, ...params) {
+      const r = await pool.query(sql, params.flat());
+      return r.rows ?? [];
+    },
+    async run(sql, ...params) {
+      const r = await pool.query(sql, params.flat());
+      return { changes: r.rowCount ?? 0 };
+    },
+    async exec(sql) {
+      await pool.query(sql);
+      return true;
+    },
+  };
 }
 
-// まず “最低限のテーブル” を作る（空DBでも起動できるようにする）
 async function ensureBaseTables(db) {
-  // ログ本体
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS log_events (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      guild_id TEXT NOT NULL,
-      user_id TEXT,
-      type TEXT,
-      ts INTEGER NOT NULL,
-      channel_id TEXT,
-      thread_id TEXT,
-      message_id TEXT,
-      content TEXT,
-      duration_ms INTEGER
-    );
-  `);
-
-  // 旧スキーマ（kind無し）をまず作っておく
-  // ※ ここから migrateLogThreadsKind で kind 対応に置き換える
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS log_threads (
-      guild_id TEXT NOT NULL,
-      date_key TEXT NOT NULL,
-      thread_id TEXT NOT NULL,
-      PRIMARY KEY (guild_id, date_key)
-    );
-  `);
-}
-
-// 旧 log_threads → kind 対応へ移行
-async function migrateLogThreadsKind(db) {
-  try {
-    // 新規DBなどで log_threads が無いなら移行不要
-    if (!(await tableExists(db, "log_threads"))) return;
-
-    const cols = await db.all(`PRAGMA table_info(log_threads);`);
-    const hasKind = cols.some((c) => c.name === "kind");
-    if (hasKind) return;
-
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS log_threads_new (
-        guild_id TEXT,
-        date_key TEXT,
-        kind TEXT,
-        thread_id TEXT,
-        PRIMARY KEY (guild_id, date_key, kind)
-      );
-    `);
-
-    await db.exec(`
-      INSERT OR IGNORE INTO log_threads_new (guild_id, date_key, kind, thread_id)
-      SELECT guild_id, date_key, 'main' as kind, thread_id
-      FROM log_threads;
-    `);
-
-    await db.exec(`DROP TABLE log_threads;`);
-    await db.exec(`ALTER TABLE log_threads_new RENAME TO log_threads;`);
-    console.log("✅ Migrated log_threads -> kind-aware schema");
-  } catch (e) {
-    console.error("❌ log_threads migration failed:", e?.message ?? e);
-  }
-}
-
-// カラム追加（存在チェック付き）
-async function ensureColumn(db, table, column, typeSql) {
-  // テーブルが無いなら何もしない（落とさない）
-  if (!(await tableExists(db, table))) return;
-
-  const cols = await db.all(`PRAGMA table_info(${table})`);
-  const exists = cols.some((c) => c.name === column);
-  if (exists) return;
-
-  await db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${typeSql}`);
-  console.log(`✅ Migrated: ${table}.${column} added (${typeSql})`);
-}
-
-/* =========================
-   VC sessions (IN中でも集計するため)
-========================= */
-async function migrateVcSessions(db) {
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS vc_sessions (
-      guild_id   TEXT NOT NULL,
-      user_id    TEXT NOT NULL,
-      channel_id TEXT,
-      join_ts    INTEGER NOT NULL,
-      PRIMARY KEY (guild_id, user_id)
-    );
-  `);
-
-  // log_events に duration_ms が無いなら追加（あれば無視）
-  try { await db.exec(`ALTER TABLE log_events ADD COLUMN duration_ms INTEGER;`); } catch (_) {}
-}
-
-async function runDbMigrations(db) {
-  // ここに既存の ensureColumn(...) などがあるはず
-  await ensureColumn(db, "log_events", "duration_ms", "INTEGER");
-
-  // log_events の列不足を補う（既存DB互換）
-await ensureColumn(db, "log_events", "type", "TEXT");
-await ensureColumn(db, "log_events", "user_id", "TEXT");
-await ensureColumn(db, "log_events", "meta", "TEXT");
-await ensureColumn(db, "log_events", "ts", "INTEGER");
-
-// VC集計用（既に入れてるならOK）
-await ensureColumn(db, "log_events", "duration_ms", "INTEGER");
-
-  // ✅ VCセッションのマイグレーションは runDbMigrations の中で呼ぶ
-  await migrateVcSessions(db);
-
   await db.exec(`
     CREATE TABLE IF NOT EXISTS settings (
       guild_id TEXT PRIMARY KEY,
       log_channel_id TEXT,
       ng_threshold INTEGER DEFAULT ${DEFAULT_NG_THRESHOLD},
-      timeout_minutes INTEGER DEFAULT ${DEFAULT_TIMEOUT_MIN}
+      timeout_minutes INTEGER DEFAULT ${DEFAULT_TIMEOUT_MIN},
+      activity_weeks INTEGER DEFAULT 4,
+      intro_channel_id TEXT,
+      target_role_id TEXT
     );
-  `);
 
-  await db.exec(`
     CREATE TABLE IF NOT EXISTS ng_words (
-      guild_id TEXT,
-      kind TEXT DEFAULT 'literal',
-      word TEXT,
-      flags TEXT DEFAULT 'i',
+      guild_id TEXT NOT NULL,
+      kind TEXT NOT NULL DEFAULT 'literal',
+      word TEXT NOT NULL,
+      flags TEXT NOT NULL DEFAULT 'i',
       PRIMARY KEY (guild_id, kind, word)
     );
-  `);
 
-  // 旧schema互換
-  try {
-    const cols = await db.all(`PRAGMA table_info(ng_words);`);
-    const hasKind = cols.some((c) => c.name === "kind");
-    const hasFlags = cols.some((c) => c.name === "flags");
-    if (!hasKind) await db.exec(`ALTER TABLE ng_words ADD COLUMN kind TEXT DEFAULT 'literal';`);
-    if (!hasFlags) await db.exec(`ALTER TABLE ng_words ADD COLUMN flags TEXT DEFAULT 'i';`);
-  } catch {}
-
-  await db.exec(`
     CREATE TABLE IF NOT EXISTS ng_hits (
-      guild_id TEXT,
-      user_id TEXT,
-      count INTEGER DEFAULT 0,
-      updated_at INTEGER,
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      count INTEGER NOT NULL DEFAULT 0,
+      updated_at BIGINT,
       PRIMARY KEY (guild_id, user_id)
     );
-  `);
 
-  await db.exec(`
+    CREATE TABLE IF NOT EXISTS log_threads (
+      guild_id TEXT NOT NULL,
+      date_key TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      thread_id TEXT NOT NULL,
+      PRIMARY KEY (guild_id, date_key, kind)
+    );
+
+    CREATE TABLE IF NOT EXISTS vc_sessions (
+      guild_id   TEXT NOT NULL,
+      user_id    TEXT NOT NULL,
+      channel_id TEXT,
+      join_ts    BIGINT NOT NULL,
+      PRIMARY KEY (guild_id, user_id)
+    );
+
     CREATE TABLE IF NOT EXISTS log_events (
-      guild_id TEXT,
+      id BIGSERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
       type TEXT,
       user_id TEXT,
+      ts BIGINT NOT NULL,
       meta TEXT,
-      ts INTEGER
+      duration_ms BIGINT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_log_events_guild_ts ON log_events (guild_id, ts);
+    CREATE INDEX IF NOT EXISTS idx_log_events_guild_type_ts ON log_events (guild_id, type, ts);
+
+    CREATE TABLE IF NOT EXISTS licenses (
+      guild_id TEXT PRIMARY KEY,
+      notes TEXT,
+      expires_at BIGINT
     );
   `);
-
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS vc_active (
-      guild_id TEXT,
-      user_id TEXT,
-      channel_id TEXT,
-      joined_at INTEGER,
-      PRIMARY KEY (guild_id, user_id)
-    );
-  `);
-
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS vc_stats_month (
-      guild_id TEXT,
-      month_key TEXT,
-      user_id TEXT,
-      joins INTEGER DEFAULT 0,
-      total_ms INTEGER DEFAULT 0,
-      PRIMARY KEY (guild_id, month_key, user_id)
-    );
-  `);
-
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS vc_stats_total (
-      guild_id TEXT,
-      user_id TEXT,
-      joins INTEGER DEFAULT 0,
-      total_ms INTEGER DEFAULT 0,
-      PRIMARY KEY (guild_id, user_id)
-    );
-  `);
-
-  await db.exec(`CREATE INDEX IF NOT EXISTS idx_log_events_guild_ts ON log_events (guild_id, ts);`);
-  await db.exec(`CREATE INDEX IF NOT EXISTS idx_log_events_guild_type_ts ON log_events (guild_id, type, ts);`);
-  await db.exec(`CREATE INDEX IF NOT EXISTS idx_vc_month_guild_month ON vc_stats_month (guild_id, month_key);`);
-
-  // ✅ log_threads は「kind付き」1本に統一。移行関数に任せる
-  await migrateLogThreadsKind(db);
 }
 
-// =========================
-// DB init (ONLY ONCE) + Ready gate
-// =========================
-
-// Renderで /var/data が無い場合に備える
-if (process.env.RENDER) {
+async function runDbMigrations(db) {
+  // Add columns if they don't exist (Postgres)
   try {
-    fs.mkdirSync("/var/data", { recursive: true });
+    await db.exec(`ALTER TABLE settings ADD COLUMN IF NOT EXISTS activity_weeks INTEGER DEFAULT 4`);
+    await db.exec(`ALTER TABLE settings ADD COLUMN IF NOT EXISTS intro_channel_id TEXT`);
+    await db.exec(`ALTER TABLE settings ADD COLUMN IF NOT EXISTS target_role_id TEXT`);
+
+    // License table
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS licenses (
+        guild_id TEXT PRIMARY KEY,
+        notes TEXT,
+        expires_at BIGINT,
+        tier TEXT DEFAULT 'free'
+      );
+    `);
+    // Add tier column if missing
+    await db.exec(`ALTER TABLE licenses ADD COLUMN IF NOT EXISTS tier TEXT DEFAULT 'free'`);
   } catch (e) {
-    console.error("❌ mkdir /var/data failed:", e?.message ?? e);
+    console.error("Migration error:", e.message);
+  }
+  return true;
+}
+
+/* =========================
+   License Logic
+   ========================= */
+
+// Override Map for Debug
+const tierOverrides = new Map();
+
+export function setTierOverride(guildId, tier) {
+  if (tier === null) {
+    tierOverrides.delete(guildId);
+  } else {
+    tierOverrides.set(guildId, tier);
   }
 }
 
-const DB_PATH =
-  process.env.SQLITE_PATH ||
-  (process.env.RENDER ? "/var/data/data.db" : path.join(__dirname, "data.db"));
+export async function getLicenseTier(guildId) {
+  if (!guildId) return "free";
+
+  // 0. Check Override
+  if (tierOverrides.has(guildId)) return tierOverrides.get(guildId);
+
+  // 1. Check Whitelist (Env) -> Pro+ (Unlimited)
+  const free = (process.env.FREE_GUILD_IDS || "").split(",").map(s => s.trim());
+  if (free.includes(guildId)) return "pro_plus";
+
+  // 2. Check DB
+  if (!db) return "free";
+  const row = await db.get("SELECT expires_at, tier FROM licenses WHERE guild_id=$1", guildId);
+
+  if (!row) return "free";
+
+  // Check Expiration
+  if (row.expires_at) {
+    if (Date.now() > Number(row.expires_at)) return "free"; // Expired -> Fallback to Free
+  }
+
+  // Return stored tier (or free if invalid)
+  return row.tier || "free";
+}
+
+// Helper to check if tier is enough
+export function isTierAtLeast(currentTier, requiredTier) {
+  const levels = { "free": 0, "pro": 1, "pro_plus": 2 };
+  const c = levels[currentTier] ?? 0;
+  const r = levels[requiredTier] ?? 0;
+  return c >= r;
+}
+
+export async function checkLicense(guildId) {
+  // Simple check for "Is Active" (Tier > Free? Or just "Is Allowed to use Bot"?)
+  // User Requirement: "Free Tier" exists and is allowed fundamental features.
+  // So checkLicense should basically nearly always return true unless we blacklist?
+  // Wait, previous requirement: "Limit functionality unless licensed".
+  // User said: "Free Plan has basic features, Pro has Activity, Pro+ has Scan."
+  // So ALL Tiers are valid "Licenses".
+  // But wait, "License System" previously implemented: "Block unless whitelist or DB license".
+  // Now we have "Free Plan" content.
+  // Interpretation:
+  // - Whitelisted: Pro+
+  // - DB License: assigned tier (Free/Pro/Pro+)
+  // - No DB & Not Whitelist: what happens?
+  //   - Option A: Block completely (previous logic).
+  //   - Option B: Treat as "Free" (but maybe user wants to sell "Free" license?).
+  //   - User said "Seller wants to keep specific servers free".
+  //   - And "Other servers require license".
+  //   So "No License" = "Block"?
+  //   BUT "Free Plan" is mentioned.
+  //   Maybe "Free Plan" implies a "Free License" is issued?
+  //   OR "Free Plan" is the default for EVERYONE?
+  //   "Seller wants ... others to require license" -> Sounds like "No License = Block".
+  //   So to use "Free Plan", you might need a "Free License" issued by admin.
+  //   Let's stick to: checkLicense returns true if Tier >= Free (and has valid license/whitelist).
+  const tier = await getLicenseTier(guildId);
+  // However, `getLicenseTier` as implemented above falls back to "free" if not found.
+  // We need to know if it was "Found".
+
+  // Revised Logic:
+  // If Whitelisted -> Pro+ (OK)
+  // If DB has row and not expired -> returns tier (Free/Pro/Pro+) (OK)
+  // If DB has NO row -> Returns "none" (Block)
+
+  // I need to update getLicenseTier to distinct "No License".
+  return await getLicenseTier(guildId) !== "none";
+}
+
+// Redefine getLicenseTier to return "none" if not found
+export async function getLicenseTierStrict(guildId) {
+  if (!guildId) return "none";
+
+  // 0. Check Override
+  if (tierOverrides.has(guildId)) return tierOverrides.get(guildId);
+
+  const free = (process.env.FREE_GUILD_IDS || "").split(",").map(s => s.trim());
+  if (free.includes(guildId)) return "pro_plus";
+
+  if (!db) return "none";
+  const row = await db.get("SELECT expires_at, tier FROM licenses WHERE guild_id=$1", guildId);
+  if (!row) return "none";
+
+  if (row.expires_at && Date.now() > Number(row.expires_at)) return "none"; // Expired
+
+  return row.tier || "free";
+}
+
+
+// =========================
+// DB init (Postgres) + Ready gate
+// =========================
+const DATABASE_URL = (process.env.DATABASE_URL || "").trim();
 
 const dbReady = (async () => {
   try {
-    db = await open({
-      filename: DB_PATH,
-      driver: sqlite3.Database,
+    if (!DATABASE_URL) throw new Error("DATABASE_URL is missing");
+
+    const pool = new Pool({
+      connectionString: DATABASE_URL,
+      ssl: { rejectUnauthorized: false }, // Supabase/Neon向けに保険
     });
 
+    // 接続テスト
+    await pool.query("SELECT 1");
+
+    db = makeDb(pool);
+
+    // テーブル作成（下のSQLを実行）
     await ensureBaseTables(db);
-    await migrateLogThreadsKind(db);
     await runDbMigrations(db);
 
-    console.log("✅ DB ready:", DB_PATH);
+    console.log("✅ DB ready (Postgres)");
     return true;
   } catch (e) {
     console.error("❌ DB init failed:", e?.message ?? e);
-    db = null; // 起動は継続（ログ機能だけ無効）
+    db = null;
     return false;
   }
 })();
@@ -1156,123 +1184,205 @@ function baseUrl(req) {
   return `${proto}://${host}`;
 }
 
+function tokyoNowLabel() {
+  const dtf = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  return dtf.format(new Date());
+}
+
+const _ngProcessedCache = new Set();
+function markNgProcessed(msgId) {
+  if (_ngProcessedCache.has(msgId)) return false;
+  _ngProcessedCache.add(msgId);
+  if (_ngProcessedCache.size > 1000) {
+    const it = _ngProcessedCache.values();
+    for (let i = 0; i < 200; i++) _ngProcessedCache.delete(it.next().value);
+  }
+  return true;
+}
+
+function parseNgInput(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return null;
+  const m = s.match(/^\/(.+)\/([a-z]*)$/);
+  if (m) return { kind: "regex", word: m[1], flags: m[2] || "i" };
+  return { kind: "literal", word: s, flags: "i" };
+}
+
+function overlapMs(start1, end1, start2, end2) {
+  const s = Math.max(start1, start2);
+  const e = Math.min(end1, end2);
+  return Math.max(0, e - s);
+}
+
 /* =========================
    Settings / NG
 ========================= */
-const ngProcessed = new Map(); // messageId -> timestamp
-const NG_DEDUPE_TTL = 30_000;  // 30秒
-
-function markNgProcessed(messageId) {
-  const now = Date.now();
-  for (const [k, t] of ngProcessed) {
-    if (now - t > NG_DEDUPE_TTL) ngProcessed.delete(k);
-  }
-  if (ngProcessed.has(messageId)) return false;
-  ngProcessed.set(messageId, now);
-  return true; // ★これが必要
-}
-
 async function getSettings(guildId) {
-  if (!db) return { log_channel_id: null, ng_threshold: DEFAULT_NG_THRESHOLD, timeout_minutes: DEFAULT_TIMEOUT_MIN };
-  const row = await db.get("SELECT * FROM settings WHERE guild_id = ?", guildId);
-  if (!row) {
-    return { log_channel_id: null, ng_threshold: DEFAULT_NG_THRESHOLD, timeout_minutes: DEFAULT_TIMEOUT_MIN };
+  if (!db) {
+    return {
+      log_channel_id: null,
+      ng_threshold: DEFAULT_NG_THRESHOLD,
+      timeout_minutes: DEFAULT_TIMEOUT_MIN,
+    };
   }
+
+  const row = await db.get(
+    "SELECT * FROM settings WHERE guild_id = $1",
+    guildId
+  );
+
+  if (!row) {
+    return {
+      log_channel_id: null,
+      ng_threshold: DEFAULT_NG_THRESHOLD,
+      timeout_minutes: DEFAULT_TIMEOUT_MIN,
+    };
+  }
+
   return {
     log_channel_id: row.log_channel_id ?? null,
     ng_threshold: Number(row.ng_threshold ?? DEFAULT_NG_THRESHOLD),
     timeout_minutes: Number(row.timeout_minutes ?? DEFAULT_TIMEOUT_MIN),
   };
 }
-async function updateSettings(guildId, { log_channel_id = null, ng_threshold, timeout_minutes }) {
+
+async function updateSettings(
+  guildId,
+  { log_channel_id = null, ng_threshold, timeout_minutes }
+) {
   if (!db) return { ok: false, error: "db_not_ready" };
+
   const nt = Number(ng_threshold);
   const tm = Number(timeout_minutes);
+
   await db.run(
     `INSERT INTO settings (guild_id, log_channel_id, ng_threshold, timeout_minutes)
-     VALUES (?, ?, ?, ?)
-     ON CONFLICT(guild_id) DO UPDATE SET
-       log_channel_id = excluded.log_channel_id,
-       ng_threshold = excluded.ng_threshold,
-       timeout_minutes = excluded.timeout_minutes`,
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (guild_id) DO UPDATE SET
+       log_channel_id = EXCLUDED.log_channel_id,
+       ng_threshold   = EXCLUDED.ng_threshold,
+       timeout_minutes= EXCLUDED.timeout_minutes`,
     guildId,
     log_channel_id,
     Number.isFinite(nt) ? nt : DEFAULT_NG_THRESHOLD,
     Number.isFinite(tm) ? tm : DEFAULT_TIMEOUT_MIN
   );
+
   return { ok: true };
 }
 
 async function getNgWords(guildId) {
   if (!db) return [];
+
   const rows = await db.all(
     `SELECT kind, word, flags
-     FROM ng_words
-     WHERE guild_id = ?
-     ORDER BY kind ASC, word ASC`,
+       FROM ng_words
+      WHERE guild_id = $1
+      ORDER BY kind ASC, word ASC`,
     guildId
   );
-  return rows
+
+  return (rows || [])
     .map((r) => ({
       kind: (r.kind || "literal").trim(),
       word: (r.word || "").trim(),
       flags: (r.flags || "i").trim(),
     }))
-    .filter((x) => x.word.length > 0 && (x.kind === "literal" || x.kind === "regex"));
-}
-
-function parseNgInput(raw) {
-  const s = String(raw ?? "").trim();
-  if (!s) return null;
-
-  if (s.startsWith("/") && s.lastIndexOf("/") > 0) {
-    const last = s.lastIndexOf("/");
-    const pattern = s.slice(1, last);
-    const flags = s.slice(last + 1) || "i";
-    if (!pattern.trim()) return null;
-    if (!/^[dgimsuvy]*$/.test(flags)) return null;
-    try {
-      // eslint-disable-next-line no-new
-      new RegExp(pattern, flags);
-    } catch {
-      return null;
-    }
-    return { kind: "regex", word: pattern, flags };
-  }
-
-  return { kind: "literal", word: s, flags: "i" };
+    .filter(
+      (x) =>
+        x.word.length > 0 && (x.kind === "literal" || x.kind === "regex")
+    );
 }
 
 async function addNgWord(guildId, raw) {
   if (!db) return { ok: false, error: "db_not_ready" };
+
   const parsed = parseNgInput(raw);
   if (!parsed) return { ok: false, error: "invalid_input" };
+
+  // ✅ Postgres: INSERT OR IGNORE は無い → ON CONFLICT DO NOTHING
   await db.run(
-    `INSERT OR IGNORE INTO ng_words (guild_id, kind, word, flags)
-     VALUES (?, ?, ?, ?)`,
+    `INSERT INTO ng_words (guild_id, kind, word, flags)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (guild_id, kind, word) DO NOTHING`,
     guildId,
     parsed.kind,
     parsed.word,
     parsed.flags || "i"
   );
+
   return { ok: true, added: parsed };
 }
+
 async function removeNgWord(guildId, raw) {
   if (!db) return { ok: false, error: "db_not_ready" };
+
   const parsed = parseNgInput(raw);
   if (!parsed) return { ok: false, error: "invalid_input" };
+
+  // 1. 削除
   const r = await db.run(
     `DELETE FROM ng_words
-     WHERE guild_id = ? AND kind = ? AND word = ?`,
+        WHERE guild_id = $1 AND kind = $2 AND word = $3`,
     guildId,
     parsed.kind,
     parsed.word
   );
-  return { ok: true, deleted: r?.changes ?? 0, target: parsed };
+
+  // 2. 影響ユーザーのカウント再計算（削除されたワードでの加算分を引く）
+  //    正確には「削除されたワードで検知されたログ」を探して、その分を ng_hits から引く
+  let recalculated = 0;
+  if ((r?.changes ?? 0) > 0) {
+    try {
+      // pattern string construction
+      const patternStr = parsed.kind === "regex"
+        ? `/${parsed.word}/${parsed.flags}`
+        : parsed.word;
+
+      // このワードで引っかかったログを集計
+      const rows = await db.all(
+        `SELECT user_id, COUNT(*) as cnt
+             FROM log_events
+            WHERE guild_id = $1
+              AND type = 'ng_detected'
+              AND meta LIKE $2
+            GROUP BY user_id`,
+        guildId,
+        `%${patternStr}%` // 簡易一致（厳密にはJSON parseが必要だが、matchedフィールドがpatternそのものなのでこれで近似）
+      );
+
+      for (const row of rows) {
+        const uid = row.user_id;
+        const diff = Number(row.cnt || 0);
+        if (diff > 0) {
+          await db.run(
+            `UPDATE ng_hits SET count = GREATEST(0, count - $1), updated_at = $2
+                WHERE guild_id = $3 AND user_id = $4`,
+            diff, Date.now(), guildId, uid
+          );
+        }
+      }
+      recalculated = rows.length;
+    } catch (e) {
+      console.error("Recalc error:", e);
+    }
+  }
+
+  return { ok: true, deleted: r?.changes ?? 0, recalculated, target: parsed };
 }
+
 async function clearNgWords(guildId) {
   if (!db) return { ok: false, error: "db_not_ready" };
-  await db.run(`DELETE FROM ng_words WHERE guild_id = ?`, guildId);
+
+  await db.run(`DELETE FROM ng_words WHERE guild_id = $1`, guildId);
   return { ok: true };
 }
 
@@ -1287,7 +1397,7 @@ async function logEvent(guildId, type, userId, meta = {}, durationMs = null) {
 
   await db.run(
     `INSERT INTO log_events (guild_id, type, user_id, ts, meta, duration_ms)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+     VALUES ($1, $2, $3, $4, $5, $6)`,
     guildId,
     type,
     userId,
@@ -1330,7 +1440,7 @@ async function discordApi(accessToken, apiPath, method = "GET", body = null, ext
         try {
           const data = await r.json();
           if (typeof data?.retry_after === "number") waitMs = Math.ceil(data.retry_after * 1000);
-        } catch {}
+        } catch { }
       }
       waitMs += 250 + Math.floor(Math.random() * 250);
       if (attempt === maxRetries) throw new Error(`Discord API ${apiPath} failed: 429`);
@@ -1447,7 +1557,7 @@ function resolveUserLabel(guild, userId) {
     if (u) {
       return `${u.username} (@${u.username})`;
     }
-  } catch {}
+  } catch { }
 
   // 最後の保険
   return userId;
@@ -1479,6 +1589,15 @@ client.on("interactionCreate", async (interaction) => {
   };
 
   try {
+    // License Check
+    const tier = await getLicenseTierStrict(interaction.guildId);
+    if (tier === "none" && interaction.commandName !== "license") {
+      await interaction.reply({ content: "🚫 このサーバーではライセンスが有効ではありません (License Required)", ephemeral: true });
+      return;
+    }
+    // Inject tier into interaction for commands
+    interaction.userTier = tier;
+
     const command = client.commands.get(interaction.commandName);
 
     if (!command) {
@@ -1526,6 +1645,8 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
 
     // ✅ チャンネルが変わってない（mute/deaf等）は全部無視
     if (oldCh === newCh) return;
+
+    if ((await getLicenseTierStrict(guild.id)) === "none") return; // License Check
 
     const who = member.displayName || member.user?.username || member.id;
     const timeLabel = tokyoNowLabel();
@@ -1600,7 +1721,7 @@ function matchNg(content, ngList) {
       try {
         const re = new RegExp(w.word, w.flags || "i");
         if (re.test(text)) return { hit: true, pattern: `/${w.word}/${w.flags || "i"}` };
-      } catch {}
+      } catch { }
       continue;
     }
 
@@ -1631,22 +1752,28 @@ function matchNg(content, ngList) {
 
 async function incNgHit(guildId, userId) {
   if (!db) return 0;
+
   const now = Date.now();
+
+  // ✅ Postgres: INSERT ... ON CONFLICT DO UPDATE
   await db.run(
     `INSERT INTO ng_hits (guild_id, user_id, count, updated_at)
-     VALUES (?, ?, 1, ?)
-     ON CONFLICT(guild_id, user_id) DO UPDATE SET
-       count = count + 1,
-       updated_at = excluded.updated_at`,
+     VALUES ($1, $2, 1, $3)
+     ON CONFLICT (guild_id, user_id)
+     DO UPDATE SET
+       count = ng_hits.count + 1,
+       updated_at = EXCLUDED.updated_at`,
     guildId,
     userId,
     now
   );
+
   const row = await db.get(
-    `SELECT count FROM ng_hits WHERE guild_id = ? AND user_id = ?`,
+    `SELECT count FROM ng_hits WHERE guild_id = $1 AND user_id = $2`,
     guildId,
     userId
   );
+
   return Number(row?.count ?? 0);
 }
 
@@ -1668,6 +1795,8 @@ client.on(Events.MessageCreate, async (message) => {
     if (!markNgProcessed(message.id)) return;
 
     const guildId = message.guild.id;
+
+    if ((await getLicenseTierStrict(guildId)) === "none") return; // License Check
 
     // NG一覧
     const ngList = await getNgWords(guildId);
@@ -1698,7 +1827,7 @@ client.on(Events.MessageCreate, async (message) => {
 
     // ===== ① NGログ（削除前） =====
     const embed = new EmbedBuilder()
-      .setColor(0xe74c3c) 
+      .setColor(0xe74c3c)
       .setAuthor({ name: authorName, iconURL: avatar || undefined })
       .setDescription(`@${displayName} NG word detected in <#${message.channelId}>`)
       .addFields(
@@ -1944,6 +2073,7 @@ function intersectUserBotGuilds(userGuilds) {
 
 const server = http.createServer(async (req, res) => {
   try {
+
     const u = new URL(req.url || "/", baseUrl(req));
     const pathname = (u.pathname || "/").replace(/\/+$/, "") || "/";
 
@@ -2102,6 +2232,9 @@ const server = http.createServer(async (req, res) => {
 
     // ===== APIs =====
     if (pathname.startsWith("/api/")) {
+      const ok = await dbReady;
+      if (!ok || !db) return json(res, { ok: false, error: "db_not_ready" }, 503);
+
       if (!isAuthed) return json(res, { ok: false, error: "unauthorized" }, 401);
 
       // OAuth時は「ユーザー所属 && Bot導入 && ManageGuild/Admin」だけ許可
@@ -2128,8 +2261,8 @@ const server = http.createServer(async (req, res) => {
           return true;
         }
 
-  return false;
-}
+        return false;
+      }
 
       async function requireGuildAllowed(guildId) {
         if (!guildId) return { ok: false, status: 400, error: "missing_guild" };
@@ -2250,118 +2383,226 @@ const server = http.createServer(async (req, res) => {
       }
 
       // /api/stats
-if (pathname === "/api/stats") {
-    // ✅ DBが準備できる前に叩かれても落とさない
-  const ok = await dbReady;
-  if (!ok || !db) {
-    return json(res, { ok: false, error: "db_not_ready" }, 503);
-  }
+      if (pathname === "/api/stats") {
+        const ok = await dbReady;
+        if (!ok || !db) return json(res, { ok: false, error: "db_not_ready" }, 503);
 
-  const guildId = u.searchParams.get("guild") || "";
-  const month = u.searchParams.get("month") || ""; // YYYY-MM
-  const chk = await requireGuildAllowed(guildId);
-  if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
+        const guildId = u.searchParams.get("guild") || "";
+        const month = u.searchParams.get("month") || ""; // YYYY-MM
+        const chk = await requireGuildAllowed(guildId);
+        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
 
-  if (!/^\d{4}-\d{2}$/.test(month)) {
-    return json(res, { ok: false, error: "invalid_month_format", hint: "use YYYY-MM" }, 400);
-  }
+        if (!/^\d{4}-\d{2}$/.test(month)) {
+          return json(res, { ok: false, error: "invalid_month_format", hint: "use YYYY-MM" }, 400);
+        }
 
-  const range = tokyoMonthRangeUTC(month);
-  if (!range) return json(res, { ok: false, error: "bad_month" }, 400);
+        const range = tokyoMonthRangeUTC(month);
+        if (!range) return json(res, { ok: false, error: "bad_month" }, 400);
 
-  // 月次タイプ集計
-  const rows = await db.all(
-    `SELECT type, COUNT(*) AS cnt
-     FROM log_events
-     WHERE guild_id = ?
-       AND ts >= ?
-       AND ts < ?
-     GROUP BY type`,
-    [guildId, range.start, range.end]
-  );
+        // 月次タイプ集計
+        const rows = await db.all(
+          `SELECT type, COUNT(*) AS cnt
+           FROM log_events
+           WHERE guild_id = ?
+             AND ts >= ?
+             AND ts < ?
+           GROUP BY type`,
+          [guildId, range.start, range.end]
+        );
 
-  const byType = Object.fromEntries(rows.map((r) => [r.type ?? "unknown", Number(r.cnt || 0)]));
+        const byType = Object.fromEntries(rows.map((r) => [r.type ?? "unknown", Number(r.cnt || 0)]));
+        const ngDetected = byType.ng_detected ?? byType.ng ?? 0;
+        const timeouts = byType.timeout_applied ?? byType.timeout ?? 0;
+        const joins = byType.vc_in ?? 0;
+        const leaves = byType.vc_out ?? 0;
 
-  const ngDetected = byType.ng_detected ?? byType.ng ?? 0;
-  const timeouts = byType.timeout_applied ?? byType.timeout ?? 0;
+        // Top NG Users
+        const topNgRows = await db.all(
+          `SELECT user_id, COUNT(*) AS cnt
+           FROM log_events
+           WHERE guild_id = ?
+             AND ts >= ? AND ts < ?
+             AND type = 'ng_detected'
+             AND user_id IS NOT NULL AND user_id <> ''
+           GROUP BY user_id
+           ORDER BY cnt DESC
+           LIMIT 10`,
+          [guildId, range.start, range.end]
+        );
 
-  // ✅ VC 入退室を「Join/Leave」として表示する
-  const joins  = byType.vc_in  ?? 0;
-  const leaves = byType.vc_out ?? 0;
+        const guild = await client.guilds.fetch(guildId).catch(() => null);
 
-  // （任意）MOVEもカードで出したいなら summary に追加してもOK
-  // const moves  = byType.vc_move ?? 0;
+        async function resolveParams(uid, cid) {
+          const id = String(uid || "");
+          const chId = String(cid || "");
 
-  // ===== Top NG Users（ID→表示名/ユーザー名に解決）=====
-  let topNgUsers = [];
+          let userObj = null;
+          if (id) {
+            userObj = client.users.cache.get(id) || (await client.users.fetch(id).catch(() => null));
+          }
+          let memberObj = null;
+          if (guild && id) {
+            memberObj = guild.members.cache.get(id) || (await guild.members.fetch(id).catch(() => null));
+          }
 
-  const top = await db.all(
-    `SELECT user_id, COUNT(*) AS cnt
-     FROM log_events
-     WHERE guild_id = ?
-       AND ts >= ? AND ts < ?
-       AND type = 'ng_detected'
-       AND user_id IS NOT NULL AND user_id <> ''
-     GROUP BY user_id
-     ORDER BY cnt DESC
-     LIMIT 10`,
-    [guildId, range.start, range.end]
-  );
+          let channelName = null;
+          if (guild && chId) {
+            const ch = guild.channels.cache.get(chId) || (await guild.channels.fetch(chId).catch(() => null));
+            if (ch) channelName = ch.name;
+          }
 
-  const guild = await client.guilds.fetch(guildId).catch(() => null);
+          const username = userObj?.username ?? null;
+          const displayName = memberObj?.displayName ?? userObj?.globalName ?? userObj?.username ?? null;
+          const avatarUrl = memberObj?.displayAvatarURL?.() ?? userObj?.displayAvatarURL?.() ?? null;
 
-  async function resolveUser(uid) {
-    const id = String(uid || "");
-    if (!id) return { user_id: id, username: null, display_name: null };
+          return {
+            user_id: id,
+            username,
+            display_name: displayName,
+            avatar_url: avatarUrl,
+            channel_name: channelName
+          };
+        }
 
-    const user =
-      client.users.cache.get(id) ||
-      (await client.users.fetch(id).catch(() => null));
+        const resolvedUsers = await Promise.all(topNgRows.map((r) => resolveParams(r.user_id, null)));
 
-    let member = null;
-    if (guild) {
-      member =
-        guild.members.cache.get(id) ||
-        (await guild.members.fetch(id).catch(() => null));
-    }
+        const topNgUsers = topNgRows.map((r, i) => ({
+          user_id: String(r.user_id),
+          username: resolvedUsers[i]?.username ?? null,
+          display_name: resolvedUsers[i]?.display_name ?? null,
+          avatar_url: resolvedUsers[i]?.avatar_url ?? null,
+          cnt: Number(r.cnt || 0),
+        }));
 
-    const username = user?.username ?? null;
-    const displayName =
-      member?.displayName ??
-      user?.globalName ??
-      user?.username ??
-      null;
+        const settings = await getSettings(guildId);
+        let logChannelName = null;
+        if (settings.log_channel_id) {
+          const info = await resolveParams(null, settings.log_channel_id);
+          logChannelName = info.channel_name;
+        }
 
-    return { user_id: id, username, display_name: displayName };
-  }
+        // Check Tier for UI
+        const tier = await getLicenseTierStrict(guildId);
 
-  const resolved = await Promise.all(top.map((r) => resolveUser(r.user_id)));
+        return json(res, {
+          ok: true,
+          tier,
+          stats: {
+            summary: { ngDetected, timeouts, joins, leaves, byType },
+            topNgUsers,
+            settings_info: {
+              log_channel_name: logChannelName
+            }
+          },
+        });
+      }
 
-  topNgUsers = top.map((r, i) => ({
-    user_id: String(r.user_id),
-    username: resolved[i]?.username ?? null,
-    display_name: resolved[i]?.display_name ?? null,
-    cnt: Number(r.cnt || 0),
-  }));
+      // /api/activity
+      if (pathname === "/api/activity") {
+        const guildId = u.searchParams.get("guild") || "";
+        const chk = await requireGuildAllowed(guildId);
+        if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
 
-  return json(res, {
-    ok: true,
-    stats: {
-      summary: { ngDetected, timeouts, joins, leaves, byType },
-      topNgUsers,
-    },
-  });
-}
+        const tier = await getLicenseTierStrict(guildId);
+        if (!isTierAtLeast(tier, "pro")) {
+          return json(res, { ok: false, error: "Upgrade to Pro" });
+        }
+
+        const guild = await client.guilds.fetch(guildId).catch(() => null);
+        if (!guild) return json(res, { ok: false, error: "Guild not found" }, 404);
+
+        // Core Logic
+        try {
+          const data = await checkActivityStats(guild, db);
+          return json(res, { ok: true, ...data });
+        } catch (e) {
+          return json(res, { ok: false, error: e.message });
+        }
+      }
 
       return json(res, { ok: false, error: "not_found" }, 404);
     }
 
     return text(res, "Not Found", 404);
+
   } catch (err) {
     console.error("HTTP server error:", err);
-    return json(res, { ok: false, error: "internal_error", message: err?.message || "Internal Server Error" }, 500);
+    return json(res, {
+      ok: false,
+      error: "internal_error",
+      message: err?.message || "Internal Server Error",
+    }, 500);
   }
 });
+
+// Shared Activity Logic (Used by command and API)
+export async function checkActivityStats(guild, db) {
+  // get config
+  const row = await db.get("SELECT * FROM settings WHERE guild_id=$1", guild.id);
+  const conf = {
+    weeks: row?.activity_weeks || 4,
+    introChId: row?.intro_channel_id,
+    targetRoleId: row?.target_role_id,
+  };
+
+  const thresholdDate = new Date();
+  thresholdDate.setDate(thresholdDate.getDate() - (conf.weeks * 7));
+  const thresholdTs = thresholdDate.getTime();
+
+  // 1. Members
+  const members = await guild.members.fetch();
+
+  // 2. VC logs
+  const lastVcRows = await db.all(
+    `SELECT user_id, MAX(ts) as last_ts
+     FROM log_events
+     WHERE guild_id = $1 AND type IN ('vc_in', 'vc_move')
+     GROUP BY user_id`,
+    guild.id
+  );
+  const lastVcMap = new Map();
+  for (const r of lastVcRows) lastVcMap.set(r.user_id, Number(r.last_ts));
+
+  // 3. Intro Scan
+  let introPosters = new Set();
+  if (conf.introChId) {
+    const ch = guild.channels.cache.get(conf.introChId) || await guild.channels.fetch(conf.introChId).catch(() => null);
+    if (ch && ch.isTextBased()) {
+      try {
+        const msgs = await ch.messages.fetch({ limit: 100 });
+        msgs.forEach(m => introPosters.add(m.author.id));
+      } catch { }
+    }
+  }
+
+  const results = [];
+  for (const m of members.values()) {
+    if (m.user.bot) continue;
+    const lastTs = lastVcMap.get(m.id) || 0;
+
+    // Inactive?
+    if (lastTs < thresholdTs) {
+      // checks
+      const hasRole = conf.targetRoleId ? (m.roles.cache.has(conf.targetRoleId) ? "Yes" : "No") : "-";
+      const hasIntro = conf.introChId ? (introPosters.has(m.id) ? "Yes" : "No/Unknown") : "-";
+
+      results.push({
+        user_id: m.id,
+        username: m.user.username,
+        display_name: m.displayName,
+        avatar_url: m.displayAvatarURL(),
+        last_vc: lastTs > 0 ? new Date(lastTs).toLocaleString("ja-JP") : "No Data",
+        has_role: hasRole,
+        has_intro: hasIntro
+      });
+    }
+  }
+
+  return {
+    config: conf,
+    data: results
+  };
+}
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`🌐 Listening on ${PORT}`);

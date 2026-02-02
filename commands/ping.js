@@ -1,29 +1,23 @@
 import { SlashCommandBuilder } from "discord.js";
 
-// index.js 側で定義した関数を global で使う想定
-// guildHasProAdmin は interaction.guild を渡せばOK
-
 export const data = new SlashCommandBuilder()
   .setName("ping")
   .setDescription("Botの応答とサーバーのプラン状態を確認します");
 
 export async function execute(interaction) {
-  const guild = interaction.guild;
+  // interaction.userTier is injected in index.js (interactionCreate)
+  // or use getLicenseTierStrict locally if not injected.
+  // In index.js I added `interaction.userTier = tier`.
+  const tier = interaction.userTier || "free";
 
-  let proEnabled = false;
-  try {
-    proEnabled = guild ? await global.guildHasProAdmin(guild) : false;
-  } catch {
-    proEnabled = false;
-  }
-
-  const status = proEnabled ? "🟢 PRO（有料機能ON）" : "⚪ FREE（検出のみ）";
+  let status = "⚪ Free (基本機能のみ)";
+  if (tier === "pro") status = "🟢 Pro (活動モニタリング機能)";
+  if (tier === "pro_plus") status = "🟣 Pro+ (全機能・ログ同期)";
 
   await interaction.reply({
     content:
       `🏓 Pong!\n` +
-      `サーバープラン: **${status}**\n` +
-      `（PRO/PRO+ロール持ち管理者が1人でも居ると有効）`,
+      `現在のプラン: **${status}**`,
     ephemeral: true,
   });
 }

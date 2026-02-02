@@ -1,4 +1,9 @@
-import { SlashCommandBuilder, PermissionsBitField, EmbedBuilder, MessageFlags } from "discord.js";
+import {
+  SlashCommandBuilder,
+  PermissionsBitField,
+  EmbedBuilder,
+  MessageFlags,
+} from "discord.js";
 
 export const data = new SlashCommandBuilder()
   .setName("setlog")
@@ -8,44 +13,44 @@ export const data = new SlashCommandBuilder()
   );
 
 export async function execute(interaction, db) {
-  // ✅ まず3秒以内にACK（これがないと例の通知が出る）
+  // ✅ まず3秒以内にACK
   await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => null);
 
   // ✅ 権限チェック
   if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageGuild)) {
-    // 通常投稿（ログっぽく）
-    await interaction.channel?.send({
-      content: "❌ このコマンドは管理権限（サーバー管理）が必要です",
-    }).catch(() => null);
+    await interaction.channel
+      ?.send({ content: "❌ このコマンドは管理権限（サーバー管理）が必要です" })
+      .catch(() => null);
 
-    // ACKは残さない
     setTimeout(() => interaction.deleteReply().catch(() => null), 1500);
     return;
   }
 
   const ch = interaction.options.getChannel("channel");
   if (!ch || !ch.isTextBased()) {
-    await interaction.channel?.send({ content: "❌ テキストチャンネルを指定してください" }).catch(() => null);
+    await interaction.channel
+      ?.send({ content: "❌ テキストチャンネルを指定してください" })
+      .catch(() => null);
+
     setTimeout(() => interaction.deleteReply().catch(() => null), 1500);
     return;
   }
 
-  // DB更新
+  // ✅ Postgres対応（$1, $2）
   await db.run(
     `INSERT INTO settings (guild_id, log_channel_id)
-     VALUES (?, ?)
-     ON CONFLICT(guild_id) DO UPDATE SET log_channel_id = excluded.log_channel_id`,
+     VALUES ($1, $2)
+     ON CONFLICT (guild_id)
+     DO UPDATE SET log_channel_id = EXCLUDED.log_channel_id`,
     interaction.guildId,
     ch.id
   );
 
-  // ✅ “ログっぽく” 通常投稿
   const embed = new EmbedBuilder()
     .setDescription(`✅ 管理ログの送信先を ${ch} に設定しました`)
     .setTimestamp(new Date());
 
   await interaction.channel?.send({ embeds: [embed] }).catch(() => null);
 
-  // ✅ ACKは消す（ephemeralなので本人にしか見えない＆消してもOK）
   setTimeout(() => interaction.deleteReply().catch(() => null), 1500);
 }

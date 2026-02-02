@@ -1,4 +1,3 @@
-// commands/admin.js
 import {
   SlashCommandBuilder,
   PermissionFlagsBits,
@@ -14,11 +13,11 @@ function isUnknownInteraction(err) {
 
 export const data = new SlashCommandBuilder()
   .setName("admin")
-  .setDescription("管理画面を開くリンクを表示（管理者向け）")
+  .setDescription("https://akatsuki-bot-f7ez.onrender.com")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
 export async function execute(interaction) {
-  // ✅ まず3秒以内にACK（これがないと通知が出る）
+  // ✅ まず3秒以内にACK
   try {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   } catch (e) {
@@ -26,7 +25,6 @@ export async function execute(interaction) {
     throw e;
   }
 
-  // publicSend が無い環境でも動くように保険
   const sendPublic =
     interaction.publicSend
       ? interaction.publicSend.bind(interaction)
@@ -35,8 +33,8 @@ export async function execute(interaction) {
   const finish = async (msg = "OK") => {
     try {
       await interaction.editReply(msg);
-      setTimeout(() => interaction.deleteReply().catch(() => {}), 1500);
-    } catch {}
+      setTimeout(() => interaction.deleteReply().catch(() => { }), 1500);
+    } catch { }
   };
 
   try {
@@ -49,21 +47,22 @@ export async function execute(interaction) {
       return;
     }
 
-    // ★常にトップページへ（そこからOAuthログイン→/adminへ）
-    const base =
-      interaction.client?.configBaseUrl ||
-      process.env.PUBLIC_URL ||
-      "https://YOUR-RENDER-URL.onrender.com";
+    // ✅ 指定されたURLを使用
+    const base = "https://akatsuki-bot-f7ez.onrender.com";
+
+    // ✅ 直で /admin に飛ばす
+    const url = base.endsWith("/") ? `${base}admin` : `${base}/admin`;
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setLabel("管理画面を開く")
         .setStyle(ButtonStyle.Link)
-        .setURL(base)
+        .setURL(url)
     );
 
+    // チャンネルにリンクを送信（公開）
     await sendPublic({
-      content: `🔐 管理者用ページはこちら\n${base}`,
+      content: `🔐 管理者用ページはこちら\n${url}`,
       components: [row],
     });
 
