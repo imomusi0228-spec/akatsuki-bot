@@ -1010,8 +1010,14 @@ const dbReady = (async () => {
     console.log("✅ DB ready (Postgres)");
     return true;
   } catch (e) {
-    console.error("❌ DB init failed:", e);
-    console.error("💡 ヒント: データベースを使用しない場合は、環境変数 DATABASE_URL を空にしてください。");
+    const msg = e?.message || String(e);
+    // タイムアウトや接続エラーの場合は短く表示
+    if (msg.includes("ETIMEDOUT") || msg.includes("ECONNREFUSED") || msg.includes("5342")) {
+      console.warn(`⚠️ DB connection failed (${msg}). Running without database.`);
+    } else {
+      console.error("❌ DB init failed:", msg);
+    }
+    console.log("💡 ヒント: データベースを使用しない場合は、環境変数 DATABASE_URL を削除または空にしてください。");
     db = null;
     return false;
   }
