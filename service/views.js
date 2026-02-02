@@ -505,13 +505,13 @@ const COMMON_SCRIPT = `
            const yes = "<span style='color:var(--success-color)'>Yes</span>";
            const no = "<span style='color:var(--danger-color)'>No</span>";
            const av = r.avatar_url || "https://cdn.discordapp.com/embed/avatars/0.png";
-           html += `< tr >
-             <td><div style="display:flex; align-items:center; gap:8px;"><img src="${av}" style="width:24px; height:24px; border-radius:50%;" /> <span>${r.display_name}</span></div></td>
-             <td style="text-align:center;">${r.last_vc}</td>
-             <td style="text-align:center;">${r.has_role === "Yes" ? yes : (r.has_role==="No" ? no : "-")}</td>
-             <td style="text-align:center;">${r.has_intro === "Yes" ? yes : (r.has_intro.includes("No") ? no : "-")}</td>
-             <td style="text-align:center;">${r.joined_at}</td>
-           </tr > `;
+           html += \`<tr>
+             <td><div style="display:flex; align-items:center; gap:8px;"><img src="\${av}" style="width:24px; height:24px; border-radius:50%;" /> <span>\${r.display_name}</span></div></td>
+             <td style="text-align:center;">\${r.last_vc}</td>
+             <td style="text-align:center;">\${r.has_role === "Yes" ? yes : (r.has_role==="No" ? no : "-")}</td>
+             <td style="text-align:center;">\${r.has_intro === "Yes" ? yes : (r.has_intro.includes("No") ? no : "-")}</td>
+             <td style="text-align:center;">\${r.joined_at}</td>
+           </tr>\`;
         });
         el.innerHTML = html;
      };
@@ -563,4 +563,4 @@ const COMMON_SCRIPT = `
            window.location.href = \`/api/activity/download?guild=\${gid}&role=\${role}&intro=\${intro}\`;
       };
    }
-`;
+\`;
