@@ -1210,15 +1210,20 @@ function isKatakanaOnly(s = "") {
   return /^[\u30A0-\u30FF\u30FC\u30FB]+$/u.test(String(s));
 }
 
+/**
+ * @returns {string[]} マッチしたパターンの配列
+ */
 function matchNg(content, ngList) {
   const text = String(content ?? "");
+  const hits = new Set(); // 重複排除（同じ単語が複数回あっても1メッセージでは1カウントにするならSet、全部数えるならArray）
+  // ユーザーの要望「バカアホマヌケで3件」なので、登録パターンの数だけチェック
 
   for (const w of ngList) {
     // ===== regex =====
     if (w.kind === "regex") {
       try {
         const re = new RegExp(w.word, w.flags || "i");
-        if (re.test(text)) return { hit: true, pattern: `/${w.word}/${w.flags || "i"}` };
+        if (re.test(text)) hits.add(`/${w.word}/${w.flags || "i"}`);
       } catch { }
       continue;
     }
@@ -1236,33 +1241,35 @@ function matchNg(content, ngList) {
         `${escapeRegExp(needle)}(?![\\u30A0-\\u30FF\\u30FC\\u30FB])`,
         "u"
       );
-      if (re.test(text)) return { hit: true, pattern: needle };
+      if (re.test(text)) hits.add(needle);
       continue;
     }
 
     if (hay.includes(ndl)) {
-      return { hit: true, pattern: needle };
+      hits.add(needle);
     }
   }
 
-  return { hit: false };
+  return Array.from(hits);
 }
 
-async function incNgHit(guildId, userId) {
+async function incNgHit(guildId, userId, delta = 1) {
   if (!db) return 0;
+  if (delta <= 0) delta = 1;
 
   const now = Date.now();
 
   // ✅ Postgres: INSERT ... ON CONFLICT DO UPDATE
   await db.run(
     `INSERT INTO ng_hits (guild_id, user_id, count, updated_at)
-     VALUES ($1, $2, 1, $3)
+     VALUES ($1, $2, $3, $4)
      ON CONFLICT (guild_id, user_id)
      DO UPDATE SET
-       count = ng_hits.count + 1,
+       count = ng_hits.count + EXCLUDED.count,
        updated_at = EXCLUDED.updated_at`,
     guildId,
     userId,
+    delta,
     now
   );
 
@@ -1311,8 +1318,9 @@ client.on(Events.MessageCreate, async (message) => {
       return;
     }
 
-    const m = matchNg(contentText, ngList);
-    if (!m.hit) return;
+    const matches = matchNg(contentText, ngList);
+    if (matches.length === 0) return;
+    const matchLabel = matches.join(", ");
 
     const st = await getSettings(guildId);
 
@@ -1330,7 +1338,7 @@ client.on(Events.MessageCreate, async (message) => {
       .setAuthor({ name: authorName, iconURL: avatar || undefined })
       .setDescription(`@${displayName} NG word detected in <#${message.channelId}>`)
       .addFields(
-        { name: "Matched", value: m.pattern, inline: true },
+        { name: "Matched", value: matchLabel, inline: true },
         { name: "ID", value: idLine, inline: true },
         {
           name: "Content",
@@ -1344,7 +1352,7 @@ client.on(Events.MessageCreate, async (message) => {
 
     await logEvent(guildId, "ng_detected", message.author.id, {
       channel_id: message.channelId,
-      matched: m.pattern,
+      matched: matchLabel,
       message_id: message.id,
     });
 
@@ -1370,7 +1378,7 @@ client.on(Events.MessageCreate, async (message) => {
     const warnText =
       `⚠️ **NGワード警告**\n` +
       `あなたのメッセージは削除されました。\n\n` +
-      `該当: ${m.pattern}\n` +
+      `該当: ${matchLabel}\n` +
       `繰り返すとタイムアウト等の処分が行われます。`;
 
     const dmOk = await message.author
@@ -1386,7 +1394,7 @@ client.on(Events.MessageCreate, async (message) => {
     }
 
     // ===== ④ 回数加算 → 閾値でタイムアウト =====
-    const count = await incNgHit(guildId, message.author.id);
+    const count = await incNgHit(guildId, message.author.id, matches.length);
     const threshold = Number(st.ng_threshold ?? DEFAULT_NG_THRESHOLD);
     const timeoutMin = Number(st.timeout_minutes ?? DEFAULT_TIMEOUT_MIN);
 

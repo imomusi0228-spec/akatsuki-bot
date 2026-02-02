@@ -430,17 +430,20 @@ const COMMON_SCRIPT = `
      
      $("btn_add").onclick = async () => {
         const w = $("ng_add").value; if(!w)return;
-        await post("/api/ngwords/add", { guild: $("guild").value, word: w });
+        const res = await post("/api/ngwords/add", { guild: $("guild").value, word: w });
+        if(!res.ok) alert("追加失敗: " + (res.error || "未知のエラー"));
         $("ng_add").value=""; reload();
      };
      $("btn_remove").onclick = async () => {
         const w = $("ng_remove").value; if(!w)return;
-        await post("/api/ngwords/remove", { guild: $("guild").value, word: w });
+        const res = await post("/api/ngwords/remove", { guild: $("guild").value, word: w });
+        if(!res.ok) alert("削除失敗: " + (res.error || "未知のエラー"));
         $("ng_remove").value=""; reload();
      };
      $("btn_clear").onclick = async () => {
         if(!confirm("本当に全削除しますか？"))return;
-        await post("/api/ngwords/clear", { guild: $("guild").value });
+        const res = await post("/api/ngwords/clear", { guild: $("guild").value });
+        if(!res.ok) alert("全削除失敗: " + (res.error || "未知のエラー"));
         reload();
      };
      $("btn_save").onclick = async () => {

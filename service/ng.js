@@ -54,21 +54,29 @@ export async function getNgWords(db, guildId) {
 export async function addNgWord(db, guildId, raw) {
     if (!db) return { ok: false, error: "db_not_ready" };
 
-    const parsed = parseNgInput(raw);
-    if (!parsed) return { ok: false, error: "invalid_input" };
+    // スペース、改行、全角スペースで分割
+    const tokens = String(raw || "").split(/[\s\u3000,\n]+/).filter(t => t.trim().length > 0);
+    if (tokens.length === 0) return { ok: false, error: "empty_input" };
 
-    await db.run(
-        `INSERT INTO ng_words (guild_id, kind, word, flags)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (guild_id, kind, word) DO NOTHING`,
-        guildId,
-        parsed.kind,
-        parsed.word,
-        parsed.flags || "i"
-    );
+    const added = [];
+    for (const token of tokens) {
+        const parsed = parseNgInput(token);
+        if (!parsed) continue;
+
+        await db.run(
+            `INSERT INTO ng_words (guild_id, kind, word, flags)
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (guild_id, kind, word) DO NOTHING`,
+            guildId,
+            parsed.kind,
+            parsed.word,
+            parsed.flags || "i"
+        );
+        added.push(parsed);
+    }
 
     invalidateNgCache(guildId);
-    return { ok: true, added: parsed };
+    return { ok: true, added_count: added.length, items: added };
 }
 
 export async function removeNgWord(db, guildId, raw) {
