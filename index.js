@@ -628,7 +628,7 @@ function renderAdminHTML({ user, oauth, tokenAuthed }) {
 
 <script>
 const token = new URLSearchParams(location.search).get("token") || "";
-const withToken = (url) => token ? (url + (url.includes("?")?"&":"?") + "token=" + EncodeURIComponent(token)) : url;
+const withToken = (url) => token ? (url + (url.includes("?")?"&":"?") + "token=" + encodeURIComponent(token)) : url;
 
 (() => {
   const $ = (id) => document.getElementById(id);
@@ -794,8 +794,8 @@ const withToken = (url) => token ? (url + (url.includes("?")?"&":"?") + "token="
 
       // NG Words
       if (ng.ok) {
-        $("ngwords").textContent = (ng.words||[]).map(w => w.kind==="regex" ? \`/\${w.word}/\${w.flags}\` : w.word).join("\\n") || "（なし）";
-        $("ngStatus").textContent = \`\${(ng.words||[]).length} words\`;
+        $("ngwords").textContent = (ng.words||[]).map(w => w.kind==="regex" ? "/" + w.word + "/" + w.flags : w.word).join("\\n") || "（なし）";
+        $("ngStatus").textContent = (ng.words||[]).length + " words";
       }
 
     } finally {
