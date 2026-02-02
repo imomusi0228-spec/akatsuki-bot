@@ -268,24 +268,37 @@ export function renderAdminActivityHTML({ user }) {
         <h3>アクティビティモニター <small id="act-criteria" class="muted" style="font-weight:normal; font-size:0.7em;"></small></h3>
         <div style="display:flex; gap:8px;">
            <button id="btn_scan" class="btn btn-primary">スキャン開始</button>
-           <button id="btn_csv" class="btn" style="display:none;">CSVダウンロード</button>
+           <div id="csv-tools" style="display:none; align-items:center; gap:8px;">
+              <select id="csv-role" style="font-size:0.8em; padding:4px; height:100%;">
+                 <option value="all">ロール: すべて</option>
+                 <option value="yes">ロールあり</option>
+                 <option value="no">ロールなし</option>
+              </select>
+              <select id="csv-intro" style="font-size:0.8em; padding:4px; height:100%;">
+                 <option value="all">自己紹介: すべて</option>
+                 <option value="yes">記入済み</option>
+                 <option value="no">未記入</option>
+              </select>
+              <button id="btn_csv" class="btn" style="padding:6px 12px; font-size:0.8em; background:#444;">CSV</button>
+           </div>
         </div>
       </div>
 
-      <div id="act-loading" style="display:none; padding:20px; text-align:center;" class="muted">読み込み中...</div>
+      <div id="act-loading" style="display:none; padding:20px; text-align:center;" class="muted">スキャン中...</div>
       
       <div style="overflow-x:auto;">
         <table class="data-table">
             <thead>
             <tr>
-                <th>ユーザー</th>
-                <th>最終VC</th>
-                <th>対象ロール</th>
-                <th>自己紹介</th>
+                <th id="th-name" style="cursor:pointer; user-select:none;">ユーザー <span id="sort-name"></span></th>
+                <th style="text-align:center;">最終VC</th>
+                <th style="text-align:center;">ロール</th>
+                <th style="text-align:center;">自己紹介</th>
+                <th id="th-joined" style="text-align:center; cursor:pointer; user-select:none;">参加日 <span id="sort-joined"></span></th>
             </tr>
             </thead>
             <tbody id="act-rows">
-               <tr><td colspan="4" class="muted" style="text-align:center; padding:20px;">スキャンしてください</td></tr>
+               <tr><td colspan="5" class="muted" style="text-align:center; padding:20px;">スキャンしてください</td></tr>
             </tbody>
         </table>
       </div>
@@ -468,56 +481,86 @@ const COMMON_SCRIPT = `
   async function initActivity() {
      if(!await loadGuilds()) return;
      
+     let currentData = [];
+     let sortKey = "display_name";
+     let sortOrder = 1;
+
+     const renderTable = () => {
+        const el = $("act-rows");
+        el.innerHTML = "";
+        const sorted = [...currentData].sort((a, b) => {
+           const valA = (a[sortKey] || "").toLowerCase();
+           const valB = (b[sortKey] || "").toLowerCase();
+           return valA < valB ? -sortOrder : (valA > valB ? sortOrder : 0);
+        });
+        const updateSortIcon = (id, key) => {
+           const span = $(id);
+           if(span) span.innerText = sortKey === key ? (sortOrder === 1 ? "▲" : "▼") : "";
+        };
+        updateSortIcon("sort-name", "display_name");
+        updateSortIcon("sort-joined", "joined_at");
+
+        let html = "";
+        sorted.forEach(r => {
+           const yes = "<span style='color:var(--success-color)'>Yes</span>";
+           const no = "<span style='color:var(--danger-color)'>No</span>";
+           const av = r.avatar_url || "https://cdn.discordapp.com/embed/avatars/0.png";
+           html += `< tr >
+             <td><div style="display:flex; align-items:center; gap:8px;"><img src="${av}" style="width:24px; height:24px; border-radius:50%;" /> <span>${r.display_name}</span></div></td>
+             <td style="text-align:center;">${r.last_vc}</td>
+             <td style="text-align:center;">${r.has_role === "Yes" ? yes : (r.has_role==="No" ? no : "-")}</td>
+             <td style="text-align:center;">${r.has_intro === "Yes" ? yes : (r.has_intro.includes("No") ? no : "-")}</td>
+             <td style="text-align:center;">${r.joined_at}</td>
+           </tr > `;
+        });
+        el.innerHTML = html;
+     };
+
      const runScan = async () => {
         saveGuildSelection();
         const gid = $("guild").value;
         const el = $("act-rows");
         const ld = $("act-loading");
-        
         el.innerHTML = "";
         ld.style.display = "block";
-        
+        $("csv-tools").style.display = "none";
         const res = await api(\`/api/activity?guild=\${gid}\`);
         ld.style.display = "none";
-        
         if(!res.ok) {
-           el.innerHTML = \`<tr><td colspan="4" style="color:red; text-align:center; padding:20px;">\${res.error}</td></tr>\`;
+           el.innerHTML = \`<tr><td colspan="5" style="color:red; text-align:center; padding:20px;">\${res.error}</td></tr>\`;
            return;
         }
-        
         $("act-criteria").innerText = \`判定期間: \${res.config.weeks}週間\`;
-        
-        if(res.data.length === 0) {
-           el.innerHTML = '<tr><td colspan="4" class="muted" style="text-align:center; padding:20px;">該当者なし</td></tr>';
+        currentData = res.data || [];
+        if(currentData.length === 0) {
+           el.innerHTML = '<tr><td colspan="5" class="muted" style="text-align:center; padding:20px;">該当者なし</td></tr>';
            return;
         }
-        
-        let html = "";
-        res.data.forEach(r => {
-           const yes = "<span style='color:var(--success-color)'>Yes</span>";
-           const no = "<span style='color:var(--danger-color)'>No</span>";
-           const av = r.avatar_url || "https://cdn.discordapp.com/embed/avatars/0.png";
-           
-           html += \`<tr>
-             <td><div style="display:flex; align-items:center; gap:8px;"><img src="\${av}" style="width:24px; height:24px; border-radius:50%;" /> <span>\${r.display_name}</span></div></td>
-             <td>\${r.last_vc}</td>
-             <td>\${r.has_role === "Yes" ? yes : (r.has_role==="No" ? no : "-")}</td>
-             <td>\${r.has_intro === "Yes" ? yes : (r.has_intro.includes("No") ? no : "-")}</td>
-           </tr>\`;
-        });
-        el.innerHTML = html;
+        $("csv-tools").style.display = "flex";
+        renderTable();
      };
      
-     $("guild").onchange = () => { $("act-rows").innerHTML = ""; $("act-criteria").textContent=""; };
-     $("reload").onclick = runScan; // In this tab, reload triggers scan potentially? Or just clear? Let's make it scan.
-     $("btn_scan").onclick = () => {
-         runScan().then(() => {
-             $("btn_csv").style.display = "inline-block";
-         });
-     };
-     $("btn_csv").onclick = () => {
-          const gid = $("guild").value;
-          if(gid) window.location.href = \`/api/activity/download?guild=\${gid}\`;
-     };
-  }
+      $("guild").onchange = () => { $("act-rows").innerHTML = '<tr><td colspan="5" class="muted" style="text-align:center; padding:20px;">スキャンしてください</td></tr>'; $("act-criteria").textContent=""; $("csv-tools").style.display="none"; };
+      $("reload").onclick = runScan;
+      $("btn_scan").onclick = runScan;
+
+      $("th-name").onclick = () => {
+         if(sortKey === "display_name") sortOrder *= -1;
+         else { sortKey = "display_name"; sortOrder = 1; }
+         renderTable();
+      };
+      $("th-joined").onclick = () => {
+         if(sortKey === "joined_at") sortOrder *= -1;
+         else { sortKey = "joined_at"; sortOrder = 1; }
+         renderTable();
+      };
+
+      $("btn_csv").onclick = () => {
+           const gid = $("guild").value;
+           if(!gid) return;
+           const role = $("csv-role").value;
+           const intro = $("csv-intro").value;
+           window.location.href = \`/api/activity/download?guild=\${gid}&role=\${role}&intro=\${intro}\`;
+      };
+   }
 `;

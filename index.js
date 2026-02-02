@@ -2122,7 +2122,9 @@ const server = http.createServer(async (req, res) => {
       // /api/activity/download (CSV)
       if (pathname === "/api/activity/download") {
         const guildId = u.searchParams.get("guild") || "";
-        // For download, we might use session cookie auth (which is enabled by default in sess logic).
+        const filterRole = u.searchParams.get("role") || "all";
+        const filterIntro = u.searchParams.get("intro") || "all";
+
         const chk = await requireGuildAllowed(guildId);
         if (!chk.ok) return text(res, chk.error, chk.status);
 
@@ -2135,10 +2137,20 @@ const server = http.createServer(async (req, res) => {
         if (!guild) return text(res, "Guild not found", 404);
 
         try {
-          const { config, data } = await checkActivityStats(guild, db);
+          let { config, data } = await checkActivityStats(guild, db);
+
+          // Apply filters
+          if (filterRole !== "all") {
+            const target = filterRole === "yes" ? "Yes" : "No";
+            data = data.filter(r => r.has_role === target);
+          }
+          if (filterIntro !== "all") {
+            const target = filterIntro === "yes" ? "Yes" : "No (Recent)";
+            data = data.filter(r => r.has_intro === target);
+          }
 
           // CSV Header
-          let csv = "\uFEFFUser ID,Username,DisplayName,Last VC Date,Has Target Role,Intro Post (Recent)\n";
+          let csv = "\uFEFFUser ID,Username,DisplayName,Last VC Date,Joined At,Has Target Role,Intro Post (Recent)\n";
 
           data.forEach(r => {
             const row = [
@@ -2146,6 +2158,7 @@ const server = http.createServer(async (req, res) => {
               r.username,
               r.display_name,
               r.last_vc,
+              r.joined_at,
               r.has_role,
               r.has_intro
             ].map(c => `"${String(c || "").replace(/"/g, '""')}"`).join(",");
@@ -2154,7 +2167,7 @@ const server = http.createServer(async (req, res) => {
 
           res.writeHead(200, {
             "Content-Type": "text/csv; charset=utf-8",
-            "Content-Disposition": `attachment; filename="inactive_users_${config.weeks}w.csv"`
+            "Content-Disposition": `attachment; filename="inactive_users_filtered.csv"`
           });
           res.end(csv);
           return;

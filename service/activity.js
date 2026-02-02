@@ -102,11 +102,18 @@ export async function checkActivityStats(guild, db) {
             lastVcStr = d.toISOString().split("T")[0];
         }
 
+        let joinedAtStr = "-";
+        if (m.joinedTimestamp) {
+            const d = new Date(m.joinedTimestamp);
+            joinedAtStr = d.toISOString().split("T")[0];
+        }
+
         inactiveUsers.push({
             user_id: mid,
             username: m.user.username,
             display_name: m.displayName,
             last_vc: lastVcStr,
+            joined_at: joinedAtStr,
             has_role: hasRole,
             has_intro: hasIntro
         });
