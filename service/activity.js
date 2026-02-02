@@ -6,7 +6,16 @@ function getOneWeekAgo(weeks = 1) {
     return d.getTime();
 }
 
+const activityCache = new Map();
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
 export async function checkActivityStats(guild, db) {
+    // 0. Cache Check
+    const cached = activityCache.get(guild.id);
+    if (cached && (Date.now() - cached.ts < CACHE_TTL)) {
+        return cached.data;
+    }
+
     // 1. Fetch Settings
     const setting = await db.get("SELECT activity_weeks, intro_channel_id, target_role_id FROM settings WHERE guild_id=$1", guild.id);
     const weeks = setting?.activity_weeks || 4;
@@ -49,7 +58,17 @@ export async function checkActivityStats(guild, db) {
 
     // 4. Scan Members
     // Fetch all members. API call might be heavy for large servers, but necessary.
-    const members = await guild.members.fetch();
+    // Optimization: Check if cache is already adequate
+    let members = guild.members.cache;
+    if (guild.memberCount > members.size) {
+        try {
+            members = await guild.members.fetch();
+        } catch (e) {
+            console.warn(`Members fetch failed for ${guild.id}, using cache (${members.size}/${guild.memberCount})`, e);
+            // Continue with what we have
+        }
+    }
+
     const inactiveUsers = [];
 
     // Prepare Last VC Map for inactive users
@@ -90,8 +109,13 @@ export async function checkActivityStats(guild, db) {
         });
     }
 
-    return {
+    const result = {
         config: { weeks },
         data: inactiveUsers
     };
+
+    // Save to Cache
+    activityCache.set(guild.id, { data: result, ts: Date.now() });
+
+    return result;
 }

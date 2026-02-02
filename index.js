@@ -21,6 +21,8 @@ import {
 import pg from "pg";
 const { Pool } = pg;
 import { getLicenseTierStrict, setTierOverride, getLicenseTier } from "./service/license.js";
+import { checkActivityStats } from "./service/activity.js";
+
 import { isTierAtLeast } from "./utils/common.js";
 
 /* =========================
@@ -2548,74 +2550,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-// Shared Activity Logic (Used by command and API)
-export async function checkActivityStats(guild, db) {
-  // get config
-  const row = await db.get("SELECT * FROM settings WHERE guild_id=$1", guild.id);
-  const conf = {
-    weeks: row?.activity_weeks || 4,
-    introChId: row?.intro_channel_id,
-    targetRoleId: row?.target_role_id,
-  };
 
-  const thresholdDate = new Date();
-  thresholdDate.setDate(thresholdDate.getDate() - (conf.weeks * 7));
-  const thresholdTs = thresholdDate.getTime();
-
-  // 1. Members
-  const members = await guild.members.fetch();
-
-  // 2. VC logs
-  const lastVcRows = await db.all(
-    `SELECT user_id, MAX(ts) as last_ts
-     FROM log_events
-     WHERE guild_id = $1 AND type IN ('vc_in', 'vc_move')
-     GROUP BY user_id`,
-    guild.id
-  );
-  const lastVcMap = new Map();
-  for (const r of lastVcRows) lastVcMap.set(r.user_id, Number(r.last_ts));
-
-  // 3. Intro Scan
-  let introPosters = new Set();
-  if (conf.introChId) {
-    const ch = guild.channels.cache.get(conf.introChId) || await guild.channels.fetch(conf.introChId).catch(() => null);
-    if (ch && ch.isTextBased()) {
-      try {
-        const msgs = await ch.messages.fetch({ limit: 100 });
-        msgs.forEach(m => introPosters.add(m.author.id));
-      } catch { }
-    }
-  }
-
-  const results = [];
-  for (const m of members.values()) {
-    if (m.user.bot) continue;
-    const lastTs = lastVcMap.get(m.id) || 0;
-
-    // Inactive?
-    if (lastTs < thresholdTs) {
-      // checks
-      const hasRole = conf.targetRoleId ? (m.roles.cache.has(conf.targetRoleId) ? "Yes" : "No") : "-";
-      const hasIntro = conf.introChId ? (introPosters.has(m.id) ? "Yes" : "No/Unknown") : "-";
-
-      results.push({
-        user_id: m.id,
-        username: m.user.username,
-        display_name: m.displayName,
-        avatar_url: m.displayAvatarURL(),
-        last_vc: lastTs > 0 ? new Date(lastTs).toLocaleString("ja-JP") : "No Data",
-        has_role: hasRole,
-        has_intro: hasIntro
-      });
-    }
-  }
-
-  return {
-    config: conf,
-    data: results
-  };
-}
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`🌐 Listening on ${PORT}`);
