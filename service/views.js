@@ -220,15 +220,22 @@ export function renderAdminSettingsHTML({ user }) {
       <div id="settingsBox" class="muted" style="margin-bottom:16px;">未取得</div>
       
       <div style="display:grid; grid-template-columns: auto 1fr; gap: 12px 20px; align-items:center;">
-        <div style="color:var(--text-secondary);">タイムアウト回数</div>
+        <div style="color:var(--text-secondary);">NGワードカウント</div>
         <div>
            <input id="threshold" type="number" min="1" style="width:80px;" /> 回
-           <div class="muted" style="font-size:0.8em; margin-top:4px;">※NGワードをこの回数発言すると処分</div>
+           <div class="muted" style="font-size:0.8em; margin-top:4px;">※NGワードの累計ヒット数がこの値に達すると処分</div>
         </div>
         
         <div style="color:var(--text-secondary);">タイムアウト期間</div>
         <div>
-           <input id="timeout" type="number" min="1" style="width:80px;" /> 分
+           <select id="timeout" style="width:120px;">
+             <option value="1">60秒</option>
+             <option value="5">5分</option>
+             <option value="10">10分</option>
+             <option value="60">1時間</option>
+             <option value="1440">1日</option>
+             <option value="10080">1週間</option>
+           </select>
         </div>
       </div>
       
