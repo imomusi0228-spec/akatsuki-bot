@@ -16,6 +16,10 @@ export async function execute(interaction, db) {
   // ✅ まず3秒以内にACK
   await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => null);
 
+  if (!db) {
+    return interaction.editReply("❌ データベースに接続できていません。Botの起動ログを確認してください。");
+  }
+
   // ✅ 権限チェック
   if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageGuild)) {
     await interaction.channel

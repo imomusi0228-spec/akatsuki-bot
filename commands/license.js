@@ -34,6 +34,11 @@ export async function execute(interaction, db) {
     const sub = interaction.options.getSubcommand();
     const guild = interaction.guild;
 
+    // DB required for updates
+    if (!db && sub === "add") {
+        return interaction.reply({ content: "❌ データベースに接続できていません。", ephemeral: true });
+    }
+
     if (sub === "status") {
         const isFree = (process.env.FREE_GUILD_IDS || "").includes(guild.id);
         let dbLic = null;

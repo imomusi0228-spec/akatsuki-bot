@@ -59,6 +59,8 @@ async function findUserIdByName(guild, username) {
 }
 
 export async function execute(interaction, db) {
+  if (!db) return interaction.reply({ content: "❌ データベースに接続できていません。", ephemeral: true });
+
   // Check Tier: Pro+ required
   const tier = interaction.userTier || "free";
   if (!isTierAtLeast(tier, "pro_plus")) {

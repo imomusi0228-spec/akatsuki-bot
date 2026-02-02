@@ -42,6 +42,8 @@ import { isTierAtLeast } from "../utils/common.js";
 import { checkActivityStats } from "../service/activity.js";
 
 export async function execute(interaction, db) {
+    if (!db) return interaction.reply({ content: "❌ データベースに接続できていません。", ephemeral: true });
+
     // Check Tier: Pro or Higher required
     const tier = interaction.userTier || "free";
     if (!isTierAtLeast(tier, "pro")) {
