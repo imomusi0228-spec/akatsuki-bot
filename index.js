@@ -1871,7 +1871,7 @@ const server = http.createServer(async (req, res) => {
         const chk = await requireGuildAllowed(guildId);
         if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
 
-        const r = await clearNgWords(guildId);
+        const r = await clearNgWords(db, guildId);
         return json(res, r, r.ok ? 200 : 400);
       }
 
