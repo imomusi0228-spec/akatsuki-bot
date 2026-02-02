@@ -103,7 +103,17 @@ export async function execute(interaction, db) {
     for (const th of threads) {
       // Filter by name? "log-202..." or "ng_log-202..."
       // Basic check
-      if (!th.name.match(/log-\d{4}-\d{2}/) && !th.name.includes("log")) continue;
+      // Filter by name (Relaxed)
+      // Threads: "VC IN ...", "VC OUT ...", "NGワード ...", "SETTINGS ...", "LOG ..."
+      const n = th.name;
+      const isLogThread =
+        n.startsWith("VC") ||
+        n.startsWith("NG") ||
+        n.startsWith("LO") ||
+        n.startsWith("SE") ||
+        n.includes("log");
+
+      if (!isLogThread) continue;
 
       let lastId = null;
       while (true) {

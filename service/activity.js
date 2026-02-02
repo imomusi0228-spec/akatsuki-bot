@@ -81,7 +81,10 @@ export async function checkActivityStats(guild, db) {
         guild.id
     );
     const lastVcMap = new Map();
-    lastVcRows.forEach(r => lastVcMap.set(String(r.user_id), Number(r.last_ts)));
+    lastVcRows.forEach(r => {
+        if (!r.user_id) return;
+        lastVcMap.set(String(r.user_id).trim(), Number(r.last_ts));
+    });
 
     for (const [mid, m] of members) {
         if (m.user.bot) continue; // Skip bots
