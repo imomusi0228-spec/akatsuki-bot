@@ -992,43 +992,56 @@ const dbReady = (async () => {
     return false;
   }
 
-  try {
-    const pool = new Pool({
-      connectionString: DATABASE_URL,
-      ssl: { rejectUnauthorized: false }, // Supabase/Neon向けに保険
-      connectionTimeoutMillis: 10000, // 10sec timeout
-    });
+  const MAX_RETRIES = 3;
+  let lastError = null;
 
-    // 接続テスト
-    await pool.query("SELECT 1");
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const pool = new Pool({
+        connectionString: DATABASE_URL,
+        ssl: { rejectUnauthorized: false }, // Supabase/Neon向けに保険
+        connectionTimeoutMillis: 30000, // 30sec timeout (increased from 10s)
+      });
 
-    // ✅ 一時変数で初期化（まだグローバル db には入れない）
-    const _db = makeDb(pool);
+      // 接続テスト
+      await pool.query("SELECT 1");
 
-    // テーブル作成（下のSQLを実行）
-    await ensureBaseTables(_db);
-    await runDbMigrations(_db);
+      // ✅ 一時変数で初期化（まだグローバル db には入れない）
+      const _db = makeDb(pool);
 
-    // ✅ ここで初めてグローバルに代入（準備完了）
-    db = _db;
+      // テーブル作成（下のSQLを実行）
+      await ensureBaseTables(_db);
+      await runDbMigrations(_db);
 
-    console.log("✅ DB ready (Postgres)");
-    return true;
-  } catch (e) {
-    const msg = e?.message || String(e);
-    // タイムアウトや接続エラーの場合は短く表示
-    if (msg.includes("ETIMEDOUT") || msg.includes("ECONNREFUSED") || msg.includes("5342")) {
-      console.warn(`⚠️ DB connection failed (${msg}). Running without database.`);
-    } else {
-      console.error("❌ DB init failed:", msg);
-      if (e.errors) {
-        e.errors.forEach((err, i) => console.error(`  [${i}] ${err.message} (${err.address})`));
+      // ✅ ここで初めてグローバルに代入（準備完了）
+      db = _db;
+
+      console.log("✅ DB ready (Postgres)");
+      return true;
+    } catch (e) {
+      lastError = e;
+      console.warn(`⚠️ DB connection attempt ${attempt}/${MAX_RETRIES} failed: ${e.message}`);
+      if (attempt < MAX_RETRIES) {
+        // Wait 2s before retry
+        await new Promise((res) => setTimeout(res, 2000));
       }
     }
-    console.log("💡 ヒント: データベースを使用しない場合は、環境変数 DATABASE_URL を削除または空にしてください。");
-    db = null;
-    return false;
   }
+
+  // If all retries fail
+  const msg = lastError?.message || String(lastError);
+  // タイムアウトや接続エラーの場合は短く表示
+  if (msg.includes("ETIMEDOUT") || msg.includes("ECONNREFUSED") || msg.includes("5342")) {
+    console.warn(`⚠️ DB connection failed after ${MAX_RETRIES} attempts (${msg}). Running without database.`);
+  } else {
+    console.error("❌ DB init failed:", msg);
+    if (lastError?.errors) {
+      lastError.errors.forEach((err, i) => console.error(`  [${i}] ${err.message} (${err.address})`));
+    }
+  }
+  console.log("💡 ヒント: データベースを使用しない場合は、環境変数 DATABASE_URL を削除または空にしてください。");
+  db = null;
+  return false;
 })();
 
 /* =========================
