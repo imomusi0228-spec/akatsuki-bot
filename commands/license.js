@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js";
-import { syncGuildCommands } from "../service/commands.js";
+// syncGuildCommands will be dynamically imported to avoid circular dependency
 
 
 // Owner check helper (Replace with your own ID or implement admin check)
@@ -117,6 +117,7 @@ export async function execute(interaction, db) {
         );
 
         // Sync commands immediately
+        const { syncGuildCommands } = await import("../service/commands.js");
         await syncGuildCommands(targetGid, tier);
 
         await interaction.reply({ content: `✅ ライセンスを登録しました。\nTarget: ${targetGid}\nPlan: ${tier}\nDays: ${days}\nExpires: ${expires ? new Date(expires).toLocaleString() : "無期限"}` });

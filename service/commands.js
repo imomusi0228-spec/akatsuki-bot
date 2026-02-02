@@ -14,7 +14,6 @@ import { isTierAtLeast } from "../utils/common.js";
 const COMMANDS = {
     free: [
         cmdDebug,
-        cmdAdmin, // Admin tools
         cmdSetlog,
         cmdVc,
         cmdPing,
@@ -22,6 +21,7 @@ const COMMANDS = {
         cmdLicense // License management
     ],
     pro: [
+        cmdAdmin, // Web Dashboard
         cmdActivity
     ],
     pro_plus: [
