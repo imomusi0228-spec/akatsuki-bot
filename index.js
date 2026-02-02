@@ -2086,6 +2086,9 @@ client.once(Events.ClientReady, () => {
     // 1回だけグローバルコマンドを消すならコメントアウトを外して実行
     // await clearGlobalCommands(); 
 
+    // ✅ DB接続完了を待つ (コマンド同期の正確性のため)
+    await dbReady;
+
     console.log("🔄 Starting command sync for all guilds...");
     for (const guild of client.guilds.cache.values()) {
       const tier = await getLicenseTierStrict(guild.id, db); // DB ready check is separate, assuming ready by now

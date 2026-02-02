@@ -18,10 +18,10 @@ const COMMANDS = {
         cmdVc,
         cmdPing,
         cmdNgword,
-        cmdLicense // License management
+        cmdLicense,
+        cmdAdmin // Freeでも表示させる
     ],
     pro: [
-        cmdAdmin, // Web Dashboard
         cmdActivity
     ],
     pro_plus: [
