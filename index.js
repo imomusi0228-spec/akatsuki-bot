@@ -1874,19 +1874,28 @@ const server = http.createServer(async (req, res) => {
 
       // /api/guilds
       if (pathname === "/api/guilds") {
+        let rawGuilds = [];
         if (!sess?.accessToken) {
-          // tokenログイン：Botが入ってる鯖を返す
+          // tokenログイン
           const col = await client.guilds.fetch().catch(() => null);
-          const list = col
+          rawGuilds = col
             ? Array.from(col.values()).map((g) => ({ id: g.id, name: g.name }))
             : client.guilds.cache.map((g) => ({ id: g.id, name: g.name }));
-          return json(res, { ok: true, guilds: list });
+        } else {
+          // OAuth
+          const userGuilds = await ensureGuildsForSession(sess);
+          rawGuilds = intersectUserBotGuilds(userGuilds);
         }
 
-        // OAuth：ユーザー所属 && Bot導入 && ManageGuild/Admin
-        const userGuilds = await ensureGuildsForSession(sess);
-        const guilds = intersectUserBotGuilds(userGuilds);
-        return json(res, { ok: true, guilds });
+        // Pro 以上のサーバーのみにフィルタリング
+        const filtered = [];
+        for (const g of rawGuilds) {
+          const tier = await getLicenseTierStrict(g.id, db);
+          if (isTierAtLeast(tier, "pro")) {
+            filtered.push(g);
+          }
+        }
+        return json(res, { ok: true, guilds: filtered });
       }
 
       // /api/ngwords
@@ -1894,6 +1903,9 @@ const server = http.createServer(async (req, res) => {
         const guildId = u.searchParams.get("guild") || "";
         const chk = await requireGuildAllowed(guildId);
         if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
+
+        const tier = await getLicenseTierStrict(guildId, db);
+        if (!isTierAtLeast(tier, "pro")) return json(res, { ok: false, error: "upgrade_required" }, 403);
 
         const words = await getNgWords(db, guildId);
         return json(res, { ok: true, count: words.length, words });
@@ -1907,6 +1919,9 @@ const server = http.createServer(async (req, res) => {
         const chk = await requireGuildAllowed(guildId);
         if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
 
+        const tier = await getLicenseTierStrict(guildId, db);
+        if (!isTierAtLeast(tier, "pro")) return json(res, { ok: false, error: "upgrade_required" }, 403);
+
         const r = await addNgWord(db, guildId, word);
         return json(res, r, r.ok ? 200 : 400);
       }
@@ -1919,6 +1934,9 @@ const server = http.createServer(async (req, res) => {
         const chk = await requireGuildAllowed(guildId);
         if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
 
+        const tier = await getLicenseTierStrict(guildId, db);
+        if (!isTierAtLeast(tier, "pro")) return json(res, { ok: false, error: "upgrade_required" }, 403);
+
         const r = await removeNgWord(db, guildId, word);
         return json(res, r, r.ok ? 200 : 400);
       }
@@ -1929,6 +1947,9 @@ const server = http.createServer(async (req, res) => {
         const guildId = String(body.guild || "");
         const chk = await requireGuildAllowed(guildId);
         if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
+
+        const tier = await getLicenseTierStrict(guildId, db);
+        if (!isTierAtLeast(tier, "pro")) return json(res, { ok: false, error: "upgrade_required" }, 403);
 
         const r = await clearNgWords(db, guildId);
 
@@ -1960,6 +1981,9 @@ const server = http.createServer(async (req, res) => {
         const chk = await requireGuildAllowed(guildId);
         if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
 
+        const tier = await getLicenseTierStrict(guildId, db);
+        if (!isTierAtLeast(tier, "pro")) return json(res, { ok: false, error: "upgrade_required" }, 403);
+
         const settings = await getSettings(guildId);
         return json(res, { ok: true, settings });
       }
@@ -1970,6 +1994,9 @@ const server = http.createServer(async (req, res) => {
         const guildId = String(body.guild || "");
         const chk = await requireGuildAllowed(guildId);
         if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
+
+        const tier = await getLicenseTierStrict(guildId, db);
+        if (!isTierAtLeast(tier, "pro")) return json(res, { ok: false, error: "upgrade_required" }, 403);
 
         const cur = await getSettings(guildId);
 
@@ -1990,6 +2017,9 @@ const server = http.createServer(async (req, res) => {
         const month = u.searchParams.get("month") || ""; // YYYY-MM
         const chk = await requireGuildAllowed(guildId);
         if (!chk.ok) return json(res, { ok: false, error: chk.error }, chk.status);
+
+        const tier = await getLicenseTierStrict(guildId, db);
+        if (!isTierAtLeast(tier, "pro")) return json(res, { ok: false, error: "upgrade_required" }, 403);
 
         if (!/^\d{4}-\d{2}$/.test(month)) {
           return json(res, { ok: false, error: "invalid_month_format", hint: "use YYYY-MM" }, 400);
@@ -2081,7 +2111,7 @@ const server = http.createServer(async (req, res) => {
         }
 
         // Check Tier for UI
-        const tier = await getLicenseTierStrict(guildId);
+        // tier is already defined above
 
         return json(res, {
           ok: true,
