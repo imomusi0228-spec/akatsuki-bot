@@ -46,7 +46,7 @@ export async function execute(interaction, db) {
 
         let dbLic = null;
         if (db) {
-            dbLic = await db.get("SELECT * FROM licenses WHERE guild_id=$4", guild.id);
+            dbLic = await db.get("SELECT * FROM licenses WHERE guild_id=$1", guild.id);
         }
 
         let tier = "free";
