@@ -31,7 +31,7 @@ import {
 } from "./service/views.js";
 import { syncGuildCommands, clearGlobalCommands } from "./service/commands.js";
 import { isTierAtLeast } from "./utils/common.js";
-import { getNgWords } from "./service/ng.js";
+import { getNgWords, addNgWord, removeNgWord, clearNgWords } from "./service/ng.js";
 
 /* =========================
    Log thread helpers (DISKなしでも動く版)
@@ -1215,42 +1215,73 @@ function isKatakanaOnly(s = "") {
  */
 function matchNg(content, ngList) {
   const text = String(content ?? "");
-  const hits = new Set(); // 重複排除（同じ単語が複数回あっても1メッセージでは1カウントにするならSet、全部数えるならArray）
-  // ユーザーの要望「バカアホマヌケで3件」なので、登録パターンの数だけチェック
+  const hits = new Set();
 
+  // 1. Regex patterns
   for (const w of ngList) {
-    // ===== regex =====
     if (w.kind === "regex") {
       try {
         const re = new RegExp(w.word, w.flags || "i");
         if (re.test(text)) hits.add(`/${w.word}/${w.flags || "i"}`);
       } catch { }
-      continue;
     }
+  }
 
-    // ===== plain =====
-    const needle = String(w.word ?? "");
-    if (!needle) continue;
+  // 2. Separate Katakana NG words and others
+  const katakanaNg = ngList
+    .filter(w => w.kind !== "regex" && isKatakanaOnly(w.word))
+    .map(w => w.word.toLowerCase());
 
-    const hay = text.toLowerCase();
-    const ndl = needle.toLowerCase();
+  const otherNg = ngList.filter(w => w.kind !== "regex" && !isKatakanaOnly(w.word));
 
-    // カタカナ語の語中除外
-    if (isKatakanaOnly(needle)) {
-      const re = new RegExp(
-        `${escapeRegExp(needle)}(?![\\u30A0-\\u30FF\\u30FC\\u30FB])`,
-        "u"
-      );
-      if (re.test(text)) hits.add(needle);
-      continue;
+  // 3. Process Katakana blocks (Smart Partitioning to avoid things like "バカンス")
+  // Extract all Katakana blocks (including long vowel marks and middle dots)
+  const katakanaBlocks = text.match(/[\u30A0-\u30FF\u30FC\u30FB]+/g) || [];
+
+  for (const block of katakanaBlocks) {
+    const blockLower = block.toLowerCase();
+    // Try to partition the block *entirely* using known NG words
+    const partition = findNgPartition(blockLower, katakanaNg);
+    if (partition) {
+      partition.forEach(w => hits.add(w));
     }
+  }
 
-    if (hay.includes(ndl)) {
-      hits.add(needle);
+  // 4. Process non-Katakana (or mixed) NG words normally
+  const textLower = text.toLowerCase();
+  for (const w of otherNg) {
+    const needle = String(w.word ?? "").toLowerCase();
+    if (needle && textLower.includes(needle)) {
+      hits.add(w.word);
     }
   }
 
   return Array.from(hits);
+}
+
+/**
+ * Katakana block partitioning: check if the block consists *entirely* of registered NG words.
+ */
+function findNgPartition(text, words, memo = new Map()) {
+  if (text === "") return [];
+  if (memo.has(text)) return memo.get(text);
+
+  // Longest match first to be more precise
+  const sortedWords = [...words].sort((a, b) => b.length - a.length);
+
+  for (const w of sortedWords) {
+    if (text.startsWith(w)) {
+      const sub = findNgPartition(text.slice(w.length), words, memo);
+      if (sub !== null) {
+        const res = [w, ...sub];
+        memo.set(text, res);
+        return res;
+      }
+    }
+  }
+
+  memo.set(text, null);
+  return null;
 }
 
 async function incNgHit(guildId, userId, delta = 1) {
@@ -1763,7 +1794,14 @@ const server = http.createServer(async (req, res) => {
       const ok = await dbReady;
       if (!ok || !db) return json(res, { ok: false, error: "db_not_ready" }, 503);
 
-      if (!isAuthed) return json(res, { ok: false, error: "unauthorized" }, 401);
+      if (!isAuthed) {
+        console.warn(`[API] Unauthorized: ${req.method} ${pathname}`, {
+          hasSid: !!parseCookies(req).sid,
+          tokenAuthed,
+          remoteIp: req.headers["x-forwarded-for"] || req.socket.remoteAddress
+        });
+        return json(res, { ok: false, error: "unauthorized" }, 401);
+      }
 
       // OAuth時は「ユーザー所属 && Bot導入 && ManageGuild/Admin」だけ許可
       let allowedGuildIds = null;
