@@ -182,8 +182,10 @@ async function dbSaveThreadIdSafe(guildId, dateKey, kind, threadId) {
   try {
     if (!db) return;
     await db.run(
-      `INSERT OR REPLACE INTO log_threads (guild_id, date_key, kind, thread_id)
-       VALUES (?, ?, ?, ?)`,
+      `INSERT INTO log_threads (guild_id, date_key, kind, thread_id)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (guild_id, date_key, kind)
+       DO UPDATE SET thread_id = EXCLUDED.thread_id`,
       guildId,
       dateKey,
       kind,
@@ -863,18 +865,24 @@ const __dirname = path.dirname(__filename);
 ========================= */
 let db = null;
 
+/* パラメータ変換ヘルパー (?, ?, ? -> $1, $2, $3) */
+function convertSqlParams(sql) {
+  let i = 0;
+  return sql.replace(/\?/g, () => `$${++i}`);
+}
+
 function makeDb(pool) {
   return {
     async get(sql, ...params) {
-      const r = await pool.query(sql, params.flat());
+      const r = await pool.query(convertSqlParams(sql), params.flat());
       return r.rows[0] ?? null;
     },
     async all(sql, ...params) {
-      const r = await pool.query(sql, params.flat());
+      const r = await pool.query(convertSqlParams(sql), params.flat());
       return r.rows ?? [];
     },
     async run(sql, ...params) {
-      const r = await pool.query(sql, params.flat());
+      const r = await pool.query(convertSqlParams(sql), params.flat());
       return { changes: r.rowCount ?? 0 };
     },
     async exec(sql) {
