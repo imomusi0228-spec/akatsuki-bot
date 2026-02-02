@@ -47,11 +47,12 @@ export async function getLicenseTierStrict(guildId, db) {
     const free = (process.env.FREE_GUILD_IDS || "").split(",").map(s => s.trim());
     if (free.includes(guildId)) return "pro_plus";
 
-    if (!db) return "none";
+    // DBがない場合は Free として扱う（DBレス運用対応）
+    if (!db) return "free";
     const row = await db.get("SELECT expires_at, tier FROM licenses WHERE guild_id=$1", guildId);
-    if (!row) return "none";
+    if (!row) return "free"; // DBにあってレコードがない場合も Free
 
-    if (row.expires_at && Date.now() > Number(row.expires_at)) return "none"; // Expired
+    if (row.expires_at && Date.now() > Number(row.expires_at)) return "free"; // Expired -> Free
 
     return row.tier || "free";
 }
