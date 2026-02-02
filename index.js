@@ -22,7 +22,14 @@ import pg from "pg";
 const { Pool } = pg;
 import { getLicenseTierStrict, setTierOverride, getLicenseTier } from "./service/license.js";
 import { checkActivityStats } from "./service/activity.js";
-
+import {
+  renderNeedLoginHTML,
+  renderAdminDashboardHTML,
+  renderAdminSettingsHTML,
+  renderAdminActivityHTML,
+  escapeHTML
+} from "./service/views.js";
+import { syncGuildCommands, clearGlobalCommands } from "./service/commands.js";
 import { isTierAtLeast } from "./utils/common.js";
 
 /* =========================
@@ -383,473 +390,10 @@ async function readJson(req) {
   }
 }
 
-/* =========================
-   HTML renderers
-========================= */
-function escapeHTML(s = "") {
-  return String(s)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
-function renderHomeHTML({
-  title = "Akatsuki Bot",
-  message = "",
-  links = [],
-} = {}) {
-  const linkItems = (links || [])
-    .map((l) => {
-      const href = escapeHTML(l.href || "#");
-      const label = escapeHTML(l.label || l.href || "link");
-      return `<li><a href="${href}">${label}</a></li>`;
-    })
-    .join("");
-
-  return `<!doctype html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${escapeHTML(title)}</title>
-  <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; margin:24px; line-height:1.6;}
-    .card{max-width:820px; padding:18px 20px; border:1px solid #ddd; border-radius:12px;}
-    code{background:#f6f6f6; padding:2px 6px; border-radius:6px;}
-    ul{padding-left:20px;}
-    .muted{opacity:.7}
-    a{color:#0b57d0}
-    .btn{display:inline-block;padding:10px 12px;border:1px solid #333;border-radius:10px;text-decoration:none;color:#000;margin-right:8px}
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>${escapeHTML(title)}</h1>
-    ${message ? `<p>${escapeHTML(message)}</p>` : `<p>Botは正常に稼働中です。</p>`}
-    ${linkItems ? `<h3>リンク</h3><ul>${linkItems}</ul>` : ""}
-    <p class="muted" style="font-size:12px">サーバー正常</p>
-  </div>
-</body>
-</html>`;
-}
-
-function renderNeedLoginHTML({ oauthReady, tokenEnabled }) {
-  return `<!doctype html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>ログイン</title>
-  <style>
-    body{font-family:system-ui;margin:16px}
-    .card{border:1px solid #ddd;border-radius:12px;padding:12px;max-width:860px}
-    .btn{display:inline-block;padding:10px 12px;border:1px solid #333;border-radius:10px;text-decoration:none;color:#000}
-    .muted{color:#666}
-  </style>
-</head>
-<body>
-  <div class="card">
-<h2>Akatsuki Bot 管理画面</h2>
-    <p class="muted">Discord OAuthでログインしてください。</p>
-    ${oauthReady ? `<a class="btn" href="/login">Discordでログイン</a>` : `<p class="muted">OAuth未設定（DISCORD_CLIENT_ID/SECRET + PUBLIC_URL が必要）</p>`}
-    ${tokenEnabled ? `<hr/><p class="muted">（保険）ADMIN_TOKEN方式: <code>/admin?token=XXXX</code></p>` : ``}
-  </div>
-</body>
-</html>`;
-}
-
-function renderAdminHTML({ user, oauth, tokenAuthed }) {
-  const userLabel = user ? escapeHTML(user.global_name || user.username || user.id) : "";
-  return `<!doctype html>
-<html lang="ja">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Akatsuki Bot 管理画面</title>
-<style>
-  :root {
-    --bg-color: #0b1622;
-    --card-bg: #15202b;
-    --text-primary: #ffffff;
-    --text-secondary: #8b9bb4;
-    --border-color: #253341;
-    --accent-color: #1d9bf0;
-    --danger-color: #f4212e;
-  }
-  body {
-    font-family: system-ui, -apple-system, sans-serif;
-    margin: 0;
-    padding: 16px;
-    background-color: var(--bg-color);
-    color: var(--text-primary);
-  }
-  a { color: var(--accent-color); text-decoration: none; }
-  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px; }
-  select, input, button {
-    padding: 6px 10px;
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-    background: #000;
-    color: #fff;
-    font-size: 14px;
-  }
-  button { cursor:pointer; background: var(--card-bg); }
-  button:hover { background: #2c3640; }
-  .card {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 12px;
-  }
-  .grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr)); gap:12px; margin-bottom:12px; }
-  h2, h3 { margin: 0 0 10px 0; font-size: 16px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
-  h2 { font-size: 18px; color: var(--text-primary); margin-bottom: 16px; border-bottom: 2px solid var(--border-color); padding-bottom: 8px; display:inline-block;}
-  .muted { color: var(--text-secondary); font-size: 13px; }
-  .err { color: var(--danger-color); font-weight:600; font-size: 13px; }
-  table { width:100%; border-collapse:collapse; font-size: 14px; }
-  th { text-align:left; color: var(--text-secondary); font-weight:normal; border-bottom: 1px solid var(--border-color); padding: 4px; }
-  td { border-bottom: 1px solid var(--border-color); padding: 8px 4px; }
-  tr:last-child td { border-bottom: none; }
-  .pill { display:inline-block; padding:2px 8px; border:1px solid var(--border-color); border-radius:99px; font-size:11px; background: rgba(255,255,255,0.05); }
-  
-  .user-cell { display: flex; align-items: center; gap: 8px; }
-  .avatar { width: 24px; height: 24px; border-radius: 50%; background: #333; object-fit: cover; }
-  
-  .stat-box {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px;
-  }
-  .stat-val { font-size: 20px; font-weight: 700; }
-  .stat-label { font-size: 11px; color: var(--text-secondary); margin-top:2px; }
-
-  .settings-grid { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; align-items: center; font-size: 14px; }
-  .settings-label { color: var(--text-secondary); text-align: right; }
-  .settings-val { font-weight: 600; }
-</style>
-</head>
-<body>
-  <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:12px;">
-    <h2>Akatsuki Bot 管理画面</h2>
-    <div style="text-align:right; font-size:12px;">
-      ${user ? `<span style="margin-right:8px;">${userLabel}</span>` : ``}
-      ${oauth ? `<a href="/logout">ログアウト</a>` : ``}
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="row">
-      <select id="guild" style="flex:1; max-width:200px;"></select>
-      <input id="month" type="month" />
-      <button id="reload">更新</button>
-      <span id="guildStatus" class="muted" style="margin-left:8px;"></span>
-      <button onclick="switchTab('dashboard')" class="tab-btn active" id="btn-dashboard">ダッシュボード</button>
-      <button onclick="switchTab('settings')" class="tab-btn" id="btn-settings">設定</button>
-      <button onclick="switchTab('activity')" class="tab-btn" id="btn-activity" style="display:none">アクティビティモニター</button>
-    </div>
-
-    <!-- DASHBOARD -->
-    <div id="tab-dashboard" class="tab-content active">
-      <div class="card" style="margin-bottom:16px;">
-         <h3>本日のサマリー (JST)</h3>
-         <div id="summary">読み込み中...</div>
-      </div>
-
-      <div class="card">
-         <h3>NGユーザー上位 (30日間)</h3>
-         <table class="data-table">
-           <thead><tr><th>ユーザー</th><th style="text-align:right">回数</th></tr></thead>
-          <tbody id="topNg"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ACTIVITY -->
-    <div id="tab-activity" class="tab-content">
-       <div class="card">
-         <h3>アクティビティモニター <small id="act-criteria" style="font-weight:normal; font-size:0.8em; color:#8b9bb4"></small></h3>
-         <div id="act-loading">読み込み中...</div>
-         <div class="scroll-table">
-           <table class="data-table">
-             <thead>
-               <tr>
-                  <th>ユーザー</th>
-                  <th>最終VC</th>
-                  <th>対象ロール</th>
-                  <th>自己紹介</th>
-               </tr>
-             </thead>
-             <tbody id="act-rows"></tbody>
-           </table>
-         </div>
-         <div style="margin-top:8px; text-align:right;">
-            <button class="btn" onclick="fetchActivity()">更新</button>
-         </div>
-       </div>
-    </div>
-
-    <!-- SETTINGS -->
-    <div id="tab-settings" class="tab-content">
-    <div class="card">
-      <h3>NGワード</h3>
-      <div class="row">
-        <input id="ng_add" placeholder="追加（例: ばか）" style="flex:1;" />
-        <button id="btn_add">＋</button>
-      </div>
-      <div class="row">
-        <input id="ng_remove" placeholder="削除（登録形式）" style="flex:1;" />
-        <button id="btn_remove">−</button>
-      </div>
-      <div style="max-height:150px; overflow-y:auto; background:rgba(0,0,0,0.2); padding:8px; border-radius:4px; margin-top:8px;">
-        <pre id="ngwords" style="margin:0; font-family:monospace; font-size:13px; color:#ccc;">未取得</pre>
-      </div>
-      <div class="row" style="margin-top:8px; justify-content:space-between;">
-        <span id="ngStatus" class="muted"></span>
-        <button id="btn_clear" style="color:var(--danger-color); border-color:var(--danger-color); font-size:11px; padding:2px 6px;">全削除</button>
-      </div>
-    </div>
-
-    <div class="card" style="display:flex; flex-direction:column;">
-      <h3>NG検知の自動処分</h3>
-      <div id="settingsBox" style="flex:1;">未取得</div>
-      <div style="border-top:1px solid var(--border-color); margin-top:10px; padding-top:10px;">
-        <div class="settings-grid">
-            <div class="settings-label">タイムアウト回数</div>
-            <div><input id="threshold" type="number" min="1" style="width:60px;" /> 回</div>
-            <div class="settings-label">期間</div>
-            <div><input id="timeout" type="number" min="1" style="width:60px;" /> 分</div>
-        </div>
-        <div style="text-align:right; margin-top:8px;">
-          <button id="btn_save" style="background:var(--accent-color); border:none; padding:6px 16px;">保存</button>
-        </div>
-        <div id="settingsStatus" class="muted" style="text-align:right; margin-top:4px;"></div>
-      </div>
-    </div>
-  </div>
-
-<script>
-const token = new URLSearchParams(location.search).get("token") || "";
-const withToken = (url) => token ? (url + (url.includes("?")?"&":"?") + "token=" + encodeURIComponent(token)) : url;
-
-(() => {
-  const $ = (id) => document.getElementById(id);
-  function yyyymmNow(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
-
-  async function api(path){
-    const r = await fetch(path); // cookie auth mainly
-    const t = await r.text();
-    try { return JSON.parse(t); } catch { return { ok:false, error:t }; }
-  }
-  async function post(path, body){
-    const r = await fetch(path, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
-    const t = await r.text();
-    try { return JSON.parse(t); } catch { return { ok:false, error:t }; }
-  }
-
-  function statBox(label, val) {
-    return \`<div class="stat-box"><div class="stat-val">\${val}</div><div class="stat-label">\${label}</div></div>\`;
-  }
-
-  function renderUserRow(u) {
-    const avatar = u.avatar_url || "https://cdn.discordapp.com/embed/avatars/0.png";
-    const name = u.display_name ? \`\${u.display_name} <span style="opacity:0.5">(@\${u.username||""})</span>\` : u.user_id;
-    return \`<tr><td><div class="user-cell"><img src="\${avatar}" class="avatar"/><div>\${name}</div></div></td><td style="text-align:right">\${u.cnt}</td></tr>\`;
-  }
-
-  let loading = false;
-
-  async function loadGuilds(){
-    const sel = $("guild");
-    sel.innerHTML = "";
-    sel.disabled = true;
-    $("guildStatus").textContent = "読み込み中...";
-
-    const d = await api("/api/guilds");
-    if (d && d.ok && d.guilds && d.guilds.length) {
-       d.guilds.forEach(g => {
-         const o = document.createElement("option");
-         o.value = g.id; o.textContent = g.name;
-         sel.appendChild(o);
-       });
-       sel.disabled = false;
-       $("guildStatus").textContent = "";
-       return true;
-    }
-    
-    // 0件のケース
-    if (d && d.ok && (!d.guilds || d.guilds.length === 0)) {
-       const o = document.createElement("option");
-       o.textContent = "（管理可能なサーバーがありません）";
-       sel.appendChild(o);
-       $("guildStatus").textContent = "権限/導入を確認してください";
-       return false;
-    }
-
-    $("guildStatus").textContent = "エラー: " + (d?.error || "unknown");
-    return false;
-  }
-
-  function switchTab(t) {
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    document.getElementById('tab-'+t).classList.add('active');
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById('btn-'+t).classList.add('active');
-    if(t==='activity') fetchActivity();
-  }
-
-  window.switchTab = switchTab;
-  window.fetchActivity = fetchActivity;
-
-  async function fetchActivity() {
-    const el = document.getElementById("act-rows");
-    const ld = document.getElementById("act-loading");
-    if(!el || !ld) return;
-    
-    el.innerHTML = "";
-    ld.innerText = "読み込み中...";
-    ld.style.display = "block";
-    
-    try {
-      const gid = $("guild").value;
-      const res = await fetch(\`/api/activity?guild=\${gid}\`); // Use appropriate auth
-      const d = await res.json();
-      
-      if (!d.ok) {
-         ld.innerText = "エラー: " + (d.error || "Unknown");
-         return;
-      }
-      
-      ld.style.display = "none";
-      cr.innerText = "(Weeks: " + d.config.weeks + ")";
-      
-      if (d.data.length === 0) {
-          el.innerHTML = "<tr><td colspan='4' class='muted' style='text-align:center'>該当するメンバーはいません</td></tr>";
-         return;
-      }
-      
-      let html = "";
-      d.data.forEach(r => {
-         const avatar = r.avatar_url || "https://cdn.discordapp.com/embed/avatars/0.png";
-         const name = r.display_name ? \`\${r.display_name} <span class='muted'>(@\${r.username})</span>\` : r.user_id;
-         const roleMark = r.has_role === "Yes" ? "<span style='color:#00ff00'>Yes</span>" : (r.has_role === "No" ? "<span style='color:#ff0000'>No</span>" : "-");
-         const introMark = r.has_intro === "Yes" ? "<span style='color:#00ff00'>Yes</span>" : (r.has_intro.includes("No") ? "<span style='color:#ff0000'>No</span>" : "-");
-         
-         html += \`<tr>
-           <td><div class="user-cell"><img src="\${avatar}" class="avatar"/><div>\${name}</div></div></td>
-           <td>\${r.last_vc}</td>
-           <td>\${roleMark}</td>
-           <td>\${introMark}</td>
-         </tr>\`;
-      });
-      el.innerHTML = html;
-      
-    } catch(e) {
-      ld.innerText = "取得エラー: " + e.message;
-    }
-  }
 
 
-  async function reload(){
-    if (loading) return;
-    loading = true;
-    try {
-      const gid = $("guild").value;
-      const mon = $("month").value;
-      if (!gid) return;
-
-      const [stats, ng, st] = await Promise.all([
-        api(\`/api/stats?guild=\${gid}&month=\${mon}\`),
-        api(\`/api/ngwords?guild=\${gid}\`),
-        api(\`/api/settings?guild=\${gid}\`)
-      ]);
-
-      // Summary
-      if (stats.ok) {
-        const s = stats.stats.summary;
-        $("summary").innerHTML = \`<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">\${statBox("VC IN", s.joins)} \${statBox("VC OUT", s.leaves)} \${statBox("TIMEOUT", s.timeouts)} \${statBox("NG WORD", s.ngDetected)}</div>\`;
-        
-        let rows = "";
-        (stats.stats.topNgUsers || []).forEach(u => rows += renderUserRow(u));
-        $("topNg").innerHTML = rows || '<tr><td colspan="2" class="muted" style="text-align:center">なし</td></tr>';
-
-        // Settings info from Stats (channel name)
-        const sInfo = stats.stats.settings_info || {};
-        if (st.ok && st.settings) {
-           const logChName = sInfo.log_channel_name ? \`#\${sInfo.log_channel_name}\` : (st.settings.log_channel_id || "未設定");
-           $("settingsBox").innerHTML = \`
-             <div class="settings-grid" style="margin-bottom:8px;">
-               <div class="settings-label">Log Channel</div><div class="settings-val">\${logChName}</div>
-             </div>
-           \`;
-           $("threshold").value = st.settings.ng_threshold ?? 3;
-           $("timeout").value = st.settings.timeout_minutes ?? 10;
-        }
-
-        // Activity tab visibility
-        if (stats.tier && (stats.tier === "pro" || stats.tier === "pro_plus")) {
-          $("btn-activity").style.display = "inline-block";
-        } else {
-          $("btn-activity").style.display = "none";
-        }
-      }
-
-      // NG Words
-      if (ng.ok) {
-        $("ngwords").textContent = (ng.words||[]).map(w => w.kind==="regex" ? "/" + w.word + "/" + w.flags : w.word).join("\\n") || "（なし）";
-        $("ngStatus").textContent = (ng.words||[]).length + " words";
-      }
-
-    } finally {
-      loading = false;
-    }
-  }
-
-  $("guild").onchange = reload;
-  $("month").onchange = reload;
-  $("reload").onclick = reload;
-
-  // 自動更新 (60秒)
-  setInterval(() => {
-    if(!document.hidden) reload();
-  }, 60000);
 
 
-  $("btn_add").onclick = async () => {
-     const w = $("ng_add").value; if(!w)return;
-     await post("/api/ngwords/add", { guild: $("guild").value, word: w });
-     $("ng_add").value=""; reload();
-  };
-  $("btn_remove").onclick = async () => {
-     const w = $("ng_remove").value; if(!w)return;
-     await post("/api/ngwords/remove", { guild: $("guild").value, word: w });
-     $("ng_remove").value=""; reload();
-  };
-  $("btn_clear").onclick = async () => {
-     if(!confirm("本当によろしいですか？"))return;
-     await post("/api/ngwords/clear", { guild: $("guild").value });
-     reload();
-  };
-  $("btn_save").onclick = async () => {
-     await post("/api/settings/update", {
-       guild: $("guild").value,
-       ng_threshold: $("threshold").value,
-       timeout_minutes: $("timeout").value
-     });
-     alert("保存しました");
-     reload();
-  };
-
-  (async()=>{
-    $("month").value = yyyymmNow();
-    if(await loadGuilds()) reload();
-  })();
-})();
-</script>
-</body>
-</html>`;
-}
 
 /* =========================
    Settings
@@ -863,7 +407,7 @@ const CLIENT_ID = process.env.DISCORD_CLIENT_ID || "";
 const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || "";
 const PUBLIC_URL = process.env.PUBLIC_URL || "";
 const REDIRECT_PATH = "/oauth/callback";
-const OAUTH_REDIRECT_URI = PUBLIC_URL ? `${PUBLIC_URL}${REDIRECT_PATH}` : "";
+const OAUTH_REDIRECT_URI = PUBLIC_URL ? `${PUBLIC_URL}${REDIRECT_PATH} ` : "";
 const OAUTH_SCOPES = "identify guilds";
 
 /** 429対策（guilds短期キャッシュ） */
@@ -884,7 +428,7 @@ let db = null;
 /* パラメータ変換ヘルパー (?, ?, ? -> $1, $2, $3) */
 function convertSqlParams(sql) {
   let i = 0;
-  return sql.replace(/\?/g, () => `$${++i}`);
+  return sql.replace(/\?/g, () => `$${++i} `);
 }
 
 function makeDb(pool) {
@@ -910,67 +454,67 @@ function makeDb(pool) {
 
 async function ensureBaseTables(db) {
   await db.exec(`
-    CREATE TABLE IF NOT EXISTS settings (
-      guild_id TEXT PRIMARY KEY,
-      log_channel_id TEXT,
-      ng_threshold INTEGER DEFAULT ${DEFAULT_NG_THRESHOLD},
-      timeout_minutes INTEGER DEFAULT ${DEFAULT_TIMEOUT_MIN},
-      activity_weeks INTEGER DEFAULT 4,
-      intro_channel_id TEXT,
-      target_role_id TEXT
-    );
+    CREATE TABLE IF NOT EXISTS settings(
+  guild_id TEXT PRIMARY KEY,
+  log_channel_id TEXT,
+  ng_threshold INTEGER DEFAULT ${DEFAULT_NG_THRESHOLD},
+  timeout_minutes INTEGER DEFAULT ${DEFAULT_TIMEOUT_MIN},
+  activity_weeks INTEGER DEFAULT 4,
+  intro_channel_id TEXT,
+  target_role_id TEXT
+);
 
-    CREATE TABLE IF NOT EXISTS ng_words (
-      guild_id TEXT NOT NULL,
-      kind TEXT NOT NULL DEFAULT 'literal',
-      word TEXT NOT NULL,
-      flags TEXT NOT NULL DEFAULT 'i',
-      PRIMARY KEY (guild_id, kind, word)
-    );
+    CREATE TABLE IF NOT EXISTS ng_words(
+  guild_id TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'literal',
+  word TEXT NOT NULL,
+  flags TEXT NOT NULL DEFAULT 'i',
+  PRIMARY KEY(guild_id, kind, word)
+);
 
-    CREATE TABLE IF NOT EXISTS ng_hits (
-      guild_id TEXT NOT NULL,
-      user_id TEXT NOT NULL,
-      count INTEGER NOT NULL DEFAULT 0,
-      updated_at BIGINT,
-      PRIMARY KEY (guild_id, user_id)
-    );
+    CREATE TABLE IF NOT EXISTS ng_hits(
+  guild_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  count INTEGER NOT NULL DEFAULT 0,
+  updated_at BIGINT,
+  PRIMARY KEY(guild_id, user_id)
+);
 
-    CREATE TABLE IF NOT EXISTS log_threads (
-      guild_id TEXT NOT NULL,
-      date_key TEXT NOT NULL,
-      kind TEXT NOT NULL,
-      thread_id TEXT NOT NULL,
-      PRIMARY KEY (guild_id, date_key, kind)
-    );
+    CREATE TABLE IF NOT EXISTS log_threads(
+  guild_id TEXT NOT NULL,
+  date_key TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  thread_id TEXT NOT NULL,
+  PRIMARY KEY(guild_id, date_key, kind)
+);
 
-    CREATE TABLE IF NOT EXISTS vc_sessions (
-      guild_id   TEXT NOT NULL,
-      user_id    TEXT NOT NULL,
-      channel_id TEXT,
-      join_ts    BIGINT NOT NULL,
-      PRIMARY KEY (guild_id, user_id)
-    );
+    CREATE TABLE IF NOT EXISTS vc_sessions(
+  guild_id   TEXT NOT NULL,
+  user_id    TEXT NOT NULL,
+  channel_id TEXT,
+  join_ts    BIGINT NOT NULL,
+  PRIMARY KEY(guild_id, user_id)
+);
 
-    CREATE TABLE IF NOT EXISTS log_events (
-      id BIGSERIAL PRIMARY KEY,
-      guild_id TEXT NOT NULL,
-      type TEXT,
-      user_id TEXT,
-      ts BIGINT NOT NULL,
-      meta TEXT,
-      duration_ms BIGINT
-    );
+    CREATE TABLE IF NOT EXISTS log_events(
+  id BIGSERIAL PRIMARY KEY,
+  guild_id TEXT NOT NULL,
+  type TEXT,
+  user_id TEXT,
+  ts BIGINT NOT NULL,
+  meta TEXT,
+  duration_ms BIGINT
+);
 
-    CREATE INDEX IF NOT EXISTS idx_log_events_guild_ts ON log_events (guild_id, ts);
-    CREATE INDEX IF NOT EXISTS idx_log_events_guild_type_ts ON log_events (guild_id, type, ts);
+    CREATE INDEX IF NOT EXISTS idx_log_events_guild_ts ON log_events(guild_id, ts);
+    CREATE INDEX IF NOT EXISTS idx_log_events_guild_type_ts ON log_events(guild_id, type, ts);
 
-    CREATE TABLE IF NOT EXISTS licenses (
-      guild_id TEXT PRIMARY KEY,
-      notes TEXT,
-      expires_at BIGINT
-    );
-  `);
+    CREATE TABLE IF NOT EXISTS licenses(
+  guild_id TEXT PRIMARY KEY,
+  notes TEXT,
+  expires_at BIGINT
+);
+`);
 }
 
 async function runDbMigrations(db) {
@@ -982,13 +526,13 @@ async function runDbMigrations(db) {
 
     // License table
     await db.exec(`
-      CREATE TABLE IF NOT EXISTS licenses (
-        guild_id TEXT PRIMARY KEY,
-        notes TEXT,
-        expires_at BIGINT,
-        tier TEXT DEFAULT 'free'
-      );
-    `);
+      CREATE TABLE IF NOT EXISTS licenses(
+  guild_id TEXT PRIMARY KEY,
+  notes TEXT,
+  expires_at BIGINT,
+  tier TEXT DEFAULT 'free'
+);
+`);
     // Add tier column if missing
     await db.exec(`ALTER TABLE licenses ADD COLUMN IF NOT EXISTS tier TEXT DEFAULT 'free'`);
   } catch (e) {
@@ -2226,23 +1770,40 @@ const server = http.createServer(async (req, res) => {
 
     // ===== Pages =====
     if (pathname === "/") {
-      return html(
-        res,
-        renderHomeHTML({
-          title: "Akatsuki Bot",
-          links: [
-            { label: "Admin", href: "/admin" },
-            { label: "Health", href: "/health" },
-          ],
-        })
-      );
+      // リダイレクト: 既定は /admin へ
+      res.writeHead(302, { Location: "/admin" });
+      return res.end();
     }
 
     if (pathname === "/admin") {
+      // メニュー（リダイレクト）: ログイン済みなら dashboard, 未なら login
+      if (!isAuthed) {
+        // login ページを表示
+        return html(res, renderNeedLoginHTML({ oauthReady, tokenEnabled: !!ADMIN_TOKEN }));
+      }
+      // 既定のダッシュボードへリダイレクト
+      res.writeHead(302, { Location: "/admin/dashboard" });
+      return res.end();
+    }
+
+    // サブページ
+    if (pathname.startsWith("/admin/")) {
       if (!isAuthed) {
         return html(res, renderNeedLoginHTML({ oauthReady, tokenEnabled: !!ADMIN_TOKEN }));
       }
-      return html(res, renderAdminHTML({ user: sess?.user || null, oauth: !!sess?.accessToken, tokenAuthed }));
+
+      const userObj = sess?.user || null;
+      if (pathname === "/admin/dashboard") {
+        return html(res, renderAdminDashboardHTML({ user: userObj }));
+      }
+      if (pathname === "/admin/settings") {
+        return html(res, renderAdminSettingsHTML({ user: userObj }));
+      }
+      if (pathname === "/admin/activity") {
+        return html(res, renderAdminActivityHTML({ user: userObj }));
+      }
+
+      return text(res, "Page Not Found", 404);
     }
 
     // ===== APIs =====
@@ -2573,6 +2134,19 @@ if (!discordToken) {
 client.once(Events.ClientReady, () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
   console.log(`🏠 Bot guild count: ${client.guilds.cache.size}`);
+
+  // 初回のみ：全体同期 (少し遅延させる)
+  setTimeout(async () => {
+    // 1回だけグローバルコマンドを消すならコメントアウトを外して実行
+    // await clearGlobalCommands(); 
+
+    console.log("🔄 Starting command sync for all guilds...");
+    for (const guild of client.guilds.cache.values()) {
+      const tier = await getLicenseTierStrict(guild.id, db); // DB ready check is separate, assuming ready by now
+      await syncGuildCommands(guild.id, tier);
+    }
+    console.log("✅ Command sync completed.");
+  }, 5000);
 });
 
 await client.login(discordToken);
