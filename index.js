@@ -2106,6 +2106,50 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
+      // /api/activity/download (CSV)
+      if (pathname === "/api/activity/download") {
+        const guildId = u.searchParams.get("guild") || "";
+        // For download, we might use session cookie auth (which is enabled by default in sess logic).
+        const chk = await requireGuildAllowed(guildId);
+        if (!chk.ok) return text(res, chk.error, chk.status);
+
+        const tier = await getLicenseTierStrict(guildId, db);
+        if (!isTierAtLeast(tier, "pro")) {
+          return text(res, "Upgrade to Pro", 403);
+        }
+
+        const guild = await client.guilds.fetch(guildId).catch(() => null);
+        if (!guild) return text(res, "Guild not found", 404);
+
+        try {
+          const { config, data } = await checkActivityStats(guild, db);
+
+          // CSV Header
+          let csv = "\uFEFFUser ID,Username,DisplayName,Last VC Date,Has Target Role,Intro Post (Recent)\n";
+
+          data.forEach(r => {
+            const row = [
+              r.user_id,
+              r.username,
+              r.display_name,
+              r.last_vc,
+              r.has_role,
+              r.has_intro
+            ].map(c => `"${String(c || "").replace(/"/g, '""')}"`).join(",");
+            csv += row + "\n";
+          });
+
+          res.writeHead(200, {
+            "Content-Type": "text/csv; charset=utf-8",
+            "Content-Disposition": `attachment; filename="inactive_users_${config.weeks}w.csv"`
+          });
+          res.end(csv);
+          return;
+        } catch (e) {
+          return text(res, "Error: " + e.message, 500);
+        }
+      }
+
       return json(res, { ok: false, error: "not_found" }, 404);
     }
 

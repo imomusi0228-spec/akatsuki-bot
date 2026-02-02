@@ -7,16 +7,18 @@ import { data as cmdPing } from "../commands/ping.js";
 import { data as cmdScan } from "../commands/scan.js";
 import { data as cmdSetlog } from "../commands/setlog.js";
 import { data as cmdVc } from "../commands/vc.js";
+import { data as cmdDebug } from "../commands/debug_tier.js";
 import { isTierAtLeast } from "../utils/common.js";
 
 // Command Definitions
 const COMMANDS = {
     free: [
-        cmdPing,
-        cmdSetlog,
-        cmdNgword,
-        cmdVc,
+        cmdDebug,
         cmdAdmin, // Admin tools
+        cmdSetlog,
+        cmdVc,
+        cmdPing,
+        cmdNgword,
         cmdLicense // License management
     ],
     pro: [
@@ -44,8 +46,8 @@ const rest = new REST({ version: "10" }).setToken(TOKEN);
 /**
  * Get list of commands for a specific tier
  */
-export function getCommandsForTier(tier = "free") {
-    const cmds = [...COMMANDS.free];
+export function getCommandsForTier(tier = "free", guildId = "") {
+    let cmds = [...COMMANDS.free];
 
     if (isTierAtLeast(tier, "pro")) {
         cmds.push(...COMMANDS.pro);
@@ -53,6 +55,12 @@ export function getCommandsForTier(tier = "free") {
 
     if (isTierAtLeast(tier, "pro_plus")) {
         cmds.push(...COMMANDS.pro_plus);
+    }
+
+    // Special Filter: License & Debug command only for specific server
+    const VERIFICATION_GUILD_ID = "1467338822051430572";
+    if (guildId !== VERIFICATION_GUILD_ID) {
+        cmds = cmds.filter(c => c.name !== "license" && c.name !== "debug_tier");
     }
 
     return cmds.map(c => c.toJSON());
@@ -67,7 +75,7 @@ export async function syncGuildCommands(guildId, tier) {
     if (!guildId || !TOKEN || !CLIENT_ID) return;
 
     try {
-        const body = getCommandsForTier(tier);
+        const body = getCommandsForTier(tier, guildId);
         console.log(`🔄 Syncing commands for guild ${guildId} (Tier: ${tier}, Count: ${body.length})`);
 
         await rest.put(

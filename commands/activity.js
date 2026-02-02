@@ -11,7 +11,6 @@ export const data = new SlashCommandBuilder()
             .addChannelOption((o) => o.setName("intro_channel").setDescription("自己紹介チャンネル（発言確認用）"))
             .addRoleOption((o) => o.setName("role").setDescription("チェック対象の特定ロール"))
     )
-    .addSubcommand((s) => s.setName("list").setDescription("不参加・未活動メンバーのリストを生成します"))
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
 async function getConfig(db, guildId) {
@@ -39,7 +38,6 @@ async function setConfig(db, guildId, { weeks, introChId, targetRoleId }) {
 }
 
 import { isTierAtLeast } from "../utils/common.js";
-import { checkActivityStats } from "../service/activity.js";
 
 export async function execute(interaction, db) {
     if (!db) return interaction.reply({ content: "❌ データベースに接続できていません。", flags: MessageFlags.Ephemeral });
@@ -73,47 +71,5 @@ export async function execute(interaction, db) {
         rules.push(`・必須ロール確認: ${conf.targetRoleId ? `<@&${conf.targetRoleId}>` : "未設定"}`);
 
         return interaction.editReply(`✅ 設定を更新しました。\n\n${rules.join("\n")}`);
-    }
-
-    if (sub === "list") {
-        await interaction.deferReply();
-
-        try {
-            const { config, data } = await checkActivityStats(guild, db);
-
-            if (data.length === 0) {
-                return interaction.editReply(`✅ 対象期間（${config.weeks}週間）未利用のメンバーはいませんでした。`);
-            }
-
-            // CSV format
-            const reportRows = [];
-            // Header
-            reportRows.push(["User ID", "Username", "DisplayName", "Last VC Date", "Has Target Role", "Intro Post (Recent)"]);
-
-            data.forEach(r => {
-                reportRows.push([
-                    r.user_id,
-                    r.username,
-                    r.display_name,
-                    r.last_vc,
-                    r.has_role,
-                    r.has_intro
-                ]);
-            });
-
-            const csvContent = reportRows.map(row => row.map(c => `"${c}"`).join(",")).join("\n");
-            const buffer = Buffer.from(csvContent, "utf-8"); // BOM needed?
-            const bufferWithBom = Buffer.concat([Buffer.from([0xEF, 0xBB, 0xBF]), buffer]);
-
-            const attachment = new AttachmentBuilder(bufferWithBom, { name: `inactive_users_${config.weeks}w.csv` });
-
-            await interaction.editReply({
-                content: `✅ **スキャン完了**\n条件: ${config.weeks}週間以内のVC利用なし\n対象人数: ${data.length}人\n完了しました。`,
-                files: [attachment]
-            });
-        } catch (e) {
-            console.error(e);
-            await interaction.editReply("❌ エラーが発生しました: " + e.message);
-        }
     }
 }

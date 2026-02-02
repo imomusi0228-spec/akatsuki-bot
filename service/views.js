@@ -1,10 +1,10 @@
 export function escapeHTML(s = "") {
-    return String(s)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#39;");
+  return String(s)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 const COMMON_CSS = `
@@ -88,13 +88,13 @@ const COMMON_CSS = `
 `;
 
 function renderLayout({ title, content, user, activeTab, oauth, scripts = "" }) {
-    const userLabel = user ? escapeHTML(user.global_name || user.username || user.id) : "";
+  const userLabel = user ? escapeHTML(user.global_name || user.username || user.id) : "";
 
-    const nav = (label, path, id) => `
+  const nav = (label, path, id) => `
     <a href="${path}" class="nav-item ${activeTab === id ? 'active' : ''}">${label}</a>
   `;
 
-    return `<!doctype html>
+  return `<!doctype html>
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
@@ -129,30 +129,30 @@ function renderLayout({ title, content, user, activeTab, oauth, scripts = "" }) 
 }
 
 export function renderNeedLoginHTML({ oauthReady, tokenEnabled }) {
-    const content = `
+  const content = `
     <div class="card" style="text-align:center; padding: 40px 20px;">
       <h2>Akatsuki Bot 管理画面</h2>
       <p class="muted" style="margin-bottom:24px;">管理操作を行うには Discord アカウントでログインしてください。</p>
       
       ${oauthReady
-            ? `<a class="btn btn-primary" href="/login" style="font-size:16px; padding:12px 24px;">Discord でログイン</a>`
-            : `<p class="muted" style="color:var(--danger-color)">OAuth設定が不足しています (DISCORD_CLIENT_ID / SECRET)</p>`
-        }
+      ? `<a class="btn btn-primary" href="/login" style="font-size:16px; padding:12px 24px;">Discord でログイン</a>`
+      : `<p class="muted" style="color:var(--danger-color)">OAuth設定が不足しています (DISCORD_CLIENT_ID / SECRET)</p>`
+    }
 
       ${tokenEnabled
-            ? `<div style="margin-top:40px; border-top:1px solid var(--border-color); padding-top:20px;">
+      ? `<div style="margin-top:40px; border-top:1px solid var(--border-color); padding-top:20px;">
              <p class="muted" style="font-size:12px;">管理者用トークンログイン: <code>/admin?token=...</code></p>
            </div>`
-            : ``
-        }
+      : ``
+    }
     </div>
   `;
 
-    return renderLayout({ title: "ログイン - Akatsuki Bot", content, user: null, activeTab: null, oauth: false });
+  return renderLayout({ title: "ログイン - Akatsuki Bot", content, user: null, activeTab: null, oauth: false });
 }
 
 export function renderAdminDashboardHTML({ user }) {
-    const content = `
+  const content = `
     <div class="row" style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; align-items:center;">
        <select id="guild" style="flex:1; max-width:250px; padding:10px;"></select>
        <input id="month" type="month" style="padding:9px;" />
@@ -176,18 +176,18 @@ export function renderAdminDashboardHTML({ user }) {
     </div>
   `;
 
-    const scripts = `
+  const scripts = `
   <script>
     ${COMMON_SCRIPT}
     initDashboard();
   </script>
   `;
 
-    return renderLayout({ title: "ダッシュボード", content, user, activeTab: "dashboard", oauth: true, scripts });
+  return renderLayout({ title: "ダッシュボード", content, user, activeTab: "dashboard", oauth: true, scripts });
 }
 
 export function renderAdminSettingsHTML({ user }) {
-    const content = `
+  const content = `
     <div class="row" style="display:flex; gap:12px; margin-bottom:16px;">
        <select id="guild" style="max-width:250px; padding:10px;"></select>
        <button id="reload" class="btn">更新</button>
@@ -238,18 +238,18 @@ export function renderAdminSettingsHTML({ user }) {
     </div>
   `;
 
-    const scripts = `
+  const scripts = `
   <script>
     ${COMMON_SCRIPT}
     initSettings();
   </script>
   `;
 
-    return renderLayout({ title: "設定", content, user, activeTab: "settings", oauth: true, scripts });
+  return renderLayout({ title: "設定", content, user, activeTab: "settings", oauth: true, scripts });
 }
 
 export function renderAdminActivityHTML({ user }) {
-    const content = `
+  const content = `
     <div class="row" style="display:flex; gap:12px; margin-bottom:16px;">
         <select id="guild" style="max-width:250px; padding:10px;"></select>
         <button id="reload" class="btn">更新</button>
@@ -259,7 +259,10 @@ export function renderAdminActivityHTML({ user }) {
     <div class="card">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
         <h3>アクティビティモニター <small id="act-criteria" class="muted" style="font-weight:normal; font-size:0.7em;"></small></h3>
-        <button id="btn_scan" class="btn btn-primary">スキャン開始</button>
+        <div style="display:flex; gap:8px;">
+           <button id="btn_scan" class="btn btn-primary">スキャン開始</button>
+           <button id="btn_csv" class="btn" style="display:none;">CSVダウンロード</button>
+        </div>
       </div>
 
       <div id="act-loading" style="display:none; padding:20px; text-align:center;" class="muted">読み込み中...</div>
@@ -282,14 +285,14 @@ export function renderAdminActivityHTML({ user }) {
     </div>
   `;
 
-    const scripts = `
+  const scripts = `
   <script>
     ${COMMON_SCRIPT}
     initActivity();
   </script>
   `;
 
-    return renderLayout({ title: "アクティビティ", content, user, activeTab: "activity", oauth: true, scripts });
+  return renderLayout({ title: "アクティビティ", content, user, activeTab: "activity", oauth: true, scripts });
 }
 
 // クライアントサイド共通スクリプト
@@ -497,6 +500,14 @@ const COMMON_SCRIPT = `
      
      $("guild").onchange = () => { $("act-rows").innerHTML = ""; $("act-criteria").textContent=""; };
      $("reload").onclick = runScan; // In this tab, reload triggers scan potentially? Or just clear? Let's make it scan.
-     $("btn_scan").onclick = runScan;
+     $("btn_scan").onclick = () => {
+         runScan().then(() => {
+             $("btn_csv").style.display = "inline-block";
+         });
+     };
+     $("btn_csv").onclick = () => {
+          const gid = $("guild").value;
+          if(gid) window.location.href = \`/api/activity/download?guild=\${gid}\`;
+     };
   }
 `;
