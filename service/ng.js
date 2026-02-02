@@ -114,6 +114,13 @@ export async function clearNgWords(db, guildId) {
     if (!db) return { ok: false, error: "db_not_ready" };
 
     await db.run(`DELETE FROM ng_words WHERE guild_id = $1`, guildId);
+
+    // 2. NG検知ログの全削除 (過去の違反をなかったことにする)
+    await db.run(`DELETE FROM log_events WHERE guild_id = $1 AND type = 'ng_detected'`, guildId);
+
+    // 3. 違反カウントの全削除 (ユーザーをクリーンな状態に戻す)
+    await db.run(`DELETE FROM ng_hits WHERE guild_id = $1`, guildId);
+
     invalidateNgCache(guildId);
     return { ok: true };
 }
