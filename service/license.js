@@ -1,0 +1,57 @@
+// service/license.js
+import "dotenv/config";
+
+// Override Map for Debug
+const tierOverrides = new Map();
+
+export function setTierOverride(guildId, tier) {
+    if (tier === null) {
+        tierOverrides.delete(guildId);
+    } else {
+        tierOverrides.set(guildId, tier);
+    }
+}
+
+export async function getLicenseTier(guildId, db) {
+    if (!guildId) return "free";
+
+    // 0. Check Override
+    if (tierOverrides.has(guildId)) return tierOverrides.get(guildId);
+
+    // 1. Check Whitelist (Env) -> Pro+ (Unlimited)
+    const free = (process.env.FREE_GUILD_IDS || "").split(",").map(s => s.trim());
+    if (free.includes(guildId)) return "pro_plus";
+
+    // 2. Check DB
+    if (!db) return "free";
+    const row = await db.get("SELECT expires_at, tier FROM licenses WHERE guild_id=$1", guildId);
+
+    if (!row) return "free";
+
+    // Check Expiration
+    if (row.expires_at) {
+        if (Date.now() > Number(row.expires_at)) return "free"; // Expired -> Fallback to Free
+    }
+
+    // Return stored tier (or free if invalid)
+    return row.tier || "free";
+}
+
+// Redefine getLicenseTier to return "none" if not found
+export async function getLicenseTierStrict(guildId, db) {
+    if (!guildId) return "none";
+
+    // 0. Check Override
+    if (tierOverrides.has(guildId)) return tierOverrides.get(guildId);
+
+    const free = (process.env.FREE_GUILD_IDS || "").split(",").map(s => s.trim());
+    if (free.includes(guildId)) return "pro_plus";
+
+    if (!db) return "none";
+    const row = await db.get("SELECT expires_at, tier FROM licenses WHERE guild_id=$1", guildId);
+    if (!row) return "none";
+
+    if (row.expires_at && Date.now() > Number(row.expires_at)) return "none"; // Expired
+
+    return row.tier || "free";
+}

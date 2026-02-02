@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
-import { checkLicense } from "../index.js";
+
 
 // Owner check helper (Replace with your own ID or implement admin check)
 // Since we don't have a secure way to know "Seller" vs "Buyer" easily unless hardcoded or using Bot Owner via API.

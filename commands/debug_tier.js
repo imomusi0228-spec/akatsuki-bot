@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
-import { setTierOverride } from "../index.js";
+import { setTierOverride } from "../service/license.js";
 
 export const data = new SlashCommandBuilder()
     .setName("debug_tier")

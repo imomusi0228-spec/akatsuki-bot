@@ -973,103 +973,11 @@ async function runDbMigrations(db) {
   return true;
 }
 
-/* =========================
-   License Logic
-   ========================= */
+import { setTierOverride, getLicenseTier, getLicenseTierStrict } from "./service/license.js";
 
-// Override Map for Debug
-const tierOverrides = new Map();
+// Re-export for compatibility if needed elsewhere, but ideally update consumers.
+export { setTierOverride, getLicenseTier, getLicenseTierStrict };
 
-export function setTierOverride(guildId, tier) {
-  if (tier === null) {
-    tierOverrides.delete(guildId);
-  } else {
-    tierOverrides.set(guildId, tier);
-  }
-}
-
-export async function getLicenseTier(guildId) {
-  if (!guildId) return "free";
-
-  // 0. Check Override
-  if (tierOverrides.has(guildId)) return tierOverrides.get(guildId);
-
-  // 1. Check Whitelist (Env) -> Pro+ (Unlimited)
-  const free = (process.env.FREE_GUILD_IDS || "").split(",").map(s => s.trim());
-  if (free.includes(guildId)) return "pro_plus";
-
-  // 2. Check DB
-  if (!db) return "free";
-  const row = await db.get("SELECT expires_at, tier FROM licenses WHERE guild_id=$1", guildId);
-
-  if (!row) return "free";
-
-  // Check Expiration
-  if (row.expires_at) {
-    if (Date.now() > Number(row.expires_at)) return "free"; // Expired -> Fallback to Free
-  }
-
-  // Return stored tier (or free if invalid)
-  return row.tier || "free";
-}
-
-
-
-export async function checkLicense(guildId) {
-  // Simple check for "Is Active" (Tier > Free? Or just "Is Allowed to use Bot"?)
-  // User Requirement: "Free Tier" exists and is allowed fundamental features.
-  // So checkLicense should basically nearly always return true unless we blacklist?
-  // Wait, previous requirement: "Limit functionality unless licensed".
-  // User said: "Free Plan has basic features, Pro has Activity, Pro+ has Scan."
-  // So ALL Tiers are valid "Licenses".
-  // But wait, "License System" previously implemented: "Block unless whitelist or DB license".
-  // Now we have "Free Plan" content.
-  // Interpretation:
-  // - Whitelisted: Pro+
-  // - DB License: assigned tier (Free/Pro/Pro+)
-  // - No DB & Not Whitelist: what happens?
-  //   - Option A: Block completely (previous logic).
-  //   - Option B: Treat as "Free" (but maybe user wants to sell "Free" license?).
-  //   - User said "Seller wants to keep specific servers free".
-  //   - And "Other servers require license".
-  //   So "No License" = "Block"?
-  //   BUT "Free Plan" is mentioned.
-  //   Maybe "Free Plan" implies a "Free License" is issued?
-  //   OR "Free Plan" is the default for EVERYONE?
-  //   "Seller wants ... others to require license" -> Sounds like "No License = Block".
-  //   So to use "Free Plan", you might need a "Free License" issued by admin.
-  //   Let's stick to: checkLicense returns true if Tier >= Free (and has valid license/whitelist).
-  const tier = await getLicenseTier(guildId);
-  // However, `getLicenseTier` as implemented above falls back to "free" if not found.
-  // We need to know if it was "Found".
-
-  // Revised Logic:
-  // If Whitelisted -> Pro+ (OK)
-  // If DB has row and not expired -> returns tier (Free/Pro/Pro+) (OK)
-  // If DB has NO row -> Returns "none" (Block)
-
-  // I need to update getLicenseTier to distinct "No License".
-  return await getLicenseTier(guildId) !== "none";
-}
-
-// Redefine getLicenseTier to return "none" if not found
-export async function getLicenseTierStrict(guildId) {
-  if (!guildId) return "none";
-
-  // 0. Check Override
-  if (tierOverrides.has(guildId)) return tierOverrides.get(guildId);
-
-  const free = (process.env.FREE_GUILD_IDS || "").split(",").map(s => s.trim());
-  if (free.includes(guildId)) return "pro_plus";
-
-  if (!db) return "none";
-  const row = await db.get("SELECT expires_at, tier FROM licenses WHERE guild_id=$1", guildId);
-  if (!row) return "none";
-
-  if (row.expires_at && Date.now() > Number(row.expires_at)) return "none"; // Expired
-
-  return row.tier || "free";
-}
 
 
 // =========================
@@ -1584,7 +1492,7 @@ client.on("interactionCreate", async (interaction) => {
 
   try {
     // License Check
-    const tier = await getLicenseTierStrict(interaction.guildId);
+    const tier = await getLicenseTierStrict(interaction.guildId, db);
     if (tier === "none" && interaction.commandName !== "license") {
       await interaction.reply({ content: "🚫 このサーバーではライセンスが有効ではありません (License Required)", ephemeral: true });
       return;
@@ -1640,7 +1548,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     // ✅ チャンネルが変わってない（mute/deaf等）は全部無視
     if (oldCh === newCh) return;
 
-    if ((await getLicenseTierStrict(guild.id)) === "none") return; // License Check
+    if ((await getLicenseTierStrict(guild.id, db)) === "none") return; // License Check
 
     const who = member.displayName || member.user?.username || member.id;
     const timeLabel = tokyoNowLabel();
@@ -1790,7 +1698,7 @@ client.on(Events.MessageCreate, async (message) => {
 
     const guildId = message.guild.id;
 
-    if ((await getLicenseTierStrict(guildId)) === "none") return; // License Check
+    if ((await getLicenseTierStrict(guildId, db)) === "none") return; // License Check
 
     // NG一覧
     const ngList = await getNgWords(guildId);
