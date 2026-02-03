@@ -24,8 +24,8 @@ export async function execute(interaction) {
 
   await interaction.reply({
     content:
-      `🏓 Pong!\n` +
-      `現在のプラン: **${status}**` +
+      `現在、当サーバーは **${status}** として登録されております。\n` +
+      `機能の詳細や、より高度な活用方法につきましては、以下のガイドページをご覧くださいませ。` +
       linkText,
     flags: MessageFlags.Ephemeral,
   });
