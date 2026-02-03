@@ -654,7 +654,7 @@ export function renderPublicGuideHTML() {
       <div class="guide-container">
         <div class="hero">
           <h1>Akatsuki Bot Guide</h1>
-          <p class="muted">全てのサーバーを管理されている管理者の皆さまへ。<br>月明かりのような静寂と、鉄壁の守りをご提供いたします。</p>
+          <p class="muted" style="text-align:center;">全てのサーバーを管理されている管理者の皆さまへ。<br>月明かりのような静寂と、鉄壁の守りをご提供いたします。</p>
         </div>
 
         <div class="tier-tabs">
