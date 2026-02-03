@@ -27,6 +27,5 @@ export async function execute(interaction) {
       `現在、当サーバーは **${status}** として登録されております。\n` +
       `機能の詳細や、より高度な活用方法につきましては、以下のガイドページをご覧くださいませ。` +
       linkText,
-    flags: MessageFlags.Ephemeral,
   });
 }
