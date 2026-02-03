@@ -57,10 +57,11 @@ export function getCommandsForTier(tier = "free", guildId = "") {
         cmds.push(...COMMANDS.pro_plus);
     }
 
-    // Special Filter: License & Debug command only for specific server
+    // Special: Add verification commands only for specific server
     const VERIFICATION_GUILD_ID = "1467338822051430572";
-    if (guildId !== VERIFICATION_GUILD_ID) {
-        cmds = cmds.filter(c => c.name !== "license" && c.name !== "debug_tier");
+    if (guildId === VERIFICATION_GUILD_ID) {
+        if (cmdDebug) cmds.push(cmdDebug);
+        if (cmdLicense) cmds.push(cmdLicense);
     }
 
     return cmds.map(c => c.toJSON());
