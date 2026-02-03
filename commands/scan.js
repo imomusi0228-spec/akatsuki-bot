@@ -85,7 +85,128 @@ export async function execute(interaction, db) {
 
     await interaction.editReply(`🔄 スキャンを開始します... (Target: ${logCh.name})`);
 
-    // 2. Scan Threads
+    // 2. Scan Main Channel Messages (before threads)
+    let mainChannelCount = 0;
+    let mainChannelSkipped = 0;
+    let lastId = null;
+
+    while (true) {
+      const msgs = await logCh.messages.fetch({ limit: 100, before: lastId });
+      if (msgs.size === 0) break;
+
+      for (const m of msgs.values()) {
+        lastId = m.id;
+        if (m.author.id !== interaction.client.user.id) continue; // Only bot msgs
+
+        const ts = m.createdTimestamp;
+
+        const exists = await db.get(
+          "SELECT id FROM log_events WHERE guild_id=$1 AND ts=$2",
+          guild.id, ts
+        );
+        if (exists) {
+          mainChannelSkipped++;
+          continue;
+        }
+
+        // --- Parse setlog embed (auto-detect log channel) ---
+        if (m.embeds.length > 0) {
+          const emb = m.embeds[0];
+          const desc = emb.description || "";
+          
+          // Match: "✅ 管理ログの送信先を <#123456789> に設定しました"
+          const channelMatch = desc.match(/管理ログの送信先を\s*<#(\d+)>/);
+          if (channelMatch) {
+            const detectedChannelId = channelMatch[1];
+            // Update DB settings
+            await db.run(
+              `INSERT INTO settings (guild_id, log_channel_id)
+               VALUES ($1, $2)
+               ON CONFLICT (guild_id)
+               DO UPDATE SET log_channel_id = EXCLUDED.log_channel_id`,
+              guild.id, detectedChannelId
+            );
+            console.log(`✅ Auto-detected log channel from setlog: ${detectedChannelId}`);
+          }
+        }
+
+        // --- Parse VC (Embeds) ---
+        if (m.embeds.length > 0) {
+          const emb = m.embeds[0];
+          const title = emb.title || "";
+          const desc = emb.description || "";
+
+          // Extract ID: "ID\n123456789012345678・..."
+          const idMatch = desc.match(/ID\n(\d+)/);
+          const uid = idMatch ? idMatch[1] : null;
+
+          if (uid) {
+            if (title === "VC IN") {
+              await db.run(
+                "INSERT INTO log_events (guild_id, type, user_id, ts, meta) VALUES ($1, 'vc_in', $2, $3, $4)",
+                guild.id, uid, ts, JSON.stringify({ message_id: m.id })
+              );
+              mainChannelCount++;
+            } else if (title === "VC OUT") {
+              await db.run(
+                "INSERT INTO log_events (guild_id, type, user_id, ts, duration_ms, meta) VALUES ($1, 'vc_out', $2, $3, $4, $5)",
+                guild.id, uid, ts, 0, JSON.stringify({ message_id: m.id })
+              );
+              mainChannelCount++;
+            } else if (title === "VC MOVE") {
+              await db.run(
+                "INSERT INTO log_events (guild_id, type, user_id, ts, duration_ms, meta) VALUES ($1, 'vc_move', $2, $3, $4, $5)",
+                guild.id, uid, ts, 0, JSON.stringify({ message_id: m.id })
+              );
+              mainChannelCount++;
+            }
+          }
+        }
+
+        // --- Parse NG ---
+        if (m.embeds.length > 0) {
+          const emb = m.embeds[0];
+          if (emb.description?.includes("NG word detected")) {
+            const idField = emb.fields.find(f => f.name === "ID");
+            let uid = null;
+            if (idField) {
+              uid = idField.value.split("・")[0];
+            }
+            const matchedField = emb.fields.find(f => f.name === "Matched");
+            const matched = matchedField ? matchedField.value : "";
+
+            if (uid) {
+              await db.run(
+                "INSERT INTO log_events (guild_id, type, user_id, ts, meta) VALUES ($1, 'ng_detected', $2, $3, $4)",
+                guild.id, uid, ts, JSON.stringify({ message_id: m.id, matched: matched })
+              );
+              await db.run(
+                `INSERT INTO ng_hits (guild_id, user_id, count, updated_at) 
+                 VALUES ($1, $2, 1, $3)
+                 ON CONFLICT (guild_id, user_id) 
+                 DO UPDATE SET count = count + 1, updated_at = $3`,
+                guild.id, uid, ts
+              );
+              mainChannelCount++;
+            }
+          } else if (emb.description?.includes("timeout applied")) {
+            const idField = emb.fields.find(f => f.name === "ID");
+            let uid = null;
+            if (idField) uid = idField.value.split("・")[0];
+
+            if (uid) {
+              await db.run(
+                "INSERT INTO log_events (guild_id, type, user_id, ts, meta) VALUES ($1, 'timeout_applied', $2, $3, $4)",
+                guild.id, uid, ts, JSON.stringify({ message_id: m.id })
+              );
+              mainChannelCount++;
+            }
+          }
+        }
+      }
+    }
+
+    // 3. Scan Threads
     // We need Active and Archived threads
     const threads = [];
 
@@ -216,7 +337,9 @@ export async function execute(interaction, db) {
       }
     }
 
-    await interaction.editReply(`✅ スキャン完了: ${count} 件インポート (スキップ: ${skipped} 件)`);
+    const totalCount = mainChannelCount + count;
+    const totalSkipped = mainChannelSkipped + skipped;
+    await interaction.editReply(`✅ スキャン完了: ${totalCount} 件インポート (スキップ: ${totalSkipped} 件)\n📊 内訳: チャンネル本体 ${mainChannelCount}件 / スレッド ${count}件`);
 
   } catch (e) {
     console.error(e);
