@@ -1948,6 +1948,39 @@ const server = http.createServer(async (req, res) => {
         if (!isTierAtLeast(tier, "pro")) return json(res, { ok: false, error: "upgrade_required" }, 403);
 
         const r = await removeNgWord(db, guildId, word);
+
+        // ✅ 追加: 違反カウントがゼロになったユーザーのタイムアウトを解除
+        if (r.ok) {
+          try {
+            const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
+            if (guild) {
+              // ng_hitsテーブルから違反カウントがゼロのユーザーを取得
+              const zeroHitUsers = await db.all(
+                `SELECT user_id FROM ng_hits WHERE guild_id = $1 AND count = 0`,
+                guildId
+              );
+
+              // タイムアウト中のユーザーを解除
+              if (zeroHitUsers.length > 0) {
+                const members = await guild.members.fetch();
+                for (const row of zeroHitUsers) {
+                  const member = members.get(row.user_id);
+                  if (member && member.communicationDisabledUntilTimestamp && member.communicationDisabledUntilTimestamp > Date.now()) {
+                    if (member.moderatable) {
+                      await member.timeout(null, `NGワード削除に伴う解除: ${word}`).catch(() => { });
+                    }
+                  }
+                }
+
+                // カウントがゼロのレコードを削除（クリーンアップ）
+                await db.run(`DELETE FROM ng_hits WHERE guild_id = $1 AND count = 0`, guildId);
+              }
+            }
+          } catch (e) {
+            console.error("Failed to clear timeouts after NG word removal:", guildId, word, e);
+          }
+        }
+
         return json(res, r, r.ok ? 200 : 400);
       }
 
