@@ -2,7 +2,7 @@ import { SlashCommandBuilder, MessageFlags } from "discord.js";
 
 export const data = new SlashCommandBuilder()
   .setName("ping")
-  .setDescription("Botの応答とサーバーのプラン状態を確認します");
+  .setDescription("サーバーのプラン状態の確認とガイドの表示を行います");
 
 export async function execute(interaction) {
   // interaction.userTier is injected in index.js (interactionCreate)
