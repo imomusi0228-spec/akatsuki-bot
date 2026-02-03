@@ -263,7 +263,16 @@ const COMMON_SCRIPT = `
         });
         const updateSortIcon = (id, key) => {
            const span = $(id);
-           if(span) span.innerText = sortKey === key ? (sortOrder === 1 ? "▲" : "▼") : "";
+           if (!span) return;
+           if (sortKey === key) {
+             span.innerText = sortOrder === 1 ? "▲" : "▼";
+             span.style.opacity = "1";
+             span.style.color = "var(--accent-color)";
+           } else {
+             span.innerText = "▼";
+             span.style.opacity = "0.3";
+             span.style.color = "inherit";
+           }
         };
         updateSortIcon("sort-name", "display_name");
         updateSortIcon("sort-joined", "joined_at");
@@ -273,13 +282,15 @@ const COMMON_SCRIPT = `
            const yes = "<span style='color:var(--success-color)'>Yes</span>";
            const no = "<span style='color:var(--danger-color)'>No</span>";
            const av = r.avatar_url || "https://cdn.discordapp.com/embed/avatars/0.png";
-           html += \`<tr>
-             <td><div style="display:flex; align-items:center; gap:8px;"><img src="\${av}" style="width:24px; height:24px; border-radius:50%;" /> <span>\${r.display_name}</span></div></td>
-             <td style="text-align:center;">\${r.joined_at}</td>
-             <td style="text-align:center;">\${r.last_vc}</td>
-             <td style="text-align:center;">\${r.has_role === "Yes" ? yes : (r.has_role==="No" ? no : "-")}</td>
-             <td style="text-align:center;">\${r.has_intro === "Yes" ? yes : (r.has_intro.includes("No") ? no : "-")}</td>
-           </tr>\`;
+            // YYYY/MM/DD
+            const joined = (r.joined_at || "").replace(/-/g, "/");
+            html += \`<tr>
+              <td style="white-space:nowrap; text-align:center;">\${joined}</td>
+              <td><div style="display:flex; align-items:center; gap:8px;"><img src="\${av}" style="width:24px; height:24px; border-radius:50%;" /> <span>\${r.display_name}</span></div></td>
+              <td style="text-align:center;">\${r.last_vc}</td>
+              <td style="text-align:center;">\${r.has_role === "Yes" ? yes : (r.has_role==="No" ? no : "-")}</td>
+              <td style="text-align:center;">\${r.has_intro === "Yes" ? yes : (r.has_intro.includes("No") ? no : "-")}</td>
+            </tr>\`;
         });
         el.innerHTML = html;
      };
@@ -548,8 +559,8 @@ export function renderAdminActivityHTML({ user }) {
         <table class="data-table">
             <thead>
             <tr>
-                <th id="th-name" style="cursor:pointer; user-select:none;">ユーザー <span id="sort-name"></span></th>
-                <th id="th-joined" style="text-align:center; cursor:pointer; user-select:none;">参加日 <span id="sort-joined"></span></th>
+                <th id="th-joined" style="text-align:center; cursor:pointer; user-select:none; white-space:nowrap;">参加日 <span id="sort-joined">▼</span></th>
+                <th id="th-name" style="cursor:pointer; user-select:none;">ユーザー <span id="sort-name">▼</span></th>
                 <th style="text-align:center;">最終VC</th>
                 <th style="text-align:center;">ロール</th>
                 <th style="text-align:center;">自己紹介</th>
