@@ -670,6 +670,7 @@ try {
       const mod = await importFile(filePath);
       if (mod?.data?.name && typeof mod.execute === "function") {
         client.commands.set(mod.data.name, mod);
+        console.log(`✅ Loaded command: "${mod.data.name}" (from ${file})`);
       }
     }
   }
@@ -1057,11 +1058,14 @@ client.on("interactionCreate", async (interaction) => {
     // Inject tier into interaction for commands
     interaction.userTier = tier;
 
-    const command = client.commands.get(interaction.commandName);
+    // コンテキストメニューコマンドの場合、commandNameをそのまま使う
+    const commandKey = interaction.commandName;
+    const command = client.commands.get(commandKey);
 
     if (!command) {
-      // ここは見えるように ephemeral
-      await interaction.reply({ content: `❌ コマンドが見つかりません: /${interaction.commandName}`, flags: MessageFlags.Ephemeral }).catch(() => null);
+      console.warn(`⚠️ Command not found in client.commands: "${commandKey}"`);
+      console.log(`Available commands:`, Array.from(client.commands.keys()));
+      await interaction.reply({ content: `❌ コマンドが見つかりません: ${commandKey}`, flags: MessageFlags.Ephemeral }).catch(() => null);
       return;
     }
 
@@ -1991,20 +1995,20 @@ const server = http.createServer(async (req, res) => {
         if (!isTierAtLeast(tier, "pro")) return json(res, { ok: false, error: "upgrade_required" }, 403);
 
         const settings = await getSettings(guildId);
-        
+
         // チャンネル名を取得
         let log_channel_name = null;
         if (settings.log_channel_id) {
           const guild = await client.guilds.fetch(guildId).catch(() => null);
           if (guild) {
-            const ch = guild.channels.cache.get(settings.log_channel_id) || 
-                       (await guild.channels.fetch(settings.log_channel_id).catch(() => null));
+            const ch = guild.channels.cache.get(settings.log_channel_id) ||
+              (await guild.channels.fetch(settings.log_channel_id).catch(() => null));
             if (ch) log_channel_name = ch.name;
           }
         }
-        
-        return json(res, { 
-          ok: true, 
+
+        return json(res, {
+          ok: true,
           settings: {
             ...settings,
             log_channel_name
