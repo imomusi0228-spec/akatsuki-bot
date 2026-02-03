@@ -709,8 +709,8 @@ export function renderPublicGuideHTML() {
           </div>
 
           <div class="cmd-card">
-            <div class="cmd-name">アプリ > タイムアウトを解除 <span class="cmd-badge">特権操作</span></div>
-            <p>ユーザー様を右クリック（または長押し）し、「アプリ」メニューから選択するだけで、タイムアウトを即座に解除し、違反カウントも帳消しにいたします。</p>
+            <div class="cmd-name">NGワード設定 > 削除 <span class="cmd-badge">特権操作</span></div>
+            <p>Web管理画面の「NGワード設定」から該当のワードを削除していただくことで、タイムアウトを即座に解除し、違反カウントも帳消しにいたします。</p>
             <div class="use-case">
               <strong>🎩 執事の提案：慈悲ある救済</strong><br>
                 身内同士の冗談が誤って検閲されてしまった際、管理者の皆様はその場でスマートに、そしてエレガントに救済の手を差し伸べることができます。
