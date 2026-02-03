@@ -209,7 +209,11 @@ const COMMON_SCRIPT = `
         if(st.ok && st.settings) {
            let settingsText = "現在の設定";
            if(st.settings.log_channel_id) {
-              settingsText += " | ログ送信先: #" + st.settings.log_channel_id;
+              // チャンネル名が取得できた場合はそれを表示、できなかった場合はIDを表示
+              const channelDisplay = st.settings.log_channel_name 
+                ? st.settings.log_channel_name 
+                : st.settings.log_channel_id;
+              settingsText += " | ログ送信先: #" + channelDisplay;
            }
   $("settingsBox").innerHTML = settingsText;
   $("threshold").value = st.settings.ng_threshold ?? 3;

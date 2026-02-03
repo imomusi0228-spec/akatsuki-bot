@@ -1991,7 +1991,25 @@ const server = http.createServer(async (req, res) => {
         if (!isTierAtLeast(tier, "pro")) return json(res, { ok: false, error: "upgrade_required" }, 403);
 
         const settings = await getSettings(guildId);
-        return json(res, { ok: true, settings });
+        
+        // チャンネル名を取得
+        let log_channel_name = null;
+        if (settings.log_channel_id) {
+          const guild = await client.guilds.fetch(guildId).catch(() => null);
+          if (guild) {
+            const ch = guild.channels.cache.get(settings.log_channel_id) || 
+                       (await guild.channels.fetch(settings.log_channel_id).catch(() => null));
+            if (ch) log_channel_name = ch.name;
+          }
+        }
+        
+        return json(res, { 
+          ok: true, 
+          settings: {
+            ...settings,
+            log_channel_name
+          }
+        });
       }
 
       // /api/settings/update
