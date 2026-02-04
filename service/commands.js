@@ -1,13 +1,13 @@
 import { REST, Routes } from "discord.js";
 import { data as cmdActivity } from "../commands/activity.js";
 import { data as cmdAdmin } from "../commands/admin.js";
-import { data as cmdLicense } from "../commands/license.js";
+
 import { data as cmdNgword } from "../commands/ngword.js";
 import { data as cmdPing } from "../commands/ping.js";
 import { data as cmdScan } from "../commands/scan.js";
 import { data as cmdSetlog } from "../commands/setlog.js";
 import { data as cmdVc } from "../commands/vc.js";
-import { data as cmdDebug } from "../commands/debug_tier.js";
+
 import { data as cmdUntimeout } from "../commands/untimeout.js";
 import { isTierAtLeast } from "../utils/common.js";
 
@@ -57,11 +57,13 @@ export function getCommandsForTier(tier = "free", guildId = "") {
         cmds.push(...COMMANDS.pro_plus);
     }
 
-    // Special: Add verification commands only for specific server
-    const VERIFICATION_GUILD_ID = "1467338822051430572";
-    if (guildId === VERIFICATION_GUILD_ID) {
-        if (cmdDebug) cmds.push(cmdDebug);
-        if (cmdLicense) cmds.push(cmdLicense);
+
+
+
+    // 特定サーバー (1467338822051430572) 用の特別対応：setlog, ngword, admin のみ許可
+    if (guildId === "1467338822051430572") {
+        const allowedCommands = ["setlog", "ngword", "admin"];
+        cmds = cmds.filter(c => allowedCommands.includes(c.name));
     }
 
     return cmds.map(c => c.toJSON());

@@ -670,7 +670,7 @@ try {
       const mod = await importFile(filePath);
       if (mod?.data?.name && typeof mod.execute === "function") {
         client.commands.set(mod.data.name, mod);
-        console.log(`✅ Loaded command: "${mod.data.name}" (from ${file})`);
+        // console.log(`✅ Loaded command: "${mod.data.name}" (from ${file})`);
       }
     }
   }
@@ -759,10 +759,7 @@ async function acquireMessageLock(messageId) {
   }
 }
 
-// parseNgInput moved to service/ng.js but might be used by commands/ngword.js (which now imports it from service/ng.js)
-// If index.js doesn't use it, we can remove it. Checking usages... 
-// index.js used it in addNgWord/removeNgWord which are being removed.
-// We remove it here.
+
 
 function overlapMs(start1, end1, start2, end2) {
   const s = Math.max(start1, start2);
@@ -844,7 +841,7 @@ async function updateSettings(
   return { ok: true };
 }
 
-// getNgWords, addNgWord, removeNgWord, clearNgWords moved to service/ng.js
+
 
 /* =========================
    Event logging (stats)
@@ -1051,7 +1048,7 @@ client.on("interactionCreate", async (interaction) => {
   try {
     // License Check
     const tier = await getLicenseTierStrict(interaction.guildId, db);
-    if (tier === "none" && interaction.commandName !== "license") {
+    if (tier === "none") {
       await interaction.reply({ content: "🚫 このサーバーではライセンスが有効ではありません (License Required)", flags: MessageFlags.Ephemeral });
       return;
     }

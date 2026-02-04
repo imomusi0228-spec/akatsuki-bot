@@ -113,7 +113,7 @@ export async function execute(interaction, db) {
         if (m.embeds.length > 0) {
           const emb = m.embeds[0];
           const desc = emb.description || "";
-          
+
           // Match: "✅ 管理ログの送信先を <#123456789> に設定しました"
           const channelMatch = desc.match(/管理ログの送信先を\s*<#(\d+)>/);
           if (channelMatch) {
@@ -126,7 +126,7 @@ export async function execute(interaction, db) {
                DO UPDATE SET log_channel_id = EXCLUDED.log_channel_id`,
               guild.id, detectedChannelId
             );
-            console.log(`✅ Auto-detected log channel from setlog: ${detectedChannelId}`);
+            // console.log(`✅ Auto-detected log channel from setlog: ${detectedChannelId}`);
           }
         }
 
