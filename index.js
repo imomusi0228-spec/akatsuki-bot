@@ -675,7 +675,7 @@ try {
     }
   }
 } catch (e) {
-  console.error("❌ Command load failed:", e?.message ?? e);
+  console.error("❌ Command load failed:", e);
 }
 
 /* =========================
@@ -1728,13 +1728,41 @@ const server = http.createServer(async (req, res) => {
       body.set("code", code);
       body.set("redirect_uri", redirectUri);
 
-      const tr = await fetch("https://discord.com/api/v10/oauth2/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body,
-      });
-      if (!tr.ok) return text(res, `Token exchange failed: ${tr.status}`, 500);
-      const tok = await tr.json();
+      let tok = null;
+      let maxRetries = 4;
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        const tr = await fetch("https://discord.com/api/v10/oauth2/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body,
+        });
+
+        if (tr.ok) {
+          tok = await tr.json();
+          break;
+        }
+
+        if (tr.status === 429) {
+          let waitMs = 1000;
+          const ra = tr.headers.get("retry-after");
+          if (ra) {
+            const sec = Number(ra);
+            if (Number.isFinite(sec)) waitMs = Math.ceil(sec * 1000);
+          } else {
+            try {
+              const data = await tr.json();
+              if (typeof data?.retry_after === "number") waitMs = Math.ceil(data.retry_after * 1000);
+            } catch { }
+          }
+          waitMs += 250 + Math.floor(Math.random() * 250);
+          if (attempt === maxRetries) return text(res, `Token exchange failed: 429`, 500);
+          console.warn(`[OAuth] 429 Detected, retrying in ${waitMs}ms (attempt ${attempt + 1})`);
+          await new Promise((resolve) => setTimeout(resolve, waitMs));
+          continue;
+        }
+
+        return text(res, `Token exchange failed: ${tr.status}`, 500);
+      }
 
       const user = await discordApi(tok.access_token, "/users/@me");
       const sid = rand(24);
@@ -2321,11 +2349,22 @@ client.once(Events.ClientReady, () => {
 });
 
 async function startBot() {
+  const token = (process.env.DISCORD_TOKEN || process.env.BOT_TOKEN || process.env.TOKEN || "").trim();
+
+  if (!token) {
+    console.error("❌ No Discord token found in environment variables (DISCORD_TOKEN, BOT_TOKEN, or TOKEN).");
+    process.exit(1);
+  }
+
+  const tokenPrefix = token.substring(0, 10);
+  const tokenSource = process.env.DISCORD_TOKEN ? "DISCORD_TOKEN" : (process.env.BOT_TOKEN ? "BOT_TOKEN" : "TOKEN");
+  console.log(`📡 Using token from ${tokenSource} (prefix: ${tokenPrefix}...)`);
+
   const MAX_RETRIES = 5;
   for (let i = 1; i <= MAX_RETRIES; i++) {
     try {
       console.log(`📡 Discord Login attempt ${i}/${MAX_RETRIES}...`);
-      await client.login(discordToken);
+      await client.login(token);
       return;
     } catch (err) {
       console.error(`❌ Login attempt ${i} failed:`, err.message);
@@ -2340,3 +2379,13 @@ async function startBot() {
 }
 
 await startBot();
+
+// --- Global Error Handlers ---
+process.on("uncaughtException", (err) => {
+  console.error("🔥 Uncaught Exception:", err);
+  // 重要：致命的なエラーでも即座に終了させず、ログを残す
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Promise拒否（ハンドルなし）:", promise, "理由:", reason);
+});
