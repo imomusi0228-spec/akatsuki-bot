@@ -418,7 +418,7 @@ const CLIENT_ID = process.env.DISCORD_CLIENT_ID || "";
 const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || "";
 const PUBLIC_URL = process.env.PUBLIC_URL || "";
 const REDIRECT_PATH = "/oauth/callback";
-const OAUTH_REDIRECT_URI = PUBLIC_URL ? `${PUBLIC_URL}${REDIRECT_PATH} ` : "";
+const OAUTH_REDIRECT_URI = PUBLIC_URL ? `${PUBLIC_URL}${REDIRECT_PATH}` : "";
 const OAUTH_SCOPES = "identify guilds";
 
 /** 429対策（guilds短期キャッシュ） */
