@@ -1,5 +1,14 @@
 // index.js（完成形：丸ごとコピペでOK）
 
+// --- Global Error Handlers (Moved to top to catch early issues) ---
+process.on("uncaughtException", (err) => {
+  console.error("🔥 Uncaught Exception at top-level:", err);
+});
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("🔥 Unhandled Rejection at top-level:", promise, "reason:", reason);
+});
+
+
 import http from "node:http";
 import crypto from "node:crypto";
 import "dotenv/config";
@@ -655,6 +664,20 @@ const client = new Client({
   ],
 });
 client.commands = new Collection();
+
+// --- Discord Client Event Logging (Help debug connectivity/permissions) ---
+client.on(Events.Error, (err) => {
+  console.error("❌ Discord Client Error:", err);
+});
+client.on(Events.Warn, (msg) => {
+  console.warn("⚠️ Discord Client Warning:", msg);
+});
+client.on(Events.ShardError, (err) => {
+  console.error("❌ Discord Shard Error:", err);
+});
+client.on(Events.Invalidated, () => {
+  console.error("❌ Discord Session Invalidated");
+});
 
 async function importFile(filePath) {
   return import(pathToFileURL(filePath).href);
@@ -2380,12 +2403,4 @@ async function startBot() {
 
 await startBot();
 
-// --- Global Error Handlers ---
-process.on("uncaughtException", (err) => {
-  console.error("🔥 Uncaught Exception:", err);
-  // 重要：致命的なエラーでも即座に終了させず、ログを残す
-});
-
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("Promise拒否（ハンドルなし）:", promise, "理由:", reason);
-});
+// --- (Original handlers moved to top) ---
