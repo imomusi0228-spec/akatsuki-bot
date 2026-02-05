@@ -35,20 +35,22 @@ export async function handleAdminRoute(req, res, pathname, url) {
         return;
     }
 
+    const user = session.user;
+
     // Router
-    if (pathname === "/admin/settings") {
-        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-        res.end(renderAdminSettingsHTML({ user: session.user }));
-        return;
-    }
-
-    if (pathname === "/admin/activity") {
-        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-        res.end(renderAdminActivityHTML({ user: session.user }));
-        return;
-    }
-
-    // Default: Dashboard
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-    res.end(renderAdminDashboardHTML({ user: session.user }));
+    if (pathname === "/admin/dashboard") {
+        const html = renderAdminDashboardHTML({ user, req });
+        res.end(html);
+    } else if (pathname === "/admin/settings") {
+        const html = renderAdminSettingsHTML({ user, req });
+        res.end(html);
+    } else if (pathname === "/admin/activity") {
+        const html = renderAdminActivityHTML({ user, req });
+        res.end(html);
+    } else {
+        // Default: Dashboard if no other path matches
+        const html = renderAdminDashboardHTML({ user, req });
+        res.end(html);
+    }
 }

@@ -29,7 +29,7 @@ export async function startServer() {
             // 4. Public Pages
             if (pathname === "/") {
                 res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-                res.end(renderPublicGuideHTML());
+                res.end(renderPublicGuideHTML(req)); // Pass req for lang
                 return;
             }
 

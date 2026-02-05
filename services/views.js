@@ -93,78 +93,71 @@ const COMMON_SCRIPT = `
      $("btn_add").onclick = async () => { const w = $("ng_add").value; if(!w)return; await post("/api/ngwords/add", {guild: $("guild").value, word: w }); $("ng_add").value=""; reload(); };
      $("btn_remove").onclick = async () => { const w = $("ng_remove").value; if(!w)return; await post("/api/ngwords/remove", {guild: $("guild").value, word: w }); $("ng_remove").value=""; reload(); };
      $("btn_clear").onclick = async () => { if(!confirm("Clear all?"))return; await post("/api/ngwords/clear", {guild: $("guild").value }); reload(); };
-     $("btn_save").onclick = async () => { await post("/api/settings/update", { guild: $("guild").value, ng_threshold: $("threshold").value, timeout_minutes: $("timeout").value }); alert("Saved"); };
-     reload();
-  }
-
-  async function initActivity() {
-     if(!await loadGuilds()) return;
-     const runScan = async () => {
-        saveGuildSelection(); const gid = $("guild").value;
-        $("act-rows").innerHTML = ""; $("act-loading").style.display = "block";
-        const res = await api(\`/api/activity?guild=\${gid}\`);
-        $("act-loading").style.display = "none";
-        
-        if(!res.ok) { 
-            const errorMsg = res.error.includes("Upgrade") ? \`🔒 \${res.error} <a href="/admin/dashboard" style="margin-left:8px;">Check Plans</a>\` : res.error;
-            $("act-rows").innerHTML = \`<tr><td colspan="5" style="color:red; text-align:center;">\${errorMsg}</td></tr>\`; 
-            return; 
-        }
-        
-        let html = "";
-        (res.data || []).forEach(r => {
-           const av = r.avatar_url || "";
-           html += \`<tr><td>\${r.joined_at}</td><td><div style="display:flex; align-items:center; gap:8px;"><img src="\${av}" style="width:24px; height:24px; border-radius:50%;" /> <span>\${escapeHTML(r.display_name)}</span></div></td><td>\${r.last_vc}</td><td>\${r.has_role}</td><td>\${r.has_intro}</td></tr>\`;
-        });
-        $("act-rows").innerHTML = html || '<tr><td colspan="5" class="muted" style="text-align:center;">None</td></tr>';
-     };
-     $("guild").onchange = () => { $("act-rows").innerHTML = ''; };
-     $("reload").onclick = runScan; $("btn_scan").onclick = runScan;
-  }
+function setLang(l) { document.cookie = "lang="+l+";path=/;max-age=31536000"; location.reload(); }
+async function api(url, method="GET", body=null) {
+    const res = await fetch(url, { method, headers: {"Content-Type":"application/json"}, body: body ? JSON.stringify(body) : null });
+    return res.json();
+}
+function escapeHTML(str) { return str.replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[m]); }
+const $ = (id) => document.getElementById(id);
+const yyyymmNow = () => new Date().toISOString().slice(0, 7);
+function saveGuildSelection() { localStorage.setItem("last_guild", $("guild").value); }
+async function loadGuilds() {
+    const res = await api("/api/guilds");
+    if (res.ok) {
+        let opts = "";
+        res.data.forEach(g => opts += \`<option value="\${g.id}">\${escapeHTML(g.name)}</option>\`);
+        if (!opts) return false;
+        $("guild").innerHTML = opts;
+        const last = localStorage.getItem("last_guild");
+        if (last && Array.from($("guild").options).some(o => o.value === last)) $("guild").value = last;
+        return true;
+    } else if (res.redirect) { location.href = res.redirect; return false; }
+    return false;
+}
 `;
 
-function renderLayout({ title, content, user, activeTab, oauth, scripts = "" }) {
-   const userLabel = user ? escapeHTML(user.global_name || user.username) : "";
-   const nav = (label, path, id) => `<a href="${path}" class="nav-item ${activeTab === id ? 'active' : ''}">${label}</a>`;
-   return `<!doctype html><html lang="ja"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHTML(title)}</title><style>${COMMON_CSS}</style></head><body>
-      <div style="max-width:900px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-        <h2 style="margin:0;">Akatsuki Bot</h2>
-        <div style="text-align:right; font-size:14px;">
-          ${user ? `<span style="margin-right:12px;">${userLabel}</span>` : ``}
-          ${oauth ? `<a href="/logout" class="btn" style="padding:4px 10px; font-size:12px;">Logout</a>` : ``}
+function renderLayout({ title, content, user, activeTab, oauth = false, scripts = "" }, lang = 'ja') {
+   const navItem = (lbl, href, act) => `<a href="${href}" style="margin-left: 20px; color:${act ? '#fff' : '#8899a6'}; font-weight:${act ? 'bold' : 'normal'}">${lbl}</a>`;
+   const langBtn = lang === 'ja'
+      ? `<span class="lang-switch" onclick="setLang('en')">🇺🇸 English</span>`
+      : `<span class="lang-switch" onclick="setLang('ja')">🇯🇵 日本語</span>`;
+
+   return `<!DOCTYPE html>
+<html lang="${lang}">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${title} | Akatsuki</title><style>${COMMON_CSS}</style></head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div style="font-size: 24px; font-weight: bold; display:flex; align-items:center;">
+                <span style="color:#f91880; margin-right:10px;">☾</span> Akatsuki ${langBtn}
+            </div>
+            <div>
+                ${oauth && user ? `
+                    ${navItem(t("dashboard", lang), "/admin/dashboard", activeTab === "dashboard")}
+                    ${navItem(t("settings", lang), "/admin/settings", activeTab === "settings")}
+                    ${navItem(t("activity", lang), "/admin/activity", activeTab === "activity")}
+                    <span style="margin-left:20px; color:#8899a6;">${escapeHTML(user.username)}</span>
+                    <a href="/logout" class="btn" style="margin-left:10px; padding:5px 15px; font-size:12px;">${t("logout", lang)}</a>
+                ` : `
+                    <a href="/login" class="btn">${t("login", lang)}</a>
+                `}
+            </div>
         </div>
-      </div>
-      ${user ? `<div class="nav-bar">${nav("Dashboard", "/admin/dashboard", "dashboard")}${nav("Settings", "/admin/settings", "settings")}${nav("Activity", "/admin/activity", "activity")}</div>` : ``}
-      <div id="main-content">${content}</div>
-      ${scripts}
-    </body></html>`;
+        ${content}
+        <div class="footer">&copy; 2026 Akatsuki Bot</div>
+    </div>
+    ${scripts}
+</body></html>`;
 }
 
-export function renderNeedLoginHTML({ oauthReady }) {
-   return renderLayout({ title: "Login", content: `<div class="card" style="text-align:center; padding: 40px 20px;"><h2>Login Required</h2><p class="muted">Please login with Discord to manage your server.</p>${oauthReady ? `<a class="btn btn-primary" href="/login">Login with Discord</a>` : `<p class="muted" style="color:red">OAuth Config Missing</p>`}</div>`, oauth: false });
+function getLang(req) {
+   const cookie = req.headers.cookie || "";
+   const match = cookie.match(/lang=([a-z]{2})/);
+   return match ? match[1] : "ja";
 }
 
-export function renderAdminDashboardHTML({ user }) {
-   const content = `<div class="row" style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; align-items:center;"><select id="guild" style="flex:1; max-width:250px; padding:10px;"></select><input id="month" type="month" style="padding:9px;" /><button id="reload" class="btn">Reload</button><span id="guildStatus" class="muted"></span> <div style="margin-left:auto;">Plan: <span id="plan-info">Loading...</span></div></div>
-  <div class="card"><h3>Summary</h3><div id="summary">Loading...</div></div>
-  <div class="card"><h3>Top NG Users</h3><table class="data-table"><thead><tr><th>User</th><th style="text-align:right">Count</th></tr></thead><tbody id="topNg"></tbody></table></div>`;
-   const scripts = `<script>${COMMON_SCRIPT} initDashboard();</script>`;
-   return renderLayout({ title: "Dashboard", content, user, activeTab: "dashboard", oauth: true, scripts });
-}
-
-export function renderAdminSettingsHTML({ user }) {
-   const content = `<div class="row" style="display:flex; gap:12px; margin-bottom:16px;"><select id="guild" style="max-width:250px; padding:10px;"></select><button id="reload" class="btn">Reload</button><span id="guildStatus" class="muted"></span></div>
-  <div class="card"><h3>NG Words</h3><div style="display:flex; gap:8px; margin-bottom:8px;"><input id="ng_add" placeholder="Add word" style="flex:1;" /><button id="btn_add" class="btn">Add</button></div><div style="display:flex; gap:8px; margin-bottom:8px;"><input id="ng_remove" placeholder="Remove word" style="flex:1;" /><button id="btn_remove" class="btn">Remove</button></div><div style="max-height:200px; overflow-y:auto; background:rgba(0,0,0,0.3); padding:12px; border-radius:6px; margin-top:12px;"><pre id="ngwords" style="margin:0; font-family:monospace; color:#eee;">Loading...</pre></div><div style="margin-top:12px; display:flex; justify-content:space-between;"><span id="ngStatus" class="muted"></span><button id="btn_clear" class="btn" style="color:red; border-color:red;">Clear All</button></div></div>
-  <div class="card"><h3>Auto Mod Settings</h3><div style="display:grid; grid-template-columns: auto 1fr; gap: 12px 20px; align-items:center;"><div style="color:var(--text-secondary);">NG Threshold</div><div><input id="threshold" type="number" min="1" style="width:80px;" /></div><div style="color:var(--text-secondary);">Timeout (min)</div><div><input id="timeout" type="number" min="1" style="width:80px;" /></div></div><div style="margin-top:20px; text-align:right;"><button id="btn_save" class="btn btn-primary">Save Settings</button></div></div>`;
-   const scripts = `<script>${COMMON_SCRIPT} initSettings();</script>`;
-   return renderLayout({ title: "Settings", content, user, activeTab: "settings", oauth: true, scripts });
-}
-
-export function renderAdminActivityHTML({ user }) {
-   const content = `<div class="row" style="display:flex; gap:12px; margin-bottom:16px;"><select id="guild" style="max-width:250px; padding:10px;"></select><button id="reload" class="btn">Reload</button></div>
-  <div class="card"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;"><h3>Activity Monitor</h3><button id="btn_scan" class="btn btn-primary">Scan Inactive</button></div><div id="act-loading" style="display:none; padding:20px; text-align:center;" class="muted">Scanning...</div><div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>Joined</th><th>User</th><th>Last VC</th><th>Role</th><th>Intro</th></tr></thead><tbody id="act-rows"><tr><td colspan="5" class="muted" style="text-align:center; padding:20px;">Press Scan</td></tr></tbody></table></div></div>`;
-   const scripts = `<script>${COMMON_SCRIPT} initActivity();</script>`;
-   return renderLayout({ title: "Activity", content, user, activeTab: "activity", oauth: true, scripts });
+return renderLayout({ title: "Activity", content, user, activeTab: "activity", oauth: true, scripts });
 }
 
 export function renderPublicGuideHTML() {
