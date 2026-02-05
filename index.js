@@ -31,19 +31,6 @@ process.on("unhandledRejection", (reason, promise) => {
     // 4. Login
     console.log("▶️  Step 4: Logging into Discord...");
 
-    // Diagnostic: Check Network Connectivity
-    try {
-        console.log("🔍 Testing connection to Discord Gateway...");
-        const gw = await fetch("https://discord.com/api/v10/gateway");
-        console.log(`📡 Gateway Status: ${gw.status} ${gw.statusText}`);
-        if (!gw.ok) {
-            const txt = await gw.text();
-            console.error("❌ BLOCKED: Cannot reach Discord:", txt.slice(0, 200));
-        }
-    } catch (e) {
-        console.error("❌ Network Check Failed:", e.message);
-    }
-
     // Add Debug Logging
     client.on("debug", (m) => {
         if (m.includes("Heartbeat")) return; // Reduce noise
