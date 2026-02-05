@@ -30,12 +30,26 @@ process.on("unhandledRejection", (reason, promise) => {
 
     // 4. Login
     console.log("▶️  Step 4: Logging into Discord...");
+
+    // Add Debug Logging
+    client.on("debug", (m) => {
+        if (m.includes("Heartbeat")) return; // Reduce noise
+        console.log(`[DEBUG] ${m}`);
+    });
+    client.on("ready", () => console.log("✅ Client Ready event received!"));
+
     try {
         if (!ENV.TOKEN) throw new Error("DISCORD_TOKEN is missing");
-        await client.login(ENV.TOKEN);
+
+        // Login with timeout warning
+        const loginPromise = client.login(ENV.TOKEN);
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Login timed out (>30s)")), 30000));
+
+        await Promise.race([loginPromise, timeoutPromise]);
+
         console.log("✅ Discord login OK");
     } catch (e) {
         console.error("❌ Discord login FAILED:", e);
-        process.exit(1);
+        // Do not exit process, let web server run so we can see logs
     }
 })();
