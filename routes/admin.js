@@ -1,6 +1,6 @@
 import { ENV } from "../config/env.js";
 import { getSession } from "../middleware/auth.js";
-import { renderNeedLoginHTML, renderAdminDashboardHTML, renderAdminSettingsHTML, renderAdminActivityHTML } from "../services/views.js";
+import { renderLoginHTML, renderAdminDashboardHTML, renderAdminSettingsHTML, renderAdminActivityHTML } from "../services/views.js";
 
 export async function handleAdminRoute(req, res, pathname, url) {
     // Token Login (for debugging or admin bypass)
@@ -31,7 +31,7 @@ export async function handleAdminRoute(req, res, pathname, url) {
     // Not logged in
     if (!session) {
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-        res.end(renderNeedLoginHTML({ oauthReady, tokenEnabled }));
+        res.end(renderLoginHTML(req));
         return;
     }
 
