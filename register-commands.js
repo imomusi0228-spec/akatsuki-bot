@@ -1,71 +1,36 @@
+import { REST, Routes } from "discord.js";
+import { ENV } from "./config/env.js";
+import fs from "node:fs";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 
-import "dotenv/config";
-import pg from "pg";
-const { Pool } = pg;
-import { Client, GatewayIntentBits, Collection } from "discord.js";
-import { syncGuildCommands } from "./service/commands.js";
-import { getLicenseTierStrict } from "./service/license.js";
+const commands = [];
+const commandsPath = path.resolve("commands");
+const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(".js"));
 
-const DATABASE_URL = (process.env.DATABASE_URL || "").trim();
-const TOKEN = process.env.DISCORD_TOKEN;
-
-if (!TOKEN) {
-    console.error("❌ DISCORD_TOKEN is missing");
-    process.exit(1);
-}
-
-// Dummy client to fetch guilds
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-
-async function run() {
-    console.log("⏳ Initializing registration...");
-
-    let db = null;
-    if (DATABASE_URL) {
-        const pool = new Pool({
-            connectionString: DATABASE_URL,
-            ssl: { rejectUnauthorized: false },
-        });
-        db = {
-            async get(sql, ...params) {
-                const r = await pool.query(sql.replace(/\?/g, (_, i) => `$${i + 1}`), params.flat());
-                return r.rows[0] ?? null;
-            }
-        };
+(async () => {
+    for (const file of commandFiles) {
+        const filePath = path.join(commandsPath, file);
+        const command = await import(pathToFileURL(filePath).href);
+        if (command.data && command.execute) {
+            commands.push(command.data.toJSON());
+        } else {
+            console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+        }
     }
+
+    const rest = new REST().setToken(ENV.TOKEN);
 
     try {
-        const MAX_RETRIES = 5;
-        let loggedIn = false;
-        for (let i = 1; i <= MAX_RETRIES; i++) {
-            try {
-                console.log(`📡 Discord Login attempt ${i}/${MAX_RETRIES}...`);
-                await client.login(TOKEN);
-                loggedIn = true;
-                break;
-            } catch (err) {
-                console.warn(`⚠️ Login attempt ${i} failed: ${err.message}`);
-                if (i === MAX_RETRIES) throw err;
-                await new Promise(r => setTimeout(r, 5000));
-            }
-        }
+        console.log(`Started refreshing ${commands.length} application (/) commands.`);
 
-        console.log(`✅ Logged in as ${client.user.tag}`);
+        const data = await rest.put(
+            Routes.applicationCommands(ENV.CLIENT_ID),
+            { body: commands },
+        );
 
-        const guilds = await client.guilds.fetch();
-        console.log(`🏠 Found ${guilds.size} guilds.`);
-
-        for (const [id, guildBase] of guilds) {
-            const tier = await getLicenseTierStrict(id, db);
-            await syncGuildCommands(id, tier);
-        }
-
-        console.log("✅ All commands registered.");
-        process.exit(0);
-    } catch (e) {
-        console.error("❌ Registration failed:", e);
-        process.exit(1);
+        console.log(`Successfully reloaded ${data.length} application (/) commands.`);
+    } catch (error) {
+        console.error(error);
     }
-}
-
-run();
+})();

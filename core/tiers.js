@@ -1,0 +1,52 @@
+export const TIERS = {
+    FREE: 0,
+    PRO_MONTHLY: 1,
+    PRO_YEARLY: 2,
+    PRO_PLUS_MONTHLY: 3,
+    PRO_PLUS_YEARLY: 4
+};
+
+export const TIER_NAMES = {
+    [TIERS.FREE]: "Free",
+    [TIERS.PRO_MONTHLY]: "Pro (Monthly)",
+    [TIERS.PRO_YEARLY]: "Pro (Yearly)",
+    [TIERS.PRO_PLUS_MONTHLY]: "Pro+ (Monthly)",
+    [TIERS.PRO_PLUS_YEARLY]: "Pro+ (Yearly)"
+};
+
+export const FEATURES = {
+    [TIERS.FREE]: {
+        maxNgWords: 10,
+        logs: false,
+        dashboard: false,
+        activity: false
+    },
+    [TIERS.PRO_MONTHLY]: {
+        maxNgWords: 50,
+        logs: true,
+        dashboard: true,
+        activity: false
+    },
+    [TIERS.PRO_YEARLY]: {
+        maxNgWords: 50,
+        logs: true,
+        dashboard: true,
+        activity: false
+    },
+    [TIERS.PRO_PLUS_MONTHLY]: {
+        maxNgWords: 100,
+        logs: true,
+        dashboard: true,
+        activity: true
+    },
+    [TIERS.PRO_PLUS_YEARLY]: {
+        maxNgWords: 100,
+        logs: true,
+        dashboard: true,
+        activity: true
+    }
+};
+
+export function getFeatures(tier) {
+    return FEATURES[tier] || FEATURES[TIERS.FREE];
+}

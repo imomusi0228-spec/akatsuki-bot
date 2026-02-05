@@ -1,0 +1,53 @@
+import http from "node:http";
+import { ENV } from "../config/env.js";
+import { handleAuthRoute } from "../routes/auth.js";
+import { handleApiRoute } from "../routes/api.js";
+import { handleAdminRoute } from "../routes/admin.js";
+import { renderPublicGuideHTML } from "../services/views.js";
+
+export async function startServer() {
+    const server = http.createServer(async (req, res) => {
+        try {
+            const url = new URL(req.url, `http://${req.headers.host}`);
+            const pathname = url.pathname;
+
+            // 1. OAuth & Auth Routes
+            if (pathname.startsWith("/auth/") || pathname.startsWith("/login") || pathname.startsWith("/logout") || pathname.startsWith("/oauth/")) {
+                return await handleAuthRoute(req, res, pathname, url);
+            }
+
+            // 2. API Routes
+            if (pathname.startsWith("/api/")) {
+                return await handleApiRoute(req, res, pathname, url);
+            }
+
+            // 3. Admin Routes
+            if (pathname.startsWith("/admin")) {
+                return await handleAdminRoute(req, res, pathname, url);
+            }
+
+            // 4. Public Pages
+            if (pathname === "/") {
+                res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+                res.end(renderPublicGuideHTML());
+                return;
+            }
+
+            // 404
+            res.writeHead(404, { "Content-Type": "text/plain" });
+            res.end("Not Found");
+
+        } catch (e) {
+            console.error("Server Error:", e);
+            if (!res.headersSent) {
+                res.writeHead(500, { "Content-Type": "text/plain" });
+                res.end("Internal Server Error");
+            }
+        }
+    });
+
+    server.listen(ENV.PORT, () => {
+        console.log(`🌍 Web Server running on port ${ENV.PORT}`);
+        if (ENV.PUBLIC_URL) console.log(`   Public URL: ${ENV.PUBLIC_URL}`);
+    });
+}
