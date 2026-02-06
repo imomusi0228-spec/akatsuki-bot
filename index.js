@@ -46,14 +46,28 @@ process.on("unhandledRejection", (reason, promise) => {
     console.log("🔑 Validating token via REST API...");
     try {
         const userRes = await fetch("https://discord.com/api/v10/users/@me", {
-            headers: { Authorization: `Bot ${ENV.TOKEN}` }
+            headers: {
+                Authorization: `Bot ${ENV.TOKEN}`,
+                "User-Agent": "DiscordBot (https://github.com/imomusi0228-spec/akatsuki-bot, 1.0.0)"
+            }
         });
-        const userData = await userRes.json();
-        console.log(`🔑 [Token Check] Status: ${userRes.status}`);
+
+        console.log(`🔑 [Token Check] Status: ${userRes.status} ${userRes.statusText}`);
+        const bodyText = await userRes.text();
+
         if (userRes.ok) {
-            console.log(`🔑 [Token Check] Bot Account: ${userData.username}#${userData.discriminator} (ID: ${userData.id})`);
+            try {
+                const userData = JSON.parse(bodyText);
+                console.log(`🔑 [Token Check] Bot Account: ${userData.username}#${userData.discriminator} (ID: ${userData.id})`);
+            } catch (jsonErr) {
+                console.error(`❌ [Token Check] Failed to parse JSON even though status was OK:`, bodyText.substring(0, 500));
+            }
         } else {
-            console.error(`❌ [Token Check] Failed:`, JSON.stringify(userData));
+            console.error(`❌ [Token Check] Failed (Not OK):`);
+            console.error(`   Preview: ${bodyText.substring(0, 500)}`);
+            if (bodyText.includes("Cloudflare") || bodyText.includes("just a moment")) {
+                console.error("⚠️ [CRITICAL] Request blocked by Cloudflare. Render IP might be flagged.");
+            }
         }
     } catch (err) {
         console.error(`❌ [Token Check] Request Error:`, err);
