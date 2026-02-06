@@ -41,11 +41,8 @@ process.on("unhandledRejection", (reason, promise) => {
     try {
         if (!ENV.TOKEN) throw new Error("DISCORD_TOKEN is missing");
 
-        // Login with timeout warning
-        const loginPromise = client.login(ENV.TOKEN);
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Login timed out (>30s)")), 30000));
-
-        await Promise.race([loginPromise, timeoutPromise]);
+        // Login direct await
+        await client.login(ENV.TOKEN);
 
         console.log("✅ Discord login OK");
     } catch (e) {
