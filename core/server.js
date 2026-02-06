@@ -1,5 +1,6 @@
 import http from "node:http";
 import { ENV } from "../config/env.js";
+import { client } from "./client.js";
 import { handleAuthRoute } from "../routes/auth.js";
 import { handleApiRoute } from "../routes/api.js";
 import { handleAdminRoute } from "../routes/admin.js";
@@ -37,6 +38,21 @@ export async function startServer() {
             if (pathname === "/health") {
                 res.writeHead(200, { "Content-Type": "text/plain" });
                 res.end("OK");
+                return;
+            }
+
+            // 6. Debug Status (Diagnostic)
+            if (pathname === "/debug/status") {
+                const status = {
+                    wsStatus: client.ws.status,
+                    ping: client.ws.ping,
+                    uptime: client.uptime,
+                    user: client.user ? { tag: client.user.tag, id: client.user.id } : null,
+                    guilds: client.guilds.cache.size,
+                    readyAt: client.readyAt,
+                };
+                res.writeHead(200, { "Content-Type": "application/json" });
+                res.end(JSON.stringify(status, null, 2));
                 return;
             }
 
