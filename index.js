@@ -25,7 +25,7 @@ process.on("unhandledRejection", (reason, promise) => {
     await loadEvents();
 
     // 3. Start Web Server
-    console.log("▶️  Step 3: Starting Web Server...");
+    console.log("▶️  Step 3: Starting Web Server (with Health Check)...");
     await startServer();
 
     // 4. Login

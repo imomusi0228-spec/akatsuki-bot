@@ -33,6 +33,13 @@ export async function startServer() {
                 return;
             }
 
+            // 5. Health Check (for Render/Deployment)
+            if (pathname === "/health") {
+                res.writeHead(200, { "Content-Type": "text/plain" });
+                res.end("OK");
+                return;
+            }
+
             // 404
             res.writeHead(404, { "Content-Type": "text/plain" });
             res.end("Not Found");
@@ -46,8 +53,11 @@ export async function startServer() {
         }
     });
 
-    server.listen(ENV.PORT, () => {
-        console.log(`🌍 Web Server running on port ${ENV.PORT}`);
-        if (ENV.PUBLIC_URL) console.log(`   Public URL: ${ENV.PUBLIC_URL}`);
+    return new Promise((resolve) => {
+        server.listen(ENV.PORT, () => {
+            console.log(`🌍 Web Server running on port ${ENV.PORT}`);
+            if (ENV.PUBLIC_URL) console.log(`   Public URL: ${ENV.PUBLIC_URL}`);
+            resolve();
+        });
     });
 }
