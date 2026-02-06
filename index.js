@@ -42,12 +42,27 @@ process.on("unhandledRejection", (reason, promise) => {
         console.error(`❌ [Network Check] Failed to reach Discord:`, netErr.message);
     }
 
+    // Token Validation via REST
+    console.log("🔑 Validating token via REST API...");
+    try {
+        const userRes = await fetch("https://discord.com/api/v10/users/@me", {
+            headers: { Authorization: `Bot ${ENV.TOKEN}` }
+        });
+        const userData = await userRes.json();
+        console.log(`🔑 [Token Check] Status: ${userRes.status}`);
+        if (userRes.ok) {
+            console.log(`🔑 [Token Check] Bot Account: ${userData.username}#${userData.discriminator} (ID: ${userData.id})`);
+        } else {
+            console.error(`❌ [Token Check] Failed:`, JSON.stringify(userData));
+        }
+    } catch (err) {
+        console.error(`❌ [Token Check] Request Error:`, err);
+    }
+
     // Detailed WebSocket Logging for Debugging
     client.on("debug", (m) => {
-        // Log critical connection stages even if verbose
-        if (m.toLowerCase().includes("token") || m.toLowerCase().includes("connect") || m.toLowerCase().includes("identif")) {
-            console.log(`🛠️ [DEBUG] ${m}`);
-        }
+        // Log EVERYTHING to find the stuck point
+        console.log(`🛠️ [DEBUG] ${m}`);
     });
 
     client.ws.on("error", (err) => console.error("❌ [WS] Error:", err));
