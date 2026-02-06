@@ -4,7 +4,7 @@ export const ENV = {
     // Discord
     CLIENT_ID: process.env.DISCORD_CLIENT_ID || "",
     CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET || "",
-    TOKEN: process.env.DISCORD_TOKEN || "",
+    TOKEN: (process.env.DISCORD_TOKEN || "").trim(),
 
     // Database
     DATABASE_URL: (process.env.DATABASE_URL || "").trim(),

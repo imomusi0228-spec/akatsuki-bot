@@ -43,6 +43,13 @@ process.on("unhandledRejection", (reason, promise) => {
     }
 
     // Detailed WebSocket Logging for Debugging
+    client.on("debug", (m) => {
+        // Log critical connection stages even if verbose
+        if (m.toLowerCase().includes("token") || m.toLowerCase().includes("connect") || m.toLowerCase().includes("identif")) {
+            console.log(`🛠️ [DEBUG] ${m}`);
+        }
+    });
+
     client.ws.on("error", (err) => console.error("❌ [WS] Error:", err));
     client.ws.on("close", (code, reason) => console.warn(`⚠️ [WS] Closed: ${code} - ${reason}`));
     client.ws.on("reconnecting", () => console.log("🔄 [WS] Reconnecting..."));
