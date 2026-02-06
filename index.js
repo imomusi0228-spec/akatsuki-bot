@@ -47,6 +47,24 @@ process.on("unhandledRejection", (reason, promise) => {
     client.ws.on("close", (code, reason) => console.warn(`⚠️ [WS] Closed: ${code} - ${reason}`));
     client.ws.on("reconnecting", () => console.log("🔄 [WS] Reconnecting..."));
 
+    // Status Monitor Loop
+    const statusMap = {
+        0: "READY",
+        1: "CONNECTING",
+        2: "RECONNECTING",
+        3: "IDLE",
+        4: "NEARLY",
+        5: "DISCONNECTED",
+        6: "WAITING_FOR_GUILDS",
+        7: "IDENTIFYING",
+        8: "RESUMING"
+    };
+
+    setInterval(() => {
+        const status = client.ws.status;
+        console.log(`⏱️ [Status Watch] State: ${statusMap[status] || status} (${status}) | Ping: ${client.ws.ping}ms`);
+    }, 5000).unref(); // unref so it doesn't block exit if we want to shut down
+
     try {
         if (!ENV.TOKEN) throw new Error("DISCORD_TOKEN is missing");
 
