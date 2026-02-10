@@ -77,7 +77,7 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
            $("plan-info").innerHTML = \`<span style="color:var(--accent-color); font-weight:bold;">\${sub.name}</span> \${sub.valid_until ? '('+sub.valid_until.split('T')[0]+')' : ''}\`;
            
            const box = (l,v) => \`<div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; text-align:center;"><div style="font-size:24px; font-weight:bold;">\${v}</div><div style="font-size:11px; color:#888;">\${l}</div></div>\`;
-           $("summary").innerHTML = \`<div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; width:100%;">\${box(t("vc_joins"), s.joins)} \${box(t("leaves"), s.leaves)} \${box(t("timeouts"), s.timeouts)} \${box(t("ng_detect"), s.ngDetected)}</div>\`;
+           $("summary").innerHTML = \`<div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; width:100%;">\${box(t("vc_joins", lang), s.joins)} \${box(t("leaves", lang), s.leaves)} \${box(t("timeouts", lang), s.timeouts)} \${box(t("ng_detect", lang), s.ngDetected)}</div>\`;
            let rows = ""; (res.stats.topNgUsers || []).forEach(u => { 
                 const av = u.avatar_url ? '<img src="' + u.avatar_url + '" style="width:24px; height:24px; border-radius:50%; vertical-align:middle; margin-right:8px;">' : '';
                 rows += \`<tr><td>\${av}\${escapeHTML(u.display_name || 'Unknown')}</td><td style="text-align:right">\${u.cnt}</td></tr>\`; });
@@ -129,7 +129,7 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
                     <button onclick="removeNg('\${escapeHTML(w.word)}')" class="btn" style="width:24px; height:24px; padding:0; line-height:22px; color:#f4212e; border-color:#38444d; display:flex; align-items:center; justify-content:center;">＋</button>
                 </div>\`).join("");
             }
-            if($("ngCount")) $("ngCount").textContent = words.length + " words";
+            if($("ngCount")) $("ngCount").textContent = words.length + " " + t("words", lang);
         }
         if(st.ok && st.settings) {
             if(selLog) selLog.value = st.settings.log_channel_id || "";
@@ -330,7 +330,7 @@ export function renderLoginHTML(req) {
 
 export function renderAdminDashboardHTML({ user, req }) {
     const lang = getLang(req);
-    const content = `<div class="card"><div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; align-items:center;"><select id="guild" style="flex:1; max-width:250px; padding:10px;"></select><input id="month" type="month" style="padding:9px;" /><button id="reload" class="btn">Reload</button><span id="guildStatus" class="muted"></span> <div style="margin-left:auto;">Plan: <span id="plan-info">Loading...</span></div></div></div>
+    const content = `<div class="card"><div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; align-items:center;"><select id="guild" style="flex:1; max-width:250px; padding:10px;"></select><input id="month" type="month" style="padding:9px;" /><button id="reload" class="btn">Reload</button><span id="guildStatus" class="muted"></span> <div style="margin-left:auto;">${t("plan_label", lang)}: <span id="plan-info">Loading...</span></div></div></div>
   <div class="card"><h3>${t("summary", lang)}</h3><div id="summary">Loading...</div></div>
   <div class="card"><h3>${t("top_ng_users", lang)}</h3><table class="data-table"><thead><tr><th>${t("header_user", lang)}</th><th style="text-align:right">${t("header_count", lang)}</th></tr></thead><tbody id="topNg"></tbody></table></div>`;
     const scripts = `<script>initDashboard();</script>`;
@@ -356,7 +356,7 @@ export function renderAdminSettingsHTML({ user, req }) {
             <div id="ngList" style="display:flex; flex-direction:column; gap:8px; max-height:300px; overflow-y:auto; padding:5px;"></div>
             
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:15px; border-top:1px solid #38444d; padding-top:10px;">
-                <span id="ngCount" class="muted">0 words</span>
+                <span id="ngCount" class="muted">0 ${t("words", lang)}</span>
                 <button id="btn_clear" class="btn" style="color:#f4212e; border-color:#f4212e; padding:4px 12px; font-size:12px;">${t("ng_clear_all", lang)}</button>
             </div>
         </div>
@@ -376,7 +376,7 @@ export function renderAdminSettingsHTML({ user, req }) {
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-top:20px; border-top: 1px solid var(--border-color); padding-top:20px;">
             <div>
                 <label style="display:block; margin-bottom:8px;">${t("threshold_label", lang)}</label>
-                <input id="threshold" type="number" min="1" max="10" style="width:100%; padding:10px;">
+                <input id="threshold" type="number" min="1" max="100" style="width:100%; padding:10px;">
             </div>
             <div>
                 <label style="display:block; margin-bottom:8px;">${t("timeout_label", lang)}</label>
@@ -504,7 +504,7 @@ export function renderFeaturesHTML(req) {
             <div class="feature-grid">
                 <div class="feature-item-card">
                     <h4 style="margin-bottom:8px;">${t("feat_sec_basic", lang)}</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">NGワード登録数 ${t("limit_10", lang)}<br/>${t("feat_desc_basic_sec", lang)}</p>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">${t("feature_ng_limit", lang)} ${t("limit_5", lang)}<br/>${t("feat_desc_basic_sec", lang)}</p>
                 </div>
                 <div class="feature-item-card">
                     <h4 style="margin-bottom:8px;">${t("feat_vc_track", lang)}</h4>
@@ -523,7 +523,7 @@ export function renderFeaturesHTML(req) {
             <div class="feature-grid">
                 <div class="feature-item-card">
                     <h4 style="margin-bottom:8px;">${t("feat_sec_adv", lang)}</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">NGワード登録数 ${t("limit_50", lang)}<br/>${t("features_detail_security", lang)}</p>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">${t("feature_ng_limit", lang)} ${t("limit_20", lang)}<br/>${t("features_detail_security", lang)}</p>
                 </div>
                 <div class="feature-item-card">
                     <h4 style="margin-bottom:8px;">${t("feat_live_log", lang)}</h4>
@@ -558,7 +558,7 @@ export function renderFeaturesHTML(req) {
                 </div>
                 <div class="feature-item-card">
                     <h4 style="margin-bottom:8px;">${t("feat_ultra", lang)}</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">NGワード登録数 ${t("limit_100", lang)}<br/>${t("feat_desc_ultra", lang)}</p>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">${t("feature_ng_limit", lang)} ${t("limit_50", lang)}<br/>${t("feat_desc_ultra", lang)}</p>
                 </div>
                 </div>
             </div>

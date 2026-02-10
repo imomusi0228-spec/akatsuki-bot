@@ -29,6 +29,8 @@ export const DICTIONARY = {
         limit_10: "5個",
         limit_50: "20個",
         limit_100: "50個",
+        limit_5: "5個",
+        limit_20: "20個",
         available: "⚪︎",
         unavailable: "×",
         plan_free_desc: "ボットの基本機能を無料で体験できます。小規模なサーバーや、導入テストを行う管理者に最適です。",
@@ -69,6 +71,8 @@ export const DICTIONARY = {
         ng_msg_placeholder: "スペースまたは改行で区切って入力...",
         ng_clear_all: "全削除",
         ng_none: "(なし)",
+        plan_label: "プラン",
+        words: "個",
 
         // Activity / Audit
         activity_desc: "ロール所持・自己紹介・VC活動の3点からメンバーの状態を監査します (Pro+限定)",
@@ -145,6 +149,8 @@ export const DICTIONARY = {
         limit_10: "5 Words",
         limit_50: "20 Words",
         limit_100: "50 Words",
+        limit_5: "5 Words",
+        limit_20: "20 Words",
         available: "Yes",
         unavailable: "No",
         plan_free_desc: "Experience the core features for free. Perfect for small servers or testing the waters.",
@@ -180,6 +186,8 @@ export const DICTIONARY = {
         ng_msg_placeholder: "Space or Newline to separate...",
         ng_clear_all: "Clear All",
         ng_none: "(None)",
+        plan_label: "Plan",
+        words: "Words",
 
         // Activity / Audit
         activity_desc: "Audit members based on Roles, Intro, and VC Activity (Pro+ Only)",
