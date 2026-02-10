@@ -400,12 +400,26 @@ export async function handleApiRoute(req, res, pathname, url) {
             const members = await guild.members.fetch();
             members.forEach(m => {
                 if (m.user.bot) return;
-                const lastVcDate = vcMap[m.id];
+
+                const inVcNow = m.voice?.channelId;
+                let lastVcDate = vcMap[m.id];
+                if (inVcNow) lastVcDate = new Date();
+
                 const hasRole = settings.audit_role_id ? m.roles.cache.has(settings.audit_role_id) : true;
                 const hasIntro = settings.intro_channel_id ? introSet.has(m.user.id) : true;
-                const status = (hasRole && hasIntro && lastVcDate) ? "OK" : "NG";
 
-                csv += `"${m.id}","${m.displayName.replace(/"/g, '""')}","${hasRole ? "OK" : "NG"}","${hasIntro ? "OK" : "NG"}","${lastVcDate ? lastVcDate.toISOString().split("T")[0] : "None"}","${status}"\r\n`;
+                const vcOk = lastVcDate || inVcNow;
+                const status = (hasRole && hasIntro && vcOk) ? "OK" : "NG";
+
+                if (status === "OK") return;
+
+                const fmtDate = (d) => {
+                    if (!d) return "None";
+                    const dateObj = d instanceof Date ? d : new Date(d);
+                    return isNaN(dateObj.getTime()) ? "None" : dateObj.toISOString().split("T")[0];
+                };
+
+                csv += `"${m.id}","${m.displayName.replace(/"/g, '""')}","${hasRole ? "OK" : "NG"}","${hasIntro ? "OK" : "NG"}","${fmtDate(lastVcDate)}","${status}"\r\n`;
             });
         } catch (e) { }
 
