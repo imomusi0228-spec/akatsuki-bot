@@ -93,30 +93,36 @@ export async function handleApiRoute(req, res, pathname, url) {
         //    User said "Pro+ tier" features etc. usage.
         //    Let's just return basic stats we have: Member count, VC count?
 
-        // VC Stats
-        const vcRes = await dbQuery("SELECT COUNT(*) as cnt FROM vc_sessions WHERE guild_id = $1 AND join_time > NOW() - INTERVAL '30 days'", [guildId]);
+        try {
+            // VC Stats
+            const vcRes = await dbQuery("SELECT COUNT(*) as cnt FROM vc_sessions WHERE guild_id = $1 AND join_time > NOW() - INTERVAL '30 days'", [guildId]);
 
-        // Subscription Info
-        const tier = await getTier(guildId);
-        const subRes = await dbQuery("SELECT valid_until FROM subscriptions WHERE guild_id = $1", [guildId]);
-        const subData = { tier, valid_until: subRes.rows[0]?.valid_until || null };
-        const tierName = TIER_NAMES[subData.tier];
-        const features = getFeatures(subData.tier);
+            // Subscription Info
+            const tier = await getTier(guildId);
+            const subRes = await dbQuery("SELECT valid_until FROM subscriptions WHERE guild_id = $1", [guildId]);
+            const subData = { tier, valid_until: subRes.rows[0]?.valid_until || null };
+            const tierName = TIER_NAMES[subData.tier];
+            const features = getFeatures(subData.tier);
 
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({
-            ok: true,
-            subscription: { tier: subData.tier, name: tierName, features, valid_until: subData.valid_until },
-            stats: {
-                summary: {
-                    joins: vcRes.rows[0].cnt,
-                    leaves: 0,
-                    timeouts: 0,
-                    ngDetected: 0 // Placeholder
-                },
-                topNgUsers: []
-            }
-        }));
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({
+                ok: true,
+                subscription: { tier: subData.tier, name: tierName, features, valid_until: subData.valid_until },
+                stats: {
+                    summary: {
+                        joins: vcRes.rows[0]?.cnt || 0,
+                        leaves: 0,
+                        timeouts: 0,
+                        ngDetected: 0
+                    },
+                    topNgUsers: []
+                }
+            }));
+        } catch (error) {
+            console.error("Dashboard Stats API Error:", error);
+            res.writeHead(500, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ ok: false, error: "Database failed" }));
+        }
         return;
     }
 
