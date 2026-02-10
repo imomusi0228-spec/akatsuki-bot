@@ -106,7 +106,12 @@ export async function initDb() {
             // Fix ng_words
             `ALTER TABLE ng_words ADD COLUMN IF NOT EXISTS guild_id TEXT;`,
             `ALTER TABLE ng_words ADD COLUMN IF NOT EXISTS created_by TEXT;`,
-            `ALTER TABLE ng_words ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();`
+            `ALTER TABLE ng_words ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();`,
+
+            // Performance Indices
+            `CREATE INDEX IF NOT EXISTS idx_vc_sessions_guild_user ON vc_sessions(guild_id, user_id);`,
+            `CREATE INDEX IF NOT EXISTS idx_vc_sessions_join ON vc_sessions(join_time);`,
+            `CREATE INDEX IF NOT EXISTS idx_ng_words_guild ON ng_words(guild_id);`
         ];
 
         for (const query of queries) {
