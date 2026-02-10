@@ -311,7 +311,11 @@ export function renderAdminSettingsHTML({ user, req }) {
 
 export function renderAdminActivityHTML({ user, req }) {
     const lang = getLang(req);
-    const content = `<div class="card"><div class="row" style="margin-bottom:16px;"><select id="guild" style="width:100%; max-width:300px; padding:10px;"></select> <button id="scan" class="btn">${t("scan_btn", lang)}</button></div></div>
+    const content = `<div class="card"><div class="row" style="margin-bottom:16px; gap:10px;">
+        <select id="guild" style="width:100%; max-width:230px; padding:10px;"></select> 
+        <button id="scan" class="btn">${t("scan_btn", lang)}</button>
+        <button id="csvExport" class="btn" style="border-color: #ffd700; color: #ffd700;">📊 ${t("feature_csv", lang)}</button>
+    </div></div>
     <div class="card">
         <h3>${t("activity", lang)}</h3>
         <p class="muted">${t("activity_desc", lang)}</p>
@@ -319,7 +323,14 @@ export function renderAdminActivityHTML({ user, req }) {
         <tbody id="act-rows"></tbody></table>
         <div id="act-loading" style="display:none; text-align:center; padding:20px;">Scanning...</div>
     </div>`;
-    const scripts = `<script>initActivity();</script>`;
+    const scripts = `<script>
+        initActivity();
+        document.getElementById("csvExport").onclick = () => {
+            const gid = document.getElementById("guild").value;
+            if(!gid) return;
+            window.location.href = "/api/activity/export?guild=" + gid;
+        };
+    </script>`;
     return renderLayout({ title: t("activity", lang), content, user, activeTab: "activity", oauth: true, scripts }, lang);
 }
 

@@ -2,6 +2,9 @@ import { Events } from "discord.js";
 import { dbQuery } from "../core/db.js";
 import { ENV } from "../config/env.js";
 
+import { getTier } from "../core/subscription.js";
+import { getFeatures } from "../core/tiers.js";
+
 const TIMEOUT_DURATION_MS = ENV.DEFAULT_TIMEOUT_MIN * 60 * 1000;
 
 export default {
@@ -39,14 +42,20 @@ export default {
                 // Delete message
                 await message.delete().catch(() => { });
 
-                // Log to channel
-                const settingsRes = await dbQuery("SELECT log_channel_id FROM settings WHERE guild_id = $1", [message.guild.id]);
-                const logChannelId = settingsRes.rows[0]?.log_channel_id;
+                // Check Tier for Logs feature
+                const tier = await getTier(message.guild.id);
+                const features = getFeatures(tier);
 
-                if (logChannelId) {
-                    const channel = message.guild.channels.cache.get(logChannelId);
-                    if (channel) {
-                        channel.send(`🚨 **NG Word Detected**\nUser: ${message.author.tag}\nContent: ||${message.content}||\nChannel: <#${message.channel.id}>`);
+                if (features.logs) {
+                    // Log to channel
+                    const settingsRes = await dbQuery("SELECT log_channel_id FROM settings WHERE guild_id = $1", [message.guild.id]);
+                    const logChannelId = settingsRes.rows[0]?.log_channel_id;
+
+                    if (logChannelId) {
+                        const channel = message.guild.channels.cache.get(logChannelId);
+                        if (channel) {
+                            channel.send(`🚨 **NG Word Detected**\nUser: ${message.author.tag}\nContent: ||${message.content}||\nChannel: <#${message.channel.id}>`);
+                        }
                     }
                 }
             }
