@@ -21,44 +21,23 @@ export default {
 
             if (ngWords.length === 0) return;
 
-            let caught = false;
+            let caughtWord = null;
             for (const ng of ngWords) {
                 if (ng.kind === "regex") {
                     try {
-                        // Regex format: /pattern/flags
                         const match = ng.word.match(/^\/(.*?)\/([gimsuy]*)$/);
                         const regex = match ? new RegExp(match[1], match[2]) : new RegExp(ng.word);
-                        if (regex.test(message.content)) caught = true;
+                        if (regex.test(message.content)) caughtWord = ng.word;
                     } catch (e) {
                         console.error("Invalid Regex in DB:", ng.word);
                     }
                 } else {
-                    if (message.content.includes(ng.word)) caught = true;
+                    if (message.content.includes(ng.word)) caughtWord = ng.word;
                 }
-                if (caught) break;
+                if (caughtWord) break;
             }
 
-            if (caught) {
-                // Delete message
-                await message.delete().catch(() => { });
 
-                // Check Tier for Logs feature
-                const tier = await getTier(message.guild.id);
-                const features = getFeatures(tier);
-
-                if (features.logs) {
-                    // Log to channel
-                    const settingsRes = await dbQuery("SELECT log_channel_id FROM settings WHERE guild_id = $1", [message.guild.id]);
-                    const logChannelId = settingsRes.rows[0]?.log_channel_id;
-
-                    if (logChannelId) {
-                        const channel = message.guild.channels.cache.get(logChannelId);
-                        if (channel) {
-                            channel.send(`🚨 **NG Word Detected**\nUser: ${message.author.tag}\nContent: ||${message.content}||\nChannel: <#${message.channel.id}>`);
-                        }
-                    }
-                }
-            }
 
         } catch (e) {
             console.error("Message Event Error:", e);
