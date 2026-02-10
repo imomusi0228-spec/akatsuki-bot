@@ -342,7 +342,9 @@ export async function handleApiRoute(req, res, pathname, url) {
             let members;
             const cacheKey = `members_${guildId}`;
             const cached = memberCache.get(cacheKey);
-            if (cached && Date.now() - cached.ts < 5 * 60 * 1000) {
+            const refresh = url.searchParams.get("refresh") === "1";
+
+            if (!refresh && cached && Date.now() - cached.ts < 5 * 60 * 1000) {
                 members = cached.data;
             } else {
                 members = await guild.members.fetch();

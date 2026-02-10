@@ -208,6 +208,7 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
              const roleTxt = r.has_role ? '<span style="color:#1da1f2;">✅</span>' : '<span style="color:var(--danger-color);">❌</span>';
              const introTxt = r.has_intro ? '<span style="color:#1da1f2;">✅</span>' : '<span style="color:var(--danger-color);">❌</span>';
              const statusStyle = r.status === "OK" ? 'color:#1da1f2; font-weight:bold;' : 'color:var(--danger-color); font-weight:bold;';
+             const detailedStatus = r.status === "OK" ? "OK" : (!r.has_role ? "No Role" : (!r.has_intro ? "No Intro" : "No VC Activity"));
              
              html += '<tr>' +
                  '<td>' + (r.joined_at || '-') + '</td>' +
@@ -215,7 +216,7 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
                  '<td style="text-align:center;">' + roleTxt + '</td>' +
                  '<td style="text-align:center;">' + introTxt + '</td>' +
                  '<td style="text-align:center;">' + r.last_vc + '</td>' +
-                 '<td style="text-align:center; ' + statusStyle + '">' + r.status + '</td>' +
+                 '<td style="text-align:center; ' + statusStyle + '">' + detailedStatus + '</td>' +
              '</tr>';
           });
           rows.innerHTML = html || '<tr><td colspan="6" class="muted" style="text-align:center;">' + t("ng_none") + '</td></tr>';
@@ -242,7 +243,7 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
 
          rows.innerHTML = ""; 
          loading.style.display = "block";
-         const res = await api("/api/activity?guild=" + gid + "&audit_role_id=" + ar + "&intro_channel_id=" + ic);
+         const res = await api("/api/activity?guild=" + gid + "&audit_role_id=" + ar + "&intro_channel_id=" + ic + "&refresh=1");
          loading.style.display = "none";
          
          if(!res.ok) { 
