@@ -123,11 +123,13 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
                 const noneText = t("ng_none");
                 list.innerHTML = '<div class="muted" style="padding:10px; text-align:center;">' + noneText + '</div>';
             } else {
-                list.innerHTML = words.map(w => \`
-                <div style="display:flex; justify-content:space-between; align-items:center; background:#192734; padding:8px 12px; border-radius:4px; border:1px solid #38444d;">
-                    <span style="font-family:monospace;">\${escapeHTML(w.word)}</span>
-                    <button onclick="removeNg('\${escapeHTML(w.word)}')" class="btn" style="width:24px; height:24px; padding:0; line-height:22px; color:#f4212e; border-color:#38444d; display:flex; align-items:center; justify-content:center;">＋</button>
-                </div>\`).join("");
+                list.innerHTML = words.map(w => {
+                    const escW = escapeHTML(w.word);
+                    return '<div style="display:flex; justify-content:space-between; align-items:center; background:#192734; padding:8px 12px; border-radius:4px; border:1px solid #38444d;">' +
+                           '<span style="font-family:monospace;">' + escW + '</span>' +
+                           '<button onclick="removeNg(\'' + escW + '\')" class="btn" style="width:24px; height:24px; padding:0; line-height:22px; color:#f4212e; border-color:#38444d; display:flex; align-items:center; justify-content:center;">＋</button>' +
+                           '</div>';
+                }).join("");
             }
             if($("ngCount")) $("ngCount").textContent = words.length + " " + t("words", lang);
         }
@@ -196,7 +198,6 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
          }
       };
 
-
          
       
       let currentData = [];
@@ -210,7 +211,7 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
              const statusStyle = r.status === "OK" ? 'color:#1da1f2; font-weight:bold;' : 'color:var(--danger-color); font-weight:bold;';
              const detailedStatus = r.status === "OK" ? "OK" : (!r.has_role ? "No Role" : (!r.has_intro ? "No Intro" : "No VC Activity"));
              
-             const releaseBtn = r.status !== "OK" ? `< button onclick = "releaseTimeout('${r.id}')" class="btn" style = "padding:2px 8px; font-size:10px; background:var(--danger-color); color:white; border:none; margin-left:8px;" > Release</button > ` : "";
+             const releaseBtn = r.status !== "OK" ? ('<button onclick="releaseTimeout(\'' + r.id + '\')" class="btn" style="padding:2px 8px; font-size:10px; background:var(--danger-color); color:white; border:none; margin-left:8px;">Release</button>') : "";
 
              html += '<tr>' +
                  '<td>' + (r.joined_at || '-') + '</td>' +
