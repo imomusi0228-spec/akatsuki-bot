@@ -18,7 +18,8 @@ export const DICTIONARY = {
         // Plans
         plan_free: "Free",
         plan_pro: "Pro",
-        plan_pro_plus: "Pro+ (Max 3 Servers)",
+        plan_pro_plus: "Pro+",
+        feature_max_guilds: "最大利用サーバー数",
         feature_ng_limit: "NGワード登録数",
         feature_logs: "削除ログ保存",
         feature_dashboard: "Webダッシュボード",
@@ -98,6 +99,7 @@ export const DICTIONARY = {
         plan_free: "Free",
         plan_pro: "Pro",
         plan_pro_plus: "Pro+",
+        feature_max_guilds: "Max Servers",
         feature_ng_limit: "NG Word Limit",
         feature_logs: "Deletion Logs",
         feature_dashboard: "Web Dashboard",

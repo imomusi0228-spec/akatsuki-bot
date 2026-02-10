@@ -493,26 +493,48 @@ export function renderFeaturesHTML(req) {
                     <p class="muted" style="font-size:13px; line-height:1.6;">NGワード制限: ${t("limit_100", lang)}<br/>制限からの完全な解放。</p>
                 </div>
             </div>
-        </div>
-    </div>
-
     <div class="card" style="margin-top: 40px; padding: 30px;">
         <h3 style="text-align:center; margin-bottom:20px;">Quick Comparison</h3>
-        <table class="pricing-table">
+        <table class="compare-table">
             <thead>
                 <tr>
-                    <th style="text-align:left">Feature</th>
-                    <th>Free</th>
-                    <th>Pro</th>
-                    <th>Pro+</th>
+                    <th style="text-align:left;"></th>
+                    <th>${t("plan_free", lang)}</th>
+                    <th>${t("plan_pro", lang)}</th>
+                    <th>${t("plan_pro_plus", lang)}</th>
                 </tr>
             </thead>
             <tbody>
-                <tr><td style="text-align:left">${t("feature_ng_limit", lang)}</td><td>${t("limit_10", lang)}</td><td>${t("limit_50", lang)}</td><td>${t("limit_100", lang)}</td></tr>
-                <tr><td style="text-align:left">${t("feature_logs", lang)}</td><td>${cross}</td><td>${check}</td><td>${check}</td></tr>
-                <tr><td style="text-align:left">${t("feature_dashboard", lang)}</td><td>${cross}</td><td>${check}</td><td>${check}</td></tr>
-                <tr><td style="text-align:left">${t("feature_activity", lang)}</td><td>${cross}</td><td>${cross}</td><td>${check}</td></tr>
-                <tr><td style="text-align:left">Max Servers</td><td>1</td><td>1</td><td><strong>3</strong></td></tr>
+                <tr>
+                    <td style="text-align:left; font-weight:bold;">${t("feature_max_guilds", lang)}</td>
+                    <td>1</td>
+                    <td>1</td>
+                    <td>3</td>
+                </tr>
+                <tr>
+                    <td style="text-align:left; font-weight:bold;">${t("feature_ng_limit", lang)}</td>
+                    <td>${t("limit_10", lang)}</td>
+                    <td>${t("limit_50", lang)}</td>
+                    <td>${t("limit_100", lang)}</td>
+                </tr>
+                <tr>
+                    <td style="text-align:left; font-weight:bold;">${t("feature_logs", lang)}</td>
+                    <td>${t("unavailable", lang)}</td>
+                    <td>${t("available", lang)}</td>
+                    <td>${t("available", lang)}</td>
+                </tr>
+                <tr>
+                    <td style="text-align:left; font-weight:bold;">${t("feature_activity", lang)}</td>
+                    <td>${t("unavailable", lang)}</td>
+                    <td>${t("unavailable", lang)}</td>
+                    <td>${t("available", lang)}</td>
+                </tr>
+                <tr>
+                    <td style="text-align:left; font-weight:bold;">${t("feature_csv", lang)}</td>
+                    <td>${t("unavailable", lang)}</td>
+                    <td>${t("unavailable", lang)}</td>
+                    <td>${t("available", lang)}</td>
+                </tr>
             </tbody>
         </table>
     </div>
