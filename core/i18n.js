@@ -10,6 +10,10 @@ export const DICTIONARY = {
         activity: "アクティビティ",
         guide: "利用ガイド",
         language: "Language",
+        view_features: "機能を見る",
+        features_title: "機能とプラン",
+        features_subtitle: "あなたのサーバーに最適なプランを選択してください",
+        get_started: "今すぐ始める",
 
         // Plans
         plan_free: "Free",
@@ -67,6 +71,10 @@ export const DICTIONARY = {
         activity: "Activity",
         guide: "Guide",
         language: "言語",
+        view_features: "View Features",
+        features_title: "Features & Pricing",
+        features_subtitle: "Choose the perfect plan for your server",
+        get_started: "Get Started",
 
         // Plans
         plan_free: "Free",

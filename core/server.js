@@ -4,7 +4,7 @@ import { client } from "./client.js";
 import { handleAuthRoute } from "../routes/auth.js";
 import { handleApiRoute } from "../routes/api.js";
 import { handleAdminRoute } from "../routes/admin.js";
-import { renderPublicGuideHTML } from "../services/views.js";
+import { renderLandingHTML, renderFeaturesHTML } from "../services/views.js";
 
 export async function startServer() {
     const server = http.createServer(async (req, res) => {
@@ -30,7 +30,13 @@ export async function startServer() {
             // 4. Public Pages
             if (pathname === "/") {
                 res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-                res.end(renderPublicGuideHTML(req)); // Pass req for lang
+                res.end(renderLandingHTML(req));
+                return;
+            }
+
+            if (pathname === "/features") {
+                res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+                res.end(renderFeaturesHTML(req));
                 return;
             }
 

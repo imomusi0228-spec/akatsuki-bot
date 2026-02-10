@@ -233,18 +233,30 @@ export function renderAdminActivityHTML({ user, req }) {
     return renderLayout({ title: t("activity", lang), content, user, activeTab: "activity", oauth: true, scripts }, lang);
 }
 
-export function renderPublicGuideHTML(req) {
+export function renderLandingHTML(req) {
+    const lang = getLang(req);
+    const content = `
+    <div style="text-align:center; padding: 100px 20px;">
+        <h1 style="font-size: 56px; margin-bottom: 20px;">☾ ${t("title", lang)}</h1>
+        <p style="font-size: 20px; color: #8899a6; margin-bottom: 50px; max-width: 600px; margin-left: auto; margin-right: auto;">${t("subtitle", lang)}</p>
+        <div style="display:flex; justify-content:center; gap:20px; flex-wrap: wrap;">
+           <a href="/login" class="btn btn-primary" style="padding:16px 48px; font-size:18px;">${t("login", lang)}</a>
+           <a href="/features" class="btn" style="padding:16px 48px; font-size:18px;">${t("view_features", lang)}</a>
+        </div>
+    </div>
+    `;
+    return renderLayout({ title: t("title", lang), content, user: null }, lang);
+}
+
+export function renderFeaturesHTML(req) {
     const lang = getLang(req);
     const check = `<span class="check">${t("available", lang)}</span>`;
     const cross = `<span class="cross">${t("unavailable", lang)}</span>`;
 
     const content = `
     <div style="text-align:center; padding: 60px 0;">
-        <h1 style="font-size: 48px; margin-bottom: 20px;">${t("title", lang)}</h1>
-        <p style="font-size: 18px; color: #8899a6; margin-bottom: 40px;">${t("subtitle", lang)}</p>
-        <div style="display:flex; justify-content:center; gap:20px;">
-           <a href="/login" class="btn" style="padding:15px 40px; font-size:18px;">${t("login", lang)}</a>
-        </div>
+        <h1 style="font-size: 48px; margin-bottom: 20px;">${t("features_title", lang)}</h1>
+        <p style="font-size: 18px; color: #8899a6; margin-bottom: 40px;">${t("features_subtitle", lang)}</p>
     </div>
 
     <div class="card">
@@ -286,6 +298,10 @@ export function renderPublicGuideHTML(req) {
             </tbody>
         </table>
     </div>
+
+    <div style="text-align:center; padding: 40px 0;">
+        <a href="/login" class="btn btn-primary" style="padding:16px 48px; font-size:18px;">${t("get_started", lang)}</a>
+    </div>
     `;
-    return renderLayout({ title: t("guide", lang), content, user: null }, lang);
+    return renderLayout({ title: t("features_title", lang), content, user: null }, lang);
 }
