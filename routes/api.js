@@ -146,20 +146,34 @@ export async function handleApiRoute(req, res, pathname, url) {
         const body = await getBody();
         if (!body.guild || !body.word) return res.end(JSON.stringify({ ok: false }));
 
-        // Check Limit
+        const rawWords = body.word.split(/\s+/).filter(w => w.trim().length > 0);
+        if (rawWords.length === 0) return res.end(JSON.stringify({ ok: false }));
+
         const tier = await getTier(body.guild);
         const features = getFeatures(tier);
 
-        const countRes = await dbQuery("SELECT COUNT(*) as cnt FROM ng_words WHERE guild_id = $1", [body.guild]);
-        const currentCount = parseInt(countRes.rows[0].cnt);
+        // Get existing words to filter duplicates
+        const existingRes = await dbQuery("SELECT word FROM ng_words WHERE guild_id = $1", [body.guild]);
+        const existingSet = new Set(existingRes.rows.map(r => r.word));
 
-        if (currentCount >= features.maxNgWords) {
-            res.writeHead(403, { "Content-Type": "application/json" });
-            return res.end(JSON.stringify({ ok: false, error: `Updated Plan Required. Max ${features.maxNgWords} words for ${TIER_NAMES[tier]}.` }));
+        // Filter valid new words
+        const uniqueNewWords = [...new Set(rawWords.filter(w => !existingSet.has(w)))];
+
+        if (uniqueNewWords.length === 0) {
+            res.writeHead(200, { "Content-Type": "application/json" });
+            return res.end(JSON.stringify({ ok: true, message: "No new words to add" }));
         }
 
-        const isRegex = body.word.startsWith("/") && body.word.endsWith("/"); // Simple check
-        await dbQuery("INSERT INTO ng_words (guild_id, word, kind, created_by) VALUES ($1, $2, $3, 'Web')", [body.guild, body.word, isRegex ? "regex" : "exact"]);
+        if (existingSet.size + uniqueNewWords.length > features.maxNgWords) {
+            res.writeHead(403, { "Content-Type": "application/json" });
+            return res.end(JSON.stringify({ ok: false, error: `Limit exceeded. Can't add ${uniqueNewWords.length} words (Max ${features.maxNgWords}).` }));
+        }
+
+        for (const w of uniqueNewWords) {
+            const isRegex = w.startsWith("/") && w.endsWith("/");
+            await dbQuery("INSERT INTO ng_words (guild_id, word, kind, created_by) VALUES ($1, $2, $3, 'Web')",
+                [body.guild, w, isRegex ? "regex" : "exact"]);
+        }
 
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ ok: true }));
