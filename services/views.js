@@ -111,7 +111,7 @@ const COMMON_SCRIPT = `
         const [ng, st] = await Promise.all([api(\`/api/ngwords?guild=\${gid}\`), api(\`/api/settings?guild=\${gid}\`)]);
         
         if(ng.ok) {
-            $("ngList").innerHTML = (ng.words||[]).map(w => `< span class="btn" style = "padding:4px 8px; font-size:12px; margin-right:5px; margin-bottom:5px;" >\${ escapeHTML(w.word) } <span onclick="removeNg('\${escapeHTML(w.word)}')" style="color:var(--danger-color); cursor:pointer; margin-left:5px;">×</span></span > `).join("");
+            $("ngList").innerHTML = (ng.words||[]).map(w => \`<span class="btn" style="padding:4px 8px; font-size:12px; margin-right:5px; margin-bottom:5px;">\${escapeHTML(w.word)} <span onclick="removeNg('\${escapeHTML(w.word)}')" style="color:var(--danger-color); cursor:pointer; margin-left:5px;">×</span></span>\`).join("");
         }
         if(st.ok && st.settings) {
             if(selLog) selLog.value = st.settings.log_channel_id || "";
