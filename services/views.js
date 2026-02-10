@@ -118,8 +118,7 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
             const list = $("ngList");
             const words = ng.words || [];
             if(words.length === 0) {
-                const clientLang = document.documentElement.lang || 'ja';
-                const noneText = clientLang === 'en' ? '(None)' : '(なし)';
+                const noneText = t("ng_none");
                 list.innerHTML = '<div class="muted" style="padding:10px; text-align:center;">' + noneText + '</div>';
             } else {
                 list.innerHTML = words.map(w => \`
@@ -155,7 +154,7 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
         const res = await post("/api/settings/update", body);
         const stat = $("saveStatus");
         if(res.ok) {
-            stat.textContent = lang === 'ja' ? "✅ 設定を保存しました" : "✅ Settings saved";
+            stat.textContent = "✅ " + t("save_success");
             stat.style.color = "var(--success-color)";
             setTimeout(() => stat.textContent="", 3000);
         } else {
@@ -217,7 +216,7 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
                  '<td style="text-align:center; ' + statusStyle + '">' + r.status + '</td>' +
              '</tr>';
           });
-          rows.innerHTML = html || '<tr><td colspan="6" class="muted" style="text-align:center;">None</td></tr>';
+          rows.innerHTML = html || '<tr><td colspan="6" class="muted" style="text-align:center;">' + t("ng_none") + '</td></tr>';
       };
 
       window.sortActivity = (key) => {
