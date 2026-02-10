@@ -8,12 +8,35 @@ export function setCookie(res, name, value, options = {}) {
     let cookie = `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax`;
     if (options.maxAge) cookie += `; Max-Age=${options.maxAge}`;
     if (options.secure || ENV.PUBLIC_URL.includes("https")) cookie += `; Secure`;
+
     console.log(`[AUTH DEBUG] setCookie: ${name}=${value} (Opts: ${JSON.stringify(options)}) -> ${cookie}`);
-    res.setHeader("Set-Cookie", cookie);
+
+    let prev = res.getHeader("Set-Cookie");
+    if (prev) {
+        if (Array.isArray(prev)) {
+            prev.push(cookie);
+            res.setHeader("Set-Cookie", prev);
+        } else {
+            res.setHeader("Set-Cookie", [prev, cookie]);
+        }
+    } else {
+        res.setHeader("Set-Cookie", cookie);
+    }
 }
 
 export function delCookie(res, name) {
-    res.setHeader("Set-Cookie", `${name}=; Path=/; HttpOnly; Max-Age=0`);
+    const cookie = `${name}=; Path=/; HttpOnly; Max-Age=0`;
+    let prev = res.getHeader("Set-Cookie");
+    if (prev) {
+        if (Array.isArray(prev)) {
+            prev.push(cookie);
+            res.setHeader("Set-Cookie", prev);
+        } else {
+            res.setHeader("Set-Cookie", [prev, cookie]);
+        }
+    } else {
+        res.setHeader("Set-Cookie", cookie);
+    }
 }
 
 export async function getSession(req) {
