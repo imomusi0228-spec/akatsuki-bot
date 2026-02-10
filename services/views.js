@@ -156,7 +156,7 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
         const res = await post("/api/settings/update", body);
         const stat = $("saveStatus");
         if(res.ok) {
-            stat.textContent = "隨ｨ繝ｻ" + t("save_success");
+            stat.textContent = "随ｨ繝ｻ" + t("save_success");
             stat.style.color = "var(--success-color)";
             setTimeout(() => stat.textContent="", 3000);
         } else {
@@ -205,8 +205,8 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
           let html = "";
           data.forEach(r => {
              const av = r.avatar_url || "";
-             const roleTxt = r.has_role ? '<span style="color:#1da1f2;">隨ｨ繝ｻ/span>' : '<span style="color:var(--danger-color);">隨ｨ繝ｻ/span>';
-             const introTxt = r.has_intro ? '<span style="color:#1da1f2;">隨ｨ繝ｻ/span>' : '<span style="color:var(--danger-color);">隨ｨ繝ｻ/span>';
+             const roleTxt = r.has_role ? '<span style="color:#1da1f2;">随ｨ繝ｻ/span>' : '<span style="color:var(--danger-color);">随ｨ繝ｻ/span>';
+             const introTxt = r.has_intro ? '<span style="color:#1da1f2;">随ｨ繝ｻ/span>' : '<span style="color:var(--danger-color);">随ｨ繝ｻ/span>';
              const statusStyle = r.status === "OK" ? 'color:#1da1f2; font-weight:bold;' : 'color:var(--danger-color); font-weight:bold;';
              
              html += '<tr>' +
@@ -426,8 +426,8 @@ export function renderAdminActivityHTML({ user, req }) {
         <h3 style="display:flex; align-items:center; gap:10px;">
             ${t("activity", lang)}
             <div style="font-size:12px; font-weight:normal; margin-left:auto; display:flex; gap:10px;">
-                <button onclick="sortActivity('joined_at')" class="btn" style="padding:4px 8px;">${t("sort_joined", lang)} 隨・ｽｼ</button>
-                <button onclick="sortActivity('display_name')" class="btn" style="padding:4px 8px;">${t("sort_user", lang)} 隨・ｽｼ</button>
+                <button onclick="sortActivity('joined_at')" class="btn" style="padding:4px 8px;">${t("sort_joined", lang)} 随・ｽｼ</button>
+                <button onclick="sortActivity('display_name')" class="btn" style="padding:4px 8px;">${t("sort_user", lang)} 随・ｽｼ</button>
             </div>
         </h3>
         <p class="muted">${t("activity_desc", lang)}</p>
@@ -452,7 +452,7 @@ export function renderLandingHTML(req) {
     const lang = getLang(req);
     const content = `
     <div style="text-align:center; padding: 100px 20px;">
-        <h1 style="font-size: 56px; margin-bottom: 20px;">隨假ｽｾ ${t("title", lang)}</h1>
+        <h1 style="font-size: 56px; margin-bottom: 20px;">随時 ${t("title", lang)}</h1>
         <p style="font-size: 20px; color: #8899a6; margin-bottom: 50px; max-width: 600px; margin-left: auto; margin-right: auto;">${t("subtitle", lang)}</p>
         <div style="display:flex; justify-content:center; gap:20px; flex-wrap: wrap;">
            <a href="/login" class="btn btn-primary" style="padding:16px 48px; font-size:18px;">${t("login", lang)}</a>
