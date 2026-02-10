@@ -89,7 +89,6 @@ const COMMON_SCRIPT = `
      
      const lang = document.documentElement.lang || 'ja';
      const selLog = $("logCh");
-     const selRole = $("roleId");
      const selGuild = $("guild");
 
      const loadMasters = async (gid) => {
@@ -98,9 +97,13 @@ const COMMON_SCRIPT = `
             selLog.innerHTML = '<option value="">(None / No Log)</option>';
             if(ch.ok) ch.channels.forEach(c => { const o=document.createElement("option"); o.value=c.id; o.textContent="#"+c.name; selLog.appendChild(o); });
         }
-        if(selRole) {
-            selRole.innerHTML = '<option value="">(None / No AutoRole)</option>';
-            if(rl.ok) rl.roles.forEach(r => { const o=document.createElement("option"); o.value=r.id; o.textContent=r.name; selRole.appendChild(o); });
+        if($("auditRole")) {
+            $("auditRole").innerHTML = '<option value="">(None / No Audit)</option>';
+            if(rl.ok) rl.roles.forEach(r => { const o=document.createElement("option"); o.value=r.id; o.textContent=r.name; $("auditRole").appendChild(o); });
+        }
+        if($("introCh")) {
+            $("introCh").innerHTML = '<option value="">(None / No Intro Check)</option>';
+            if(ch.ok) ch.channels.forEach(c => { const o=document.createElement("option"); o.value=c.id; o.textContent="#"+c.name; $("introCh").appendChild(o); });
         }
      };
 
@@ -115,7 +118,8 @@ const COMMON_SCRIPT = `
         }
         if(st.ok && st.settings) {
             if(selLog) selLog.value = st.settings.log_channel_id || "";
-            if(selRole) selRole.value = st.settings.autorole_id || "";
+            if($("auditRole")) $("auditRole").value = st.settings.audit_role_id || "";
+            if($("introCh")) $("introCh").value = st.settings.intro_channel_id || "";
             if($("threshold")) $("threshold").value = st.settings.ng_threshold ?? 3;
             if($("timeout")) $("timeout").value = st.settings.timeout_minutes ?? 10;
         }
@@ -129,7 +133,8 @@ const COMMON_SCRIPT = `
         const body = {
             guild: selGuild.value,
             log_channel_id: selLog.value,
-            autorole_id: selRole.value,
+            audit_role_id: $("auditRole")?.value || "",
+            intro_channel_id: $("introCh")?.value || "",
             ng_threshold: parseInt($("threshold").value),
             timeout_minutes: parseInt($("timeout").value)
         };
@@ -165,12 +170,22 @@ const COMMON_SCRIPT = `
         let html = "";
         (res.data || []).forEach(r => {
            const av = r.avatar_url || "";
-           html += \`<tr><td>\${r.joined_at}</td><td><div style="display:flex; align-items:center; gap:8px;"><img src="\${av}" style="width:24px; height:24px; border-radius:50%;" /> <span>\${escapeHTML(r.display_name)}</span></div></td><td>\${r.last_vc}</td><td>\${r.has_role}</td><td>\${r.has_intro}</td></tr>\`;
+           const roleTxt = r.has_role ? '<span style="color:#1da1f2;">✔</span>' : '<span style="color:var(--danger-color);">✘</span>';
+           const introTxt = r.has_intro ? '<span style="color:#1da1f2;">✔</span>' : '<span style="color:var(--danger-color);">✘</span>';
+           const statusStyle = r.status === "OK" ? 'color:#1da1f2; font-weight:bold;' : 'color:var(--danger-color); font-weight:bold;';
+           
+           html += \`<tr>
+               <td><div style="display:flex; align-items:center; gap:8px;"><img src="\${av}" style="width:24px; height:24px; border-radius:50%;" /> <span>\${escapeHTML(r.display_name)}</span></div></td>
+               <td style="text-align:center;">\${roleTxt}</td>
+               <td style="text-align:center;">\${introTxt}</td>
+               <td style="text-align:center;">\${r.last_vc}</td>
+               <td style="text-align:center; \${statusStyle}">\${r.status}</td>
+           </tr>\`;
         });
         $("act-rows").innerHTML = html || '<tr><td colspan="5" class="muted" style="text-align:center;">None</td></tr>';
      };
      $("guild").onchange = () => { $("act-rows").innerHTML = ''; };
-     $("reload").onclick = runScan; $("btn_scan").onclick = runScan;
+     $("reload").onclick = runScan; $("scan").onclick = runScan;
   }
 `;
 
@@ -256,9 +271,15 @@ export function renderAdminSettingsHTML({ user, req }) {
         </div>
 
         <div class="row" style="margin-bottom:15px;">
-           <label style="display:block; margin-bottom:5px; font-weight:bold;">${t("autorole", lang)}</label>
-           <p class="muted" style="margin-bottom:8px;">${t("autorole_desc", lang)}</p>
-           <select id="roleId" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
+           <label style="display:block; margin-bottom:5px; font-weight:bold;">${t("audit_role", lang)}</label>
+           <p class="muted" style="margin-bottom:8px;">${t("audit_role_desc", lang)}</p>
+           <select id="auditRole" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
+        </div>
+
+        <div class="row" style="margin-bottom:15px;">
+           <label style="display:block; margin-bottom:5px; font-weight:bold;">${t("intro_channel", lang)}</label>
+           <p class="muted" style="margin-bottom:8px;">${t("intro_channel_desc", lang)}</p>
+           <select id="introCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
         </div>
 
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-top:20px; border-top: 1px solid var(--border-color); padding-top:20px;">
@@ -294,7 +315,7 @@ export function renderAdminActivityHTML({ user, req }) {
     <div class="card">
         <h3>${t("activity", lang)}</h3>
         <p class="muted">${t("activity_desc", lang)}</p>
-        <table class="data-table"><thead><tr><th style="text-align:left">User</th><th>${t("last_vc", lang)}</th><th>Duration</th><th>${t("last_msg", lang)}</th><th>Status</th></tr></thead>
+        <table class="data-table"><thead><tr><th style="text-align:left">User</th><th>${t("audit_role", lang)}</th><th>${t("last_msg", lang)}</th><th>${t("last_vc", lang)}</th><th>${t("audit_status", lang)}</th></tr></thead>
         <tbody id="act-rows"></tbody></table>
         <div id="act-loading" style="display:none; text-align:center; padding:20px;">Scanning...</div>
     </div>`;

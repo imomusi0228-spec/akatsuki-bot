@@ -44,8 +44,10 @@ export const DICTIONARY = {
         ng_words: "NGワードの管理",
         ng_add_placeholder: "禁止したい言葉を入力...",
         ng_add_btn: "追加",
-        autorole: "自動参加ロール",
-        autorole_desc: "サーバーに参加した直後のメンバーに、自動で付与するロールを選択します。",
+        audit_role: "監査基準ロール",
+        audit_role_desc: "サーバーの「正会員」として認めるロールを選択します。監査画面で所持状況を確認できます。",
+        intro_channel: "自己紹介チャンネル",
+        intro_channel_desc: "新規メンバーが自己紹介を書くべきチャンネルを指定します。",
         log_channel: "通知・ログ送信用チャンネル",
         log_channel_desc: "NGワード検知などの通知を送る場所を指定します。コマンド `/setlog` でも設定可能です。",
         config_general: "基本構成",
@@ -54,12 +56,17 @@ export const DICTIONARY = {
         save_success: "設定を保存しました",
         save: "設定を保存",
 
-        // Activity
-        activity_desc: "メンバーの最終活動日をスキャンします (Pro+限定機能)",
-        scan_btn: "スキャン開始",
-        last_vc: "最後のVC利用",
-        last_msg: "最後の発言",
+        // Activity / Audit
+        activity_desc: "ロール所持・自己紹介・VC活動の3点からメンバーの状態を監査します (Pro+限定)",
+        scan_btn: "監査実行",
+        last_vc: "最終VC利用",
+        last_msg: "自己紹介",
+        audit_status: "監査ステータス",
         days_ago: "{days}日前",
+        has_intro: "済み",
+        no_intro: "未記入",
+        has_role: "保持",
+        no_role: "未保持",
 
         // Errors / Notices
         upgrade_required: "プランのアップグレードが必要です",
@@ -110,17 +117,24 @@ export const DICTIONARY = {
         ng_words: "NG Words",
         ng_add_placeholder: "Enter word...",
         ng_add_btn: "Add",
-        autorole: "Auto Role",
-        autorole_desc: "Role ID assigned on join",
+        audit_role: "Audit Base Role",
+        audit_role_desc: "Role to consider as a 'Proper Member'",
+        intro_channel: "Intro Channel",
+        intro_channel_desc: "Channel where members post introductions",
         log_channel: "Log Channel",
         save: "Save",
 
-        // Activity
-        activity_desc: "Check member inactivity (Pro+ Only)",
-        scan_btn: "Scan Now",
+        // Activity / Audit
+        activity_desc: "Audit members based on Roles, Intro, and VC Activity (Pro+ Only)",
+        scan_btn: "Start Audit",
         last_vc: "Last VC",
-        last_msg: "Last Msg",
+        last_msg: "Intro",
+        audit_status: "Audit Status",
         days_ago: "{days}d ago",
+        has_intro: "Done",
+        no_intro: "Missing",
+        has_role: "Yes",
+        no_role: "No",
 
         // Errors / Notices
         upgrade_required: "Plan Upgrade Required",

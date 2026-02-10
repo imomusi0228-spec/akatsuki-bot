@@ -232,18 +232,19 @@ export async function handleApiRoute(req, res, pathname, url) {
         const check = await dbQuery("SELECT guild_id FROM settings WHERE guild_id = $1", [body.guild]);
         if (check.rows.length === 0) {
             await dbQuery(`INSERT INTO settings 
-                (guild_id, log_channel_id, autorole_id, ng_threshold, timeout_minutes) 
-                VALUES ($1, $2, $3, $4, $5)`,
-                [body.guild, body.log_channel_id, body.autorole_id, body.ng_threshold, body.timeout_minutes]);
+                (guild_id, log_channel_id, audit_role_id, intro_channel_id, ng_threshold, timeout_minutes) 
+                VALUES ($1, $2, $3, $4, $5, $6)`,
+                [body.guild, body.log_channel_id, body.audit_role_id, body.intro_channel_id, body.ng_threshold, body.timeout_minutes]);
         } else {
             await dbQuery(`UPDATE settings SET 
                 log_channel_id = $1, 
-                autorole_id = $2, 
-                ng_threshold = $3, 
-                timeout_minutes = $4,
+                audit_role_id = $2, 
+                intro_channel_id = $3, 
+                ng_threshold = $4, 
+                timeout_minutes = $5,
                 updated_at = NOW()
-                WHERE guild_id = $5`,
-                [body.log_channel_id, body.autorole_id, body.ng_threshold, body.timeout_minutes, body.guild]);
+                WHERE guild_id = $6`,
+                [body.log_channel_id, body.audit_role_id, body.intro_channel_id, body.ng_threshold, body.timeout_minutes, body.guild]);
         }
 
         res.writeHead(200, { "Content-Type": "application/json" });
@@ -272,38 +273,57 @@ export async function handleApiRoute(req, res, pathname, url) {
         const guild = client.guilds.cache.get(guildId);
         if (!guild) return res.end(JSON.stringify({ ok: false, error: "Guild not found" }));
 
-        const weeks = 4;
-        const threshold = Date.now() - (weeks * 7 * 24 * 60 * 60 * 1000);
+        // 1. Get Audit Settings
+        const settingsRes = await dbQuery("SELECT * FROM settings WHERE guild_id = $1", [guildId]);
+        const settings = settingsRes.rows[0] || {};
 
-        const inactiveMembers = [];
-        // Fetch members (be careful with large guilds, but ok for now)
+        // 2. Fetch VC Activity from DB for ALL members in one go
+        const vcActivityMap = {};
+        const vcRes = await dbQuery("SELECT user_id, MAX(leave_time) as last_vc FROM vc_sessions WHERE guild_id = $1 GROUP BY user_id", [guildId]);
+        vcRes.rows.forEach(r => { vcActivityMap[r.user_id] = r.last_vc; });
+
+        // 3. Scan Intro Channel (Last 100 messages) to find who introduced
+        const introSet = new Set();
+        if (settings.intro_channel_id) {
+            try {
+                const channel = await guild.channels.fetch(settings.intro_channel_id);
+                if (channel && channel.isTextBased()) {
+                    const messages = await channel.messages.fetch({ limit: 100 });
+                    messages.forEach(msg => introSet.add(msg.author.id));
+                }
+            } catch (e) { console.error("Intro Scan Error:", e); }
+        }
+
+        const auditResults = [];
         try {
             const members = await guild.members.fetch();
             members.forEach(m => {
                 if (m.user.bot) return;
-                // Simply check joinedAt for now as "last activity" proxy since we don't have full msg logs
-                // Or check our vc_sessions for last leave_time
-                if (m.joinedTimestamp < threshold) {
-                    // Check DB for recent VC
-                    // Optimization: Do this properly in SQL but loop is easier for quick prototype
-                    inactiveMembers.push({
-                        id: m.id,
-                        display_name: m.displayName,
-                        joined_at: m.joinedAt.toISOString().split("T")[0],
-                        avatar_url: m.user.displayAvatarURL(),
-                        last_vc: "Unknown", // Need DB check
-                        has_role: m.roles.cache.size > 1 ? "Yes" : "No", // @everyone is 1
-                        has_intro: "Unknown"
-                    });
-                }
+
+                const lastVcDate = vcActivityMap[m.id];
+                const hasRole = settings.audit_role_id ? m.roles.cache.has(settings.audit_role_id) : true;
+                const hasIntro = settings.intro_channel_id ? introSet.has(m.user.id) : true;
+
+                // Audit Status Logic:
+                let status = "OK";
+                if (!hasRole || !hasIntro || !lastVcDate) status = "NG";
+
+                auditResults.push({
+                    id: m.id,
+                    display_name: m.displayName,
+                    avatar_url: m.user.displayAvatarURL(),
+                    has_role: hasRole,
+                    has_intro: hasIntro,
+                    last_vc: lastVcDate ? lastVcDate.toISOString().split("T")[0] : "None",
+                    status: status
+                });
             });
         } catch (e) { console.error(e); }
 
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({
             ok: true,
-            config: { weeks },
-            data: inactiveMembers.slice(0, 100) // Limit
+            data: auditResults.sort((a, b) => (a.status === "NG" ? -1 : 1)) // NG first
         }));
         return;
     }
