@@ -60,10 +60,18 @@ export async function initDb() {
                 valid_until TIMESTAMPTZ,
                 updated_at TIMESTAMPTZ DEFAULT NOW()
             );`,
-            // Migration: Add missing columns if table already exists from older versions
+            // Migration: Ensure all tables have the latest columns
             `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS join_time TIMESTAMPTZ;`,
             `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS leave_time TIMESTAMPTZ;`,
-            `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS duration_seconds INTEGER;`
+            `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS duration_seconds INTEGER;`,
+
+            `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS valid_until TIMESTAMPTZ;`,
+            `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();`,
+
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS log_channel_name TEXT;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS autorole_id TEXT;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS autorole_enabled BOOLEAN DEFAULT FALSE;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();`
         ];
 
         for (const query of queries) {
