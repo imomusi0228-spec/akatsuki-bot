@@ -278,8 +278,8 @@ function getLang(req = {}) {
 function renderLayout({ title, content, user, activeTab, oauth = false, scripts = "" }, lang = 'ja') {
     const navItem = (lbl, href, act) => `<a href="${href}" class="nav-item ${act ? 'active' : ''}">${lbl}</a>`;
     const langBtn = lang === 'ja'
-        ? `<span class="lang-switch" onclick="setLang('en')">﨟槭・﨟槭・ English</span>`
-        : `<span class="lang-switch" onclick="setLang('ja')">﨟槭・﨟槭・ 隴鯉ｽ･隴幢ｽｬ髫ｱ繝ｻ/span>`;
+        ? `<span class="lang-switch" onclick="setLang('en')">English</span>`
+        : `<span class="lang-switch" onclick="setLang('ja')">日本語</span>`;
 
     return `<!DOCTYPE html>
 <html lang="${lang}">
@@ -287,7 +287,7 @@ function renderLayout({ title, content, user, activeTab, oauth = false, scripts 
 <body>
     <div class="nav-bar" style="border:none; justify-content: space-between; align-items: center; margin-bottom: 0; padding:16px 0;">
         <div style="font-size: 24px; font-weight: bold; display:flex; align-items:center;">
-            <span style="color:#f91880; margin-right:10px;">隨假ｽｾ</span> ${oauth ? t("admin_title", lang) : t("title", lang)} ${langBtn}
+            <span style="color:#f91880; margin-right:10px;">随時</span> ${oauth ? t("admin_title", lang) : t("title", lang)} ${langBtn}
         </div>
         <div>
             ${oauth && user ? `
