@@ -210,27 +210,41 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
              const statusStyle = r.status === "OK" ? 'color:#1da1f2; font-weight:bold;' : 'color:var(--danger-color); font-weight:bold;';
              const detailedStatus = r.status === "OK" ? "OK" : (!r.has_role ? "No Role" : (!r.has_intro ? "No Intro" : "No VC Activity"));
              
+             const releaseBtn = r.status !== "OK" ? `< button onclick = "releaseTimeout('${r.id}')" class="btn" style = "padding:2px 8px; font-size:10px; background:var(--danger-color); color:white; border:none; margin-left:8px;" > Release</button > ` : "";
+
              html += '<tr>' +
                  '<td>' + (r.joined_at || '-') + '</td>' +
                  '<td><div style="display:flex; align-items:center; gap:8px;"><img src="' + av + '" style="width:24px; height:24px; border-radius:50%;" /> <span>' + escapeHTML(r.display_name) + '</span></div></td>' +
                  '<td style="text-align:center;">' + roleTxt + '</td>' +
                  '<td style="text-align:center;">' + introTxt + '</td>' +
                  '<td style="text-align:center;">' + r.last_vc + '</td>' +
-                 '<td style="text-align:center; ' + statusStyle + '">' + detailedStatus + '</td>' +
+                 '<td style="text-align:center; ' + statusStyle + '">' + detailedStatus + releaseBtn + '</td>' +
              '</tr>';
           });
           rows.innerHTML = html || '<tr><td colspan="6" class="muted" style="text-align:center;">' + t("ng_none") + '</td></tr>';
       };
 
-      window.sortActivity = (key) => {
-          if(!currentData.length) return;
-          currentData.sort((a, b) => {
-              const valA = a[key] || "";
-              const valB = b[key] || "";
-              return valA.localeCompare(valB);
-          });
-          renderRows(currentData);
-      };
+       window.sortActivity = (key) => {
+           if(!currentData.length) return;
+           currentData.sort((a, b) => {
+               const valA = a[key] || "";
+               const valB = b[key] || "";
+               return valA.localeCompare(valB);
+           });
+           renderRows(currentData);
+       };
+
+       window.releaseTimeout = async (uid) => {
+           const gid = selGuild.value;
+           if(!confirm("Release timeout for this user?")) return;
+           const res = await post("/api/timeout/release", { guild: gid, user_id: uid });
+           if(res.ok) {
+               alert("Timeout released!");
+               runScan();
+           } else {
+               alert("Error: " + res.error);
+           }
+       };
 
       const runScan = async () => {
          saveGuildSelection(); 
