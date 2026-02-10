@@ -195,25 +195,7 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
          }
       };
 
-      const runScan = async () => {
-         saveGuildSelection(); 
-         const gid = selGuild.value;
-         const ar = selRole.value;
-         const ic = selIntro.value;
 
-         const rows = document.getElementById("act-rows");
-         const loading = document.getElementById("act-loading");
-
-         rows.innerHTML = ""; 
-         loading.style.display = "block";
-         const res = await api("/api/activity?guild=" + gid + "&audit_role_id=" + ar + "&intro_channel_id=" + ic);
-         loading.style.display = "none";
-         
-         if(!res.ok) { 
-             const errorMsg = res.error.includes("Upgrade") ? "🔒 " + res.error + ' <a href="/admin/dashboard" style="margin-left:8px;">Check Plans</a>' : res.error;
-             rows.innerHTML = '<tr><td colspan="5" style="color:red; text-align:center;">' + errorMsg + '</td></tr>'; 
-             return; 
-         }
          
       
       let currentData = [];
