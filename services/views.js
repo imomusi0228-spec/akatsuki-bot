@@ -155,26 +155,25 @@ const COMMON_SCRIPT = `
 
    async function initActivity() {
       if(!await loadGuilds()) return;
-      const selGuild = $("guild");
-      const selRole = $("auditRole");
-      const selIntro = $("introCh");
+      const selGuild = document.getElementById("guild");
+      const selRole = document.getElementById("auditRole");
+      const selIntro = document.getElementById("introCh");
 
       const reloadCriteria = async () => {
          const gid = selGuild.value;
          if(!gid) return;
          
-         // Fetch Channels & Roles for this guild
          const [chRes, roleRes, setRes] = await Promise.all([
-            api(`/ api / channels ? guild = ${ gid }`),
-            api(`/ api / roles ? guild = ${ gid } `),
-            api(`/ api / settings ? guild = ${ gid } `)
+            api("/api/channels?guild=" + gid),
+            api("/api/roles?guild=" + gid),
+            api("/api/settings?guild=" + gid)
          ]);
 
          if(chRes.ok) {
-            selIntro.innerHTML = '<option value="">None</option>' + chRes.channels.map(c => `< option value = "${c.id}" > #${ c.name }</option > `).join('');
+            selIntro.innerHTML = '<option value="">None</option>' + chRes.channels.map(c => '<option value="' + c.id + '">#' + c.name + '</option>').join('');
          }
          if(roleRes.ok) {
-            selRole.innerHTML = '<option value="">None</option>' + roleRes.roles.map(r => `< option value = "${r.id}" > ${ r.name }</option > `).join('');
+            selRole.innerHTML = '<option value="">None</option>' + roleRes.roles.map(r => '<option value="' + r.id + '">' + r.name + '</option>').join('');
          }
          if(setRes.ok && setRes.settings) {
             selRole.value = setRes.settings.audit_role_id || "";
@@ -183,18 +182,22 @@ const COMMON_SCRIPT = `
       };
 
       const runScan = async () => {
-         saveGuildSelection(); const gid = selGuild.value;
+         saveGuildSelection(); 
+         const gid = selGuild.value;
          const ar = selRole.value;
          const ic = selIntro.value;
 
-         $("act-rows").innerHTML = ""; $("act-loading").style.display = "block";
-         // Pass criteria as override
-         const res = await api(`/ api / activity ? guild = ${ gid }& audit_role_id=${ ar }& intro_channel_id=${ ic } `);
-         $("act-loading").style.display = "none";
+         const rows = document.getElementById("act-rows");
+         const loading = document.getElementById("act-loading");
+
+         rows.innerHTML = ""; 
+         loading.style.display = "block";
+         const res = await api("/api/activity?guild=" + gid + "&audit_role_id=" + ar + "&intro_channel_id=" + ic);
+         loading.style.display = "none";
          
          if(!res.ok) { 
-             const errorMsg = res.error.includes("Upgrade") ? `🔒 ${ res.error } <a href="/admin/dashboard" style="margin-left:8px;">Check Plans</a>` : res.error;
-             $("act-rows").innerHTML = `< tr > <td colspan="5" style="color:red; text-align:center;">${errorMsg}</td></tr > `; 
+             const errorMsg = res.error.includes("Upgrade") ? "🔒 " + res.error + ' <a href="/admin/dashboard" style="margin-left:8px;">Check Plans</a>' : res.error;
+             rows.innerHTML = '<tr><td colspan="5" style="color:red; text-align:center;">' + errorMsg + '</td></tr>'; 
              return; 
          }
          
@@ -205,20 +208,21 @@ const COMMON_SCRIPT = `
             const introTxt = r.has_intro ? '<span style="color:#1da1f2;">✔</span>' : '<span style="color:var(--danger-color);">✘</span>';
             const statusStyle = r.status === "OK" ? 'color:#1da1f2; font-weight:bold;' : 'color:var(--danger-color); font-weight:bold;';
             
-            html += `< tr >
-                <td><div style="display:flex; align-items:center; gap:8px;"><img src="${av}" style="width:24px; height:24px; border-radius:50%;" /> <span>${escapeHTML(r.display_name)}</span></div></td>
-                <td style="text-align:center;">${roleTxt}</td>
-                <td style="text-align:center;">${introTxt}</td>
-                <td style="text-align:center;">${r.last_vc}</td>
-                <td style="text-align:center; ${statusStyle}">${r.status}</td>
-            </tr > `;
+            html += '<tr>' +
+                '<td><div style="display:flex; align-items:center; gap:8px;"><img src="' + av + '" style="width:24px; height:24px; border-radius:50%;" /> <span>' + escapeHTML(r.display_name) + '</span></div></td>' +
+                '<td style="text-align:center;">' + roleTxt + '</td>' +
+                '<td style="text-align:center;">' + introTxt + '</td>' +
+                '<td style="text-align:center;">' + r.last_vc + '</td>' +
+                '<td style="text-align:center; ' + statusStyle + '">' + r.status + '</td>' +
+            '</tr>';
          });
-         $("act-rows").innerHTML = html || '<tr><td colspan="5" class="muted" style="text-align:center;">None</td></tr>';
+         rows.innerHTML = html || '<tr><td colspan="5" class="muted" style="text-align:center;">None</td></tr>';
       };
 
-      selGuild.onchange = () => { reloadCriteria(); $("act-rows").innerHTML = ''; };
-      $("reload") && ($("reload").onclick = runScan); 
-      $("scan").onclick = runScan;
+      selGuild.onchange = () => { reloadCriteria(); document.getElementById("act-rows").innerHTML = ""; };
+      const btnReload = document.getElementById("reload");
+      if(btnReload) btnReload.onclick = runScan; 
+      document.getElementById("scan").onclick = runScan;
 
       reloadCriteria();
    }
