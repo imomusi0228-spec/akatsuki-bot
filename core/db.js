@@ -115,6 +115,21 @@ export async function initDb() {
             `ALTER TABLE ng_words ADD COLUMN IF NOT EXISTS created_by TEXT;`,
             `ALTER TABLE ng_words ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();`,
 
+            // Fix settings (Missing columns for Audit)
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS intro_channel_id TEXT;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS audit_role_id TEXT;`,
+
+            // Create ng_logs
+            `CREATE TABLE IF NOT EXISTS ng_logs (
+                id SERIAL PRIMARY KEY,
+                guild_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                user_name TEXT,
+                word TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );`,
+            `CREATE INDEX IF NOT EXISTS idx_ng_logs_guild_user ON ng_logs(guild_id, user_id);`,
+
             // Performance Indices
             `CREATE INDEX IF NOT EXISTS idx_vc_sessions_guild_user ON vc_sessions(guild_id, user_id);`,
             `CREATE INDEX IF NOT EXISTS idx_vc_sessions_join ON vc_sessions(join_time);`,

@@ -106,6 +106,10 @@ export async function handleApiRoute(req, res, pathname, url) {
             const tierName = TIER_NAMES[subData.tier];
             const features = getFeatures(subData.tier);
 
+            // NG Stats
+            const ngCountRes = await dbQuery("SELECT COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 AND created_at > NOW() - INTERVAL '30 days'", [guildId]);
+            const ngTopRes = await dbQuery("SELECT user_name, COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 GROUP BY user_name ORDER BY cnt DESC LIMIT 5", [guildId]);
+
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify({
                 ok: true,
@@ -115,9 +119,9 @@ export async function handleApiRoute(req, res, pathname, url) {
                         joins: vcRes.rows[0]?.cnt || 0,
                         leaves: 0,
                         timeouts: 0,
-                        ngDetected: 0
+                        ngDetected: parseInt(ngCountRes.rows[0]?.cnt || 0)
                     },
-                    topNgUsers: []
+                    topNgUsers: ngTopRes.rows
                 }
             }));
         } catch (error) {
