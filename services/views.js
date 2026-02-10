@@ -38,7 +38,7 @@ const COMMON_CSS = `
   .lang-switch:hover { color: #fff; }
 `;
 
-const COMMON_SCRIPT = `
+const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
   const $ = (id) => document.getElementById(id);
   const escapeHTML = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   function yyyymmNow(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }

@@ -93,7 +93,7 @@ export async function initDb() {
 
                 -- Ensure ID exists
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vc_sessions' AND column_name='id') THEN
-                    ALTER TABLE vc_sessions ADD COLUMN id SERIAL PRIMARY KEY;
+                    ALTER TABLE vc_sessions ADD COLUMN id SERIAL;
                 END IF;
             END $$;`,
 
