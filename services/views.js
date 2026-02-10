@@ -43,7 +43,7 @@ const COMMON_SCRIPT = `
   function yyyymmNow(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
   async function api(path){ const r = await fetch(path); if(r.status===401){window.location.href="/login";return {ok:false};} const t = await r.text(); try { return JSON.parse(t); } catch { return { ok:false, error:t }; } }
   async function post(path, body){ const r = await fetch(path, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)}); if(r.status===401){window.location.href="/login";return {ok:false};} const t = await r.text(); try { return JSON.parse(t); } catch { return { ok:false, error:t }; } }
-  function setLang(l) { document.cookie = "lang="+l+";path=/;max-age=31536000"; location.reload(); }
+  function setLang(l) { document.cookie = "lang="+l+";path=/;max-age=31536000;SameSite=Lax"; location.reload(); }
 
   let _guildsLoaded = false;
   async function loadGuilds() {
@@ -283,9 +283,12 @@ const COMMON_SCRIPT = `
 `;
 
 function getLang(req = {}) {
-    const cookie = (req.headers && req.headers.cookie) || "";
-    const match = cookie.match(/lang=([a-z]{2})/);
-    return match ? match[1] : "ja";
+    const cookies = {};
+    (req.headers && req.headers.cookie || "").split(";").forEach((c) => {
+        const [k, v] = c.trim().split("=");
+        if (k && v) cookies[k] = decodeURIComponent(v);
+    });
+    return cookies.lang || "ja";
 }
 
 function renderLayout({ title, content, user, activeTab, oauth = false, scripts = "" }, lang = 'ja') {
