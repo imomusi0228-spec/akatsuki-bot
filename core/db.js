@@ -60,18 +60,39 @@ export async function initDb() {
                 valid_until TIMESTAMPTZ,
                 updated_at TIMESTAMPTZ DEFAULT NOW()
             );`,
-            // Migration: Ensure all tables have the latest columns
+            // Comprehensive Migration & Column Normalization
+            // Fix subscriptions table (Legacy names: server_id, plan_tier)
+            `DO $$ 
+            BEGIN 
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subscriptions' AND column_name='server_id') THEN
+                    ALTER TABLE subscriptions RENAME COLUMN server_id TO guild_id;
+                END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subscriptions' AND column_name='plan_tier') THEN
+                    ALTER TABLE subscriptions RENAME COLUMN plan_tier TO tier;
+                END IF;
+            END $$;`,
+            `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS guild_id TEXT;`,
+            `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS tier INTEGER DEFAULT 0;`,
+            `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS valid_until TIMESTAMPTZ;`,
+            `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();`,
+
+            // Fix vc_sessions
+            `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS guild_id TEXT;`,
             `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS join_time TIMESTAMPTZ;`,
             `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS leave_time TIMESTAMPTZ;`,
             `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS duration_seconds INTEGER;`,
 
-            `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS valid_until TIMESTAMPTZ;`,
-            `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();`,
-
+            // Fix settings
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS guild_id TEXT;`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS log_channel_name TEXT;`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS autorole_id TEXT;`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS autorole_enabled BOOLEAN DEFAULT FALSE;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();`
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();`,
+
+            // Fix ng_words
+            `ALTER TABLE ng_words ADD COLUMN IF NOT EXISTS guild_id TEXT;`,
+            `ALTER TABLE ng_words ADD COLUMN IF NOT EXISTS created_by TEXT;`,
+            `ALTER TABLE ng_words ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();`
         ];
 
         for (const query of queries) {
