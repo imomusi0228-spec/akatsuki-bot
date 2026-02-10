@@ -9,7 +9,7 @@ import { ENV } from "../config/env.js";
 export async function getTier(guildId) {
     // Check if this is the support server
     if (ENV.SUPPORT_SERVER_ID && guildId === ENV.SUPPORT_SERVER_ID) {
-        return TIERS.PRO_PLUS;
+        return TIERS.PRO_PLUS_YEARLY;
     }
 
     // Otherwise, fetch from database
