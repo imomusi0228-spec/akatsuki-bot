@@ -205,8 +205,8 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
           let html = "";
           data.forEach(r => {
              const av = r.avatar_url || "";
-             const roleTxt = r.has_role ? '<span style="color:#1da1f2;">✅</span>' : '<span style="color:var(--danger-color);">✅</span>';
-             const introTxt = r.has_intro ? '<span style="color:#1da1f2;">✅</span>' : '<span style="color:var(--danger-color);">✅</span>';
+             const roleTxt = r.has_role ? '<span style="color:#1da1f2;">✅</span>' : '<span style="color:var(--danger-color);">❌</span>';
+             const introTxt = r.has_intro ? '<span style="color:#1da1f2;">✅</span>' : '<span style="color:var(--danger-color);">❌</span>';
              const statusStyle = r.status === "OK" ? 'color:#1da1f2; font-weight:bold;' : 'color:var(--danger-color); font-weight:bold;';
              
              html += '<tr>' +
