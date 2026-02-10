@@ -336,7 +336,7 @@ export function renderAdminSettingsHTML({ user, req }) {
             <div style="margin-bottom:15px;">
                 <label style="display:block; margin-bottom:5px; font-size:12px; font-weight:bold; color:#8899a6;">${t("ng_add_label", lang)}</label>
                 <div style="display:flex; gap:10px;">
-                    <textarea id="newNg" rows="1" placeholder="Space or Newline to separate..." style="flex:1; padding:10px; border:1px solid #38444d; background:#192734; color:white; border-radius:4px; resize:vertical; font-family:inherit;"></textarea>
+                    <textarea id="newNg" rows="1" placeholder="${t("ng_msg_placeholder", lang)}" style="flex:1; padding:10px; border:1px solid #38444d; background:#192734; color:white; border-radius:4px; resize:vertical; font-family:inherit;"></textarea>
                     <button id="addNg" class="btn" style="width:40px; font-size:20px; padding:0; display:flex; align-items:center; justify-content:center;">＋</button>
                 </div>
             </div>

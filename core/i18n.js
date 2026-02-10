@@ -65,6 +65,7 @@ export const DICTIONARY = {
         save: "設定を保存",
         ng_add_label: "追加 (例: ばか または /regex/i)",
         ng_delete_label: "削除 (登録されている文字)",
+        ng_msg_placeholder: "スペースまたは改行で区切って入力...",
         ng_clear_all: "全削除",
         ng_none: "(なし)",
 
@@ -159,8 +160,8 @@ export const DICTIONARY = {
         timeouts: "Timeouts",
         ng_detect: "NG Detections",
         top_ng_users: "Top NG Users",
-        recent_joins: "最近の参加者",
-        quick_comparison: "プラン機能比較表",
+        recent_joins: "Recent Joins",
+        quick_comparison: "Plan Comparison",
 
         // Settings
         ng_words: "NG Words",
@@ -174,6 +175,7 @@ export const DICTIONARY = {
         save: "Save",
         ng_add_label: "Add (e.g. badword or /regex/i)",
         ng_delete_label: "Delete (Registered words)",
+        ng_msg_placeholder: "Space or Newline to separate...",
         ng_clear_all: "Clear All",
         ng_none: "(None)",
 
