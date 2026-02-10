@@ -44,6 +44,7 @@ export const DICTIONARY = {
         vc_joins: "VC参加頻度",
         leaves: "退出回数",
         timeouts: "タイムアウト実行",
+        ng_detect: "NG検知数",
         top_ng_users: "NG連発ランキング",
         recent_joins: "Recent Joins",
         quick_comparison: "Plan Comparison",
