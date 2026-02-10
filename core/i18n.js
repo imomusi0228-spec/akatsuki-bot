@@ -2,6 +2,7 @@ export const DICTIONARY = {
     ja: {
         // General
         title: "Akatsuki Bot",
+        admin_title: "Akatsuki Bot 管理画面",
         subtitle: "Discordサーバー管理の新しいスタンダード",
         login: "Discordでログイン",
         logout: "ログアウト",
@@ -62,10 +63,18 @@ export const DICTIONARY = {
         timeout_label: "自動タイムアウト時間",
         save_success: "設定を保存しました",
         save: "設定を保存",
+        ng_add_label: "追加 (例: ばか または /regex/i)",
+        ng_delete_label: "削除 (登録されている文字)",
+        ng_clear_all: "全削除",
+        ng_none: "(なし)",
 
         // Activity / Audit
         activity_desc: "ロール所持・自己紹介・VC活動の3点からメンバーの状態を監査します (Pro+限定)",
         scan_btn: "監査実行",
+        sort_joined: "参加日",
+        sort_user: "ユーザー",
+        header_joined_at: "参加日",
+        header_user: "ユーザー",
         last_vc: "最終VC利用",
         last_msg: "自己紹介",
         audit_status: "監査ステータス",
@@ -82,6 +91,7 @@ export const DICTIONARY = {
     en: {
         // General
         title: "Akatsuki Bot",
+        admin_title: "Akatsuki Bot Admin",
         subtitle: "The New Standard for Discord Management",
         login: "Login with Discord",
         logout: "Logout",
@@ -138,10 +148,18 @@ export const DICTIONARY = {
         intro_channel_desc: "Channel where members post introductions",
         log_channel: "Log Channel",
         save: "Save",
+        ng_add_label: "Add (e.g. badword or /regex/i)",
+        ng_delete_label: "Delete (Registered words)",
+        ng_clear_all: "Clear All",
+        ng_none: "(None)",
 
         // Activity / Audit
         activity_desc: "Audit members based on Roles, Intro, and VC Activity (Pro+ Only)",
         scan_btn: "Start Audit",
+        sort_joined: "Joined",
+        sort_user: "User",
+        header_joined_at: "Joined",
+        header_user: "User",
         last_vc: "Last VC",
         last_msg: "Intro",
         audit_status: "Audit Status",

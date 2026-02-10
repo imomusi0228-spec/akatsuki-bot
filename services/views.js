@@ -115,9 +115,21 @@ const COMMON_SCRIPT = `
         
         if(ng.ok) {
             const list = $("ngList");
+        if(ng.ok) {
+            const list = $("ngList");
             const words = ng.words || [];
             if(words.length === 0) {
-                list.innerHTML = '<div class="muted" style="padding:10px; text-align:center;">(なし)</div>';
+                // Since this is inside script tag, we can't easily access 'lang' variable from initSettings scope without passing it or using a global or just returning general text
+                // Actually initSettings has 'lang'.
+                // But this string is constructed inside innerHTML.
+                // We'll use a simple approach: The 'initSettings' function is defined inside 'renderAdminSettingsHTML' where 'lang' is available?
+                // No, 'initSettings' is in COMMON_SCRIPT which is a string. 'lang' is NOT available directly as a variable.
+                // We need to pass lang to initSettings or get it from cookie in JS.
+                // 'getLang' logic is on server side. On client side we have 'document.documentElement.lang'.
+                // Let's use that.
+                const clientLang = document.documentElement.lang || 'ja';
+                const noneText = clientLang === 'en' ? '(None)' : '(なし)';
+                list.innerHTML = '<div class="muted" style="padding:10px; text-align:center;">' + noneText + '</div>';
             } else {
                 list.innerHTML = words.map(w => \`
                 <div style="display:flex; justify-content:space-between; align-items:center; background:#192734; padding:8px 12px; border-radius:4px; border:1px solid #38444d;">
@@ -298,7 +310,7 @@ function renderLayout({ title, content, user, activeTab, oauth = false, scripts 
 <body>
     <div class="nav-bar" style="border:none; justify-content: space-between; align-items: center; margin-bottom: 0; padding:16px 0;">
         <div style="font-size: 24px; font-weight: bold; display:flex; align-items:center;">
-            <span style="color:#f91880; margin-right:10px;">☾</span> Akatsuki Bot 管理画面 ${langBtn}
+            <span style="color:#f91880; margin-right:10px;">☾</span> ${t("admin_title", lang)} ${langBtn}
         </div>
         <div>
             ${oauth && user ? `
@@ -346,19 +358,19 @@ export function renderAdminSettingsHTML({ user, req }) {
         <h3>${t("ng_words", lang)}</h3>
         <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; border:1px solid #38444d;">
             <div style="margin-bottom:15px;">
-                <label style="display:block; margin-bottom:5px; font-size:12px; font-weight:bold; color:#8899a6;">追加 (例: ばか または /regex/i)</label>
+                <label style="display:block; margin-bottom:5px; font-size:12px; font-weight:bold; color:#8899a6;">${t("ng_add_label", lang)}</label>
                 <div style="display:flex; gap:10px;">
                     <input id="newNg" style="flex:1; padding:10px; border:1px solid #38444d; background:#192734; color:white; border-radius:4px;">
                     <button id="addNg" class="btn" style="width:40px; font-size:20px; padding:0; display:flex; align-items:center; justify-content:center;">＋</button>
                 </div>
             </div>
             
-            <label style="display:block; margin-bottom:5px; font-size:12px; font-weight:bold; color:#8899a6;">削除 (登録されている文字)</label>
+            <label style="display:block; margin-bottom:5px; font-size:12px; font-weight:bold; color:#8899a6;">${t("ng_delete_label", lang)}</label>
             <div id="ngList" style="display:flex; flex-direction:column; gap:8px; max-height:300px; overflow-y:auto; padding:5px;"></div>
             
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:15px; border-top:1px solid #38444d; padding-top:10px;">
                 <span id="ngCount" class="muted">0 words</span>
-                <button id="btn_clear" class="btn" style="color:#f4212e; border-color:#f4212e; padding:4px 12px; font-size:12px;">全削除</button>
+                <button id="btn_clear" class="btn" style="color:#f4212e; border-color:#f4212e; padding:4px 12px; font-size:12px;">${t("ng_clear_all", lang)}</button>
             </div>
         </div>
     </div>
@@ -427,12 +439,12 @@ export function renderAdminActivityHTML({ user, req }) {
         <h3 style="display:flex; align-items:center; gap:10px;">
             ${t("activity", lang)}
             <div style="font-size:12px; font-weight:normal; margin-left:auto; display:flex; gap:10px;">
-                <button onclick="sortActivity('joined_at')" class="btn" style="padding:4px 8px;">参加日 ▼</button>
-                <button onclick="sortActivity('display_name')" class="btn" style="padding:4px 8px;">ユーザー ▼</button>
+                <button onclick="sortActivity('joined_at')" class="btn" style="padding:4px 8px;">${t("sort_joined", lang)} ▼</button>
+                <button onclick="sortActivity('display_name')" class="btn" style="padding:4px 8px;">${t("sort_user", lang)} ▼</button>
             </div>
         </h3>
         <p class="muted">${t("activity_desc", lang)}</p>
-        <table class="data-table"><thead><tr><th style="text-align:left">参加日</th><th style="text-align:left">User</th><th>${t("audit_role", lang)}</th><th>${t("last_msg", lang)}</th><th>${t("last_vc", lang)}</th><th>${t("audit_status", lang)}</th></tr></thead>
+        <table class="data-table"><thead><tr><th style="text-align:left">${t("header_joined_at", lang)}</th><th style="text-align:left">${t("header_user", lang)}</th><th>${t("audit_role", lang)}</th><th>${t("last_msg", lang)}</th><th>${t("last_vc", lang)}</th><th>${t("audit_status", lang)}</th></tr></thead>
         <tbody id="act-rows"></tbody></table>
         <div id="act-loading" style="display:none; text-align:center; padding:20px;">Scanning...</div>
     </div>`;
