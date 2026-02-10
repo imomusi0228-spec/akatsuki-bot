@@ -328,6 +328,55 @@ export async function handleApiRoute(req, res, pathname, url) {
         return;
     }
 
+    // GET /api/activity/export (CSV)
+    if (pathname === "/api/activity/export") {
+        if (!guildId) return res.end(JSON.stringify({ ok: false }));
+        const tier = await getTier(guildId);
+        const features = getFeatures(tier);
+        if (!features.activity) {
+            res.writeHead(403, { "Content-Type": "application/json" });
+            return res.end(JSON.stringify({ ok: false, error: "Upgrade required" }));
+        }
+
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.end(JSON.stringify({ ok: false, error: "Guild not found" }));
+
+        // Reuse audit logic
+        const settingsRes = await dbQuery("SELECT * FROM settings WHERE guild_id = $1", [guildId]);
+        const settings = settingsRes.rows[0] || {};
+        const vcRes = await dbQuery("SELECT user_id, MAX(leave_time) as last_vc FROM vc_sessions WHERE guild_id = $1 GROUP BY user_id", [guildId]);
+        const vcMap = {}; vcRes.rows.forEach(r => vcMap[r.user_id] = r.last_vc);
+
+        const introSet = new Set();
+        if (settings.intro_channel_id) {
+            try {
+                const ch = await guild.channels.fetch(settings.intro_channel_id);
+                if (ch?.isTextBased()) { (await ch.messages.fetch({ limit: 100 })).forEach(m => introSet.add(m.author.id)); }
+            } catch (e) { }
+        }
+
+        let csv = "\uFEFFUser ID,Display Name,Role Audit,Intro Audit,Last VC,Status\r\n";
+        try {
+            const members = await guild.members.fetch();
+            members.forEach(m => {
+                if (m.user.bot) return;
+                const lastVcDate = vcMap[m.id];
+                const hasRole = settings.audit_role_id ? m.roles.cache.has(settings.audit_role_id) : true;
+                const hasIntro = settings.intro_channel_id ? introSet.has(m.user.id) : true;
+                const status = (hasRole && hasIntro && lastVcDate) ? "OK" : "NG";
+
+                csv += `"${m.id}","${m.displayName.replace(/"/g, '""')}","${hasRole ? "OK" : "NG"}","${hasIntro ? "OK" : "NG"}","${lastVcDate ? lastVcDate.toISOString().split("T")[0] : "None"}","${status}"\r\n`;
+            });
+        } catch (e) { }
+
+        res.writeHead(200, {
+            "Content-Type": "text/csv; charset=utf-8",
+            "Content-Disposition": "attachment; filename=audit_results.csv"
+        });
+        res.end(csv);
+        return;
+    }
+
     // POST /api/license/update (Improved with per-user server limit)
     if (pathname === "/api/license/update" && method === "POST") {
         const body = await getBody();
