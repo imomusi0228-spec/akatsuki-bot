@@ -309,11 +309,7 @@ export function renderAdminSettingsHTML({ user, req }) {
            <select id="logCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
         </div>
 
-        <div class="row" style="margin-bottom:20px;">
-           <label style="display:block; margin-bottom:5px; font-weight:bold;">${t("log_channel", lang)}</label>
-           <p class="muted" style="margin-bottom:8px;">${t("log_channel_desc", lang)}</p>
-           <select id="logCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
-        </div>
+
 
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-top:20px; border-top: 1px solid var(--border-color); padding-top:20px;">
             <div>
