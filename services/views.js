@@ -320,7 +320,7 @@ function renderLayout({ title, content, user, activeTab, oauth = false, scripts 
     
     <div id="main-content">${content}</div>
     <div style="text-align:center; padding: 20px; color: #8899a6; font-size:0.8em; margin-top:40px;">&copy; 2026 Akatsuki Bot</div>
-    <script>${COMMON_SCRIPT}</script>
+    <script>const lang = "${lang}"; ${COMMON_SCRIPT}</script>
     ${scripts}
 </body></html>`;
 }
