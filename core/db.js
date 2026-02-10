@@ -59,7 +59,11 @@ export async function initDb() {
                 tier INTEGER DEFAULT 0,
                 valid_until TIMESTAMPTZ,
                 updated_at TIMESTAMPTZ DEFAULT NOW()
-            );`
+            );`,
+            // Migration: Add missing columns if table already exists from older versions
+            `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS join_time TIMESTAMPTZ;`,
+            `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS leave_time TIMESTAMPTZ;`,
+            `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS duration_seconds INTEGER;`
         ];
 
         for (const query of queries) {
