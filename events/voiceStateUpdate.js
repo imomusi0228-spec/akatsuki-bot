@@ -8,9 +8,13 @@ import { dbQuery } from "../core/db.js";
 export default {
     name: Events.VoiceStateUpdate,
     async default(oldState, newState) {
-        if (oldState.member.user.bot) return;
+        const member = newState.member || oldState.member;
+        if (!member || member.user.bot) return;
+
         const guildId = newState.guild.id || oldState.guild.id;
-        const userId = newState.member.id;
+        const userId = member.id;
+
+        console.log(`[VoiceState] User ${userId} changed state in Guild ${guildId} (Ch: ${oldState.channelId} -> ${newState.channelId})`);
 
         try {
             // Join
