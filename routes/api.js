@@ -193,7 +193,37 @@ export async function handleApiRoute(req, res, pathname, url) {
         return;
     }
 
-    // POST /api/settings/update
+    // GET /api/channels
+    if (pathname === "/api/channels") {
+        if (!guildId) return res.end(JSON.stringify({ ok: false }));
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.end(JSON.stringify({ ok: false, error: "Guild not found" }));
+
+        const channels = guild.channels.cache
+            .filter(c => c.isTextBased())
+            .map(c => ({ id: c.id, name: c.name }));
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: true, channels }));
+        return;
+    }
+
+    // GET /api/roles
+    if (pathname === "/api/roles") {
+        if (!guildId) return res.end(JSON.stringify({ ok: false }));
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.end(JSON.stringify({ ok: false, error: "Guild not found" }));
+
+        const roles = guild.roles.cache
+            .filter(r => r.name !== "@everyone" && !r.managed)
+            .map(r => ({ id: r.id, name: r.name }));
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: true, roles }));
+        return;
+    }
+
+    // POST /api/settings/update (Improved)
     if (pathname === "/api/settings/update" && method === "POST") {
         const body = await getBody();
         if (!body.guild) return res.end(JSON.stringify({ ok: false }));
@@ -201,9 +231,19 @@ export async function handleApiRoute(req, res, pathname, url) {
         // Upsert
         const check = await dbQuery("SELECT guild_id FROM settings WHERE guild_id = $1", [body.guild]);
         if (check.rows.length === 0) {
-            await dbQuery("INSERT INTO settings (guild_id, ng_threshold, timeout_minutes) VALUES ($1, $2, $3)", [body.guild, body.ng_threshold, body.timeout_minutes]);
+            await dbQuery(`INSERT INTO settings 
+                (guild_id, log_channel_id, autorole_id, ng_threshold, timeout_minutes) 
+                VALUES ($1, $2, $3, $4, $5)`,
+                [body.guild, body.log_channel_id, body.autorole_id, body.ng_threshold, body.timeout_minutes]);
         } else {
-            await dbQuery("UPDATE settings SET ng_threshold = $1, timeout_minutes = $2 WHERE guild_id = $3", [body.ng_threshold, body.timeout_minutes, body.guild]);
+            await dbQuery(`UPDATE settings SET 
+                log_channel_id = $1, 
+                autorole_id = $2, 
+                ng_threshold = $3, 
+                timeout_minutes = $4,
+                updated_at = NOW()
+                WHERE guild_id = $5`,
+                [body.log_channel_id, body.autorole_id, body.ng_threshold, body.timeout_minutes, body.guild]);
         }
 
         res.writeHead(200, { "Content-Type": "application/json" });

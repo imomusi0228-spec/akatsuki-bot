@@ -86,22 +86,66 @@ const COMMON_SCRIPT = `
 
   async function initSettings() {
      if(!await loadGuilds()) return;
-     const reload = async () => {
-        saveGuildSelection(); const gid = $("guild").value; if(!gid) return;
-        const [ng, st] = await Promise.all([api(\`/api/ngwords?guild=\${gid}\`), api(\`/api/settings?guild=\${gid}\`)]);
-        if(ng.ok) {
-           $("ngwords").textContent = (ng.words||[]).map(w => w.kind==="regex" ? "/" + w.word + "/" : w.word).join("\\n") || "(None)";
-           $("ngStatus").textContent = (ng.words||[]).length + " words";
+     
+     const lang = document.documentElement.lang || 'ja';
+     const selLog = $("logCh");
+     const selRole = $("roleId");
+     const selGuild = $("guild");
+
+     const loadMasters = async (gid) => {
+        const [ch, rl] = await Promise.all([api(`/ api / channels ? guild = ${ gid }`), api(` / api / roles ? guild = ${ gid } `)]);
+        if(selLog) {
+            selLog.innerHTML = '<option value="">(None / No Log)</option>';
+            if(ch.ok) ch.channels.forEach(c => { const o=document.createElement("option"); o.value=c.id; o.textContent="#"+c.name; selLog.appendChild(o); });
         }
-        if(st.ok && st.settings) {
-           $("threshold").value = st.settings.ng_threshold ?? 3;
-           $("timeout").value = st.settings.timeout_minutes ?? 10;
+        if(selRole) {
+            selRole.innerHTML = '<option value="">(None / No AutoRole)</option>';
+            if(rl.ok) rl.roles.forEach(r => { const o=document.createElement("option"); o.value=r.id; o.textContent=r.name; selRole.appendChild(o); });
         }
      };
-     $("guild").onchange = reload; $("reload").onclick = reload;
-     $("btn_add").onclick = async () => { const w = $("ng_add").value; if(!w)return; await post("/api/ngwords/add", {guild: $("guild").value, word: w }); $("ng_add").value=""; reload(); };
-     $("btn_remove").onclick = async () => { const w = $("ng_remove").value; if(!w)return; await post("/api/ngwords/remove", {guild: $("guild").value, word: w }); $("ng_remove").value=""; reload(); };
-     $("btn_clear").onclick = async () => { if(!confirm("Clear all?"))return; await post("/api/ngwords/clear", {guild: $("guild").value }); reload(); };
+
+     const reload = async () => {
+        saveGuildSelection(); const gid = selGuild.value; if(!gid) return;
+        
+        await loadMasters(gid);
+        const [ng, st] = await Promise.all([api(`/ api / ngwords ? guild = ${ gid } `), api(` / api / settings ? guild = ${ gid } `)]);
+        
+        if(ng.ok) {
+            $("ngList").innerHTML = (ng.words||[]).map(w => `< span class="btn" style = "padding:4px 8px; font-size:12px; margin-right:5px; margin-bottom:5px;" > ${ escapeHTML(w.word) } <span onclick="removeNg('${escapeHTML(w.word)}')" style="color:var(--danger-color); cursor:pointer; margin-left:5px;">×</span></span > `).join("");
+        }
+        if(st.ok && st.settings) {
+            if(selLog) selLog.value = st.settings.log_channel_id || "";
+            if(selRole) selRole.value = st.settings.autorole_id || "";
+            if($("threshold")) $("threshold").value = st.settings.ng_threshold ?? 3;
+            if($("timeout")) $("timeout").value = st.settings.timeout_minutes ?? 10;
+        }
+     };
+
+     window.removeNg = async (w) => { await post("/api/ngwords/remove", {guild: selGuild.value, word: w }); reload(); };
+     $("addNg").onclick = async () => { const w = $("newNg").value; if(!w)return; await post("/api/ngwords/add", {guild: selGuild.value, word: w }); $("newNg").value=""; reload(); };
+     $("btn_clear").onclick = async () => { if(!confirm("Clear all?"))return; await post("/api/ngwords/clear", {guild: selGuild.value }); reload(); };
+     
+     $("save").onclick = async () => {
+        const body = {
+            guild: selGuild.value,
+            log_channel_id: selLog.value,
+            autorole_id: selRole.value,
+            ng_threshold: parseInt($("threshold").value),
+            timeout_minutes: parseInt($("timeout").value)
+        };
+        const res = await post("/api/settings/update", body);
+        const stat = $("saveStatus");
+        if(res.ok) {
+            stat.textContent = lang === 'ja' ? "✅ 設定を保存しました" : "✅ Settings saved";
+            stat.style.color = "var(--success-color)";
+            setTimeout(() => stat.textContent="", 3000);
+        } else {
+            stat.textContent = "Error: " + res.error;
+            stat.style.color = "var(--danger-color)";
+        }
+     };
+
+     selGuild.onchange = reload; $("reload").onclick = reload; reload();
   }
 
   async function initActivity() {
@@ -191,6 +235,7 @@ export function renderAdminDashboardHTML({ user, req }) {
 export function renderAdminSettingsHTML({ user, req }) {
     const lang = getLang(req);
     const content = `<div class="card"><div class="row" style="margin-bottom:16px;"><select id="guild" style="width:100%; max-width:300px; padding:10px;"></select> <button id="reload" class="btn">Reload</button></div></div>
+    
     <div class="card">
         <h3>${t("ng_words", lang)}</h3>
         <div style="display:flex; gap:10px; margin-bottom:10px;">
@@ -200,19 +245,43 @@ export function renderAdminSettingsHTML({ user, req }) {
         <div id="ngList" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
         <div style="margin-top:20px; text-align:right;"><button id="btn_clear" class="btn" style="color:red; border-color:red;">Clear All</button></div>
     </div>
+
     <div class="card">
-        <h3>Configuration</h3>
-        <div class="row" style="margin-bottom:10px;">
-           <label>${t("log_channel", lang)} ID</label>
-           <input id="logCh" style="width:100%; padding:8px; background:#192734; border:1px solid #555; color:white; margin-top:5px;">
+        <h3>${t("config_general", lang)}</h3>
+        
+        <div class="row" style="margin-bottom:15px;">
+           <label style="display:block; margin-bottom:5px; font-weight:bold;">${t("log_channel", lang)}</label>
+           <p class="muted" style="margin-bottom:8px;">${t("log_channel_desc", lang)}</p>
+           <select id="logCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
         </div>
-        <div class="row">
-           <label>${t("autorole", lang)} ID (${t("autorole_desc", lang)})</label>
-           <input id="roleId" style="width:100%; padding:8px; background:#192734; border:1px solid #555; color:white; margin-top:5px;">
+
+        <div class="row" style="margin-bottom:15px;">
+           <label style="display:block; margin-bottom:5px; font-weight:bold;">${t("autorole", lang)}</label>
+           <p class="muted" style="margin-bottom:8px;">${t("autorole_desc", lang)}</p>
+           <select id="roleId" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
         </div>
-        <div class="row" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
-            <div><label>NG Threshold</label><input id="threshold" type="number" min="1" style="width:100%;"></div>
-            <div><label>Timeout (min)</label><input id="timeout" type="number" min="1" style="width:100%;"></div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-top:20px; border-top: 1px solid var(--border-color); padding-top:20px;">
+            <div>
+                <label style="display:block; margin-bottom:8px;">${t("threshold_label", lang)}</label>
+                <input id="threshold" type="number" min="1" max="10" style="width:100%; padding:10px;">
+            </div>
+            <div>
+                <label style="display:block; margin-bottom:8px;">${t("timeout_label", lang)}</label>
+                <select id="timeout" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;">
+                    <option value="1">1分 (60秒)</option>
+                    <option value="5">5分</option>
+                    <option value="10">10分</option>
+                    <option value="60">1時間</option>
+                    <option value="1440">1日</option>
+                    <option value="10080">1週間</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="margin-top:30px; text-align:center;">
+            <button id="save" class="btn btn-primary" style="padding:12px 40px; font-size:16px;">${t("save", lang)}</button>
+            <div id="saveStatus" style="margin-top:10px; min-height:20px; font-weight:bold;"></div>
         </div>
     </div>`;
     const scripts = `<script>initSettings();</script>`;
