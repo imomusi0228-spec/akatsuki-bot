@@ -261,7 +261,8 @@ export async function handleApiRoute(req, res, pathname, url) {
         const features = getFeatures(tier);
 
         if (!features.activity) {
-            return res.end(JSON.stringify({ ok: false, error: "Upgrade to Pro+ for Activity Monitor" }));
+            res.writeHead(403, { "Content-Type": "application/json" });
+            return res.end(JSON.stringify({ ok: false, error: "Upgrade required for Activity Audit." }));
         }
 
         // Inactivity Logic: Users who haven't joined VC or sent message (we don't track msg time in DB)
@@ -273,14 +274,18 @@ export async function handleApiRoute(req, res, pathname, url) {
         const guild = client.guilds.cache.get(guildId);
         if (!guild) return res.end(JSON.stringify({ ok: false, error: "Guild not found" }));
 
-        // 1. Get Audit Settings
+        // 1. Get Audit Settings (Allow overrides from query)
         const settingsRes = await dbQuery("SELECT * FROM settings WHERE guild_id = $1", [guildId]);
-        const settings = settingsRes.rows[0] || {};
+        const dbSettings = settingsRes.rows[0] || {};
+        const settings = {
+            audit_role_id: url.searchParams.get("audit_role_id") || dbSettings.audit_role_id,
+            intro_channel_id: url.searchParams.get("intro_channel_id") || dbSettings.intro_channel_id
+        };
 
         // 2. Fetch VC Activity from DB for ALL members in one go
         const vcActivityMap = {};
         const vcRes = await dbQuery("SELECT user_id, MAX(leave_time) as last_vc FROM vc_sessions WHERE guild_id = $1 GROUP BY user_id", [guildId]);
-        vcRes.rows.forEach(r => { vcActivityMap[r.user_id] = r.last_vc; });
+        vcRes.rows.forEach(r => { vcActivityMap[r.user.id] = r.last_vc; });
 
         // 3. Scan Intro Channel (Last 100 messages) to find who introduced
         const introSet = new Set();
@@ -341,9 +346,14 @@ export async function handleApiRoute(req, res, pathname, url) {
         const guild = client.guilds.cache.get(guildId);
         if (!guild) return res.end(JSON.stringify({ ok: false, error: "Guild not found" }));
 
-        // Reuse audit logic
+        // 1. Get Audit Settings (Allow overrides)
         const settingsRes = await dbQuery("SELECT * FROM settings WHERE guild_id = $1", [guildId]);
-        const settings = settingsRes.rows[0] || {};
+        const dbSettings = settingsRes.rows[0] || {};
+        const settings = {
+            audit_role_id: url.searchParams.get("audit_role_id") || dbSettings.audit_role_id,
+            intro_channel_id: url.searchParams.get("intro_channel_id") || dbSettings.intro_channel_id
+        };
+
         const vcRes = await dbQuery("SELECT user_id, MAX(leave_time) as last_vc FROM vc_sessions WHERE guild_id = $1 GROUP BY user_id", [guildId]);
         const vcMap = {}; vcRes.rows.forEach(r => vcMap[r.user_id] = r.last_vc);
 

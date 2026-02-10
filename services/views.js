@@ -153,40 +153,75 @@ const COMMON_SCRIPT = `
      selGuild.onchange = reload; $("reload").onclick = reload; reload();
   }
 
-  async function initActivity() {
-     if(!await loadGuilds()) return;
-     const runScan = async () => {
-        saveGuildSelection(); const gid = $("guild").value;
-        $("act-rows").innerHTML = ""; $("act-loading").style.display = "block";
-        const res = await api(\`/api/activity?guild=\${gid}\`);
-        $("act-loading").style.display = "none";
-        
-        if(!res.ok) { 
-            const errorMsg = res.error.includes("Upgrade") ? \`🔒 \${res.error} <a href="/admin/dashboard" style="margin-left:8px;">Check Plans</a>\` : res.error;
-            $("act-rows").innerHTML = \`<tr><td colspan="5" style="color:red; text-align:center;">\${errorMsg}</td></tr>\`; 
-            return; 
-        }
-        
-        let html = "";
-        (res.data || []).forEach(r => {
-           const av = r.avatar_url || "";
-           const roleTxt = r.has_role ? '<span style="color:#1da1f2;">✔</span>' : '<span style="color:var(--danger-color);">✘</span>';
-           const introTxt = r.has_intro ? '<span style="color:#1da1f2;">✔</span>' : '<span style="color:var(--danger-color);">✘</span>';
-           const statusStyle = r.status === "OK" ? 'color:#1da1f2; font-weight:bold;' : 'color:var(--danger-color); font-weight:bold;';
-           
-           html += \`<tr>
-               <td><div style="display:flex; align-items:center; gap:8px;"><img src="\${av}" style="width:24px; height:24px; border-radius:50%;" /> <span>\${escapeHTML(r.display_name)}</span></div></td>
-               <td style="text-align:center;">\${roleTxt}</td>
-               <td style="text-align:center;">\${introTxt}</td>
-               <td style="text-align:center;">\${r.last_vc}</td>
-               <td style="text-align:center; \${statusStyle}">\${r.status}</td>
-           </tr>\`;
-        });
-        $("act-rows").innerHTML = html || '<tr><td colspan="5" class="muted" style="text-align:center;">None</td></tr>';
-     };
-     $("guild").onchange = () => { $("act-rows").innerHTML = ''; };
-     $("reload").onclick = runScan; $("scan").onclick = runScan;
-  }
+   async function initActivity() {
+      if(!await loadGuilds()) return;
+      const selGuild = $("guild");
+      const selRole = $("auditRole");
+      const selIntro = $("introCh");
+
+      const reloadCriteria = async () => {
+         const gid = selGuild.value;
+         if(!gid) return;
+         
+         // Fetch Channels & Roles for this guild
+         const [chRes, roleRes, setRes] = await Promise.all([
+            api(`/ api / channels ? guild = ${ gid }`),
+            api(`/ api / roles ? guild = ${ gid } `),
+            api(`/ api / settings ? guild = ${ gid } `)
+         ]);
+
+         if(chRes.ok) {
+            selIntro.innerHTML = '<option value="">None</option>' + chRes.channels.map(c => `< option value = "${c.id}" > #${ c.name }</option > `).join('');
+         }
+         if(roleRes.ok) {
+            selRole.innerHTML = '<option value="">None</option>' + roleRes.roles.map(r => `< option value = "${r.id}" > ${ r.name }</option > `).join('');
+         }
+         if(setRes.ok && setRes.settings) {
+            selRole.value = setRes.settings.audit_role_id || "";
+            selIntro.value = setRes.settings.intro_channel_id || "";
+         }
+      };
+
+      const runScan = async () => {
+         saveGuildSelection(); const gid = selGuild.value;
+         const ar = selRole.value;
+         const ic = selIntro.value;
+
+         $("act-rows").innerHTML = ""; $("act-loading").style.display = "block";
+         // Pass criteria as override
+         const res = await api(`/ api / activity ? guild = ${ gid }& audit_role_id=${ ar }& intro_channel_id=${ ic } `);
+         $("act-loading").style.display = "none";
+         
+         if(!res.ok) { 
+             const errorMsg = res.error.includes("Upgrade") ? `🔒 ${ res.error } <a href="/admin/dashboard" style="margin-left:8px;">Check Plans</a>` : res.error;
+             $("act-rows").innerHTML = `< tr > <td colspan="5" style="color:red; text-align:center;">${errorMsg}</td></tr > `; 
+             return; 
+         }
+         
+         let html = "";
+         (res.data || []).forEach(r => {
+            const av = r.avatar_url || "";
+            const roleTxt = r.has_role ? '<span style="color:#1da1f2;">✔</span>' : '<span style="color:var(--danger-color);">✘</span>';
+            const introTxt = r.has_intro ? '<span style="color:#1da1f2;">✔</span>' : '<span style="color:var(--danger-color);">✘</span>';
+            const statusStyle = r.status === "OK" ? 'color:#1da1f2; font-weight:bold;' : 'color:var(--danger-color); font-weight:bold;';
+            
+            html += `< tr >
+                <td><div style="display:flex; align-items:center; gap:8px;"><img src="${av}" style="width:24px; height:24px; border-radius:50%;" /> <span>${escapeHTML(r.display_name)}</span></div></td>
+                <td style="text-align:center;">${roleTxt}</td>
+                <td style="text-align:center;">${introTxt}</td>
+                <td style="text-align:center;">${r.last_vc}</td>
+                <td style="text-align:center; ${statusStyle}">${r.status}</td>
+            </tr > `;
+         });
+         $("act-rows").innerHTML = html || '<tr><td colspan="5" class="muted" style="text-align:center;">None</td></tr>';
+      };
+
+      selGuild.onchange = () => { reloadCriteria(); $("act-rows").innerHTML = ''; };
+      $("reload") && ($("reload").onclick = runScan); 
+      $("scan").onclick = runScan;
+
+      reloadCriteria();
+   }
 `;
 
 function getLang(req = {}) {
@@ -270,16 +305,10 @@ export function renderAdminSettingsHTML({ user, req }) {
            <select id="logCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
         </div>
 
-        <div class="row" style="margin-bottom:15px;">
-           <label style="display:block; margin-bottom:5px; font-weight:bold;">${t("audit_role", lang)}</label>
-           <p class="muted" style="margin-bottom:8px;">${t("audit_role_desc", lang)}</p>
-           <select id="auditRole" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
-        </div>
-
-        <div class="row" style="margin-bottom:15px;">
-           <label style="display:block; margin-bottom:5px; font-weight:bold;">${t("intro_channel", lang)}</label>
-           <p class="muted" style="margin-bottom:8px;">${t("intro_channel_desc", lang)}</p>
-           <select id="introCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
+        <div class="row" style="margin-bottom:20px;">
+           <label style="display:block; margin-bottom:5px; font-weight:bold;">${t("log_channel", lang)}</label>
+           <p class="muted" style="margin-bottom:8px;">${t("log_channel_desc", lang)}</p>
+           <select id="logCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
         </div>
 
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-top:20px; border-top: 1px solid var(--border-color); padding-top:20px;">
@@ -311,11 +340,26 @@ export function renderAdminSettingsHTML({ user, req }) {
 
 export function renderAdminActivityHTML({ user, req }) {
     const lang = getLang(req);
-    const content = `<div class="card"><div class="row" style="margin-bottom:16px; gap:10px;">
-        <select id="guild" style="width:100%; max-width:230px; padding:10px;"></select> 
-        <button id="scan" class="btn">${t("scan_btn", lang)}</button>
-        <button id="csvExport" class="btn" style="border-color: #ffd700; color: #ffd700;">📊 ${t("feature_csv", lang)}</button>
-    </div></div>
+    const content = `<div class="card">
+        <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
+            <div style="flex:1; min-width:200px;">
+                <label style="display:block; font-size:12px; margin-bottom:4px; font-weight:bold;">Guild</label>
+                <select id="guild" style="width:100%; padding:10px;"></select>
+            </div>
+            <div style="flex:1; min-width:200px;">
+                <label style="display:block; font-size:12px; margin-bottom:4px; font-weight:bold;">${t("audit_role", lang)}</label>
+                <select id="auditRole" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
+            </div>
+            <div style="flex:1; min-width:200px;">
+                <label style="display:block; font-size:12px; margin-bottom:4px; font-weight:bold;">${t("intro_channel", lang)}</label>
+                <select id="introCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button id="scan" class="btn btn-primary">🔍 ${t("scan_btn", lang)}</button>
+                <button id="csvExport" class="btn" style="border-color: #ffd700; color: #ffd700;">📊 CSV</button>
+            </div>
+        </div>
+    </div>
     <div class="card">
         <h3>${t("activity", lang)}</h3>
         <p class="muted">${t("activity_desc", lang)}</p>
@@ -326,9 +370,11 @@ export function renderAdminActivityHTML({ user, req }) {
     const scripts = `<script>
         initActivity();
         document.getElementById("csvExport").onclick = () => {
-            const gid = document.getElementById("guild").value;
+            const gid = $("guild").value;
+            const ar = $("auditRole").value;
+            const ic = $("introCh").value;
             if(!gid) return;
-            window.location.href = "/api/activity/export?guild=" + gid;
+            window.location.href = \`/api/activity/export?guild=\${gid}&audit_role_id=\${ar}&intro_channel_id=\${ic}\`;
         };
     </script>`;
     return renderLayout({ title: t("activity", lang), content, user, activeTab: "activity", oauth: true, scripts }, lang);
