@@ -394,7 +394,7 @@ export function renderAdminActivityHTML({ user, req }) {
     const content = `<div class="card">
         <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
             <div style="flex:1; min-width:200px;">
-                <label style="display:block; font-size:12px; margin-bottom:4px; font-weight:bold;">Guild</label>
+                <label style="display:block; font-size:12px; margin-bottom:4px; font-weight:bold;">${t("label_guild", lang)}</label>
                 <select id="guild" style="width:100%; padding:10px;"></select>
             </div>
             <div style="flex:1; min-width:200px;">
@@ -422,7 +422,7 @@ export function renderAdminActivityHTML({ user, req }) {
         <p class="muted">${t("activity_desc", lang)}</p>
         <table class="data-table"><thead><tr><th style="text-align:left">${t("header_joined_at", lang)}</th><th style="text-align:left">${t("header_user", lang)}</th><th>${t("audit_role", lang)}</th><th>${t("last_msg", lang)}</th><th>${t("last_vc", lang)}</th><th>${t("audit_status", lang)}</th></tr></thead>
         <tbody id="act-rows"></tbody></table>
-        <div id="act-loading" style="display:none; text-align:center; padding:20px;">Scanning...</div>
+        <div id="act-loading" style="display:none; text-align:center; padding:20px;">${t("msg_scanning", lang)}</div>
     </div>`;
     const scripts = `<script>
         initActivity();
@@ -486,18 +486,18 @@ export function renderFeaturesHTML(req) {
 
     <div id="tab-free" class="tab-content active">
         <div class="plan-card">
-            <span class="plan-badge">Standard</span>
+            <span class="plan-badge">${t("plan_badge_std", lang)}</span>
             <h2 style="font-size: 28px;">${t("plan_free", lang)}</h2>
-            <div class="plan-price">¥0 <span style="font-size:14px; color:#8899a6; font-weight:normal;">/ Forever</span></div>
+            <div class="plan-price">¥0 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_forever", lang)}</span></div>
             <p style="color:#8899a6; margin-bottom:25px; max-width: 700px; margin-left: auto; margin-right: auto;">${t("plan_free_desc", lang)}</p>
             <div class="feature-grid">
                 <div class="feature-item-card">
-                    <h4 style="margin-bottom:8px;">🛡️ Security (Basic)</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">NGワード制限: ${t("limit_10", lang)}<br/>メッセージの自動削除で清潔な環境を維持します。</p>
+                    <h4 style="margin-bottom:8px;">${t("feat_sec_basic", lang)}</h4>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">NGワード制限: ${t("limit_10", lang)}<br/>${t("feat_desc_basic_sec", lang)}</p>
                 </div>
                 <div class="feature-item-card">
-                    <h4 style="margin-bottom:8px;">🔊 VC Tracking</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">ボイスチャンネルの参加・退出を記録。基本的な統計をお手元に。</p>
+                    <h4 style="margin-bottom:8px;">${t("feat_vc_track", lang)}</h4>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">${t("feat_desc_vc", lang)}</p>
                 </div>
             </div>
         </div>
@@ -505,22 +505,22 @@ export function renderFeaturesHTML(req) {
 
     <div id="tab-pro" class="tab-content">
         <div class="plan-card" style="border-color: var(--primary-color); background: rgba(29, 161, 242, 0.03);">
-            <span class="plan-badge" style="background:var(--primary-color); color:white;">Recommended</span>
+            <span class="plan-badge" style="background:var(--primary-color); color:white;">${t("plan_badge_rec", lang)}</span>
             <h2 style="font-size: 28px;">${t("plan_pro", lang)}</h2>
-            <div class="plan-price">¥500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">/ Month</span></div>
+            <div class="plan-price">¥500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_month", lang)}</span></div>
             <p style="color:#8899a6; margin-bottom:25px; max-width: 700px; margin-left: auto; margin-right: auto;">${t("plan_pro_desc", lang)}</p>
             <div class="feature-grid">
                 <div class="feature-item-card">
-                    <h4 style="margin-bottom:8px;">⚡ Advanced Security</h4>
+                    <h4 style="margin-bottom:8px;">${t("feat_sec_adv", lang)}</h4>
                     <p class="muted" style="font-size:13px; line-height:1.6;">NGワード制限: ${t("limit_50", lang)}<br/>${t("features_detail_security", lang)}</p>
                 </div>
                 <div class="feature-item-card">
-                    <h4 style="margin-bottom:8px;">📜 Live Logs</h4>
+                    <h4 style="margin-bottom:8px;">${t("feat_live_log", lang)}</h4>
                     <p class="muted" style="font-size:13px; line-height:1.6;">${t("features_detail_log", lang)}</p>
                 </div>
                 <div class="feature-item-card">
-                    <h4 style="margin-bottom:8px;">🖥️ Web Dashboard</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">PC・スマホからいつでもサーバーの状態を直感的に管理。</p>
+                    <h4 style="margin-bottom:8px;">${t("feat_web_dash", lang)}</h4>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">${t("feat_desc_web", lang)}</p>
                 </div>
             </div>
         </div>
@@ -528,26 +528,26 @@ export function renderFeaturesHTML(req) {
 
     <div id="tab-pro-plus" class="tab-content">
         <div class="plan-card" style="border-color: #ffd700; background: rgba(255, 215, 0, 0.02);">
-            <span class="plan-badge" style="background:#ffd700; color:black;">Premium</span>
+            <span class="plan-badge" style="background:#ffd700; color:black;">${t("plan_badge_prm", lang)}</span>
             <h2 style="font-size: 28px;">${t("plan_pro_plus", lang)}</h2>
-            <div class="plan-price">¥1,500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">/ Month</span></div>
+            <div class="plan-price">¥1,500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_month", lang)}</span></div>
             <p style="color:#8899a6; margin-bottom:25px; max-width: 700px; margin-left: auto; margin-right: auto;">${t("plan_pro_plus_desc", lang)}</p>
             <div class="feature-grid">
                 <div class="feature-item-card">
-                    <h4 style="margin-bottom:8px;">💎 Multi-Server</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">1ライセンスで**最大3つのサーバー**に全特典を適用可能な特権。</p>
+                    <h4 style="margin-bottom:8px;">${t("feat_multi", lang)}</h4>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">${t("feat_desc_multi", lang)}</p>
                 </div>
                 <div class="feature-item-card">
-                    <h4 style="margin-bottom:8px;">🔍 Server Audit</h4>
+                    <h4 style="margin-bottom:8px;">${t("feat_audit", lang)}</h4>
                     <p class="muted" style="font-size:13px; line-height:1.6;">${t("features_detail_audit", lang)}</p>
                 </div>
                 <div class="feature-item-card">
-                    <h4 style="margin-bottom:8px;">📊 Data Expert</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">CSVエクスポート機能により、自由自在な活動分析を実現。</p>
+                    <h4 style="margin-bottom:8px;">${t("feat_data", lang)}</h4>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">${t("feat_desc_data", lang)}</p>
                 </div>
                 <div class="feature-item-card">
-                    <h4 style="margin-bottom:8px;">🔥 Ultra Security</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">NGワード制限: ${t("limit_100", lang)}<br/>制限からの完全な解放。</p>
+                    <h4 style="margin-bottom:8px;">${t("feat_ultra", lang)}</h4>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">NGワード制限: ${t("limit_100", lang)}<br/>${t("feat_desc_ultra", lang)}</p>
                 </div>
                 </div>
             </div>

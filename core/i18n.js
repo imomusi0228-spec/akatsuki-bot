@@ -87,6 +87,30 @@ export const DICTIONARY = {
         // Errors / Notices
         upgrade_required: "プランのアップグレードが必要です",
         login_required: "ログインしてください",
+
+        // Missing Features
+        plan_badge_std: "スタンダード",
+        plan_badge_rec: "おすすめ",
+        plan_badge_prm: "プレミアム",
+        period_forever: "/ 永久無料",
+        period_month: "/ 月額",
+        feat_sec_basic: "🛡️ セキュリティ (基本)",
+        feat_vc_track: "🔊 VCログ記録",
+        feat_sec_adv: "⚡ 高度なセキュリティ",
+        feat_live_log: "📜 リアルタイムログ",
+        feat_web_dash: "🖥️ Webダッシュボード",
+        feat_multi: "💎 マルチサーバー",
+        feat_audit: "🔍 メンバー監査",
+        feat_data: "📊 データ分析",
+        feat_ultra: "🔥 究極のセキュリティ",
+        feat_desc_basic_sec: "メッセージの自動削除で清潔な環境を維持します。",
+        feat_desc_vc: "ボイスチャンネルの参加・退出を記録。基本的な統計をお手元に。",
+        feat_desc_web: "PC・スマホからいつでもサーバーの状態を直感的に管理。",
+        feat_desc_multi: "1ライセンスで**最大3つのサーバー**に全特典を適用可能な特権。",
+        feat_desc_data: "CSVエクスポート機能により、自由自在な活動分析を実現。",
+        feat_desc_ultra: "制限からの完全な解放。",
+        label_guild: "サーバー選択",
+        msg_scanning: "スキャン中...",
     },
     en: {
         // General
@@ -172,6 +196,30 @@ export const DICTIONARY = {
         // Errors / Notices
         upgrade_required: "Plan Upgrade Required",
         login_required: "Please Login",
+
+        // Missing Features
+        plan_badge_std: "Standard",
+        plan_badge_rec: "Recommended",
+        plan_badge_prm: "Premium",
+        period_forever: "/ Forever",
+        period_month: "/ Month",
+        feat_sec_basic: "🛡️ Security (Basic)",
+        feat_vc_track: "🔊 VC Tracking",
+        feat_sec_adv: "⚡ Advanced Security",
+        feat_live_log: "📜 Live Logs",
+        feat_web_dash: "🖥️ Web Dashboard",
+        feat_multi: "💎 Multi-Server",
+        feat_audit: "🔍 Server Audit",
+        feat_data: "📊 Data Expert",
+        feat_ultra: "🔥 Ultra Security",
+        feat_desc_basic_sec: "Keep your server clean with auto-deletion.",
+        feat_desc_vc: "Track VC joins and leaves. Basic stats at your fingertips.",
+        feat_desc_web: "Manage server status intuitively from PC or mobile.",
+        feat_desc_multi: "Apply benefits to **up to 3 servers** with one license.",
+        feat_desc_data: "Analyze activity freely with CSV export.",
+        feat_desc_ultra: "Complete freedom from limitations.",
+        label_guild: "Guild",
+        msg_scanning: "Scanning...",
     }
 };
 
