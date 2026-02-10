@@ -18,6 +18,9 @@ export async function loadEvents() {
         return;
     }
 
+    const files = fs.readdirSync(eventsPath).filter((f) => f.endsWith(".js"));
+    console.log(`[DEBUG] Found event files: ${files.join(", ")}`);
+
     for (const file of files) {
         const filePath = path.join(eventsPath, file);
         const module = await importFile(filePath);
