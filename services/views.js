@@ -80,7 +80,7 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
            $("summary").innerHTML = \`<div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; width:100%;">\${box(t("vc_joins"), s.joins)} \${box(t("leaves"), s.leaves)} \${box(t("timeouts"), s.timeouts)} \${box(t("ng_detect"), s.ngDetected)}</div>\`;
            let rows = ""; (res.stats.topNgUsers || []).forEach(u => { 
                 const av = u.avatar_url ? '<img src="' + u.avatar_url + '" style="width:24px; height:24px; border-radius:50%; vertical-align:middle; margin-right:8px;">' : '';
-                rows += `<tr><td>${av}${escapeHTML(u.display_name || 'Unknown')}</td><td style="text-align:right">${u.cnt}</td></tr>`; });
+                rows += \`<tr><td>\${av}\${escapeHTML(u.display_name || 'Unknown')}</td><td style="text-align:right">\${u.cnt}</td></tr>\`; });
            $("topNg").innerHTML = rows || '<tr><td colspan="2" class="muted" style="text-align:center; padding:10px;">None</td></tr>';
         } else { $("summary").innerText = "Error: " + res.error; }
      };
@@ -126,7 +126,7 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
                 list.innerHTML = words.map(w => \`
                 <div style="display:flex; justify-content:space-between; align-items:center; background:#192734; padding:8px 12px; border-radius:4px; border:1px solid #38444d;">
                     <span style="font-family:monospace;">\${escapeHTML(w.word)}</span>
-                    <button onclick="removeNg('\${escapeHTML(w.word)}')" class="btn" style="width:24px; height:24px; padding:0; line-height:22px; color:#f4212e; border-color:#38444d; display:flex; align-items:center; justify-content:center;">・・/button>
+                    <button onclick="removeNg('\${escapeHTML(w.word)}')" class="btn" style="width:24px; height:24px; padding:0; line-height:22px; color:#f4212e; border-color:#38444d; display:flex; align-items:center; justify-content:center;">繝ｻ繝ｻ/button>
                 </div>\`).join("");
             }
             if($("ngCount")) $("ngCount").textContent = words.length + " words";
@@ -156,7 +156,7 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
         const res = await post("/api/settings/update", body);
         const stat = $("saveStatus");
         if(res.ok) {
-            stat.textContent = "笨・" + t("save_success");
+            stat.textContent = "隨ｨ繝ｻ" + t("save_success");
             stat.style.color = "var(--success-color)";
             setTimeout(() => stat.textContent="", 3000);
         } else {
@@ -205,8 +205,8 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
           let html = "";
           data.forEach(r => {
              const av = r.avatar_url || "";
-             const roleTxt = r.has_role ? '<span style="color:#1da1f2;">笨・/span>' : '<span style="color:var(--danger-color);">笨・/span>';
-             const introTxt = r.has_intro ? '<span style="color:#1da1f2;">笨・/span>' : '<span style="color:var(--danger-color);">笨・/span>';
+             const roleTxt = r.has_role ? '<span style="color:#1da1f2;">隨ｨ繝ｻ/span>' : '<span style="color:var(--danger-color);">隨ｨ繝ｻ/span>';
+             const introTxt = r.has_intro ? '<span style="color:#1da1f2;">隨ｨ繝ｻ/span>' : '<span style="color:var(--danger-color);">隨ｨ繝ｻ/span>';
              const statusStyle = r.status === "OK" ? 'color:#1da1f2; font-weight:bold;' : 'color:var(--danger-color); font-weight:bold;';
              
              html += '<tr>' +
@@ -246,7 +246,7 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
          loading.style.display = "none";
          
          if(!res.ok) { 
-             const errorMsg = res.error.includes("Upgrade") ? "白 " + res.error + ' <a href="/admin/dashboard" style="margin-left:8px;">Check Plans</a>' : res.error;
+             const errorMsg = res.error.includes("Upgrade") ? "﨟樒區 " + res.error + ' <a href="/admin/dashboard" style="margin-left:8px;">Check Plans</a>' : res.error;
              rows.innerHTML = '<tr><td colspan="6" style="color:red; text-align:center;">' + errorMsg + '</td></tr>'; 
              return; 
          }
@@ -278,8 +278,8 @@ function getLang(req = {}) {
 function renderLayout({ title, content, user, activeTab, oauth = false, scripts = "" }, lang = 'ja') {
     const navItem = (lbl, href, act) => `<a href="${href}" class="nav-item ${act ? 'active' : ''}">${lbl}</a>`;
     const langBtn = lang === 'ja'
-        ? `<span class="lang-switch" onclick="setLang('en')">・・ English</span>`
-        : `<span class="lang-switch" onclick="setLang('ja')">・・ 譌･譛ｬ隱・/span>`;
+        ? `<span class="lang-switch" onclick="setLang('en')">﨟槭・﨟槭・ English</span>`
+        : `<span class="lang-switch" onclick="setLang('ja')">﨟槭・﨟槭・ 隴鯉ｽ･隴幢ｽｬ髫ｱ繝ｻ/span>`;
 
     return `<!DOCTYPE html>
 <html lang="${lang}">
@@ -287,7 +287,7 @@ function renderLayout({ title, content, user, activeTab, oauth = false, scripts 
 <body>
     <div class="nav-bar" style="border:none; justify-content: space-between; align-items: center; margin-bottom: 0; padding:16px 0;">
         <div style="font-size: 24px; font-weight: bold; display:flex; align-items:center;">
-            <span style="color:#f91880; margin-right:10px;">笘ｾ</span> ${oauth ? t("admin_title", lang) : t("title", lang)} ${langBtn}
+            <span style="color:#f91880; margin-right:10px;">隨假ｽｾ</span> ${oauth ? t("admin_title", lang) : t("title", lang)} ${langBtn}
         </div>
         <div>
             ${oauth && user ? `
@@ -348,7 +348,7 @@ export function renderAdminSettingsHTML({ user, req }) {
                 <label style="display:block; margin-bottom:5px; font-size:12px; font-weight:bold; color:#8899a6;">${t("ng_add_label", lang)}</label>
                 <div style="display:flex; gap:10px;">
                     <textarea id="newNg" rows="1" placeholder="${t("ng_msg_placeholder", lang)}" style="flex:1; padding:10px; border:1px solid #38444d; background:#192734; color:white; border-radius:4px; resize:vertical; font-family:inherit;"></textarea>
-                    <button id="addNg" class="btn" style="width:40px; font-size:20px; padding:0; display:flex; align-items:center; justify-content:center;">・・/button>
+                    <button id="addNg" class="btn" style="width:40px; font-size:20px; padding:0; display:flex; align-items:center; justify-content:center;">繝ｻ繝ｻ/button>
                 </div>
             </div>
             
@@ -381,12 +381,12 @@ export function renderAdminSettingsHTML({ user, req }) {
             <div>
                 <label style="display:block; margin-bottom:8px;">${t("timeout_label", lang)}</label>
                 <select id="timeout" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;">
-                    <option value="1">1蛻・(60遘・</option>
-                    <option value="5">5蛻・/option>
-                    <option value="10">10蛻・/option>
-                    <option value="60">1譎る俣</option>
-                    <option value="1440">1譌･</option>
-                    <option value="10080">1騾ｱ髢・/option>
+                    <option value="1">1陋ｻ繝ｻ(60驕倥・</option>
+                    <option value="5">5陋ｻ繝ｻ/option>
+                    <option value="10">10陋ｻ繝ｻ/option>
+                    <option value="60">1隴弱ｋ菫｣</option>
+                    <option value="1440">1隴鯉ｽ･</option>
+                    <option value="10080">1鬨ｾ・ｱ鬮｢繝ｻ/option>
                 </select>
             </div>
         </div>
@@ -417,8 +417,8 @@ export function renderAdminActivityHTML({ user, req }) {
                 <select id="introCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
             </div>
             <div style="display:flex; gap:8px;">
-                <button id="scan" class="btn btn-primary">剥 ${t("scan_btn", lang)}</button>
-                <button id="csvExport" class="btn" style="border-color: #ffd700; color: #ffd700;">投 CSV</button>
+                <button id="scan" class="btn btn-primary">﨟槫翁 ${t("scan_btn", lang)}</button>
+                <button id="csvExport" class="btn" style="border-color: #ffd700; color: #ffd700;">﨟樊兜 CSV</button>
             </div>
         </div>
     </div>
@@ -426,8 +426,8 @@ export function renderAdminActivityHTML({ user, req }) {
         <h3 style="display:flex; align-items:center; gap:10px;">
             ${t("activity", lang)}
             <div style="font-size:12px; font-weight:normal; margin-left:auto; display:flex; gap:10px;">
-                <button onclick="sortActivity('joined_at')" class="btn" style="padding:4px 8px;">${t("sort_joined", lang)} 笆ｼ</button>
-                <button onclick="sortActivity('display_name')" class="btn" style="padding:4px 8px;">${t("sort_user", lang)} 笆ｼ</button>
+                <button onclick="sortActivity('joined_at')" class="btn" style="padding:4px 8px;">${t("sort_joined", lang)} 隨・ｽｼ</button>
+                <button onclick="sortActivity('display_name')" class="btn" style="padding:4px 8px;">${t("sort_user", lang)} 隨・ｽｼ</button>
             </div>
         </h3>
         <p class="muted">${t("activity_desc", lang)}</p>
@@ -452,7 +452,7 @@ export function renderLandingHTML(req) {
     const lang = getLang(req);
     const content = `
     <div style="text-align:center; padding: 100px 20px;">
-        <h1 style="font-size: 56px; margin-bottom: 20px;">笘ｾ ${t("title", lang)}</h1>
+        <h1 style="font-size: 56px; margin-bottom: 20px;">隨假ｽｾ ${t("title", lang)}</h1>
         <p style="font-size: 20px; color: #8899a6; margin-bottom: 50px; max-width: 600px; margin-left: auto; margin-right: auto;">${t("subtitle", lang)}</p>
         <div style="display:flex; justify-content:center; gap:20px; flex-wrap: wrap;">
            <a href="/login" class="btn btn-primary" style="padding:16px 48px; font-size:18px;">${t("login", lang)}</a>
@@ -499,12 +499,12 @@ export function renderFeaturesHTML(req) {
         <div class="plan-card">
             <span class="plan-badge">${t("plan_badge_std", lang)}</span>
             <h2 style="font-size: 28px;">${t("plan_free", lang)}</h2>
-            <div class="plan-price">ﾂ･0 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_forever", lang)}</span></div>
+            <div class="plan-price">・ゑｽ･0 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_forever", lang)}</span></div>
             <p style="color:#8899a6; margin-bottom:25px; max-width: 700px; margin-left: auto; margin-right: auto;">${t("plan_free_desc", lang)}</p>
             <div class="feature-grid">
                 <div class="feature-item-card">
                     <h4 style="margin-bottom:8px;">${t("feat_sec_basic", lang)}</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">NG繝ｯ繝ｼ繝牙宛髯・ ${t("limit_10", lang)}<br/>${t("feat_desc_basic_sec", lang)}</p>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">NG郢晢ｽｯ郢晢ｽｼ郢晉甥螳幃ｫｯ繝ｻ ${t("limit_10", lang)}<br/>${t("feat_desc_basic_sec", lang)}</p>
                 </div>
                 <div class="feature-item-card">
                     <h4 style="margin-bottom:8px;">${t("feat_vc_track", lang)}</h4>
@@ -518,12 +518,12 @@ export function renderFeaturesHTML(req) {
         <div class="plan-card" style="border-color: var(--primary-color); background: rgba(29, 161, 242, 0.03);">
             <span class="plan-badge" style="background:var(--primary-color); color:white;">${t("plan_badge_rec", lang)}</span>
             <h2 style="font-size: 28px;">${t("plan_pro", lang)}</h2>
-            <div class="plan-price">ﾂ･500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_month", lang)}</span></div>
+            <div class="plan-price">・ゑｽ･500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_month", lang)}</span></div>
             <p style="color:#8899a6; margin-bottom:25px; max-width: 700px; margin-left: auto; margin-right: auto;">${t("plan_pro_desc", lang)}</p>
             <div class="feature-grid">
                 <div class="feature-item-card">
                     <h4 style="margin-bottom:8px;">${t("feat_sec_adv", lang)}</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">NG繝ｯ繝ｼ繝牙宛髯・ ${t("limit_50", lang)}<br/>${t("features_detail_security", lang)}</p>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">NG郢晢ｽｯ郢晢ｽｼ郢晉甥螳幃ｫｯ繝ｻ ${t("limit_50", lang)}<br/>${t("features_detail_security", lang)}</p>
                 </div>
                 <div class="feature-item-card">
                     <h4 style="margin-bottom:8px;">${t("feat_live_log", lang)}</h4>
@@ -541,7 +541,7 @@ export function renderFeaturesHTML(req) {
         <div class="plan-card" style="border-color: #ffd700; background: rgba(255, 215, 0, 0.02);">
             <span class="plan-badge" style="background:#ffd700; color:black;">${t("plan_badge_prm", lang)}</span>
             <h2 style="font-size: 28px;">${t("plan_pro_plus", lang)}</h2>
-            <div class="plan-price">ﾂ･1,500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_month", lang)}</span></div>
+            <div class="plan-price">・ゑｽ･1,500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_month", lang)}</span></div>
             <p style="color:#8899a6; margin-bottom:25px; max-width: 700px; margin-left: auto; margin-right: auto;">${t("plan_pro_plus_desc", lang)}</p>
             <div class="feature-grid">
                 <div class="feature-item-card">
@@ -558,7 +558,7 @@ export function renderFeaturesHTML(req) {
                 </div>
                 <div class="feature-item-card">
                     <h4 style="margin-bottom:8px;">${t("feat_ultra", lang)}</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">NG繝ｯ繝ｼ繝牙宛髯・ ${t("limit_100", lang)}<br/>${t("feat_desc_ultra", lang)}</p>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">NG郢晢ｽｯ郢晢ｽｼ郢晉甥螳幃ｫｯ繝ｻ ${t("limit_100", lang)}<br/>${t("feat_desc_ultra", lang)}</p>
                 </div>
                 </div>
             </div>
