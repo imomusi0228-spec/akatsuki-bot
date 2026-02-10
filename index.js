@@ -3,6 +3,7 @@ import { initDb } from "./core/db.js";
 import { client } from "./core/client.js";
 import { loadEvents } from "./core/eventLoader.js";
 import { startServer } from "./core/server.js";
+import { registerCommands } from "./register-commands.js";
 
 // Global Error Handlers
 process.on("uncaughtException", (err) => {
@@ -23,13 +24,16 @@ process.on("unhandledRejection", (reason, promise) => {
     // 2. Load Event Handlers
     console.log("▶️  Step 2: Loading Events...");
     await loadEvents();
+    // 3. Register Commands
+    console.log("▶️  Step 3: Registering Slash Commands...");
+    await registerCommands();
 
-    // 3. Start Web Server
-    console.log("▶️  Step 3: Starting Web Server (with Health Check)...");
+    // 4. Start Web Server
+    console.log("▶️  Step 4: Starting Web Server (with Health Check)...");
     await startServer();
 
-    // 4. Login
-    console.log("▶️  Step 4: Logging into Discord...");
+    // 5. Login
+    console.log("▶️  Step 5: Logging into Discord...");
 
     // Add Debug Logging
 

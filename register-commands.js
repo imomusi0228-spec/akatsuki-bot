@@ -8,7 +8,7 @@ const commands = [];
 const commandsPath = path.resolve("commands");
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(".js"));
 
-(async () => {
+export async function registerCommands() {
     for (const file of commandFiles) {
         const filePath = path.join(commandsPath, file);
         const command = await import(pathToFileURL(filePath).href);
@@ -33,4 +33,4 @@ const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith("
     } catch (error) {
         console.error(error);
     }
-})();
+}
