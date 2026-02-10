@@ -80,11 +80,18 @@ export async function initDb() {
             // Fix vc_sessions legacy columns
             `DO $$ 
             BEGIN 
-                -- Rename join_ts -> join_time if legacy exists
+                -- Handle join_ts -> join_time migration
                 IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vc_sessions' AND column_name='join_ts') THEN
-                    ALTER TABLE vc_sessions RENAME COLUMN join_ts TO join_time;
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vc_sessions' AND column_name='join_time') THEN
+                        -- Both exist, drop legacy join_ts
+                        ALTER TABLE vc_sessions DROP COLUMN join_ts;
+                    ELSE
+                        -- Only join_ts exists, rename it
+                        ALTER TABLE vc_sessions RENAME COLUMN join_ts TO join_time;
+                    END IF;
                 END IF;
-                -- Ensure ID exists (ADD COLUMN IF NOT EXISTS doesn't work well with SERIAL PRIMARY KEY in some versions, so use DO block)
+
+                -- Ensure ID exists
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vc_sessions' AND column_name='id') THEN
                     ALTER TABLE vc_sessions ADD COLUMN id SERIAL PRIMARY KEY;
                 END IF;
