@@ -1,0 +1,15 @@
+🔍 Inspecting Database Columns...
+
+📊 Table: settings
+   Columns: guild_id, log_channel_id, ng_threshold, timeout_minutes, activity_weeks, intro_channel_id, target_role_id, log_channel_name, autorole_id, autorole_enabled, updated_at
+
+📊 Table: ng_words
+   Columns: guild_id, kind, word, flags
+
+📊 Table: vc_sessions
+   Columns: guild_id, user_id, channel_id, join_ts, join_time, leave_time, duration_seconds
+
+📊 Table: subscriptions
+   Columns: server_id, user_id, plan_tier, start_date, expiry_date, is_active, auto_renew, notes, valid_until, updated_at
+
+--- End of report ---
