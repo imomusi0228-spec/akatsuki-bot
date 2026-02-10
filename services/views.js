@@ -205,8 +205,8 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
           let html = "";
           data.forEach(r => {
              const av = r.avatar_url || "";
-             const roleTxt = r.has_role ? '<span style="color:#1da1f2;">✅/span>' : '<span style="color:var(--danger-color);">✅/span>';
-             const introTxt = r.has_intro ? '<span style="color:#1da1f2;">✅/span>' : '<span style="color:var(--danger-color);">✅/span>';
+             const roleTxt = r.has_role ? '<span style="color:#1da1f2;">✅</span>' : '<span style="color:var(--danger-color);">✅</span>';
+             const introTxt = r.has_intro ? '<span style="color:#1da1f2;">✅</span>' : '<span style="color:var(--danger-color);">✅</span>';
              const statusStyle = r.status === "OK" ? 'color:#1da1f2; font-weight:bold;' : 'color:var(--danger-color); font-weight:bold;';
              
              html += '<tr>' +
@@ -382,11 +382,11 @@ export function renderAdminSettingsHTML({ user, req }) {
                 <label style="display:block; margin-bottom:8px;">${t("timeout_label", lang)}</label>
                 <select id="timeout" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;">
                     <option value="1">1分 (60秒)</option>
-                    <option value="5">5分/option>
-                    <option value="10">10分/option>
+                    <option value="5">5分</option>
+                    <option value="10">10分</option>
                     <option value="60">1時間</option>
                     <option value="1440">1日</option>
-                    <option value="10080">1週間/option>
+                     <option value="10080">1週間</option>
                 </select>
             </div>
         </div>
