@@ -16,31 +16,36 @@ export const TIER_NAMES = {
 
 export const FEATURES = {
     [TIERS.FREE]: {
-        maxNgWords: 10,
+        maxNgWords: 5,
+        maxGuilds: 1,
         logs: false,
         dashboard: false,
         activity: false
     },
     [TIERS.PRO_MONTHLY]: {
-        maxNgWords: 50,
+        maxNgWords: 20,
+        maxGuilds: 1,
         logs: true,
         dashboard: true,
         activity: false
     },
     [TIERS.PRO_YEARLY]: {
-        maxNgWords: 50,
+        maxNgWords: 20,
+        maxGuilds: 1,
         logs: true,
         dashboard: true,
         activity: false
     },
     [TIERS.PRO_PLUS_MONTHLY]: {
-        maxNgWords: 100,
+        maxNgWords: 50,
+        maxGuilds: 3,
         logs: true,
         dashboard: true,
         activity: true
     },
     [TIERS.PRO_PLUS_YEARLY]: {
-        maxNgWords: 100,
+        maxNgWords: 50,
+        maxGuilds: 3,
         logs: true,
         dashboard: true,
         activity: true

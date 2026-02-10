@@ -308,17 +308,34 @@ export async function handleApiRoute(req, res, pathname, url) {
         return;
     }
 
-    // POST /api/license/update (Debug/Admin tool to set tier manually)
+    // POST /api/license/update (Improved with per-user server limit)
     if (pathname === "/api/license/update" && method === "POST") {
         const body = await getBody();
-        if (!body.guild || body.tier === undefined) return res.end(JSON.stringify({ ok: false }));
+        if (!body.guild || body.tier === undefined || !body.user_id) {
+            return res.end(JSON.stringify({ ok: false, error: "Missing required fields" }));
+        }
+
+        const targetTier = parseInt(body.tier);
+        const features = getFeatures(targetTier);
+
+        // Check how many servers the user already has at this tier (or higher, for safety)
+        // If tier=0 (Free), we don't usually need a limit here, but let's be generic
+        if (targetTier > 0) {
+            const usageRes = await dbQuery("SELECT COUNT(*) as cnt FROM subscriptions WHERE user_id = $1 AND tier >= $2 AND guild_id != $3", [body.user_id, targetTier, body.guild]);
+            const currentUsage = parseInt(usageRes.rows[0].cnt);
+
+            if (currentUsage >= (features.maxGuilds || 1)) {
+                res.writeHead(403, { "Content-Type": "application/json" });
+                return res.end(JSON.stringify({ ok: false, error: `Limit reached. Your plan allows up to ${features.maxGuilds} servers.` }));
+            }
+        }
 
         // Upsert
         const check = await dbQuery("SELECT guild_id FROM subscriptions WHERE guild_id = $1", [body.guild]);
         if (check.rows.length === 0) {
-            await dbQuery("INSERT INTO subscriptions (guild_id, tier) VALUES ($1, $2)", [body.guild, body.tier]);
+            await dbQuery("INSERT INTO subscriptions (guild_id, tier, user_id) VALUES ($1, $2, $3)", [body.guild, targetTier, body.user_id]);
         } else {
-            await dbQuery("UPDATE subscriptions SET tier = $1, updated_at = NOW() WHERE guild_id = $2", [body.tier, body.guild]);
+            await dbQuery("UPDATE subscriptions SET tier = $1, user_id = $2, updated_at = NOW() WHERE guild_id = $3", [targetTier, body.user_id, body.guild]);
         }
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ ok: true }));

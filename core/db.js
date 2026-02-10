@@ -74,6 +74,7 @@ export async function initDb() {
             `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS guild_id TEXT;`,
             `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS tier INTEGER DEFAULT 0;`,
             `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS valid_until TIMESTAMPTZ;`,
+            `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS user_id VARCHAR(64);`,
             `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();`,
 
             // Fix vc_sessions
