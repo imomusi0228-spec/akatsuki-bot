@@ -202,6 +202,8 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (!body.guild || !body.word) return res.end(JSON.stringify({ ok: false }));
 
         await dbQuery("DELETE FROM ng_words WHERE guild_id = $1 AND word = $2", [body.guild, body.word]);
+        // Also delete logs for this word (User request: History should not remain)
+        await dbQuery("DELETE FROM ng_logs WHERE guild_id = $1 AND word = $2", [body.guild, body.word]);
 
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ ok: true }));
@@ -214,6 +216,7 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (!body.guild) return res.end(JSON.stringify({ ok: false }));
 
         await dbQuery("DELETE FROM ng_words WHERE guild_id = $1", [body.guild]);
+        await dbQuery("DELETE FROM ng_logs WHERE guild_id = $1", [body.guild]);
 
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ ok: true }));
