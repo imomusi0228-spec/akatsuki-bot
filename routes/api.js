@@ -11,6 +11,8 @@ function hasManageGuild(permissions) {
     return (BigInt(permissions) & MANAGE_GUILD) === MANAGE_GUILD;
 }
 
+const memberCache = new Map();
+
 export async function handleApiRoute(req, res, pathname, url) {
     const session = await getSession(req);
     if (!session) {
@@ -300,31 +302,7 @@ export async function handleApiRoute(req, res, pathname, url) {
         }
 
         const auditResults = [];
-        try {
-            const members = await guild.members.fetch();
-            members.forEach(m => {
-                if (m.user.bot) return;
 
-                const lastVcDate = vcActivityMap[m.id];
-                const hasRole = settings.audit_role_id ? m.roles.cache.has(settings.audit_role_id) : true;
-                const hasIntro = settings.intro_channel_id ? introSet.has(m.user.id) : true;
-
-                // Audit Status Logic:
-                let status = "OK";
-                if (!hasRole || !hasIntro || !lastVcDate) status = "NG";
-
-                auditResults.push({
-                    id: m.id,
-                    display_name: m.displayName,
-                    avatar_url: m.user.displayAvatarURL(),
-                    has_role: hasRole,
-                    has_intro: hasIntro,
-                    last_vc: lastVcDate ? lastVcDate.toISOString().split("T")[0] : "None",
-                    joined_at: m.joinedAt ? m.joinedAt.toISOString().split("T")[0] : "Unknown",
-                    status: status
-                });
-            });
-        } catch (e) { console.error(e); }
 
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({
