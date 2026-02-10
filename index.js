@@ -57,10 +57,7 @@ process.on("unhandledRejection", (reason, promise) => {
         8: "RESUMING"
     };
 
-    setInterval(() => {
-        const status = client.ws.status;
-        console.log(`⏱️ [Status Watch] State: ${statusMap[status] || status} (${status}) | Ping: ${client.ws.ping}ms`);
-    }, 5000).unref(); // unref so it doesn't block exit if we want to shut down
+
 
     try {
         if (!ENV.TOKEN) throw new Error("DISCORD_TOKEN is missing");

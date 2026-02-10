@@ -17,6 +17,7 @@ export async function handleAuthRoute(req, res, pathname, url) {
 
         const state = rand();
         states.set(state, Date.now());
+        console.log(`[AUTH DEBUG] /login: Generated state=${state}`);
 
         // Cleanup states
         if (states.size > 1000) {
@@ -60,7 +61,10 @@ export async function handleAuthRoute(req, res, pathname, url) {
         });
 
         const storedState = cookies.oauth_state;
+        console.log(`[AUTH DEBUG] /callback: ReceivedState=${state}, StoredState=${storedState}, StatesHas=${states.has(state)}`);
+
         if (!state || !storedState || state !== storedState || !states.has(state)) {
+            console.error(`[AUTH DEBUG] /callback: State mismatch or missing!`);
             res.writeHead(400, { "Content-Type": "text/plain" });
             res.end("Invalid State (CSRF check failed). Try /login again.");
             return;
@@ -96,6 +100,7 @@ export async function handleAuthRoute(req, res, pathname, url) {
 
             // Create session
             const sid = rand();
+            console.log(`[AUTH DEBUG] /callback: Creating session SID=${sid} for User=${user.username}`);
             sessions.set(sid, {
                 accessToken: tokenData.access_token,
                 refreshToken: tokenData.refresh_token,
