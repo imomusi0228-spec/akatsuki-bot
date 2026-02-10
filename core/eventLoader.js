@@ -9,9 +9,18 @@ async function importFile(filePath) {
 
 export async function loadEvents() {
     const eventsPath = path.resolve("events");
-    if (!fs.existsSync(eventsPath)) return;
+    console.log(`[DEBUG] Loading events from: ${eventsPath}`);
+
+    if (!fs.existsSync(eventsPath)) {
+        console.error(`[ERROR] Events directory NOT found at: ${eventsPath}`);
+        // Try checking contents of current directory to see structure
+        console.log(`[DEBUG] CWD contents:`, fs.readdirSync("."));
+        return;
+    }
 
     const files = fs.readdirSync(eventsPath).filter((f) => f.endsWith(".js"));
+    console.log(`[DEBUG] Found event files: ${files.join(", ")}`);
+
     for (const file of files) {
         const filePath = path.join(eventsPath, file);
         const event = await importFile(filePath);
@@ -22,6 +31,8 @@ export async function loadEvents() {
                 client.on(event.name, (...args) => event.default(...args));
             }
             console.log(`✅ Loaded event: ${event.name}`);
+        } else {
+            console.warn(`[WARNING] Skipped ${file} - missing default export or name property.`);
         }
     }
 }
