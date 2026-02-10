@@ -14,9 +14,9 @@ export async function execute(interaction) {
     // Build Upsert
     const check = await dbQuery("SELECT guild_id FROM settings WHERE guild_id = $1", [guildId]);
     if (check.rows.length === 0) {
-        await dbQuery("INSERT INTO settings (guild_id, log_channel_id, log_channel_name) VALUES ($1, $2, $3)", [guildId, channel.id, channel.name]);
+        await dbQuery("INSERT INTO settings (guild_id, log_channel_id) VALUES ($1, $2)", [guildId, channel.id]);
     } else {
-        await dbQuery("UPDATE settings SET log_channel_id = $1, log_channel_name = $2 WHERE guild_id = $3", [channel.id, channel.name, guildId]);
+        await dbQuery("UPDATE settings SET log_channel_id = $1 WHERE guild_id = $2", [channel.id, guildId]);
     }
 
     await interaction.reply({ content: `✅ ログ送信先を <#${channel.id}> に設定しました。` });
