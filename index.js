@@ -1,6 +1,6 @@
 import { ENV } from "./config/env.js";
 import { initDb } from "./core/db.js";
-import { client } from "./core/client.js";
+import { client, loadCommands } from "./core/client.js";
 import { loadEvents } from "./core/eventLoader.js";
 import { startServer } from "./core/server.js";
 import { registerCommands } from "./register-commands.js";
@@ -22,7 +22,8 @@ process.on("unhandledRejection", (reason, promise) => {
     await initDb();
 
     // 2. Load Event Handlers
-    console.log("▶️  Step 2: Loading Events...");
+    console.log("▶️  Step 2: Loading Events & Commands...");
+    await loadCommands();
     await loadEvents();
     // 3. Register Commands
     console.log("▶️  Step 3: Registering Slash Commands...");
