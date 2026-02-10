@@ -114,7 +114,18 @@ const COMMON_SCRIPT = `
         const [ng, st] = await Promise.all([api(\`/api/ngwords?guild=\${gid}\`), api(\`/api/settings?guild=\${gid}\`)]);
         
         if(ng.ok) {
-            $("ngList").innerHTML = (ng.words||[]).map(w => \`<span class="btn" style="padding:4px 8px; font-size:12px; margin-right:5px; margin-bottom:5px;">\${escapeHTML(w.word)} <span onclick="removeNg('\${escapeHTML(w.word)}')" style="color:var(--danger-color); cursor:pointer; margin-left:5px;">×</span></span>\`).join("");
+            const list = $("ngList");
+            const words = ng.words || [];
+            if(words.length === 0) {
+                list.innerHTML = '<div class="muted" style="padding:10px; text-align:center;">(なし)</div>';
+            } else {
+                list.innerHTML = words.map(w => \`
+                <div style="display:flex; justify-content:space-between; align-items:center; background:#192734; padding:8px 12px; border-radius:4px; border:1px solid #38444d;">
+                    <span style="font-family:monospace;">\${escapeHTML(w.word)}</span>
+                    <button onclick="removeNg('\${escapeHTML(w.word)}')" class="btn" style="width:24px; height:24px; padding:0; line-height:22px; color:#f4212e; border-color:#38444d; display:flex; align-items:center; justify-content:center;">－</button>
+                </div>\`).join("");
+            }
+            if($("ngCount")) $("ngCount").textContent = words.length + " words";
         }
         if(st.ok && st.settings) {
             if(selLog) selLog.value = st.settings.log_channel_id || "";
@@ -201,22 +212,63 @@ const COMMON_SCRIPT = `
              return; 
          }
          
-         let html = "";
-         (res.data || []).forEach(r => {
-            const av = r.avatar_url || "";
-            const roleTxt = r.has_role ? '<span style="color:#1da1f2;">✔</span>' : '<span style="color:var(--danger-color);">✘</span>';
-            const introTxt = r.has_intro ? '<span style="color:#1da1f2;">✔</span>' : '<span style="color:var(--danger-color);">✘</span>';
-            const statusStyle = r.status === "OK" ? 'color:#1da1f2; font-weight:bold;' : 'color:var(--danger-color); font-weight:bold;';
-            
-            html += '<tr>' +
-                '<td><div style="display:flex; align-items:center; gap:8px;"><img src="' + av + '" style="width:24px; height:24px; border-radius:50%;" /> <span>' + escapeHTML(r.display_name) + '</span></div></td>' +
-                '<td style="text-align:center;">' + roleTxt + '</td>' +
-                '<td style="text-align:center;">' + introTxt + '</td>' +
-                '<td style="text-align:center;">' + r.last_vc + '</td>' +
-                '<td style="text-align:center; ' + statusStyle + '">' + r.status + '</td>' +
-            '</tr>';
-         });
-         rows.innerHTML = html || '<tr><td colspan="5" class="muted" style="text-align:center;">None</td></tr>';
+      
+      let currentData = [];
+      const renderRows = (data) => {
+          const rows = document.getElementById("act-rows");
+          let html = "";
+          data.forEach(r => {
+             const av = r.avatar_url || "";
+             const roleTxt = r.has_role ? '<span style="color:#1da1f2;">✔</span>' : '<span style="color:var(--danger-color);">✘</span>';
+             const introTxt = r.has_intro ? '<span style="color:#1da1f2;">✔</span>' : '<span style="color:var(--danger-color);">✘</span>';
+             const statusStyle = r.status === "OK" ? 'color:#1da1f2; font-weight:bold;' : 'color:var(--danger-color); font-weight:bold;';
+             
+             html += '<tr>' +
+                 '<td>' + (r.joined_at || '-') + '</td>' +
+                 '<td><div style="display:flex; align-items:center; gap:8px;"><img src="' + av + '" style="width:24px; height:24px; border-radius:50%;" /> <span>' + escapeHTML(r.display_name) + '</span></div></td>' +
+                 '<td style="text-align:center;">' + roleTxt + '</td>' +
+                 '<td style="text-align:center;">' + introTxt + '</td>' +
+                 '<td style="text-align:center;">' + r.last_vc + '</td>' +
+                 '<td style="text-align:center; ' + statusStyle + '">' + r.status + '</td>' +
+             '</tr>';
+          });
+          rows.innerHTML = html || '<tr><td colspan="6" class="muted" style="text-align:center;">None</td></tr>';
+      };
+
+      window.sortActivity = (key) => {
+          if(!currentData.length) return;
+          currentData.sort((a, b) => {
+              const valA = a[key] || "";
+              const valB = b[key] || "";
+              return valA.localeCompare(valB);
+          });
+          renderRows(currentData);
+      };
+
+      const runScan = async () => {
+         saveGuildSelection(); 
+         const gid = selGuild.value;
+         const ar = selRole.value;
+         const ic = selIntro.value;
+
+         const rows = document.getElementById("act-rows");
+         const loading = document.getElementById("act-loading");
+
+         rows.innerHTML = ""; 
+         loading.style.display = "block";
+         const res = await api("/api/activity?guild=" + gid + "&audit_role_id=" + ar + "&intro_channel_id=" + ic);
+         loading.style.display = "none";
+         
+         if(!res.ok) { 
+             const errorMsg = res.error.includes("Upgrade") ? "🔒 " + res.error + ' <a href="/admin/dashboard" style="margin-left:8px;">Check Plans</a>' : res.error;
+             rows.innerHTML = '<tr><td colspan="6" style="color:red; text-align:center;">' + errorMsg + '</td></tr>'; 
+             return; 
+         }
+         
+         currentData = res.data || [];
+         // Default sort: NG first (already done by API? Yes, but let's keep it). 
+         // API sorts by status NG first. Jst render.
+         renderRows(currentData);
       };
 
       selGuild.onchange = () => { reloadCriteria(); document.getElementById("act-rows").innerHTML = ""; };
@@ -246,7 +298,7 @@ function renderLayout({ title, content, user, activeTab, oauth = false, scripts 
 <body>
     <div class="nav-bar" style="border:none; justify-content: space-between; align-items: center; margin-bottom: 0; padding:16px 0;">
         <div style="font-size: 24px; font-weight: bold; display:flex; align-items:center;">
-            <span style="color:#f91880; margin-right:10px;">☾</span> Akatsuki ${langBtn}
+            <span style="color:#f91880; margin-right:10px;">☾</span> Akatsuki Bot 管理画面 ${langBtn}
         </div>
         <div>
             ${oauth && user ? `
@@ -292,12 +344,23 @@ export function renderAdminSettingsHTML({ user, req }) {
     
     <div class="card">
         <h3>${t("ng_words", lang)}</h3>
-        <div style="display:flex; gap:10px; margin-bottom:10px;">
-            <input id="newNg" placeholder="${t("ng_add_placeholder", lang)}" style="flex:1; padding:10px; border:1px solid #38444d; background:#192734; color:white; border-radius:4px;">
-            <button id="addNg" class="btn">${t("ng_add_btn", lang)}</button>
+        <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; border:1px solid #38444d;">
+            <div style="margin-bottom:15px;">
+                <label style="display:block; margin-bottom:5px; font-size:12px; font-weight:bold; color:#8899a6;">追加 (例: ばか または /regex/i)</label>
+                <div style="display:flex; gap:10px;">
+                    <input id="newNg" style="flex:1; padding:10px; border:1px solid #38444d; background:#192734; color:white; border-radius:4px;">
+                    <button id="addNg" class="btn" style="width:40px; font-size:20px; padding:0; display:flex; align-items:center; justify-content:center;">＋</button>
+                </div>
+            </div>
+            
+            <label style="display:block; margin-bottom:5px; font-size:12px; font-weight:bold; color:#8899a6;">削除 (登録されている文字)</label>
+            <div id="ngList" style="display:flex; flex-direction:column; gap:8px; max-height:300px; overflow-y:auto; padding:5px;"></div>
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:15px; border-top:1px solid #38444d; padding-top:10px;">
+                <span id="ngCount" class="muted">0 words</span>
+                <button id="btn_clear" class="btn" style="color:#f4212e; border-color:#f4212e; padding:4px 12px; font-size:12px;">全削除</button>
+            </div>
         </div>
-        <div id="ngList" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
-        <div style="margin-top:20px; text-align:right;"><button id="btn_clear" class="btn" style="color:red; border-color:red;">Clear All</button></div>
     </div>
 
     <div class="card">
@@ -361,9 +424,15 @@ export function renderAdminActivityHTML({ user, req }) {
         </div>
     </div>
     <div class="card">
-        <h3>${t("activity", lang)}</h3>
+        <h3 style="display:flex; align-items:center; gap:10px;">
+            ${t("activity", lang)}
+            <div style="font-size:12px; font-weight:normal; margin-left:auto; display:flex; gap:10px;">
+                <button onclick="sortActivity('joined_at')" class="btn" style="padding:4px 8px;">参加日 ▼</button>
+                <button onclick="sortActivity('display_name')" class="btn" style="padding:4px 8px;">ユーザー ▼</button>
+            </div>
+        </h3>
         <p class="muted">${t("activity_desc", lang)}</p>
-        <table class="data-table"><thead><tr><th style="text-align:left">User</th><th>${t("audit_role", lang)}</th><th>${t("last_msg", lang)}</th><th>${t("last_vc", lang)}</th><th>${t("audit_status", lang)}</th></tr></thead>
+        <table class="data-table"><thead><tr><th style="text-align:left">参加日</th><th style="text-align:left">User</th><th>${t("audit_role", lang)}</th><th>${t("last_msg", lang)}</th><th>${t("last_vc", lang)}</th><th>${t("audit_status", lang)}</th></tr></thead>
         <tbody id="act-rows"></tbody></table>
         <div id="act-loading" style="display:none; text-align:center; padding:20px;">Scanning...</div>
     </div>`;

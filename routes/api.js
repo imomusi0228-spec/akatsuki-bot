@@ -320,6 +320,7 @@ export async function handleApiRoute(req, res, pathname, url) {
                     has_role: hasRole,
                     has_intro: hasIntro,
                     last_vc: lastVcDate ? lastVcDate.toISOString().split("T")[0] : "None",
+                    joined_at: m.joinedAt ? m.joinedAt.toISOString().split("T")[0] : "Unknown",
                     status: status
                 });
             });
