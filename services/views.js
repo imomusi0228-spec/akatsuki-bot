@@ -126,7 +126,7 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
                 list.innerHTML = words.map(w => \`
                 <div style="display:flex; justify-content:space-between; align-items:center; background:#192734; padding:8px 12px; border-radius:4px; border:1px solid #38444d;">
                     <span style="font-family:monospace;">\${escapeHTML(w.word)}</span>
-                    <button onclick="removeNg('\${escapeHTML(w.word)}')" class="btn" style="width:24px; height:24px; padding:0; line-height:22px; color:#f4212e; border-color:#38444d; display:flex; align-items:center; justify-content:center;">繝ｻ繝ｻ/button>
+                    <button onclick="removeNg('\${escapeHTML(w.word)}')" class="btn" style="width:24px; height:24px; padding:0; line-height:22px; color:#f4212e; border-color:#38444d; display:flex; align-items:center; justify-content:center;">＋</button>
                 </div>\`).join("");
             }
             if($("ngCount")) $("ngCount").textContent = words.length + " words";
@@ -348,7 +348,7 @@ export function renderAdminSettingsHTML({ user, req }) {
                 <label style="display:block; margin-bottom:5px; font-size:12px; font-weight:bold; color:#8899a6;">${t("ng_add_label", lang)}</label>
                 <div style="display:flex; gap:10px;">
                     <textarea id="newNg" rows="1" placeholder="${t("ng_msg_placeholder", lang)}" style="flex:1; padding:10px; border:1px solid #38444d; background:#192734; color:white; border-radius:4px; resize:vertical; font-family:inherit;"></textarea>
-                    <button id="addNg" class="btn" style="width:40px; font-size:20px; padding:0; display:flex; align-items:center; justify-content:center;">繝ｻ繝ｻ/button>
+                    <button id="addNg" class="btn" style="width:40px; font-size:20px; padding:0; display:flex; align-items:center; justify-content:center;">＋</button>
                 </div>
             </div>
             
@@ -381,12 +381,12 @@ export function renderAdminSettingsHTML({ user, req }) {
             <div>
                 <label style="display:block; margin-bottom:8px;">${t("timeout_label", lang)}</label>
                 <select id="timeout" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;">
-                    <option value="1">1陋ｻ繝ｻ(60驕倥・</option>
-                    <option value="5">5陋ｻ繝ｻ/option>
-                    <option value="10">10陋ｻ繝ｻ/option>
-                    <option value="60">1隴弱ｋ菫｣</option>
-                    <option value="1440">1隴鯉ｽ･</option>
-                    <option value="10080">1鬨ｾ・ｱ鬮｢繝ｻ/option>
+                    <option value="1">1分 (60秒)</option>
+                    <option value="5">5分/option>
+                    <option value="10">10分/option>
+                    <option value="60">1時間</option>
+                    <option value="1440">1日</option>
+                    <option value="10080">1週間/option>
                 </select>
             </div>
         </div>
@@ -417,8 +417,8 @@ export function renderAdminActivityHTML({ user, req }) {
                 <select id="introCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
             </div>
             <div style="display:flex; gap:8px;">
-                <button id="scan" class="btn btn-primary">﨟槫翁 ${t("scan_btn", lang)}</button>
-                <button id="csvExport" class="btn" style="border-color: #ffd700; color: #ffd700;">﨟樊兜 CSV</button>
+                <button id="scan" class="btn btn-primary">🔍 ${t("scan_btn", lang)}</button>
+                <button id="csvExport" class="btn" style="border-color: #ffd700; color: #ffd700;">📥 CSV</button>
             </div>
         </div>
     </div>
@@ -499,12 +499,12 @@ export function renderFeaturesHTML(req) {
         <div class="plan-card">
             <span class="plan-badge">${t("plan_badge_std", lang)}</span>
             <h2 style="font-size: 28px;">${t("plan_free", lang)}</h2>
-            <div class="plan-price">・ゑｽ･0 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_forever", lang)}</span></div>
+            <div class="plan-price">¥0 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_forever", lang)}</span></div>
             <p style="color:#8899a6; margin-bottom:25px; max-width: 700px; margin-left: auto; margin-right: auto;">${t("plan_free_desc", lang)}</p>
             <div class="feature-grid">
                 <div class="feature-item-card">
                     <h4 style="margin-bottom:8px;">${t("feat_sec_basic", lang)}</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">NG郢晢ｽｯ郢晢ｽｼ郢晉甥螳幃ｫｯ繝ｻ ${t("limit_10", lang)}<br/>${t("feat_desc_basic_sec", lang)}</p>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">NGワード登録数 ${t("limit_10", lang)}<br/>${t("feat_desc_basic_sec", lang)}</p>
                 </div>
                 <div class="feature-item-card">
                     <h4 style="margin-bottom:8px;">${t("feat_vc_track", lang)}</h4>
@@ -518,12 +518,12 @@ export function renderFeaturesHTML(req) {
         <div class="plan-card" style="border-color: var(--primary-color); background: rgba(29, 161, 242, 0.03);">
             <span class="plan-badge" style="background:var(--primary-color); color:white;">${t("plan_badge_rec", lang)}</span>
             <h2 style="font-size: 28px;">${t("plan_pro", lang)}</h2>
-            <div class="plan-price">・ゑｽ･500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_month", lang)}</span></div>
+            <div class="plan-price">¥500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_month", lang)}</span></div>
             <p style="color:#8899a6; margin-bottom:25px; max-width: 700px; margin-left: auto; margin-right: auto;">${t("plan_pro_desc", lang)}</p>
             <div class="feature-grid">
                 <div class="feature-item-card">
                     <h4 style="margin-bottom:8px;">${t("feat_sec_adv", lang)}</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">NG郢晢ｽｯ郢晢ｽｼ郢晉甥螳幃ｫｯ繝ｻ ${t("limit_50", lang)}<br/>${t("features_detail_security", lang)}</p>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">NGワード登録数 ${t("limit_50", lang)}<br/>${t("features_detail_security", lang)}</p>
                 </div>
                 <div class="feature-item-card">
                     <h4 style="margin-bottom:8px;">${t("feat_live_log", lang)}</h4>
@@ -541,7 +541,7 @@ export function renderFeaturesHTML(req) {
         <div class="plan-card" style="border-color: #ffd700; background: rgba(255, 215, 0, 0.02);">
             <span class="plan-badge" style="background:#ffd700; color:black;">${t("plan_badge_prm", lang)}</span>
             <h2 style="font-size: 28px;">${t("plan_pro_plus", lang)}</h2>
-            <div class="plan-price">・ゑｽ･1,500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_month", lang)}</span></div>
+            <div class="plan-price">¥1,500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_month", lang)}</span></div>
             <p style="color:#8899a6; margin-bottom:25px; max-width: 700px; margin-left: auto; margin-right: auto;">${t("plan_pro_plus_desc", lang)}</p>
             <div class="feature-grid">
                 <div class="feature-item-card">
@@ -558,7 +558,7 @@ export function renderFeaturesHTML(req) {
                 </div>
                 <div class="feature-item-card">
                     <h4 style="margin-bottom:8px;">${t("feat_ultra", lang)}</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">NG郢晢ｽｯ郢晢ｽｼ郢晉甥螳幃ｫｯ繝ｻ ${t("limit_100", lang)}<br/>${t("feat_desc_ultra", lang)}</p>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">NGワード登録数 ${t("limit_100", lang)}<br/>${t("feat_desc_ultra", lang)}</p>
                 </div>
                 </div>
             </div>
