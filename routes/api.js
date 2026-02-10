@@ -3,6 +3,7 @@ import { getSession, discordApi } from "../middleware/auth.js";
 import { PermissionFlagsBits } from "discord.js";
 import { client } from "../core/client.js";
 import { TIERS, getFeatures, TIER_NAMES } from "../core/tiers.js";
+import { getTier } from "../core/subscription.js";
 
 function hasManageGuild(permissions) {
     const MANAGE_GUILD = 0x20n;
@@ -96,8 +97,9 @@ export async function handleApiRoute(req, res, pathname, url) {
         const vcRes = await dbQuery("SELECT COUNT(*) as cnt FROM vc_sessions WHERE guild_id = $1 AND join_time > NOW() - INTERVAL '30 days'", [guildId]);
 
         // Subscription Info
-        const subRes = await dbQuery("SELECT tier, valid_until FROM subscriptions WHERE guild_id = $1", [guildId]);
-        const subData = subRes.rows[0] || { tier: TIERS.FREE, valid_until: null };
+        const tier = await getTier(guildId);
+        const subRes = await dbQuery("SELECT valid_until FROM subscriptions WHERE guild_id = $1", [guildId]);
+        const subData = { tier, valid_until: subRes.rows[0]?.valid_until || null };
         const tierName = TIER_NAMES[subData.tier];
         const features = getFeatures(subData.tier);
 
@@ -133,8 +135,7 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (!body.guild || !body.word) return res.end(JSON.stringify({ ok: false }));
 
         // Check Limit
-        const subRes = await dbQuery("SELECT tier FROM subscriptions WHERE guild_id = $1", [body.guild]);
-        const tier = subRes.rows[0]?.tier || TIERS.FREE;
+        const tier = await getTier(body.guild);
         const features = getFeatures(tier);
 
         const countRes = await dbQuery("SELECT COUNT(*) as cnt FROM ng_words WHERE guild_id = $1", [body.guild]);
@@ -209,8 +210,7 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (!guildId) return res.end(JSON.stringify({ ok: false }));
 
         // Check Tier
-        const subRes = await dbQuery("SELECT tier FROM subscriptions WHERE guild_id = $1", [guildId]);
-        const tier = subRes.rows[0]?.tier || TIERS.FREE;
+        const tier = await getTier(guildId);
         const features = getFeatures(tier);
 
         if (!features.activity) {

@@ -19,6 +19,9 @@ export const ENV = {
     DEFAULT_TIMEOUT_MIN: Number(process.env.NG_TIMEOUT_MIN || 10),
     TIMEZONE: "Asia/Tokyo",
 
+    // Support Server (always gets Pro+)
+    SUPPORT_SERVER_ID: process.env.SUPPORT_SERVER_ID || "",
+
     // Constants
     OAUTH_SCOPES: "identify guilds",
     REDIRECT_PATH: "/oauth/callback",
