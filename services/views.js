@@ -492,7 +492,11 @@ export function renderFeaturesHTML(req) {
                     <h4 style="margin-bottom:8px;">🔥 Ultra Security</h4>
                     <p class="muted" style="font-size:13px; line-height:1.6;">NGワード制限: ${t("limit_100", lang)}<br/>制限からの完全な解放。</p>
                 </div>
+                </div>
             </div>
+        </div>
+    </div>
+
     <div class="card" style="margin-top: 40px; padding: 30px;">
         <h3 style="text-align:center; margin-bottom:20px;">Quick Comparison</h3>
         <table class="compare-table">
