@@ -32,46 +32,7 @@ process.on("unhandledRejection", (reason, promise) => {
     console.log("▶️  Step 4: Logging into Discord...");
 
     // Add Debug Logging
-    // Network Diagnostic
-    console.log("🔍 Running network diagnostic...");
-    try {
-        const start = Date.now();
-        const res = await fetch("https://discord.com");
-        console.log(`✅ [Network Check] Discord Reachable: YES (Status: ${res.status}, Time: ${Date.now() - start}ms)`);
-    } catch (netErr) {
-        console.error(`❌ [Network Check] Failed to reach Discord:`, netErr.message);
-    }
 
-    // Token Validation via REST
-    console.log("🔑 Validating token via REST API...");
-    try {
-        const userRes = await fetch("https://discord.com/api/v10/users/@me", {
-            headers: {
-                Authorization: `Bot ${ENV.TOKEN}`,
-                "User-Agent": "DiscordBot (https://github.com/imomusi0228-spec/akatsuki-bot, 1.0.0)"
-            }
-        });
-
-        console.log(`🔑 [Token Check] Status: ${userRes.status} ${userRes.statusText}`);
-        const bodyText = await userRes.text();
-
-        if (userRes.ok) {
-            try {
-                const userData = JSON.parse(bodyText);
-                console.log(`🔑 [Token Check] Bot Account: ${userData.username}#${userData.discriminator} (ID: ${userData.id})`);
-            } catch (jsonErr) {
-                console.error(`❌ [Token Check] Failed to parse JSON even though status was OK:`, bodyText.substring(0, 500));
-            }
-        } else {
-            console.error(`❌ [Token Check] Failed (Not OK):`);
-            console.error(`   Preview: ${bodyText.substring(0, 500)}`);
-            if (bodyText.includes("Cloudflare") || bodyText.includes("just a moment")) {
-                console.error("⚠️ [CRITICAL] Request blocked by Cloudflare. Render IP might be flagged.");
-            }
-        }
-    } catch (err) {
-        console.error(`❌ [Token Check] Request Error:`, err);
-    }
 
     // Detailed WebSocket Logging for Debugging
     client.on("debug", (m) => {
