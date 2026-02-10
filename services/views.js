@@ -156,7 +156,7 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
         const res = await post("/api/settings/update", body);
         const stat = $("saveStatus");
         if(res.ok) {
-            stat.textContent = "随ｨ繝ｻ" + t("save_success");
+            stat.textContent = "✅" + t("save_success");
             stat.style.color = "var(--success-color)";
             setTimeout(() => stat.textContent="", 3000);
         } else {
@@ -205,8 +205,8 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
           let html = "";
           data.forEach(r => {
              const av = r.avatar_url || "";
-             const roleTxt = r.has_role ? '<span style="color:#1da1f2;">随ｨ繝ｻ/span>' : '<span style="color:var(--danger-color);">随ｨ繝ｻ/span>';
-             const introTxt = r.has_intro ? '<span style="color:#1da1f2;">随ｨ繝ｻ/span>' : '<span style="color:var(--danger-color);">随ｨ繝ｻ/span>';
+             const roleTxt = r.has_role ? '<span style="color:#1da1f2;">✅/span>' : '<span style="color:var(--danger-color);">✅/span>';
+             const introTxt = r.has_intro ? '<span style="color:#1da1f2;">✅/span>' : '<span style="color:var(--danger-color);">✅/span>';
              const statusStyle = r.status === "OK" ? 'color:#1da1f2; font-weight:bold;' : 'color:var(--danger-color); font-weight:bold;';
              
              html += '<tr>' +
@@ -283,11 +283,11 @@ function renderLayout({ title, content, user, activeTab, oauth = false, scripts 
 
     return `<!DOCTYPE html>
 <html lang="${lang}">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${title} | Akatsuki</title><style>${COMMON_CSS}</style></head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${title} | 暁月</title><style>${COMMON_CSS}</style></head>
 <body>
     <div class="nav-bar" style="border:none; justify-content: space-between; align-items: center; margin-bottom: 0; padding:16px 0;">
         <div style="font-size: 24px; font-weight: bold; display:flex; align-items:center;">
-            <span style="color:#f91880; margin-right:10px;">随時</span> ${oauth ? t("admin_title", lang) : t("title", lang)} ${langBtn}
+            <span style="color:#f91880; margin-right:10px;">暁月</span> ${oauth ? t("admin_title", lang) : t("title", lang)} ${langBtn}
         </div>
         <div>
             ${oauth && user ? `
@@ -426,8 +426,8 @@ export function renderAdminActivityHTML({ user, req }) {
         <h3 style="display:flex; align-items:center; gap:10px;">
             ${t("activity", lang)}
             <div style="font-size:12px; font-weight:normal; margin-left:auto; display:flex; gap:10px;">
-                <button onclick="sortActivity('joined_at')" class="btn" style="padding:4px 8px;">${t("sort_joined", lang)} 随・ｽｼ</button>
-                <button onclick="sortActivity('display_name')" class="btn" style="padding:4px 8px;">${t("sort_user", lang)} 随・ｽｼ</button>
+                <button onclick="sortActivity('joined_at')" class="btn" style="padding:4px 8px;">${t("sort_joined", lang)} ▼</button>
+                <button onclick="sortActivity('display_name')" class="btn" style="padding:4px 8px;">${t("sort_user", lang)} ▼</button>
             </div>
         </h3>
         <p class="muted">${t("activity_desc", lang)}</p>
@@ -452,7 +452,7 @@ export function renderLandingHTML(req) {
     const lang = getLang(req);
     const content = `
     <div style="text-align:center; padding: 100px 20px;">
-        <h1 style="font-size: 56px; margin-bottom: 20px;">随時 ${t("title", lang)}</h1>
+        <h1 style="font-size: 56px; margin-bottom: 20px;">暁 ${t("title", lang)}</h1>
         <p style="font-size: 20px; color: #8899a6; margin-bottom: 50px; max-width: 600px; margin-left: auto; margin-right: auto;">${t("subtitle", lang)}</p>
         <div style="display:flex; justify-content:center; gap:20px; flex-wrap: wrap;">
            <a href="/login" class="btn btn-primary" style="padding:16px 48px; font-size:18px;">${t("login", lang)}</a>
