@@ -266,12 +266,7 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
 `;
 
 function getLang(req = {}) {
-    const cookies = {};
-    (req.headers && req.headers.cookie || "").split(";").forEach((c) => {
-        const [k, v] = c.trim().split("=");
-        if (k && v) cookies[k] = decodeURIComponent(v);
-    });
-    return cookies.lang || "ja";
+    return "ja";
 }
 
 function renderLayout({ title, content, user, activeTab, oauth = false, scripts = "" }, lang = 'ja') {

@@ -45,8 +45,8 @@ export const DICTIONARY = {
         leaves: "退出回数",
         timeouts: "タイムアウト実行",
         top_ng_users: "NG連発ランキング",
-        recent_joins: "最近の参加者",
-        quick_comparison: "プラン機能比較表",
+        recent_joins: "Recent Joins",
+        quick_comparison: "Plan Comparison",
 
         // Settings
         ng_words: "NGワードの管理",
