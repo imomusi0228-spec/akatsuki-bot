@@ -300,7 +300,7 @@ function renderLayout({ title, content, user, activeTab, oauth = false, scripts 
 <body>
     <div class="nav-bar" style="border:none; justify-content: space-between; align-items: center; margin-bottom: 0; padding:16px 0;">
         <div style="font-size: 24px; font-weight: bold; display:flex; align-items:center;">
-            <span style="color:#f91880; margin-right:10px;">☾</span> ${t("admin_title", lang)} ${langBtn}
+            <span style="color:#f91880; margin-right:10px;">☾</span> ${oauth ? t("admin_title", lang) : t("title", lang)} ${langBtn}
         </div>
         <div>
             ${oauth && user ? `
