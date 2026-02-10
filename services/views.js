@@ -345,21 +345,23 @@ export function renderFeaturesHTML(req) {
 
     const content = `
     <style>
-        .feature-tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 40px; }
-        .tab-btn { padding: 12px 24px; border: 1px solid var(--border-color); background: #192734; color: #8899a6; cursor: pointer; border-radius: 30px; font-weight: bold; transition: 0.3s; }
-        .tab-btn.active { background: var(--primary-color); color: white; border-color: var(--primary-color); box-shadow: 0 4px 15px rgba(29, 161, 242, 0.3); }
-        .tab-content { display: none; animation: fadeIn 0.5s; }
+        .feature-tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; }
+        .tab-btn { padding: 10px 20px; border: 1px solid var(--border-color); background: #192734; color: #8899a6; cursor: pointer; border-radius: 20px; font-weight: bold; transition: 0.3s; font-size: 14px; }
+        .tab-btn.active { background: var(--primary-color); color: white; border-color: var(--primary-color); box-shadow: 0 4px 12px rgba(29, 161, 242, 0.2); }
+        .tab-content { display: none; animation: fadeIn 0.4s ease-out; }
         .tab-content.active { display: block; }
-        .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 30px; }
-        .plan-card { background: rgba(25, 39, 52, 0.6); border: 1px solid var(--border-color); border-radius: 12px; padding: 30px; text-align: center; }
-        .plan-price { font-size: 32px; font-weight: bold; margin: 15px 0; color: var(--primary-color); }
-        .plan-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; background: rgba(29, 161, 242, 0.1); color: var(--primary-color); margin-bottom: 15px; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-top: 25px; max-width: 1000px; margin-left: auto; margin-right: auto; }
+        .plan-card { background: rgba(25, 39, 52, 0.5); border: 1px solid var(--border-color); border-radius: 16px; padding: 40px 20px; text-align: center; max-width: 1100px; margin: 0 auto; }
+        .plan-price { font-size: 36px; font-weight: 900; margin: 10px 0; color: var(--primary-color); }
+        .plan-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; background: rgba(29, 161, 242, 0.1); color: var(--primary-color); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        .feature-item-card { background: #15202b; border: 1px solid rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; text-align: left; transition: transform 0.2s; }
+        .feature-item-card:hover { transform: translateY(-3px); border-color: var(--primary-color); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 
-    <div style="text-align:center; padding: 60px 20px;">
-        <h1 style="font-size: 48px; margin-bottom: 20px;">${t("features_title", lang)}</h1>
-        <p style="font-size: 18px; color: #8899a6; margin-bottom: 40px; max-width: 800px; margin-left: auto; margin-right: auto;">${t("features_subtitle", lang)}</p>
+    <div style="text-align:center; padding: 40px 20px 20px;">
+        <h1 style="font-size: 42px; margin-bottom: 10px;">${t("features_title", lang)}</h1>
+        <p style="font-size: 17px; color: #8899a6; margin-bottom: 30px; max-width: 600px; margin-left: auto; margin-right: auto;">${t("features_subtitle", lang)}</p>
     </div>
 
     <div class="feature-tabs">
@@ -371,74 +373,74 @@ export function renderFeaturesHTML(req) {
     <div id="tab-free" class="tab-content active">
         <div class="plan-card">
             <span class="plan-badge">Standard</span>
-            <h2>${t("plan_free", lang)}</h2>
-            <div class="plan-price">¥0 <span style="font-size:14px; color:#8899a6;">/ Forever</span></div>
-            <p style="color:#8899a6; margin-bottom:30px;">${t("plan_free_desc", lang)}</p>
+            <h2 style="font-size: 28px;">${t("plan_free", lang)}</h2>
+            <div class="plan-price">¥0 <span style="font-size:14px; color:#8899a6; font-weight:normal;">/ Forever</span></div>
+            <p style="color:#8899a6; margin-bottom:25px; max-width: 700px; margin-left: auto; margin-right: auto;">${t("plan_free_desc", lang)}</p>
             <div class="feature-grid">
-                <div class="card" style="text-align:left;">
-                    <h4>🛡️ Security (Basic)</h4>
-                    <p class="muted" style="font-size:14px;">NGワード制限: ${t("limit_10", lang)}<br/>自動削除機能付き</p>
+                <div class="feature-item-card">
+                    <h4 style="margin-bottom:8px;">🛡️ Security (Basic)</h4>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">NGワード制限: ${t("limit_10", lang)}<br/>メッセージの自動削除で清潔な環境を維持します。</p>
                 </div>
-                <div class="card" style="text-align:left;">
-                    <h4>🔊 VC Tracking</h4>
-                    <p class="muted" style="font-size:14px;">ボイスチャンネルの参加・退出を記録。基本統計の表示。</p>
+                <div class="feature-item-card">
+                    <h4 style="margin-bottom:8px;">🔊 VC Tracking</h4>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">ボイスチャンネルの参加・退出を記録。基本的な統計をお手元に。</p>
                 </div>
             </div>
         </div>
     </div>
 
     <div id="tab-pro" class="tab-content">
-        <div class="plan-card" style="border-color: var(--primary-color); background: rgba(29, 161, 242, 0.05);">
+        <div class="plan-card" style="border-color: var(--primary-color); background: rgba(29, 161, 242, 0.03);">
             <span class="plan-badge" style="background:var(--primary-color); color:white;">Recommended</span>
-            <h2>${t("plan_pro", lang)}</h2>
-            <div class="plan-price">¥500 <span style="font-size:14px; color:#8899a6;">/ Month</span></div>
-            <p style="color:#8899a6; margin-bottom:30px;">${t("plan_pro_desc", lang)}</p>
+            <h2 style="font-size: 28px;">${t("plan_pro", lang)}</h2>
+            <div class="plan-price">¥500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">/ Month</span></div>
+            <p style="color:#8899a6; margin-bottom:25px; max-width: 700px; margin-left: auto; margin-right: auto;">${t("plan_pro_desc", lang)}</p>
             <div class="feature-grid">
-                <div class="card" style="text-align:left;">
-                    <h4>⚡ Advanced Security</h4>
-                    <p class="muted" style="font-size:14px;">NGワード制限: ${t("limit_50", lang)}<br/>${t("features_detail_security", lang)}</p>
+                <div class="feature-item-card">
+                    <h4 style="margin-bottom:8px;">⚡ Advanced Security</h4>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">NGワード制限: ${t("limit_50", lang)}<br/>${t("features_detail_security", lang)}</p>
                 </div>
-                <div class="card" style="text-align:left;">
-                    <h4>📜 Live Logs</h4>
-                    <p class="muted" style="font-size:14px;">${t("features_detail_log", lang)}</p>
+                <div class="feature-item-card">
+                    <h4 style="margin-bottom:8px;">📜 Live Logs</h4>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">${t("features_detail_log", lang)}</p>
                 </div>
-                <div class="card" style="text-align:left;">
-                    <h4>🖥️ Web Dashboard</h4>
-                    <p class="muted" style="font-size:14px;">PC・スマホからいつでもサーバーの状態を管理・閲覧可能。</p>
+                <div class="feature-item-card">
+                    <h4 style="margin-bottom:8px;">🖥️ Web Dashboard</h4>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">PC・スマホからいつでもサーバーの状態を直感的に管理。</p>
                 </div>
             </div>
         </div>
     </div>
 
     <div id="tab-pro-plus" class="tab-content">
-        <div class="plan-card" style="border-color: #ffd700; background: rgba(255, 215, 0, 0.03);">
+        <div class="plan-card" style="border-color: #ffd700; background: rgba(255, 215, 0, 0.02);">
             <span class="plan-badge" style="background:#ffd700; color:black;">Premium</span>
-            <h2>${t("plan_pro_plus", lang)}</h2>
-            <div class="plan-price">¥1,500 <span style="font-size:14px; color:#8899a6;">/ Month</span></div>
-            <p style="color:#8899a6; margin-bottom:30px;">${t("plan_pro_plus_desc", lang)}</p>
+            <h2 style="font-size: 28px;">${t("plan_pro_plus", lang)}</h2>
+            <div class="plan-price">¥1,500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">/ Month</span></div>
+            <p style="color:#8899a6; margin-bottom:25px; max-width: 700px; margin-left: auto; margin-right: auto;">${t("plan_pro_plus_desc", lang)}</p>
             <div class="feature-grid">
-                <div class="card" style="text-align:left;">
-                    <h4>💎 Multi-Server</h4>
-                    <p class="muted" style="font-size:14px;">1ライセンスで**最大3つのサーバー**に全特典を適用可能。</p>
+                <div class="feature-item-card">
+                    <h4 style="margin-bottom:8px;">💎 Multi-Server</h4>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">1ライセンスで**最大3つのサーバー**に全特典を適用可能な特権。</p>
                 </div>
-                <div class="card" style="text-align:left;">
-                    <h4>🔍 Server Audit</h4>
-                    <p class="muted" style="font-size:14px;">${t("features_detail_audit", lang)}</p>
+                <div class="feature-item-card">
+                    <h4 style="margin-bottom:8px;">🔍 Server Audit</h4>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">${t("features_detail_audit", lang)}</p>
                 </div>
-                <div class="card" style="text-align:left;">
-                    <h4>📊 Data Expert</h4>
-                    <p class="muted" style="font-size:14px;">CSVエクスポート機能により、Excel等での活動分析が自由自在。</p>
+                <div class="feature-item-card">
+                    <h4 style="margin-bottom:8px;">📊 Data Expert</h4>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">CSVエクスポート機能により、自由自在な活動分析を実現。</p>
                 </div>
-                <div class="card" style="text-align:left;">
-                    <h4>🔥 Ultra Security</h4>
-                    <p class="muted" style="font-size:14px;">NGワード制限: ${t("limit_100", lang)}<br/>全ての制限から解放されます。</p>
+                <div class="feature-item-card">
+                    <h4 style="margin-bottom:8px;">🔥 Ultra Security</h4>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">NGワード制限: ${t("limit_100", lang)}<br/>制限からの完全な解放。</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="card" style="margin-top: 60px;">
-        <h3 style="text-align:center; margin-bottom:30px;">Quick Comparison</h3>
+    <div class="card" style="margin-top: 40px; padding: 30px;">
+        <h3 style="text-align:center; margin-bottom:20px;">Quick Comparison</h3>
         <table class="pricing-table">
             <thead>
                 <tr>
