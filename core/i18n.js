@@ -29,6 +29,12 @@ export const DICTIONARY = {
         limit_100: "50個",
         available: "⚪︎",
         unavailable: "×",
+        plan_free_desc: "ボットの基本機能を無料で体験できます。小規模なサーバーや、まずは使い心地を試したいお嬢様に最適です。",
+        plan_pro_desc: "大規模なサーバー運営に欠かせないログ保存機能や、より強力なNGワードフィルタリングを解放します。運営の効率を求めるお嬢様へ。",
+        plan_pro_plus_desc: "暁ボットの全機能を解放する最上位プランです。活動監査、CSV出力、さらには最大3つのサーバーへの適用が可能。究極の統治を求めるお嬢様に捧げます。",
+        features_detail_security: "NGワードの自動削除と警告しきい値による自動タイムアウトで、サーバーの平和を鉄壁に守ります。",
+        features_detail_audit: "ロールの所持、自己紹介の有無、VCの参加状況を統合し、幽霊部員を瞬時に特定します。",
+        features_detail_log: "サーバー内で起きた重要なイベントを専用チャンネルに記録。何かあった時の追跡も容易です。",
 
         // Dashboard
         welcome: "ようこそ",
@@ -102,6 +108,12 @@ export const DICTIONARY = {
         limit_100: "50 Words",
         available: "Yes",
         unavailable: "No",
+        plan_free_desc: "Experience the core features for free. Perfect for small servers or testing the waters.",
+        plan_pro_desc: "Unlocks essential logging and stronger NG filtering. Best for servers seeking operational efficiency.",
+        plan_pro_plus_desc: "The ultimate tier unlocking all features, including Activity Audit, CSV Export, and up to 3 servers. For the most demanding administrators.",
+        features_detail_security: "Auto-delete messages and set warning thresholds to keep your server safe and orderly.",
+        features_detail_audit: "Audit members based on roles, introductions, and VC activity to identify inactive members instantly.",
+        features_detail_log: "Records important server events to a dedicated channel for easy tracking and moderation.",
 
         // Dashboard
         welcome: "Welcome",

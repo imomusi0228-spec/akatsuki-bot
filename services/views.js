@@ -344,54 +344,132 @@ export function renderFeaturesHTML(req) {
     const cross = `<span class="cross">${t("unavailable", lang)}</span>`;
 
     const content = `
-    <div style="text-align:center; padding: 60px 0;">
+    <style>
+        .feature-tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 40px; }
+        .tab-btn { padding: 12px 24px; border: 1px solid var(--border-color); background: #192734; color: #8899a6; cursor: pointer; border-radius: 30px; font-weight: bold; transition: 0.3s; }
+        .tab-btn.active { background: var(--primary-color); color: white; border-color: var(--primary-color); box-shadow: 0 4px 15px rgba(29, 161, 242, 0.3); }
+        .tab-content { display: none; animation: fadeIn 0.5s; }
+        .tab-content.active { display: block; }
+        .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 30px; }
+        .plan-card { background: rgba(25, 39, 52, 0.6); border: 1px solid var(--border-color); border-radius: 12px; padding: 30px; text-align: center; }
+        .plan-price { font-size: 32px; font-weight: bold; margin: 15px 0; color: var(--primary-color); }
+        .plan-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; background: rgba(29, 161, 242, 0.1); color: var(--primary-color); margin-bottom: 15px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+
+    <div style="text-align:center; padding: 60px 20px;">
         <h1 style="font-size: 48px; margin-bottom: 20px;">${t("features_title", lang)}</h1>
-        <p style="font-size: 18px; color: #8899a6; margin-bottom: 40px;">${t("features_subtitle", lang)}</p>
+        <p style="font-size: 18px; color: #8899a6; margin-bottom: 40px; max-width: 800px; margin-left: auto; margin-right: auto;">${t("features_subtitle", lang)}</p>
     </div>
 
-    <div class="card">
-        <h3>Pricing & Features</h3>
+    <div class="feature-tabs">
+        <button class="tab-btn active" onclick="switchTab('free')">${t("plan_free", lang)}</button>
+        <button class="tab-btn" onclick="switchTab('pro')">${t("plan_pro", lang)}</button>
+        <button class="tab-btn" onclick="switchTab('pro-plus')">${t("plan_pro_plus", lang)}</button>
+    </div>
+
+    <div id="tab-free" class="tab-content active">
+        <div class="plan-card">
+            <span class="plan-badge">Standard</span>
+            <h2>${t("plan_free", lang)}</h2>
+            <div class="plan-price">¥0 <span style="font-size:14px; color:#8899a6;">/ Forever</span></div>
+            <p style="color:#8899a6; margin-bottom:30px;">${t("plan_free_desc", lang)}</p>
+            <div class="feature-grid">
+                <div class="card" style="text-align:left;">
+                    <h4>🛡️ Security (Basic)</h4>
+                    <p class="muted" style="font-size:14px;">NGワード制限: ${t("limit_10", lang)}<br/>自動削除機能付き</p>
+                </div>
+                <div class="card" style="text-align:left;">
+                    <h4>🔊 VC Tracking</h4>
+                    <p class="muted" style="font-size:14px;">ボイスチャンネルの参加・退出を記録。基本統計の表示。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-pro" class="tab-content">
+        <div class="plan-card" style="border-color: var(--primary-color); background: rgba(29, 161, 242, 0.05);">
+            <span class="plan-badge" style="background:var(--primary-color); color:white;">Recommended</span>
+            <h2>${t("plan_pro", lang)}</h2>
+            <div class="plan-price">¥500 <span style="font-size:14px; color:#8899a6;">/ Month</span></div>
+            <p style="color:#8899a6; margin-bottom:30px;">${t("plan_pro_desc", lang)}</p>
+            <div class="feature-grid">
+                <div class="card" style="text-align:left;">
+                    <h4>⚡ Advanced Security</h4>
+                    <p class="muted" style="font-size:14px;">NGワード制限: ${t("limit_50", lang)}<br/>${t("features_detail_security", lang)}</p>
+                </div>
+                <div class="card" style="text-align:left;">
+                    <h4>📜 Live Logs</h4>
+                    <p class="muted" style="font-size:14px;">${t("features_detail_log", lang)}</p>
+                </div>
+                <div class="card" style="text-align:left;">
+                    <h4>🖥️ Web Dashboard</h4>
+                    <p class="muted" style="font-size:14px;">PC・スマホからいつでもサーバーの状態を管理・閲覧可能。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-pro-plus" class="tab-content">
+        <div class="plan-card" style="border-color: #ffd700; background: rgba(255, 215, 0, 0.03);">
+            <span class="plan-badge" style="background:#ffd700; color:black;">Premium</span>
+            <h2>${t("plan_pro_plus", lang)}</h2>
+            <div class="plan-price">¥1,500 <span style="font-size:14px; color:#8899a6;">/ Month</span></div>
+            <p style="color:#8899a6; margin-bottom:30px;">${t("plan_pro_plus_desc", lang)}</p>
+            <div class="feature-grid">
+                <div class="card" style="text-align:left;">
+                    <h4>💎 Multi-Server</h4>
+                    <p class="muted" style="font-size:14px;">1ライセンスで**最大3つのサーバー**に全特典を適用可能。</p>
+                </div>
+                <div class="card" style="text-align:left;">
+                    <h4>🔍 Server Audit</h4>
+                    <p class="muted" style="font-size:14px;">${t("features_detail_audit", lang)}</p>
+                </div>
+                <div class="card" style="text-align:left;">
+                    <h4>📊 Data Expert</h4>
+                    <p class="muted" style="font-size:14px;">CSVエクスポート機能により、Excel等での活動分析が自由自在。</p>
+                </div>
+                <div class="card" style="text-align:left;">
+                    <h4>🔥 Ultra Security</h4>
+                    <p class="muted" style="font-size:14px;">NGワード制限: ${t("limit_100", lang)}<br/>全ての制限から解放されます。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 60px;">
+        <h3 style="text-align:center; margin-bottom:30px;">Quick Comparison</h3>
         <table class="pricing-table">
             <thead>
                 <tr>
                     <th style="text-align:left">Feature</th>
-                    <th>${t("plan_free", lang)}</th>
-                    <th>${t("plan_pro", lang)}</th>
-                    <th>${t("plan_pro_plus", lang)}</th>
+                    <th>Free</th>
+                    <th>Pro</th>
+                    <th>Pro+</th>
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td style="text-align:left">${t("feature_ng_limit", lang)}</td>
-                    <td>${t("limit_10", lang)}</td>
-                    <td>${t("limit_50", lang)}</td>
-                    <td>${t("limit_100", lang)}</td>
-                </tr>
-                <tr>
-                    <td style="text-align:left">${t("feature_logs", lang)}</td>
-                    <td>${cross}</td>
-                    <td>${check}</td>
-                    <td>${check}</td>
-                </tr>
-                <tr>
-                    <td style="text-align:left">${t("feature_dashboard", lang)}</td>
-                    <td>${cross}</td>
-                    <td>${check}</td>
-                    <td>${check}</td>
-                </tr>
-                 <tr>
-                    <td style="text-align:left">${t("feature_activity", lang)}</td>
-                    <td>${cross}</td>
-                    <td>${cross}</td>
-                    <td>${check}</td>
-                </tr>
+                <tr><td style="text-align:left">${t("feature_ng_limit", lang)}</td><td>${t("limit_10", lang)}</td><td>${t("limit_50", lang)}</td><td>${t("limit_100", lang)}</td></tr>
+                <tr><td style="text-align:left">${t("feature_logs", lang)}</td><td>${cross}</td><td>${check}</td><td>${check}</td></tr>
+                <tr><td style="text-align:left">${t("feature_dashboard", lang)}</td><td>${cross}</td><td>${check}</td><td>${check}</td></tr>
+                <tr><td style="text-align:left">${t("feature_activity", lang)}</td><td>${cross}</td><td>${cross}</td><td>${check}</td></tr>
+                <tr><td style="text-align:left">Max Servers</td><td>1</td><td>1</td><td><strong>3</strong></td></tr>
             </tbody>
         </table>
     </div>
 
-    <div style="text-align:center; padding: 40px 0;">
-        <a href="/login" class="btn btn-primary" style="padding:16px 48px; font-size:18px;">${t("get_started", lang)}</a>
+    <div style="text-align:center; padding: 60px 0;">
+        <a href="/login" class="btn btn-primary" style="padding:18px 60px; font-size:20px; border-radius:50px;">${t("get_started", lang)}</a>
     </div>
+
+    <script>
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+    </script>
     `;
     return renderLayout({ title: t("features_title", lang), content, user: null }, lang);
 }
