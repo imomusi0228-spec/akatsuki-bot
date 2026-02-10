@@ -108,7 +108,23 @@ export async function handleApiRoute(req, res, pathname, url) {
 
             // NG Stats
             const ngCountRes = await dbQuery("SELECT COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 AND created_at > NOW() - INTERVAL '30 days'", [guildId]);
-            const ngTopRes = await dbQuery("SELECT user_name, COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 GROUP BY user_name ORDER BY cnt DESC LIMIT 5", [guildId]);
+            // Group by user_id to avoid "undefined" names and handle name changes
+            const ngTopRes = await dbQuery("SELECT user_id, COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 GROUP BY user_id ORDER BY cnt DESC LIMIT 5", [guildId]);
+
+            // Enrich with Discord Data
+            const topUsers = [];
+            for (const row of ngTopRes.rows) {
+                let user = client.users.cache.get(row.user_id);
+                if (!user) {
+                    try { user = await client.users.fetch(row.user_id); } catch (e) { }
+                }
+                topUsers.push({
+                    user_id: row.user_id,
+                    display_name: user ? (user.globalName || user.username) : (row.user_name || "Unknown User"),
+                    avatar_url: user ? user.displayAvatarURL({ size: 64 }) : null,
+                    cnt: row.cnt
+                });
+            }
 
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify({
@@ -121,7 +137,7 @@ export async function handleApiRoute(req, res, pathname, url) {
                         timeouts: 0,
                         ngDetected: parseInt(ngCountRes.rows[0]?.cnt || 0)
                     },
-                    topNgUsers: ngTopRes.rows
+                    topNgUsers: topUsers
                 }
             }));
         } catch (error) {
