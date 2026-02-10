@@ -300,8 +300,54 @@ export async function handleApiRoute(req, res, pathname, url) {
                 }
             } catch (e) { console.error("Intro Scan Error:", e); }
         }
-
         const auditResults = [];
+        try {
+            let members;
+            const cacheKey = `members_${guildId}`;
+            const cached = memberCache.get(cacheKey);
+            if (cached && Date.now() - cached.ts < 5 * 60 * 1000) {
+                members = cached.data;
+            } else {
+                members = await guild.members.fetch();
+                memberCache.set(cacheKey, { ts: Date.now(), data: members });
+            }
+
+            members.forEach(m => {
+                if (m.user.bot) return;
+
+                const inVcNow = m.voice?.channelId;
+                let lastVcDate = vcActivityMap[m.id];
+
+                // If currently in VC, treat as NOW (overrides DB null)
+                if (inVcNow) lastVcDate = new Date();
+
+                const hasRole = settings.audit_role_id ? m.roles.cache.has(settings.audit_role_id) : true;
+                const hasIntro = settings.intro_channel_id ? introSet.has(m.user.id) : true;
+
+                // Audit Status Logic:
+                let status = "OK";
+                const vcOk = lastVcDate || inVcNow;
+
+                if (!hasRole || !hasIntro || !vcOk) status = "NG";
+
+                const fmtDate = (d) => {
+                    if (!d) return "None";
+                    const dateObj = d instanceof Date ? d : new Date(d);
+                    return isNaN(dateObj.getTime()) ? "None" : dateObj.toISOString().split("T")[0];
+                };
+
+                auditResults.push({
+                    id: m.id,
+                    display_name: m.displayName,
+                    avatar_url: m.user.displayAvatarURL(),
+                    has_role: hasRole,
+                    has_intro: hasIntro,
+                    last_vc: fmtDate(lastVcDate),
+                    joined_at: m.joinedAt ? m.joinedAt.toISOString().split("T")[0] : "Unknown",
+                    status: status
+                });
+            });
+        } catch (e) { console.error("Activity Scan Error:", e); }
 
 
         res.writeHead(200, { "Content-Type": "application/json" });
