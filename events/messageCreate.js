@@ -57,7 +57,13 @@ export default {
 
                 // DM Warning
                 try {
-                    await message.author.send(`⚠️ **Warning from ${message.guild.name}**\nYour message was removed because it contained prohibited word(s): ||${joinedWords}||`);
+                    const warningMsg = `⚠️ **禁止ワードを検知しました / Restricted word detected**\n\n` +
+                        `サーバー: **${message.guild.name}**\n` +
+                        `対象ワード: ||${joinedWords}||\n` +
+                        `メッセージを削除しました。 / Your message was removed.\n\n` +
+                        `*繰り返し警告を無視すると、タイムアウトが適用される場合があります。*\n` +
+                        `*Repeated violations may lead to a timeout.*`;
+                    await message.author.send(warningMsg);
                 } catch (e) { }
 
                 // Check violations in last 1 hour

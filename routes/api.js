@@ -111,20 +111,19 @@ export async function handleApiRoute(req, res, pathname, url) {
             // Group by user_id to avoid "undefined" names and handle name changes
             const ngTopRes = await dbQuery("SELECT user_id, COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 GROUP BY user_id ORDER BY cnt DESC LIMIT 5", [guildId]);
 
-            // Enrich with Discord Data
-            const topUsers = [];
-            for (const row of ngTopRes.rows) {
+            // Enrich with Discord Data (PB: Parallel Fetch)
+            const topUsers = await Promise.all(ngTopRes.rows.map(async (row) => {
                 let user = client.users.cache.get(row.user_id);
                 if (!user) {
                     try { user = await client.users.fetch(row.user_id); } catch (e) { }
                 }
-                topUsers.push({
+                return {
                     user_id: row.user_id,
                     display_name: user ? (user.globalName || user.username) : (row.user_name || "Unknown User"),
                     avatar_url: user ? user.displayAvatarURL({ size: 64 }) : null,
                     cnt: row.cnt
-                });
-            }
+                };
+            }));
 
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify({
@@ -330,7 +329,7 @@ export async function handleApiRoute(req, res, pathname, url) {
         const introSet = new Set();
         if (settings.intro_channel_id) {
             try {
-                const channel = await guild.channels.fetch(settings.intro_channel_id);
+                const channel = client.channels.cache.get(settings.intro_channel_id) || await guild.channels.fetch(settings.intro_channel_id);
                 if (channel && channel.isTextBased()) {
                     const messages = await channel.messages.fetch({ limit: 100 });
                     messages.forEach(msg => introSet.add(msg.author.id));

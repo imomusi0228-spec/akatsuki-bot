@@ -133,7 +133,9 @@ export async function initDb() {
             // Performance Indices
             `CREATE INDEX IF NOT EXISTS idx_vc_sessions_guild_user ON vc_sessions(guild_id, user_id);`,
             `CREATE INDEX IF NOT EXISTS idx_vc_sessions_join ON vc_sessions(join_time);`,
-            `CREATE INDEX IF NOT EXISTS idx_ng_words_guild ON ng_words(guild_id);`
+            `CREATE INDEX IF NOT EXISTS idx_ng_words_guild ON ng_words(guild_id);`,
+            `CREATE INDEX IF NOT EXISTS idx_ng_logs_guild_created ON ng_logs(guild_id, created_at);`,
+            `CREATE INDEX IF NOT EXISTS idx_ng_logs_user_recent ON ng_logs(user_id, created_at);`
         ];
 
         for (const query of queries) {
