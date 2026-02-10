@@ -1,5 +1,5 @@
 import { ENV } from "../config/env.js";
-import { t } from "../core/i18n.js";
+import { t, DICTIONARY } from "../core/i18n.js";
 
 export function escapeHTML(s = "") {
     return String(s)
@@ -306,7 +306,17 @@ function renderLayout({ title, content, user, activeTab, oauth = false, scripts 
     
     <div id="main-content">${content}</div>
     <div style="text-align:center; padding: 20px; color: #8899a6; font-size:0.8em; margin-top:40px;">&copy; 2026 Akatsuki Bot</div>
-    <script>const lang = "${lang}"; ${COMMON_SCRIPT}</script>
+    <script>
+        const lang = "${lang}";
+        const DICT = ${JSON.stringify(DICTIONARY)};
+        function t(k, p={}) {
+            const d = DICT[lang] || DICT['ja'];
+            let txt = d[k] || k;
+            Object.keys(p).forEach(key => txt = txt.replace('{'+key+'}', p[key]));
+            return txt;
+        }
+        ${COMMON_SCRIPT}
+    </script>
     ${scripts}
 </body></html>`;
 }
@@ -321,7 +331,7 @@ export function renderAdminDashboardHTML({ user, req }) {
     const lang = getLang(req);
     const content = `<div class="card"><div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; align-items:center;"><select id="guild" style="flex:1; max-width:250px; padding:10px;"></select><input id="month" type="month" style="padding:9px;" /><button id="reload" class="btn">Reload</button><span id="guildStatus" class="muted"></span> <div style="margin-left:auto;">Plan: <span id="plan-info">Loading...</span></div></div></div>
   <div class="card"><h3>${t("summary", lang)}</h3><div id="summary">Loading...</div></div>
-  <div class="card"><h3>${t("top_ng_users", lang)}</h3><table class="data-table"><thead><tr><th>User</th><th style="text-align:right">Count</th></tr></thead><tbody id="topNg"></tbody></table></div>`;
+  <div class="card"><h3>${t("top_ng_users", lang)}</h3><table class="data-table"><thead><tr><th>${t("header_user", lang)}</th><th style="text-align:right">${t("header_count", lang)}</th></tr></thead><tbody id="topNg"></tbody></table></div>`;
     const scripts = `<script>initDashboard();</script>`;
     return renderLayout({ title: t("dashboard", lang), content, user, activeTab: "dashboard", oauth: true, scripts }, lang);
 }
