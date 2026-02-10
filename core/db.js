@@ -8,16 +8,6 @@ const poolConfig = {
     ssl: ENV.DATABASE_URL.includes("localhost") ? false : { rejectUnauthorized: false },
 };
 
-// Debug: Log masked connection string
-if (ENV.DATABASE_URL) {
-    try {
-        const url = new URL(ENV.DATABASE_URL);
-        console.log(`[DB DEBUG] Connecting to: ${url.protocol}//${url.username}:****@${url.host}${url.pathname}`);
-    } catch (e) {
-        console.log(`[DB DEBUG] DATABASE_URL (raw): ${ENV.DATABASE_URL}`);
-    }
-}
-
 export const pool = new Pool(poolConfig);
 
 export const dbQuery = (text, params) => pool.query(text, params);
