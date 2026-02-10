@@ -40,6 +40,7 @@ const COMMON_CSS = `
 
 const COMMON_SCRIPT = `
   const $ = (id) => document.getElementById(id);
+  const escapeHTML = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   function yyyymmNow(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
   async function api(path){ const r = await fetch(path); if(r.status===401){window.location.href="/login";return {ok:false};} const t = await r.text(); try { return JSON.parse(t); } catch { return { ok:false, error:t }; } }
   async function post(path, body){ const r = await fetch(path, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)}); if(r.status===401){window.location.href="/login";return {ok:false};} const t = await r.text(); try { return JSON.parse(t); } catch { return { ok:false, error:t }; } }
