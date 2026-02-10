@@ -77,6 +77,19 @@ export async function initDb() {
             `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS user_id VARCHAR(64);`,
             `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();`,
 
+            // Fix vc_sessions legacy columns
+            `DO $$ 
+            BEGIN 
+                -- Rename join_ts -> join_time if legacy exists
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vc_sessions' AND column_name='join_ts') THEN
+                    ALTER TABLE vc_sessions RENAME COLUMN join_ts TO join_time;
+                END IF;
+                -- Ensure ID exists (ADD COLUMN IF NOT EXISTS doesn't work well with SERIAL PRIMARY KEY in some versions, so use DO block)
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vc_sessions' AND column_name='id') THEN
+                    ALTER TABLE vc_sessions ADD COLUMN id SERIAL PRIMARY KEY;
+                END IF;
+            END $$;`,
+
             // Fix vc_sessions
             `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS guild_id TEXT;`,
             `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS join_time TIMESTAMPTZ;`,
