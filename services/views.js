@@ -78,7 +78,9 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
            
            const box = (l,v) => \`<div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; text-align:center;"><div style="font-size:24px; font-weight:bold;">\${v}</div><div style="font-size:11px; color:#888;">\${l}</div></div>\`;
            $("summary").innerHTML = \`<div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; width:100%;">\${box(t("vc_joins"), s.joins)} \${box(t("leaves"), s.leaves)} \${box(t("timeouts"), s.timeouts)} \${box(t("ng_detect"), s.ngDetected)}</div>\`;
-           let rows = ""; (res.stats.topNgUsers || []).forEach(u => { rows += \`<tr><td>\${escapeHTML(u.display_name || 'Unknown')}</td><td style="text-align:right">\${u.cnt}</td></tr>\`; });
+           let rows = ""; (res.stats.topNgUsers || []).forEach(u => { 
+               const av = u.avatar_url ? `< img src = "${u.avatar_url}" style = "width:24px; height:24px; border-radius:50%; vertical-align:middle; margin-right:8px;" > ` : '';
+               rows += \`<tr><td>\${escapeHTML(u.display_name || 'Unknown')}</td><td style="text-align:right">\${u.cnt}</td></tr>\`; });
            $("topNg").innerHTML = rows || '<tr><td colspan="2" class="muted" style="text-align:center; padding:10px;">None</td></tr>';
         } else { $("summary").innerText = "Error: " + res.error; }
      };
