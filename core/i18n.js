@@ -124,7 +124,7 @@ export const DICTIONARY = {
         settings: "Settings",
         activity: "Activity",
         guide: "Guide",
-        language: "言語",
+        language: "Language",
         view_features: "View Features",
         features_title: "Features & Pricing",
         features_subtitle: "Choose the perfect plan for your server",
