@@ -346,12 +346,17 @@ export async function handleApiRoute(req, res, pathname, url) {
         const guild = client.guilds.cache.get(guildId);
         if (!guild) return res.end(JSON.stringify({ ok: false, error: "Guild not found" }));
 
-        // 1. Get Audit Settings (Allow overrides)
+        // 1. Get Audit Settings (Allow overrides via Query Params)
+        // Note: We check if param is present (not null) to allow clearing settings (sending empty string)
         const settingsRes = await dbQuery("SELECT * FROM settings WHERE guild_id = $1", [guildId]);
         const dbSettings = settingsRes.rows[0] || {};
+
+        const qRole = url.searchParams.get("audit_role_id");
+        const qIntro = url.searchParams.get("intro_channel_id");
+
         const settings = {
-            audit_role_id: url.searchParams.get("audit_role_id") || dbSettings.audit_role_id,
-            intro_channel_id: url.searchParams.get("intro_channel_id") || dbSettings.intro_channel_id
+            audit_role_id: qRole !== null ? qRole : dbSettings.audit_role_id,
+            intro_channel_id: qIntro !== null ? qIntro : dbSettings.intro_channel_id
         };
 
         const vcRes = await dbQuery("SELECT user_id, MAX(leave_time) as last_vc FROM vc_sessions WHERE guild_id = $1 GROUP BY user_id", [guildId]);
