@@ -18,23 +18,23 @@ export default {
 
             if (ngWords.length === 0) return;
 
-            let caughtWord = null;
+            let caughtWords = [];
             for (const ng of ngWords) {
                 if (ng.kind === "regex") {
                     try {
                         const match = ng.word.match(/^\/(.*?)\/([gimsuy]*)$/);
                         const regex = match ? new RegExp(match[1], match[2]) : new RegExp(ng.word);
-                        if (regex.test(message.content)) caughtWord = ng.word;
+                        if (regex.test(message.content)) caughtWords.push(ng.word);
                     } catch (e) {
                         console.error("Invalid Regex in DB:", ng.word);
                     }
                 } else {
-                    if (message.content.includes(ng.word)) caughtWord = ng.word;
+                    if (message.content.includes(ng.word)) caughtWords.push(ng.word);
                 }
-                if (caughtWord) break;
+                // Do NOT break, keep checking other words to count multiple violations
             }
 
-            if (caughtWord) {
+            if (caughtWords.length > 0) {
                 // Delete message
                 await message.delete().catch(() => { });
 
@@ -44,13 +44,17 @@ export default {
                 const threshold = settings.ng_threshold || 3;
                 const timeoutMin = settings.timeout_minutes || 10;
 
-                // Log to DB
-                await dbQuery("INSERT INTO ng_logs (guild_id, user_id, user_name, word) VALUES ($1, $2, $3, $4)",
-                    [message.guild.id, message.author.id, message.author.tag, caughtWord]);
+                // Log EACH word to DB (Multiple counts for multiple words)
+                for (const word of caughtWords) {
+                    await dbQuery("INSERT INTO ng_logs (guild_id, user_id, user_name, word) VALUES ($1, $2, $3, $4)",
+                        [message.guild.id, message.author.id, message.author.tag, word]);
+                }
+
+                const joinedWords = caughtWords.join(", ");
 
                 // DM Warning
                 try {
-                    await message.author.send(`⚠️ **Warning from ${message.guild.name}**\nYour message was removed because it contained a prohibited word: ||${caughtWord}||`);
+                    await message.author.send(`⚠️ **Warning from ${message.guild.name}**\nYour message was removed because it contained prohibited word(s): ||${joinedWords}||`);
                 } catch (e) { }
 
                 // Check violations in last 1 hour
@@ -79,7 +83,15 @@ export default {
                     try {
                         const channel = await message.guild.channels.fetch(settings.log_channel_id);
                         if (channel) {
-                            channel.send(`🚨 **NG Word Detected**\nUser: <@${message.author.id}>\nWord: ||${caughtWord}||\nCount: ${count}/${threshold}\nAction: ${actionTaken}\nChannel: <#${message.channel.id}>`);
+                            const embed = new EmbedBuilder()
+                                .setAuthor({ name: message.member?.displayName || message.author.tag, iconURL: message.author.displayAvatarURL() })
+                                .setColor(0xFF0000)
+                                .setTitle("🚨 NG Word Detected")
+                                .setDescription(`**NGワード**: ||${joinedWords}||\n**本文**: ||${message.content}||`)
+                                .setFooter({ text: `状況: ${actionTaken} (${count}/${threshold})` })
+                                .setTimestamp();
+
+                            channel.send({ embeds: [embed] });
                         }
                     } catch (e) { }
                 }
