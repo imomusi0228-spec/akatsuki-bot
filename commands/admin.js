@@ -13,7 +13,7 @@ export async function execute(interaction) {
     // User requested "Link to open admin screen".
 
     await interaction.reply({
-        content: `Web管理画面はこちらです:\n${url}/login\n(設定済みの場合は ${url}/admin/dashboard)`,
+        content: `Web管理画面はこちらです:\n${url}/login`,
         ephemeral: true
     });
 }

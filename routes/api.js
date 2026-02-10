@@ -121,7 +121,7 @@ export async function handleApiRoute(req, res, pathname, url) {
         } catch (error) {
             console.error("Dashboard Stats API Error:", error.message, error.stack);
             res.writeHead(500, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ ok: false, error: "Database failed", detail: error.message }));
+            res.end(JSON.stringify({ ok: false, error: "Database failed: " + error.message, detail: error.message }));
         }
         return;
     }

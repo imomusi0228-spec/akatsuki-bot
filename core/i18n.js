@@ -43,9 +43,9 @@ export const DICTIONARY = {
         vc_joins: "VC参加頻度",
         leaves: "退出回数",
         timeouts: "タイムアウト実行",
-        ng_detect: "検知回数",
         top_ng_users: "NG連発ランキング",
         recent_joins: "最近の参加者",
+        quick_comparison: "プラン機能比較表",
 
         // Settings
         ng_words: "NGワードの管理",
@@ -125,7 +125,8 @@ export const DICTIONARY = {
         timeouts: "Timeouts",
         ng_detect: "NG Detections",
         top_ng_users: "Top NG Users",
-        recent_joins: "Recent Joins",
+        recent_joins: "最近の参加者",
+        quick_comparison: "プラン機能比較表",
 
         // Settings
         ng_words: "NG Words",

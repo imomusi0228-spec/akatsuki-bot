@@ -498,7 +498,7 @@ export function renderFeaturesHTML(req) {
     </div>
 
     <div class="card" style="margin-top: 40px; padding: 30px;">
-        <h3 style="text-align:center; margin-bottom:20px;">Quick Comparison</h3>
+        <h3 style="text-align:center; margin-bottom:20px;">${t("quick_comparison", lang)}</h3>
         <table class="compare-table">
             <thead>
                 <tr>
