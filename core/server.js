@@ -1,5 +1,5 @@
 import http from "node:http";
-import { ENV } from "../config/env.js";
+import { ENV, BASE_REDIRECT_URI } from "../config/env.js";
 import { client } from "./client.js";
 import { handleAuthRoute } from "../routes/auth.js";
 import { handleApiRoute } from "../routes/api.js";
@@ -72,7 +72,11 @@ export async function startServer() {
     return new Promise((resolve) => {
         server.listen(ENV.PORT, () => {
             console.log(`🌍 Web Server running on port ${ENV.PORT}`);
-            if (ENV.PUBLIC_URL) console.log(`   Public URL: ${ENV.PUBLIC_URL}`);
+            if (ENV.PUBLIC_URL) {
+                console.log(`   Public URL: ${ENV.PUBLIC_URL}`);
+                console.log(`   OAuth Redirect URI: ${BASE_REDIRECT_URI}`);
+                console.log(`   (IMPORTANT: Add this URI to Discord Developer Portal > OAuth2 > Redirects)`);
+            }
             resolve();
         });
     });
