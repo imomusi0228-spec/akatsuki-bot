@@ -18,17 +18,24 @@ export async function loadEvents() {
         return;
     }
 
-    const files = fs.readdirSync(eventsPath).filter((f) => f.endsWith(".js"));
-    console.log(`[DEBUG] Found event files: ${files.join(", ")}`);
-
     for (const file of files) {
         const filePath = path.join(eventsPath, file);
-        const event = await importFile(filePath);
-        if (event.default && event.name) {
+        const module = await importFile(filePath);
+        // The file does "export default { ... }", so we need module.default
+        const event = module.default;
+
+        if (event && event.name) {
+            // function might be named "default", "execute", "run"
+            const handler = event.default || event.execute || event.run;
+            if (typeof handler !== "function") {
+                console.warn(`[WARNING] Skipped ${file} - missing handler function.`);
+                continue;
+            }
+
             if (event.once) {
-                client.once(event.name, (...args) => event.default(...args));
+                client.once(event.name, (...args) => handler(...args));
             } else {
-                client.on(event.name, (...args) => event.default(...args));
+                client.on(event.name, (...args) => handler(...args));
             }
             console.log(`✅ Loaded event: ${event.name}`);
         } else {
