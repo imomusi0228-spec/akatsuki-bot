@@ -283,11 +283,11 @@ function renderLayout({ title, content, user, activeTab, oauth = false, scripts 
 
     return `<!DOCTYPE html>
 <html lang="${lang}">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${title} | 暁月</title><style>${COMMON_CSS}</style></head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${title} | ☾</title><style>${COMMON_CSS}</style></head>
 <body>
     <div class="nav-bar" style="border:none; justify-content: space-between; align-items: center; margin-bottom: 0; padding:16px 0;">
         <div style="font-size: 24px; font-weight: bold; display:flex; align-items:center;">
-            <span style="color:#f91880; margin-right:10px;">暁月</span> ${oauth ? t("admin_title", lang) : t("title", lang)} ${langBtn}
+            <span style="color:#f91880; margin-right:10px;">☾</span> ${oauth ? t("admin_title", lang) : t("title", lang)} ${langBtn}
         </div>
         <div>
             ${oauth && user ? `
@@ -452,7 +452,7 @@ export function renderLandingHTML(req) {
     const lang = getLang(req);
     const content = `
     <div style="text-align:center; padding: 100px 20px;">
-        <h1 style="font-size: 56px; margin-bottom: 20px;">暁 ${t("title", lang)}</h1>
+        <h1 style="font-size: 56px; margin-bottom: 20px;">☾ ${t("title", lang)}</h1>
         <p style="font-size: 20px; color: #8899a6; margin-bottom: 50px; max-width: 600px; margin-left: auto; margin-right: auto;">${t("subtitle", lang)}</p>
         <div style="display:flex; justify-content:center; gap:20px; flex-wrap: wrap;">
            <a href="/login" class="btn btn-primary" style="padding:16px 48px; font-size:18px;">${t("login", lang)}</a>
