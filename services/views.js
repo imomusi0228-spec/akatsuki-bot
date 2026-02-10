@@ -115,18 +115,8 @@ const COMMON_SCRIPT = `
         
         if(ng.ok) {
             const list = $("ngList");
-        if(ng.ok) {
-            const list = $("ngList");
             const words = ng.words || [];
             if(words.length === 0) {
-                // Since this is inside script tag, we can't easily access 'lang' variable from initSettings scope without passing it or using a global or just returning general text
-                // Actually initSettings has 'lang'.
-                // But this string is constructed inside innerHTML.
-                // We'll use a simple approach: The 'initSettings' function is defined inside 'renderAdminSettingsHTML' where 'lang' is available?
-                // No, 'initSettings' is in COMMON_SCRIPT which is a string. 'lang' is NOT available directly as a variable.
-                // We need to pass lang to initSettings or get it from cookie in JS.
-                // 'getLang' logic is on server side. On client side we have 'document.documentElement.lang'.
-                // Let's use that.
                 const clientLang = document.documentElement.lang || 'ja';
                 const noneText = clientLang === 'en' ? '(None)' : '(なし)';
                 list.innerHTML = '<div class="muted" style="padding:10px; text-align:center;">' + noneText + '</div>';
