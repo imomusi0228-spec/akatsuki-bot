@@ -145,14 +145,7 @@ const COMMON_SCRIPT = /* v2.4 (Optimized) */ `
             $("ngLogCh").innerHTML = '<option value="">(None / Same as VC Log)</option>';
             if(ch.ok) ch.channels.forEach(c => { const o=document.createElement("option"); o.value=c.id; o.textContent="#"+c.name; $("ngLogCh").appendChild(o); });
         }
-        if($("auditRole")) {
-            $("auditRole").innerHTML = '<option value="">(None / No Audit)</option>';
-            if(rl.ok) rl.roles.forEach(r => { const o=document.createElement("option"); o.value=r.id; o.textContent=r.name; $("auditRole").appendChild(o); });
-        }
-        if($("introCh")) {
-            $("introCh").innerHTML = '<option value="">(None / No Intro Check)</option>';
-            if(ch.ok) ch.channels.forEach(c => { const o=document.createElement("option"); o.value=c.id; o.textContent="#"+c.name; $("introCh").appendChild(o); });
-        }
+
      };
 
      const reload = async () => {
@@ -181,8 +174,7 @@ const COMMON_SCRIPT = /* v2.4 (Optimized) */ `
         if(st.ok && st.settings) {
             if(selLog) selLog.value = st.settings.log_channel_id || "";
             if($("ngLogCh")) $("ngLogCh").value = st.settings.ng_log_channel_id || "";
-            if($("auditRole")) $("auditRole").value = st.settings.audit_role_id || "";
-            if($("introCh")) $("introCh").value = st.settings.intro_channel_id || "";
+
             if($("threshold")) $("threshold").value = st.settings.ng_threshold ?? 3;
             if($("timeout")) $("timeout").value = st.settings.timeout_minutes ?? 10;
         }
@@ -197,8 +189,8 @@ const COMMON_SCRIPT = /* v2.4 (Optimized) */ `
             guild: selGuild.value,
             log_channel_id: selLog.value,
             ng_log_channel_id: $("ngLogCh")?.value || "",
-            audit_role_id: $("auditRole")?.value || "",
-            intro_channel_id: $("introCh")?.value || "",
+            audit_role_id: "",
+            intro_channel_id: "",
             ng_threshold: parseInt($("threshold").value),
             timeout_minutes: parseInt($("timeout").value)
         };
@@ -453,18 +445,7 @@ export function renderAdminSettingsHTML({ user, req }) {
            <select id="ngLogCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
         </div>
 
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px; border-top: 1px solid var(--border-color); padding-top:20px;">
-             <div>
-                <label style="display:block; margin-bottom:8px; font-weight:bold;">${t("intro_channel", lang)}</label>
-                <p class="muted" style="margin-bottom:8px; font-size:0.85em;">${t("intro_channel_desc", lang)}</p>
-                <select id="introCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
-             </div>
-             <div>
-                <label style="display:block; margin-bottom:8px; font-weight:bold;">${t("audit_role", lang)}</label>
-                <p class="muted" style="margin-bottom:8px; font-size:0.85em;">${t("audit_role_desc", lang)}</p>
-                <select id="auditRole" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
-             </div>
-        </div>
+
 
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-top:20px; border-top: 1px solid var(--border-color); padding-top:20px;">
             <div>
