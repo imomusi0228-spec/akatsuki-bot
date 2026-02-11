@@ -539,8 +539,8 @@ export function renderFeaturesHTML(req) {
         .feature-item-card { background: #15202b; border: 1px solid rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; text-align: left; transition: transform 0.2s; }
         .feature-item-card:hover { transform: translateY(-3px); border-color: var(--primary-color); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        .recommend-container { display:flex; justify-content:center; gap:15px; flex-wrap:wrap; max-width:1000px; margin:0 auto; }
-        .recommend-card { background:rgba(25, 39, 52, 0.5); padding:20px; border-radius:12px; border:1px solid var(--border-color); width:220px; font-weight:bold; color:var(--text-primary); text-align:left; display:flex; align-items:center; gap:10px; }
+        .recommend-container { display:grid; grid-template-columns: repeat(2, 1fr); gap:15px; max-width:600px; margin:0 auto; }
+        .recommend-card { background:rgba(25, 39, 52, 0.5); padding:20px; border-radius:12px; border:1px solid var(--border-color); font-weight:bold; color:var(--text-primary); text-align:left; display:flex; align-items:center; gap:10px; }
         .faq-container { max-width:800px; margin:0 auto; text-align:left; }
         .faq-item { margin-bottom:25px; border-bottom:1px solid var(--border-color); padding-bottom:20px; }
         .faq-q { font-weight:bold; font-size:18px; margin-bottom:10px; color:var(--text-primary); display:flex; gap:10px; }
