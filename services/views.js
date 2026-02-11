@@ -636,51 +636,62 @@ export function renderFeaturesHTML(req) {
 
     <div class="card" style="margin-top: 40px; padding: 30px;">
         <h3 style="text-align:center; margin-bottom:20px;">${t("quick_comparison", lang)}</h3>
+        <style>
+            .compare-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+            .compare-table thead th { background: #192734; padding: 16px 12px; text-align: center; font-weight: bold; border: 1px solid #38444d; }
+            .compare-table thead th:first-child { text-align: left; }
+            .compare-table tbody td { padding: 14px 12px; border: 1px solid #38444d; text-align: center; }
+            .compare-table tbody td:first-child { text-align: left; font-weight: bold; background: rgba(255,255,255,0.02); }
+            .compare-table tbody tr:hover { background: rgba(255,255,255,0.03); }
+            .feature-check { color: #00ba7c; font-size: 20px; font-weight: bold; }
+            .feature-cross { color: #f91880; font-size: 20px; font-weight: bold; }
+            .feature-number { color: var(--accent-color); font-weight: bold; font-size: 16px; }
+        </style>
         <table class="compare-table">
             <thead>
                 <tr>
                     <th style="text-align:left;"></th>
                     <th>${t("plan_free", lang)}</th>
-                    <th>${t("plan_pro", lang)}</th>
-                    <th>${t("plan_pro_plus", lang)}</th>
+                    <th style="background: rgba(29, 161, 242, 0.1); border-color: var(--accent-color);">${t("plan_pro", lang)}</th>
+                    <th style="background: rgba(255, 215, 0, 0.1); border-color: #ffd700;">${t("plan_pro_plus", lang)}</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td style="text-align:left; font-weight:bold;">${t("feature_max_guilds", lang)}</td>
-                    <td>1</td>
-                    <td>1</td>
-                    <td>3</td>
+                    <td><span class="feature-number">1</span></td>
+                    <td><span class="feature-number">1</span></td>
+                    <td><span class="feature-number">3</span></td>
                 </tr>
                 <tr>
                     <td style="text-align:left; font-weight:bold;">${t("feature_ng_limit", lang)}</td>
-                    <td>${t("limit_10", lang)}</td>
-                    <td>${t("limit_50", lang)}</td>
-                    <td>${t("limit_100", lang)}</td>
+                    <td><span class="feature-number">${t("limit_10", lang)}</span></td>
+                    <td><span class="feature-number">${t("limit_50", lang)}</span></td>
+                    <td><span class="feature-number">${t("limit_100", lang)}</span></td>
                 </tr>
                 <tr>
                     <td style="text-align:left; font-weight:bold;">${t("feature_logs", lang)}</td>
-                    <td>${t("unavailable", lang)}</td>
-                    <td>${t("available", lang)}</td>
-                    <td>${t("available", lang)}</td>
+                    <td><span class="feature-cross">×</span></td>
+                    <td><span class="feature-check">✓</span></td>
+                    <td><span class="feature-check">✓</span></td>
                 </tr>
                 <tr>
                     <td style="text-align:left; font-weight:bold;">${t("feature_activity", lang)}</td>
-                    <td>${t("unavailable", lang)}</td>
-                    <td>${t("unavailable", lang)}</td>
-                    <td>${t("available", lang)}</td>
+                    <td><span class="feature-cross">×</span></td>
+                    <td><span class="feature-cross">×</span></td>
+                    <td><span class="feature-check">✓</span></td>
                 </tr>
                 <tr>
                     <td style="text-align:left; font-weight:bold;">${t("feature_csv", lang)}</td>
-                    <td>${t("unavailable", lang)}</td>
-                    <td>${t("unavailable", lang)}</td>
-                    <td>${t("available", lang)}</td>
+                    <td><span class="feature-cross">×</span></td>
+                    <td><span class="feature-cross">×</span></td>
+                    <td><span class="feature-check">✓</span></td>
                 </tr>
                 <tr>
                     <td style="text-align:left; font-weight:bold;">${t("feature_lang", lang)}</td>
-                    <td>${t("available", lang)}</td>
-                    <td>${t("available", lang)}</td>
-                    <td>${t("available", lang)}</td>
+                    <td><span class="feature-check">✓</span></td>
+                    <td><span class="feature-check">✓</span></td>
+                    <td><span class="feature-check">✓</span></td>
                 </tr>
             </tbody>
         </table>
