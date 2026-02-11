@@ -504,7 +504,8 @@ export function renderLandingHTML(req) {
     const content = `
     <div style="text-align:center; padding: 100px 20px;">
         <h1 style="font-size: 56px; margin-bottom: 20px;">☾ ${t("title", lang)}</h1>
-        <p style="font-size: 20px; color: #8899a6; margin-bottom: 50px; max-width: 600px; margin-left: auto; margin-right: auto;">${t("subtitle", lang)}</p>
+        <p style="font-size: 20px; color: #fff; font-weight:bold; margin-bottom: 20px; max-width: 800px; margin-left: auto; margin-right: auto;">${t("subtitle", lang)}</p>
+        <p style="font-size: 16px; color: #8899a6; margin-bottom: 50px; max-width: 600px; margin-left: auto; margin-right: auto; line-height: 1.8;">${t("app_desc", lang)}</p>
         <div style="display:flex; justify-content:center; gap:20px; flex-wrap: wrap;">
            <a href="/login" class="btn btn-primary" style="padding:16px 48px; font-size:18px;">${t("login", lang)}</a>
            <a href="/features" class="btn" style="padding:16px 48px; font-size:18px;">${t("view_features", lang)}</a>
@@ -533,6 +534,14 @@ export function renderFeaturesHTML(req) {
         .feature-item-card { background: #15202b; border: 1px solid rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; text-align: left; transition: transform 0.2s; }
         .feature-item-card:hover { transform: translateY(-3px); border-color: var(--primary-color); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .recommend-container { display:flex; justify-content:center; gap:15px; flex-wrap:wrap; max-width:1000px; margin:0 auto; }
+        .recommend-card { background:rgba(25, 39, 52, 0.5); padding:20px; border-radius:12px; border:1px solid var(--border-color); width:220px; font-weight:bold; color:var(--text-primary); text-align:left; display:flex; align-items:center; gap:10px; }
+        .faq-container { max-width:800px; margin:0 auto; text-align:left; }
+        .faq-item { margin-bottom:25px; border-bottom:1px solid var(--border-color); padding-bottom:20px; }
+        .faq-q { font-weight:bold; font-size:18px; margin-bottom:10px; color:var(--text-primary); display:flex; gap:10px; }
+        .faq-a { color:#8899a6; line-height:1.7; padding-left:30px; }
+        .notice-container { margin-top:60px; padding:30px; background:rgba(0,0,0,0.3); border-radius:12px; border:1px solid var(--border-color); text-align:left; font-size:14px; color:#8899a6; max-width:900px; margin-left:auto; margin-right:auto; }
+        .notice-header { color:var(--text-primary); font-weight:bold; margin-bottom:8px; border-bottom:1px solid var(--border-color); padding-bottom:5px; display:inline-block; }
     </style>
 
     <div style="text-align:center; padding: 40px 20px 20px;">
@@ -672,8 +681,46 @@ export function renderFeaturesHTML(req) {
         </table>
     </div>
 
+    <div style="margin-top: 80px; text-align: center;">
+        <h2 style="font-size: 32px; margin-bottom: 30px;">${t("sec_recommend", lang)}</h2>
+        <div class="recommend-container">
+            <div class="recommend-card"><span style="color:var(--success-color);">✔</span> ${t("text_recommend_1", lang)}</div>
+            <div class="recommend-card"><span style="color:var(--success-color);">✔</span> ${t("text_recommend_2", lang)}</div>
+            <div class="recommend-card"><span style="color:var(--success-color);">✔</span> ${t("text_recommend_3", lang)}</div>
+            <div class="recommend-card"><span style="color:var(--success-color);">✔</span> ${t("text_recommend_4", lang)}</div>
+        </div>
+    </div>
+
+    <div style="margin-top: 80px;">
+        <h2 style="font-size: 32px; margin-bottom: 40px; text-align: center;">${t("sec_faq", lang)}</h2>
+        <div class="faq-container">
+            <div class="faq-item"><div class="faq-q"><span style="color:var(--accent-color);">Q.</span> ${t("faq_q1", lang)}</div><div class="faq-a">${t("faq_a1", lang)}</div></div>
+            <div class="faq-item"><div class="faq-q"><span style="color:var(--accent-color);">Q.</span> ${t("faq_q2", lang)}</div><div class="faq-a">${t("faq_a2", lang)}</div></div>
+            <div class="faq-item"><div class="faq-q"><span style="color:var(--accent-color);">Q.</span> ${t("faq_q3", lang)}</div><div class="faq-a">${t("faq_a3", lang)}</div></div>
+            <div class="faq-item"><div class="faq-q"><span style="color:var(--accent-color);">Q.</span> ${t("faq_q4", lang)}</div><div class="faq-a">${t("faq_a4", lang)}</div></div>
+            <div class="faq-item"><div class="faq-q"><span style="color:var(--accent-color);">Q.</span> ${t("faq_q5", lang)}</div><div class="faq-a">${t("faq_a5", lang)}</div></div>
+            <div class="faq-item"><div class="faq-q"><span style="color:var(--accent-color);">Q.</span> ${t("faq_q6", lang)}</div><div class="faq-a">${t("faq_a6", lang)}</div></div>
+            <div class="faq-item"><div class="faq-q"><span style="color:var(--accent-color);">Q.</span> ${t("faq_q7", lang)}</div><div class="faq-a">${t("faq_a7", lang)}</div></div>
+        </div>
+    </div>
+
     <div style="text-align:center; padding: 60px 0;">
         <a href="/login" class="btn btn-primary" style="padding:18px 60px; font-size:20px; border-radius:50px;">${t("get_started", lang)}</a>
+    </div>
+
+    <div class="notice-container">
+        <div style="margin-bottom:25px;">
+            <div class="notice-header">${t("sec_sales", lang)}</div>
+            <p>${t("text_sales", lang)}</p>
+        </div>
+        <div style="margin-bottom:25px;">
+            <div class="notice-header">${t("sec_support", lang)}</div>
+            <p>${t("text_support", lang)}</p>
+        </div>
+        <div>
+            <div class="notice-header">${t("sec_caution", lang)}</div>
+            <p>${t("text_caution", lang)}</p>
+        </div>
     </div>
 
     <script>

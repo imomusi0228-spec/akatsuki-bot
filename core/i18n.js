@@ -3,7 +3,8 @@ export const DICTIONARY = {
         // General
         title: "Akatsuki Bot",
         admin_title: "Akatsuki Bot 管理画面",
-        subtitle: "Discordサーバー管理の新しいスタンダード",
+        subtitle: "Discordサーバーの運営を、「見張る」から「判断する」へ。",
+        app_desc: "Akatsuki Bot は VC活動・NGワード・管理ログを自動で記録し、サーバー管理者の負担を減らすための管理支援Botです。",
         login: "Discordでログイン",
         logout: "ログアウト",
         dashboard: "ダッシュボード",
@@ -11,15 +12,15 @@ export const DICTIONARY = {
         activity: "アクティビティ",
         guide: "利用ガイド",
         language: "Language",
-        view_features: "機能を見る",
+        view_features: "機能一覧・FAQ",
         features_title: "機能とプラン",
         features_subtitle: "あなたのサーバーに最適なプランを選択してください",
         get_started: "今すぐ始める",
 
         // Plans
-        plan_free: "Free",
-        plan_pro: "Pro",
-        plan_pro_plus: "Pro+",
+        plan_free: "Free Tier",
+        plan_pro: "Pro Tier",
+        plan_pro_plus: "Pro+ Tier",
         feature_max_guilds: "最大利用サーバー数",
         feature_ng_limit: "NGワード登録数",
         feature_logs: "削除ログ保存",
@@ -31,14 +32,46 @@ export const DICTIONARY = {
         limit_100: "50個",
         limit_5: "5個",
         limit_20: "20個",
-        available: "⚪︎",
+        available: "常時利用可",
         unavailable: "×",
-        plan_free_desc: "ボットの基本機能を無料で体験できます。小規模なサーバーや、導入テストを行う管理者に最適です。",
-        plan_pro_desc: "大規模なサーバー運営に欠かせないログ保存機能や、より強力なNGワードフィルタリングを解放します。効率的な運営を求める管理者へ。",
-        plan_pro_plus_desc: "Akatsuki Botの全機能を解放する最上位プランです。活動監査、CSV出力、最大3サーバーへの適用が可能。究極の統治を実現する、すべてのサーバー管理者に捧げます。",
+        plan_free_desc: "VC入退室ログの自動記録 / NGワード検知（単語・正規表現） / VC参加時間ランキング表示",
+        plan_pro_desc: "Web管理ダッシュボード / アクティビティ管理（幽霊部員の検知） / 「○週間VC未参加」等の抽出・スマート解除",
+        plan_pro_plus_desc: "過去ログスキャン / Bot導入前・DB障害時のログ復旧対応 / サーバー移転・再構築時のデータ保全",
         features_detail_security: "NGワードの自動削除と警告しきい値による自動タイムアウトで、サーバーの平和を鉄壁に守ります。",
         features_detail_audit: "ロールの所持、自己紹介の有無、VCの参加状況を統合し、幽霊部員を瞬時に特定します。",
         features_detail_log: "サーバー内で起きた重要なイベントを専用チャンネルに記録。何かあった時の追跡も容易です。",
+
+        // Legal / Sales
+        sec_sales: "※販売内容について",
+        text_sales: "本商品は Botの利用権の販売 です。Botそのものをダウンロード・所有する商品ではありません。Pro / Pro+ 機能は 期間制 で提供されます。利用期限は Bot により自動管理されます。期限終了後は Free Tier に戻ります。",
+        sec_support: "※反映・サポートについて",
+        text_support: "購入確認後、Bot管理者が手動で利用権を付与します。反映まで 最大24時間程度 かかる場合があります。個人開発のため、即時対応を保証するものではありません。",
+        sec_caution: "※注意事項",
+        text_caution: "本サービスは個人開発によるものです。動作保証・損害補償は行っていません。Discord公式とは無関係です。再配布・転載は禁止。",
+
+        // Recommendations
+        sec_recommend: "こんな人におすすめ",
+        text_recommend_1: "中小規模Discordサーバー管理者",
+        text_recommend_2: "VCや雑談が活発なコミュニティ",
+        text_recommend_3: "管理ログを「証拠」として残したい方",
+        text_recommend_4: "大規模Botが重すぎると感じている方",
+
+        // FAQ
+        sec_faq: "FAQ",
+        faq_q1: "Q. この商品は何ですか？",
+        faq_a1: "A. Discordサーバー管理を支援する Botの利用権 です。ファイルをダウンロードする商品ではありません。",
+        faq_q2: "Q. 無料Botと何が違いますか？",
+        faq_a2: "A. 管理ログの可視化、活動分析、Web管理画面など、管理者向けの判断支援機能が利用できます。",
+        faq_q3: "Q. 購入後、すぐに使えますか？",
+        faq_a3: "A. 購入確認後、Bot管理者が手動で利用権を付与します。反映まで 最大24時間程度 かかる場合があります。",
+        faq_q4: "Q. Pro / Pro+ は永続利用できますか？",
+        faq_a4: "A. いいえ。Pro / Pro+ 機能は 期間制 です。期限終了後は自動的に Free Tier に戻ります。",
+        faq_q5: "Q. 返金はできますか？",
+        faq_a5: "A. 商品の性質上、返金は行っておりません。あらかじめ内容をご確認のうえご購入ください。",
+        faq_q6: "Q. 個人開発とありますが、問題ありませんか？",
+        faq_a6: "A. 本サービスは個人開発ですが、継続運用を前提として設計・管理しています。",
+        faq_q7: "Q. Discord公式のサービスですか？",
+        faq_a7: "A. いいえ。Discord, Inc. とは一切関係ありません。",
 
         // Dashboard
         welcome: "ようこそ",
@@ -237,6 +270,38 @@ export const DICTIONARY = {
         feat_desc_ultra: "Complete freedom from limitations.",
         label_guild: "Guild",
         msg_scanning: "Scanning...",
+
+        // Legal / Sales (JP Service)
+        sec_sales: "※Sales Information",
+        text_sales: "This product sells the Right to Use the Bot. Only available in Japanese context. (本商品は Botの利用権の販売 です...)",
+        sec_support: "※Support",
+        text_support: "Manual activation required. Max 24h delay. (購入確認後、Bot管理者が手動で利用権を付与します...)",
+        sec_caution: "※Caution",
+        text_caution: "Personal development. No warranty. Not affiliated with Discord. (本サービスは個人開発によるものです...)",
+
+        // Recommendations
+        sec_recommend: "Recommended For",
+        text_recommend_1: "Small-Mid Server Admins",
+        text_recommend_2: "Active VC Communities",
+        text_recommend_3: "Those needing Evidence Logs",
+        text_recommend_4: "Sick of heavy bots",
+
+        // FAQ
+        sec_faq: "FAQ",
+        faq_q1: "Q. What is this product?",
+        faq_a1: "A. It helps Discord Server Management. Not a file download.",
+        faq_q2: "Q. Difference from free bots?",
+        faq_a2: "A. Visualized logs, Activity Analysis, Web Dashboard, etc.",
+        faq_q3: "Q. Can I use it immediately?",
+        faq_a3: "A. Manual activation by admin. Max 24h wait.",
+        faq_q4: "Q. Is Pro/Pro+ permanent?",
+        faq_a4: "A. No. It is subscription based (term usage).",
+        faq_q5: "Q. Refund?",
+        faq_a5: "A. No refunds.",
+        faq_q6: "Q. Personal Development?",
+        faq_a6: "A. Yes, but designed for continuous operation.",
+        faq_q7: "Q. Official Discord Service?",
+        faq_a7: "A. No. Not affiliated with Discord Inc.",
     }
 };
 
