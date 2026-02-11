@@ -58,19 +58,27 @@ export async function handleApiRoute(req, res, pathname, url) {
         return;
     }
 
-    // Helper: Verify guild ownership
+    // Helper: Verify guild ownership and permissions
     const verifyGuild = async (guildId) => {
-        if (!guildId) throw new Error("Missing guild_id");
-        // Optimization: We could cache user guilds in session, but for now fetch or assume check passed in UI?
-        // Proper way: Re-check or trust session if we stored it?
-        // Let's re-fetch to be safe or check client cache if user is member?
-        // Checking client cache (if bot sees user in guild) is one way, but user might be admin without being in cache if bot just joined.
-        // For simplicity/security trade-off in this simple bot:
-        // We will assume if the client sees the guild, and we verified user has permission via API (cached in session logic ideally, but we didn't cache it).
-        // Let's just trust the request for now if it matches a guild the bot is in, 
-        // *BUT* in a real app we MUST valid permission.
-        // I'll skip heavy re-validation for speed here, assuming /api/guilds is the gatekeeper UI uses.
-        return true;
+        if (!guildId) return false;
+        
+        try {
+            // Check if bot is even in the guild
+            if (!client.guilds.cache.has(guildId)) return false;
+
+            // Fetch user's guilds from Discord to verify permissions
+            // Note: In a production app, caching this in the session would be better for performance.
+            const userGuilds = await discordApi(session.accessToken, "/users/@me/guilds");
+            if (!Array.isArray(userGuilds)) return false;
+
+            const targetGuild = userGuilds.find(g => g.id === guildId);
+            if (!targetGuild) return false;
+
+            return hasManageGuild(targetGuild.permissions);
+        } catch (e) {
+            console.error(`[AUTH ERROR] verifyGuild failed for ${guildId}:`, e.message);
+            return false;
+        }
     };
 
     const guildId = url.searchParams.get("guild");
@@ -78,6 +86,7 @@ export async function handleApiRoute(req, res, pathname, url) {
     // GET /api/stats
     if (pathname === "/api/stats") {
         if (!guildId) return resJson({ ok: false, error: "Missing guild ID" }, 400);
+        if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
 
         try {
             // Fetch necessary data
@@ -146,6 +155,7 @@ export async function handleApiRoute(req, res, pathname, url) {
     // GET /api/ngwords
     if (pathname === "/api/ngwords") {
         if (!guildId) return res.end(JSON.stringify({ ok: false }));
+        if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
         const resDb = await dbQuery("SELECT * FROM ng_words WHERE guild_id = $1", [guildId]);
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ ok: true, words: resDb.rows }));
@@ -156,6 +166,7 @@ export async function handleApiRoute(req, res, pathname, url) {
     if (pathname === "/api/ngwords/add" && method === "POST") {
         const body = await getBody();
         if (!body.guild || !body.word) return res.end(JSON.stringify({ ok: false }));
+        if (!await verifyGuild(body.guild)) return resJson({ ok: false, error: "Forbidden" }, 403);
 
         const rawWords = body.word.split(/\s+/).filter(w => w.trim().length > 0);
         if (rawWords.length === 0) return res.end(JSON.stringify({ ok: false }));
@@ -195,6 +206,7 @@ export async function handleApiRoute(req, res, pathname, url) {
     if (pathname === "/api/ngwords/remove" && method === "POST") {
         const body = await getBody();
         if (!body.guild || !body.word) return res.end(JSON.stringify({ ok: false }));
+        if (!await verifyGuild(body.guild)) return resJson({ ok: false, error: "Forbidden" }, 403);
 
         await dbQuery("DELETE FROM ng_words WHERE guild_id = $1 AND word = $2", [body.guild, body.word]);
         // Also delete logs for this word (User request: History should not remain)
@@ -209,6 +221,7 @@ export async function handleApiRoute(req, res, pathname, url) {
     if (pathname === "/api/ngwords/clear" && method === "POST") {
         const body = await getBody();
         if (!body.guild) return res.end(JSON.stringify({ ok: false }));
+        if (!await verifyGuild(body.guild)) return resJson({ ok: false, error: "Forbidden" }, 403);
 
         await dbQuery("DELETE FROM ng_words WHERE guild_id = $1", [body.guild]);
         await dbQuery("DELETE FROM ng_logs WHERE guild_id = $1", [body.guild]);
@@ -221,6 +234,7 @@ export async function handleApiRoute(req, res, pathname, url) {
     // GET /api/settings
     if (pathname === "/api/settings") {
         if (!guildId) return res.end(JSON.stringify({ ok: false }));
+        if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
         const resDb = await dbQuery("SELECT * FROM settings WHERE guild_id = $1", [guildId]);
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ ok: true, settings: resDb.rows[0] || {} }));
@@ -230,6 +244,7 @@ export async function handleApiRoute(req, res, pathname, url) {
     // GET /api/channels
     if (pathname === "/api/channels") {
         if (!guildId) return res.end(JSON.stringify({ ok: false }));
+        if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
         const guild = client.guilds.cache.get(guildId);
         if (!guild) return res.end(JSON.stringify({ ok: false, error: "Guild not found" }));
 
@@ -245,6 +260,7 @@ export async function handleApiRoute(req, res, pathname, url) {
     // GET /api/roles
     if (pathname === "/api/roles") {
         if (!guildId) return res.end(JSON.stringify({ ok: false }));
+        if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
         const guild = client.guilds.cache.get(guildId);
         if (!guild) return res.end(JSON.stringify({ ok: false, error: "Guild not found" }));
 
@@ -261,6 +277,7 @@ export async function handleApiRoute(req, res, pathname, url) {
     if (pathname === "/api/settings/update" && method === "POST") {
         const body = await getBody();
         if (!body.guild) return res.end(JSON.stringify({ ok: false }));
+        if (!await verifyGuild(body.guild)) return resJson({ ok: false, error: "Forbidden" }, 403);
 
         // Upsert
         const check = await dbQuery("SELECT guild_id FROM settings WHERE guild_id = $1", [body.guild]);
@@ -289,6 +306,7 @@ export async function handleApiRoute(req, res, pathname, url) {
     // GET /api/activity
     if (pathname === "/api/activity") {
         if (!guildId) return res.end(JSON.stringify({ ok: false }));
+        if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
 
         // Check Tier
         const tier = await getTier(guildId);
@@ -395,6 +413,7 @@ export async function handleApiRoute(req, res, pathname, url) {
     // GET /api/activity/export (CSV)
     if (pathname === "/api/activity/export") {
         if (!guildId) return res.end(JSON.stringify({ ok: false }));
+        if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
         const tier = await getTier(guildId);
         const features = getFeatures(tier);
         if (!features.activity) {
