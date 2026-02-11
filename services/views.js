@@ -367,12 +367,6 @@ function renderLayout({ title, content, user, activeTab, oauth = false, scripts 
             return text;
         };
         ${COMMON_SCRIPT}
-        let _guildsLoaded = false;
-        ${loadGuilds.toString()}
-        ${saveGuildSelection.toString()}
-        ${initDashboard.toString()}
-        ${initSettings.toString()}
-        ${initActivity.toString()}
     </script>
     ${scripts}
 </body></html>`;
