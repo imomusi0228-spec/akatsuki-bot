@@ -479,15 +479,15 @@ export function renderAdminActivityHTML({ user, req }) {
                 <label style="display:block; font-size:11px; margin-bottom:2px; font-weight:bold; white-space:nowrap;">${t("label_guild", lang)}</label>
                 <select id="guild" style="width:100%; padding:6px; font-size:13px;"></select>
             </div>
-            <div style="flex:1.2; min-width:120px;">
+            <div style="flex:0.8; min-width:100px;">
                 <label style="display:block; font-size:11px; margin-bottom:2px; font-weight:bold; white-space:nowrap;">${t("audit_role", lang)}</label>
                 <select id="auditRole" style="width:100%; padding:6px; font-size:13px; background:#192734; border:1px solid #555; color:white;"></select>
             </div>
-            <div style="flex:1.2; min-width:120px;">
+            <div style="flex:0.8; min-width:100px;">
                 <label style="display:block; font-size:11px; margin-bottom:2px; font-weight:bold; white-space:nowrap;">${t("intro_channel", lang)}</label>
                 <select id="introCh" style="width:100%; padding:6px; font-size:13px; background:#192734; border:1px solid #555; color:white;"></select>
             </div>
-            <div style="flex:0.5; min-width:80px;">
+            <div style="flex:0.3; min-width:60px;">
                 <label style="display:block; font-size:11px; margin-bottom:2px; font-weight:bold; white-space:nowrap;">VC未利用(週)</label>
                 <input id="vcWeeks" type="number" min="0" max="52" value="0" style="width:100%; padding:6px; font-size:13px; background:#192734; border:1px solid #555; color:white; outline:none;">
             </div>
