@@ -92,6 +92,9 @@ export async function handleApiRoute(req, res, pathname, url) {
             const subData = { tier, valid_until: subRes.rows[0]?.valid_until || null };
             const features = getFeatures(subData.tier);
 
+            // Get guild for member fetching
+            const guild = client.guilds.cache.get(guildId);
+
             // Enrich with Discord Data
             const topUsers = await Promise.all(ngTopRes.rows.map(async (row) => {
                 let user = client.users.cache.get(row.user_id);
@@ -105,9 +108,11 @@ export async function handleApiRoute(req, res, pathname, url) {
                 }
                 // Fetch member to check timeout status
                 let member = null;
-                try {
-                    member = await guild.members.fetch(row.user_id).catch(() => null);
-                } catch (e) { }
+                if (guild) {
+                    try {
+                        member = await guild.members.fetch(row.user_id).catch(() => null);
+                    } catch (e) { }
+                }
 
                 return {
                     user_id: row.user_id,
