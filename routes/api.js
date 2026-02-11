@@ -387,6 +387,7 @@ export async function handleApiRoute(req, res, pathname, url) {
         const vcRes = await dbQuery("SELECT user_id, MAX(COALESCE(leave_time, join_time)) as last_vc FROM vc_sessions WHERE guild_id = $1 GROUP BY user_id", [guildId]);
         vcRes.rows.forEach(r => { vcActivityMap[r.user_id] = r.last_vc; });
 
+        const introSet = new Set();
         // 3. Scan Intro Channel (Last 100 messages) to find who introduced
         const introCacheKey = `intro_${settings.intro_channel_id}`;
         const cachedIntro = introCache.get(introCacheKey);
