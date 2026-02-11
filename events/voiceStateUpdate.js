@@ -26,7 +26,7 @@ export default {
                     .setDescription(`📥 入室: **#${newState.channel.name}**`)
                     .setTimestamp();
 
-                await sendLog(guild, 'vc', embed);
+                await sendLog(guild, 'vc_in', embed);
             }
 
             // Leave (or Move)
@@ -60,7 +60,7 @@ export default {
                             .setDescription(`📤 退室: **#${oldState.channel.name}**\n⌛ 滞在時間: **${durationStr}**`)
                             .setTimestamp();
 
-                        await sendLog(guild, 'vc', embed);
+                        await sendLog(guild, 'vc_out', embed);
                     }
                 }
             }
@@ -78,7 +78,7 @@ export default {
                     .setDescription(`📥 移動入室: **#${newState.channel.name}**`)
                     .setTimestamp();
 
-                await sendLog(guild, 'vc', embed);
+                await sendLog(guild, 'vc_in', embed);
             }
 
         } catch (e) {

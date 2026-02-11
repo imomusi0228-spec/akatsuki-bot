@@ -14,6 +14,7 @@ function hasManageGuild(permissions, owner = false) {
 }
 
 const memberCache = new Map();
+const introCache = new Map();
 
 export async function handleApiRoute(req, res, pathname, url) {
     const session = await getSession(req);
@@ -387,8 +388,11 @@ export async function handleApiRoute(req, res, pathname, url) {
         vcRes.rows.forEach(r => { vcActivityMap[r.user_id] = r.last_vc; });
 
         // 3. Scan Intro Channel (Last 100 messages) to find who introduced
-        const introSet = new Set();
-        if (settings.intro_channel_id) {
+        const introCacheKey = `intro_${settings.intro_channel_id}`;
+        const cachedIntro = introCache.get(introCacheKey);
+        if (cachedIntro && Date.now() - cachedIntro.ts < 30 * 60 * 1000) { // 30 min cache
+            cachedIntro.data.forEach(id => introSet.add(id));
+        } else if (settings.intro_channel_id) {
             try {
                 const channel = client.channels.cache.get(settings.intro_channel_id) || await guild.channels.fetch(settings.intro_channel_id).catch(() => null);
                 if (channel && channel.isTextBased()) {
@@ -403,6 +407,7 @@ export async function handleApiRoute(req, res, pathname, url) {
                         fetchCount += msgs.size;
                         if (msgs.size < 100) break;
                     }
+                    introCache.set(introCacheKey, { ts: Date.now(), data: Array.from(introSet) });
                 }
             } catch (e) { console.error("Intro Scan Error:", e); }
         }

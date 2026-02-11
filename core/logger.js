@@ -20,20 +20,24 @@ export async function sendLog(guild, type, embed) {
         const channel = await guild.channels.fetch(channelId).catch(() => null);
         if (!channel || !channel.isTextBased()) return;
 
-        if (type === 'vc') {
+        if (type.startsWith('vc')) {
             // VCログはスレッド化
+            const isOut = type === 'vc_out';
+            const prefix = isOut ? "退室" : "入室";
             const today = new Date().toISOString().split("T")[0];
-            let thread = channel.threads.cache.find(t => t.name === today && !t.archived);
+            const threadName = `${prefix}-${today}`;
+
+            let thread = channel.threads.cache.find(t => t.name === threadName && !t.archived);
 
             if (!thread) {
                 const fetchedThreads = await channel.threads.fetchActive();
-                thread = fetchedThreads.threads.find(t => t.name === today);
+                thread = fetchedThreads.threads.find(t => t.name === threadName);
 
                 if (!thread) {
                     thread = await channel.threads.create({
-                        name: today,
+                        name: threadName,
                         autoArchiveDuration: 1440,
-                        reason: "Daily VC Log Thread",
+                        reason: `Daily VC ${prefix} Log Thread`,
                     }).catch(() => null);
                 }
             }
