@@ -335,12 +335,8 @@ function getLang(req = {}) {
         const [k, v] = c.trim().split("=");
         if (k && v) cookies[k] = decodeURIComponent(v);
     });
-    if (cookies.lang === "ja" || cookies.lang === "en") return cookies.lang;
-
-    const al = req.headers?.["accept-language"] || "";
-    if (al.includes("ja")) return "ja";
-    if (al.includes("en")) return "en";
-
+    // Prioritize Japanese unless explicitly English in cookies
+    if (cookies.lang === "en") return "en";
     return "ja";
 }
 

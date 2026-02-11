@@ -36,15 +36,12 @@ export async function handleApiRoute(req, res, pathname, url) {
 
     // GET /api/guilds
     if (pathname === "/api/guilds") {
+        console.log(`[API] /api/guilds requested by session=${session.id.substring(0, 8)}...`);
         try {
-            // Fetch user guilds
             const userGuilds = await discordApi(session.accessToken, "/users/@me/guilds");
-            if (!Array.isArray(userGuilds)) throw new Error("Failed to fetch guilds");
+            if (!Array.isArray(userGuilds)) throw new Error("Failed to fetch guilds from Discord");
 
-            // Filter: Manage Guild & Bot is present
             const adminGuilds = userGuilds.filter(g => hasManageGuild(g.permissions));
-
-            // Check if bot is in guild
             const availableGuilds = [];
             for (const g of adminGuilds) {
                 if (client.guilds.cache.has(g.id)) {
@@ -52,10 +49,11 @@ export async function handleApiRoute(req, res, pathname, url) {
                 }
             }
 
+            console.log(`[API] /api/guilds: Returning ${availableGuilds.length} guilds`);
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ ok: true, guilds: availableGuilds }));
         } catch (e) {
-            console.error(e);
+            console.error(`[API ERROR] /api/guilds:`, e.message);
             res.writeHead(500, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ ok: false, error: e.message }));
         }
@@ -81,20 +79,12 @@ export async function handleApiRoute(req, res, pathname, url) {
 
     // GET /api/stats
     if (pathname === "/api/stats") {
-        if (!guildId) return res.end(JSON.stringify({ ok: false }));
+        if (!guildId) {
+            res.writeHead(400, { "Content-Type": "application/json" });
+            return res.end(JSON.stringify({ ok: false, error: "Missing guild ID" }));
+        }
 
-        // Mock data or real DB data
-        // 1. NG Count (Last 30 days?) - We don't track NG count in DB (we delete message). 
-        //    Wait, implementation plan didn't have "ng_logs" table.
-        //    So we can only show current NG words count or real-time detected logs if we stored them.
-        //    The user asked for "NG Word Detection" feature. Previous 'views.js' showed "NG detected".
-        //    I didn't add an `ng_logs` table in `core/db.js`. My mistake?
-        //    Actually `events/messageCreate.js` just sends to channel.
-        //    So "NG detected" stat will be 0 or we need to add a table.
-        //    Let's return 0 for now or add a quick counter table? 
-        //    User said "Pro+ tier" features etc. usage.
-        //    Let's just return basic stats we have: Member count, VC count?
-
+        console.log(`[API] /api/stats: Requested for guild=${guildId}, month=${url.searchParams.get("month")}`);
         try {
             // VC Stats
             const vcRes = await dbQuery("SELECT COUNT(*) as cnt FROM vc_sessions WHERE guild_id = $1 AND join_time > NOW() - INTERVAL '30 days'", [guildId]);
@@ -108,14 +98,20 @@ export async function handleApiRoute(req, res, pathname, url) {
 
             // NG Stats
             const ngCountRes = await dbQuery("SELECT COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 AND created_at > NOW() - INTERVAL '30 days'", [guildId]);
-            // Group by user_id to avoid "undefined" names and handle name changes
             const ngTopRes = await dbQuery("SELECT user_id, COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 GROUP BY user_id ORDER BY cnt DESC LIMIT 5", [guildId]);
 
-            // Enrich with Discord Data (PB: Parallel Fetch)
+            // Enrich with Discord Data (PB: Parallel Fetch with Timeout)
+            console.log(`[API] /api/stats: Fetching user data for ${ngTopRes.rows.length} users`);
             const topUsers = await Promise.all(ngTopRes.rows.map(async (row) => {
                 let user = client.users.cache.get(row.user_id);
                 if (!user) {
-                    try { user = await client.users.fetch(row.user_id); } catch (e) { }
+                    try {
+                        // Set a short timeout for user fetch to prevent hanging
+                        user = await Promise.race([
+                            client.users.fetch(row.user_id),
+                            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3000))
+                        ]);
+                    } catch (e) { console.log(`[API DEBUG] User fetch failed for ${row.user_id}: ${e.message}`); }
                 }
                 return {
                     user_id: row.user_id,
@@ -125,6 +121,7 @@ export async function handleApiRoute(req, res, pathname, url) {
                 };
             }));
 
+            console.log(`[API] /api/stats: Success for guild=${guildId}`);
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify({
                 ok: true,
@@ -140,9 +137,9 @@ export async function handleApiRoute(req, res, pathname, url) {
                 }
             }));
         } catch (error) {
-            console.error("Dashboard Stats API Error:", error.message, error.stack);
+            console.error("Dashboard Stats API Error:", error.message);
             res.writeHead(500, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ ok: false, error: "Database failed: " + error.message, detail: error.message }));
+            res.end(JSON.stringify({ ok: false, error: error.message }));
         }
         return;
     }
