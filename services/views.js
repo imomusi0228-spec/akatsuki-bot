@@ -693,7 +693,7 @@ export function renderFeaturesHTML(req) {
     </div>
 
     <div style="text-align:center; padding: 80px 0;">
-        <p style="font-size: 15px; color: #f4212e; margin-bottom: 20px; font-weight: bold;">※ Bot招待時には管理者権限が必要です</p>
+        <p style="font-size: 15px; color: #f4212e; margin-bottom: 20px; font-weight: bold;">${t("msg_admin_req", lang)}</p>
         <a href="https://discord.com/oauth2/authorize?client_id=1468816330999468122&permissions=8&integration_type=0&scope=bot" target="_blank" class="btn btn-primary" style="padding:20px 70px; font-size:22px; border-radius:50px; box-shadow: 0 10px 20px rgba(29, 155, 240, 0.3);">${t("get_started", lang)}</a>
     </div>
 

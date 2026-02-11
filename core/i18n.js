@@ -166,6 +166,7 @@ export const DICTIONARY = {
         feat_desc_ultra: "制限からの完全な解放。",
         label_guild: "サーバー選択",
         msg_scanning: "スキャン中...",
+        msg_admin_req: "※ Bot招待時には管理者権限が必要です",
     },
     en: {
         // General
@@ -296,6 +297,7 @@ export const DICTIONARY = {
         feat_desc_ultra: "Complete freedom from limitations.",
         label_guild: "Guild",
         msg_scanning: "Scanning...",
+        msg_admin_req: "* Administrator permission is required to invite the Bot",
 
         // Legal / Sales (JP Service)
         sec_sales: "※Sales Information",
