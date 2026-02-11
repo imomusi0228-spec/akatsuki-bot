@@ -110,8 +110,10 @@ export const DICTIONARY = {
         feat_audit: "🔍 メンバー監査",
         feat_data: "📊 データ分析",
         feat_ultra: "🔥 究極のセキュリティ",
+        feat_lang: "🌐 多言語対応",
         feat_desc_basic_sec: "メッセージの自動削除で清潔な環境を維持します。",
         feat_desc_vc: "ボイスチャンネルの参加・退出を記録。基本的な統計をお手元に。",
+        feat_desc_lang: "日本語と英語をシームレスに切り替え。世界中のメンバーを歓迎します。",
         feat_desc_web: "PC・スマホからいつでもサーバーの状態を直感的に管理。",
         feat_desc_multi: "1ライセンスで**最大3つのサーバー**に全特典を適用可能な特権。",
         feat_desc_data: "CSVエクスポート機能により、自由自在な活動分析を実現。",
@@ -225,8 +227,10 @@ export const DICTIONARY = {
         feat_audit: "🔍 Server Audit",
         feat_data: "📊 Data Expert",
         feat_ultra: "🔥 Ultra Security",
+        feat_lang: "🌐 Multilingual Support",
         feat_desc_basic_sec: "Keep your server clean with auto-deletion.",
         feat_desc_vc: "Track VC joins and leaves. Basic stats at your fingertips.",
+        feat_desc_lang: "Seamlessly switch between Japanese and English. Welcome global members.",
         feat_desc_web: "Manage server status intuitively from PC or mobile.",
         feat_desc_multi: "Apply benefits to **up to 3 servers** with one license.",
         feat_desc_data: "Analyze activity freely with CSV export.",
@@ -237,6 +241,11 @@ export const DICTIONARY = {
 };
 
 export function t(key, lang = 'ja', params = {}) {
+    // If 2nd arg is an object, it's likely params (stable call pattern)
+    if (typeof lang === 'object' && !Array.isArray(lang)) {
+        params = lang;
+        lang = 'ja';
+    }
     const dict = DICTIONARY[lang] || DICTIONARY['ja'];
     let text = dict[key] || key;
 

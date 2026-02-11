@@ -42,8 +42,39 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
   const $ = (id) => document.getElementById(id);
   const escapeHTML = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   function yyyymmNow(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
-  async function api(path){ const r = await fetch(path); if(r.status===401){window.location.href="/login";return {ok:false};} const t = await r.text(); try { return JSON.parse(t); } catch { return { ok:false, error:t }; } }
-  async function post(path, body){ const r = await fetch(path, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)}); if(r.status===401){window.location.href="/login";return {ok:false};} const t = await r.text(); try { return JSON.parse(t); } catch { return { ok:false, error:t }; } }
+  async function api(path){ 
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 15000);
+    try {
+        const r = await fetch(path, { signal: controller.signal }); 
+        clearTimeout(id);
+        if(r.status===401){window.location.href="/login";return {ok:false};} 
+        const t = await r.text(); 
+        try { return JSON.parse(t); } catch { return { ok:false, error:"Invalid JSON: "+t }; } 
+    } catch (e) {
+        clearTimeout(id);
+        return { ok:false, error: (e.name==='AbortError' ? 'Timeout' : e.message) };
+    }
+  }
+  async function post(path, body){ 
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 15000);
+    try {
+        const r = await fetch(path, { 
+            method:"POST", 
+            headers:{"Content-Type":"application/json"}, 
+            body:JSON.stringify(body),
+            signal: controller.signal
+        }); 
+        clearTimeout(id);
+        if(r.status===401){window.location.href="/login";return {ok:false};} 
+        const t = await r.text(); 
+        try { return JSON.parse(t); } catch { return { ok:false, error:t }; } 
+    } catch (e) {
+        clearTimeout(id);
+        return { ok:false, error: (e.name==='AbortError' ? 'Timeout' : e.message) };
+    }
+  }
   function setLang(l) { document.cookie = "lang="+l+";path=/;max-age=31536000;SameSite=Lax"; location.reload(); }
 
   let _guildsLoaded = false;
@@ -65,26 +96,42 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
   function saveGuildSelection() { const sel = $("guild"); if(sel && sel.value) localStorage.setItem("last_guild_id", sel.value); }
 
   async function initDashboard() {
-     if(!await loadGuilds()) return;
-     $("month").value = yyyymmNow();
-     const reload = async () => {
-        saveGuildSelection(); const gid = $("guild").value; const mon = $("month").value; if(!gid) return;
-        $("summary").innerHTML = "Loading...";
-        const res = await api(\`/api/stats?guild=\${gid}&month=\${mon}\`);
-        if (res.ok) {
-           const s = res.stats.summary;
-           const sub = res.subscription;
-           $("plan-info").innerHTML = \`<span style="color:var(--accent-color); font-weight:bold;">\${sub.name}</span> \${sub.valid_until ? '('+sub.valid_until.split('T')[0]+')' : ''}\`;
-           
-           const box = (l,v) => \`<div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; text-align:center;"><div style="font-size:24px; font-weight:bold;">\${v}</div><div style="font-size:11px; color:#888;">\${l}</div></div>\`;
-           $("summary").innerHTML = \`<div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; width:100%;">\${box(t("vc_joins"), s.joins)} \${box(t("leaves"), s.leaves)} \${box(t("timeouts"), s.timeouts)} \${box(t("ng_detect"), s.ngDetected)}</div>\`;
-           let rows = ""; (res.stats.topNgUsers || []).forEach(u => { 
-                const av = u.avatar_url ? '<img src="' + u.avatar_url + '" style="width:24px; height:24px; border-radius:50%; vertical-align:middle; margin-right:8px;">' : '';
-                rows += \`<tr><td>\${av}\${escapeHTML(u.display_name || 'Unknown')}</td><td style="text-align:right">\${u.cnt}</td></tr>\`; });
-           $("topNg").innerHTML = rows || '<tr><td colspan="2" class="muted" style="text-align:center; padding:10px;">None</td></tr>';
-        } else { $("summary").innerText = "Error: " + res.error; }
-     };
-     $("guild").onchange = reload; $("month").onchange = reload; $("reload").onclick = reload; reload();
+     try {
+        if(!await loadGuilds()) return;
+        const monInput = $("month");
+        if(monInput) monInput.value = yyyymmNow();
+        
+        const reload = async () => {
+           try {
+              saveGuildSelection(); 
+              const gid = $("guild").value; 
+              const mon = $("month").value; 
+              if(!gid) return;
+              
+              $("summary").innerHTML = "Loading...";
+              const res = await api(\`/api/stats?guild=\${gid}&month=\${mon}\`);
+              if (res.ok) {
+                 const s = res.stats.summary;
+                 const sub = res.subscription;
+                 $("plan-info").innerHTML = \`<span style="color:var(--accent-color); font-weight:bold;">\${sub.name}</span> \${sub.valid_until ? '('+sub.valid_until.split('T')[0]+')' : ''}\`;
+                 
+                 const box = (l,v) => \`<div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; text-align:center;"><div style="font-size:24px; font-weight:bold;">\${v}</div><div style="font-size:11px; color:#888;">\${l}</div></div>\`;
+                 $("summary").innerHTML = \`<div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; width:100%;">\${box(t("vc_joins"), s.joins)} \${box(t("leaves"), s.leaves)} \${box(t("timeouts"), s.timeouts)} \${box(t("ng_detect"), s.ngDetected)}</div>\`;
+                 let rows = ""; (res.stats.topNgUsers || []).forEach(u => { 
+                      const av = u.avatar_url ? '<img src="' + u.avatar_url + '" style="width:24px; height:24px; border-radius:50%; vertical-align:middle; margin-right:8px;">' : '';
+                      rows += \`<tr><td>\${av}\${escapeHTML(u.display_name || 'Unknown')}</td><td style="text-align:right">\${u.cnt}</td></tr>\`; });
+                 $("topNg").innerHTML = rows || '<tr><td colspan="2" class="muted" style="text-align:center; padding:10px;">None</td></tr>';
+              } else { $("summary").innerText = "Error: " + res.error; }
+           } catch (e) {
+              console.error("Reload Error:", e);
+              $("summary").innerHTML = '<span style="color:red;">Reload Failed: ' + e.message + '</span>';
+           }
+        };
+        $("guild").onchange = reload; $("month").onchange = reload; $("reload").onclick = reload; reload();
+     } catch (e) {
+        console.error("Init Error:", e);
+        alert("Dashboard initialization failed: " + e.message);
+     }
   }
 
   async function initSettings() {
@@ -284,11 +331,17 @@ const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
 
 function getLang(req = {}) {
     const cookies = {};
-    (req.headers && req.headers.cookie || "").split(";").forEach((c) => {
+    (req.headers?.cookie || "").split(";").forEach((c) => {
         const [k, v] = c.trim().split("=");
         if (k && v) cookies[k] = decodeURIComponent(v);
     });
-    return cookies.lang || "ja";
+    if (cookies.lang === "ja" || cookies.lang === "en") return cookies.lang;
+
+    const al = req.headers?.["accept-language"] || "";
+    if (al.includes("ja")) return "ja";
+    if (al.includes("en")) return "en";
+
+    return "ja";
 }
 
 function renderLayout({ title, content, user, activeTab, oauth = false, scripts = "" }, lang = 'ja') {
@@ -327,6 +380,7 @@ function renderLayout({ title, content, user, activeTab, oauth = false, scripts 
         const lang = "${lang}";
         const DICT = ${JSON.stringify(DICTIONARY)};
         function t(k, p={}) {
+            if (typeof p !== 'object') p = {}; // Guard
             const d = DICT[lang] || DICT['ja'];
             let txt = d[k] || k;
             Object.keys(p).forEach(key => txt = txt.replace('{'+key+'}', p[key]));
@@ -576,6 +630,10 @@ export function renderFeaturesHTML(req) {
                     <h4 style="margin-bottom:8px;">${t("feat_ultra", lang)}</h4>
                     <p class="muted" style="font-size:13px; line-height:1.6;">${t("feature_ng_limit", lang)} ${t("limit_50", lang)}<br/>${t("feat_desc_ultra", lang)}</p>
                 </div>
+                <div class="feature-item-card">
+                    <h4 style="margin-bottom:8px;">${t("feat_lang", lang)}</h4>
+                    <p class="muted" style="font-size:13px; line-height:1.6;">${t("feat_desc_lang", lang)}</p>
+                </div>
                 </div>
             </div>
         </div>
@@ -623,6 +681,12 @@ export function renderFeaturesHTML(req) {
                     <td>${t("unavailable", lang)}</td>
                     <td>${t("available", lang)}</td>
                 </tr>
+                <tr>
+                    <td style="text-align:left; font-weight:bold;">${t("feature_lang", lang)}</td>
+                    <td>${t("available", lang)}</td>
+                    <td>${t("available", lang)}</td>
+                    <td>${t("available", lang)}</td>
+                </tr>
             </tbody>
         </table>
     </div>
@@ -639,6 +703,6 @@ export function renderFeaturesHTML(req) {
             event.currentTarget.classList.add('active');
         }
     </script>
-    `;
+`;
     return renderLayout({ title: t("features_title", lang), content, user: null }, lang);
 }
