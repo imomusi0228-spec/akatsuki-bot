@@ -1,9 +1,37 @@
-import { Events } from "discord.js";
+import { Events, EmbedBuilder } from "discord.js";
 import { dbQuery } from "../core/db.js";
 
-// Temp cache for join times to minimize DB writes on join (optimization)
-// Actually, tracking directly in DB is safer for persistence across restarts?
-// Let's stick to DB updates for robustness.
+async function sendVcLog(guild, member, embed) {
+    try {
+        const settingsRes = await dbQuery("SELECT log_channel_id FROM settings WHERE guild_id = $1", [guild.id]);
+        const logChannelId = settingsRes.rows[0]?.log_channel_id;
+        if (!logChannelId) return;
+
+        const channel = await guild.channels.fetch(logChannelId).catch(() => null);
+        if (!channel || !channel.isTextBased()) return;
+
+        const today = new Date().toISOString().split("T")[0];
+        let thread = channel.threads.cache.find(t => t.name === today && !t.archived);
+
+        if (!thread) {
+            // Find in fetched threads if not in cache
+            const fetchedThreads = await channel.threads.fetchActive();
+            thread = fetchedThreads.threads.find(t => t.name === today);
+
+            if (!thread) {
+                thread = await channel.threads.create({
+                    name: today,
+                    autoArchiveDuration: 1440,
+                    reason: "Daily VC Log Thread",
+                });
+            }
+        }
+
+        await thread.send({ embeds: [embed] });
+    } catch (e) {
+        console.error("[VC LOG ERROR]", e.message);
+    }
+}
 
 export default {
     name: Events.VoiceStateUpdate,
@@ -11,10 +39,9 @@ export default {
         const member = newState.member || oldState.member;
         if (!member || member.user.bot) return;
 
-        const guildId = newState.guild.id || oldState.guild.id;
+        const guild = newState.guild || oldState.guild;
+        const guildId = guild.id;
         const userId = member.id;
-
-        console.log(`[VoiceState] User ${userId} changed state in Guild ${guildId} (Ch: ${oldState.channelId} -> ${newState.channelId})`);
 
         try {
             // Join
@@ -23,15 +50,18 @@ export default {
                     INSERT INTO vc_sessions (guild_id, user_id, join_time) 
                     VALUES ($1, $2, NOW())
                 `, [guildId, userId]);
+
+                const embed = new EmbedBuilder()
+                    .setAuthor({ name: member.displayName, iconURL: member.user.displayAvatarURL() })
+                    .setColor(0x00FF00)
+                    .setDescription(`📥 入室: **#${newState.channel.name}**`)
+                    .setTimestamp();
+
+                await sendVcLog(guild, member, embed);
             }
 
             // Leave (or Move)
-            // Note: Move is treated as Leave + Join in Djs? 
-            // Often it triggers two events or one with both channels differ.
-            // Simplified logic: If old channel exists, close session. If new channel exists, start session.
-
             if (oldState.channelId) {
-                // Determine if there's an open session
                 const res = await dbQuery(`
                     SELECT id, join_time FROM vc_sessions 
                     WHERE guild_id = $1 AND user_id = $2 AND leave_time IS NULL 
@@ -41,22 +71,45 @@ export default {
                 if (res.rows.length > 0) {
                     const session = res.rows[0];
                     const endTime = new Date();
-                    const duration = Math.floor((endTime - new Date(session.join_time)) / 1000); // seconds
+                    const durationSec = Math.floor((endTime - new Date(session.join_time)) / 1000);
 
                     await dbQuery(`
                         UPDATE vc_sessions 
                         SET leave_time = $1, duration_seconds = $2 
                         WHERE id = $3
-                    `, [endTime, duration, session.id]);
+                    `, [endTime, durationSec, session.id]);
+
+                    // Only log [OUT] if they actually left or moved
+                    if (!newState.channelId || oldState.channelId !== newState.channelId) {
+                        const minutes = Math.floor(durationSec / 60);
+                        const seconds = durationSec % 60;
+                        const durationStr = minutes > 0 ? `${minutes}分${seconds}秒` : `${seconds}秒`;
+
+                        const embed = new EmbedBuilder()
+                            .setAuthor({ name: member.displayName, iconURL: member.user.displayAvatarURL() })
+                            .setColor(0xFF0000)
+                            .setDescription(`📤 退室: **#${oldState.channel.name}**\n⌛ 滞在時間: **${durationStr}**`)
+                            .setTimestamp();
+
+                        await sendVcLog(guild, member, embed);
+                    }
                 }
             }
 
-            // If moved (Leave old + Join new), handle Join part
+            // Move (Join part)
             if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
                 await dbQuery(`
                     INSERT INTO vc_sessions (guild_id, user_id, join_time) 
                     VALUES ($1, $2, NOW())
                 `, [guildId, userId]);
+
+                const embed = new EmbedBuilder()
+                    .setAuthor({ name: member.displayName, iconURL: member.user.displayAvatarURL() })
+                    .setColor(0x00FF00)
+                    .setDescription(`📥 移動入室: **#${newState.channel.name}**`)
+                    .setTimestamp();
+
+                await sendVcLog(guild, member, embed);
             }
 
         } catch (e) {
