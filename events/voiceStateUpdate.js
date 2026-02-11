@@ -16,9 +16,9 @@ export default {
             // Join
             if (!oldState.channelId && newState.channelId) {
                 await dbQuery(`
-                    INSERT INTO vc_sessions (guild_id, user_id, join_time) 
-                    VALUES ($1, $2, NOW())
-                `, [guildId, userId]);
+                    INSERT INTO vc_sessions (guild_id, user_id, channel_id, join_time) 
+                    VALUES ($1, $2, $3, NOW())
+                `, [guildId, userId, newState.channelId]);
 
                 const embed = new EmbedBuilder()
                     .setAuthor({ name: member.displayName, iconURL: member.user.displayAvatarURL() })
@@ -68,9 +68,9 @@ export default {
             // Move (Join part)
             if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
                 await dbQuery(`
-                    INSERT INTO vc_sessions (guild_id, user_id, join_time) 
-                    VALUES ($1, $2, NOW())
-                `, [guildId, userId]);
+                    INSERT INTO vc_sessions (guild_id, user_id, channel_id, join_time) 
+                    VALUES ($1, $2, $3, NOW())
+                `, [guildId, userId, newState.channelId]);
 
                 const embed = new EmbedBuilder()
                     .setAuthor({ name: member.displayName, iconURL: member.user.displayAvatarURL() })

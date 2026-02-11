@@ -135,6 +135,8 @@ export async function initDb() {
 
             // Fix vc_sessions
             `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS guild_id TEXT;`,
+            `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS user_id TEXT;`,
+            `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS channel_id TEXT;`,
             `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS join_time TIMESTAMPTZ;`,
             `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS leave_time TIMESTAMPTZ;`,
             `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS duration_seconds INTEGER;`,
