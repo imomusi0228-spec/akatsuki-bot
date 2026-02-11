@@ -407,16 +407,6 @@ export function renderLoginHTML(req) {
 export function renderAdminDashboardHTML({ user, req }) {
     const lang = getLang(req);
     const content = `<div class="card"><div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; align-items:center;"><select id="guild" style="flex:1; max-width:250px; padding:10px;"></select><input id="month" type="month" style="padding:9px;" /><button id="reload" class="btn">Reload</button><span id="guildStatus" class="muted"></span> <div style="margin-left:auto;">${t("plan_label", lang)}: <span id="plan-info">Loading...</span></div></div></div>
-    
-    <div class="card" style="border-left: 4px solid var(--accent-color);">
-        <h3 style="margin-bottom:10px;">📢 システムアップデート (v2.5)</h3>
-        <p style="color:var(--text-secondary); margin-bottom:10px;">いつもご利用ありがとうございます。以下の機能を更新・改善いたしました。</p>
-        <ul style="color:var(--text-primary); line-height:1.6; padding-left:20px; margin:0;">
-            <li><strong>VCスキャン機能の実装</strong>: 過去のVCセッション履歴をスキャンし、ログをスレッドに復元・記録できるようになりました。</li>
-            <li><strong>ログ機能の改善</strong>: 入退室ログと通話ログの表示スレッドを分離し、より見やすくなるよう改善しました。</li>
-            <li><strong>不具合修正</strong>: 期限切れ通知が正しく送信されない問題や、CSVエクスポートが空になる不具合を修正しました。</li>
-        </ul>
-    </div>
   <div class="card"><h3>${t("summary", lang)}</h3><div id="summary">Loading...</div></div>
   <div class="card"><h3>${t("top_ng_users", lang)}</h3><table class="data-table"><thead><tr><th>${t("header_user", lang)}</th><th style="text-align:right">${t("header_count", lang)}</th></tr></thead><tbody id="topNg"></tbody></table></div>`;
     const scripts = `<script>initDashboard();</script>`;
