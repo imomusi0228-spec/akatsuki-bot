@@ -4,6 +4,7 @@ import { ENV } from "../config/env.js";
 
 import { getTier } from "../core/subscription.js";
 import { getFeatures } from "../core/tiers.js";
+import { sendLog } from "../core/logger.js";
 
 export default {
     name: Events.MessageCreate,
@@ -99,21 +100,17 @@ export default {
                 const tier = await getTier(message.guild.id);
                 const features = getFeatures(tier);
 
-                if (features.logs && settings.log_channel_id) {
-                    try {
-                        const channel = await message.guild.channels.fetch(settings.log_channel_id);
-                        if (channel) {
-                            const embed = new EmbedBuilder()
-                                .setAuthor({ name: message.member?.displayName || message.author.tag, iconURL: message.author.displayAvatarURL() })
-                                .setColor(0xFF0000)
-                                .setTitle("🚨 NG Word Detected")
-                                .setDescription(`**NGワード**: ||${joinedWords}||\n**本文**: ||${message.content}||`)
-                                .setFooter({ text: `状況: ${actionTaken} (${count}/${threshold})` })
-                                .setTimestamp();
+                // Log to Channel
+                if (features.logs) {
+                    const embed = new EmbedBuilder()
+                        .setAuthor({ name: message.member?.displayName || message.author.tag, iconURL: message.author.displayAvatarURL() })
+                        .setColor(0xFF0000)
+                        .setTitle("🚨 NG Word Detected")
+                        .setDescription(`**NGワード**: ||${joinedWords}||\n**本文**: ||${message.content}||`)
+                        .setFooter({ text: `状況: ${actionTaken} (${count}/${threshold})` })
+                        .setTimestamp();
 
-                            channel.send({ embeds: [embed] });
-                        }
-                    } catch (e) { }
+                    await sendLog(message.guild, 'ng', embed);
                 }
             }
 

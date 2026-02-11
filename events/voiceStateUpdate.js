@@ -1,37 +1,6 @@
 import { Events, EmbedBuilder } from "discord.js";
 import { dbQuery } from "../core/db.js";
-
-async function sendVcLog(guild, member, embed) {
-    try {
-        const settingsRes = await dbQuery("SELECT log_channel_id FROM settings WHERE guild_id = $1", [guild.id]);
-        const logChannelId = settingsRes.rows[0]?.log_channel_id;
-        if (!logChannelId) return;
-
-        const channel = await guild.channels.fetch(logChannelId).catch(() => null);
-        if (!channel || !channel.isTextBased()) return;
-
-        const today = new Date().toISOString().split("T")[0];
-        let thread = channel.threads.cache.find(t => t.name === today && !t.archived);
-
-        if (!thread) {
-            // Find in fetched threads if not in cache
-            const fetchedThreads = await channel.threads.fetchActive();
-            thread = fetchedThreads.threads.find(t => t.name === today);
-
-            if (!thread) {
-                thread = await channel.threads.create({
-                    name: today,
-                    autoArchiveDuration: 1440,
-                    reason: "Daily VC Log Thread",
-                });
-            }
-        }
-
-        await thread.send({ embeds: [embed] });
-    } catch (e) {
-        console.error("[VC LOG ERROR]", e.message);
-    }
-}
+import { sendLog } from "../core/logger.js";
 
 export default {
     name: Events.VoiceStateUpdate,
@@ -57,7 +26,7 @@ export default {
                     .setDescription(`📥 入室: **#${newState.channel.name}**`)
                     .setTimestamp();
 
-                await sendVcLog(guild, member, embed);
+                await sendLog(guild, 'vc', embed);
             }
 
             // Leave (or Move)
@@ -91,7 +60,7 @@ export default {
                             .setDescription(`📤 退室: **#${oldState.channel.name}**\n⌛ 滞在時間: **${durationStr}**`)
                             .setTimestamp();
 
-                        await sendVcLog(guild, member, embed);
+                        await sendLog(guild, 'vc', embed);
                     }
                 }
             }
@@ -109,7 +78,7 @@ export default {
                     .setDescription(`📥 移動入室: **#${newState.channel.name}**`)
                     .setTimestamp();
 
-                await sendVcLog(guild, member, embed);
+                await sendLog(guild, 'vc', embed);
             }
 
         } catch (e) {

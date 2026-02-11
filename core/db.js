@@ -154,6 +154,7 @@ export async function initDb() {
             // Fix settings (Missing columns for Audit)
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS intro_channel_id TEXT;`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS audit_role_id TEXT;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ng_log_channel_id TEXT;`,
 
             // Create ng_logs
             `CREATE TABLE IF NOT EXISTS ng_logs (
