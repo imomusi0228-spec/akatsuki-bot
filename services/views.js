@@ -38,43 +38,28 @@ const COMMON_CSS = `
   .lang-switch:hover { color: #fff; }
 `;
 
-const COMMON_SCRIPT = /* v2.3 (Clean up) */ `
+const COMMON_SCRIPT = /* v2.4 (Optimized) */ `
   const $ = (id) => document.getElementById(id);
   const escapeHTML = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   function yyyymmNow(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
-  async function api(path){ 
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), 15000);
+  const api = async (path, body) => {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 15000);
     try {
-        const r = await fetch(path, { signal: controller.signal }); 
-        clearTimeout(id);
-        if(r.status===401){window.location.href="/login";return {ok:false};} 
-        const t = await r.text(); 
-        try { return JSON.parse(t); } catch { return { ok:false, error:"Invalid JSON: "+t }; } 
+        const r = await fetch(path, {
+            method: body ? "POST" : "GET",
+            headers: body ? {"Content-Type":"application/json"} : {},
+            body: body ? JSON.stringify(body) : null,
+            signal: ctrl.signal
+        });
+        clearTimeout(tid);
+        if(r.status===401){ location.href="/login"; return {ok:false}; }
+        return await r.json();
     } catch (e) {
-        clearTimeout(id);
-        return { ok:false, error: (e.name==='AbortError' ? 'Timeout' : e.message) };
+        clearTimeout(tid);
+        return { ok:false, error: e.name==='AbortError' ? 'Timeout' : e.message };
     }
-  }
-  async function post(path, body){ 
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), 15000);
-    try {
-        const r = await fetch(path, { 
-            method:"POST", 
-            headers:{"Content-Type":"application/json"}, 
-            body:JSON.stringify(body),
-            signal: controller.signal
-        }); 
-        clearTimeout(id);
-        if(r.status===401){window.location.href="/login";return {ok:false};} 
-        const t = await r.text(); 
-        try { return JSON.parse(t); } catch { return { ok:false, error:t }; } 
-    } catch (e) {
-        clearTimeout(id);
-        return { ok:false, error: (e.name==='AbortError' ? 'Timeout' : e.message) };
-    }
-  }
+  };
   function setLang(l) { document.cookie = "lang="+l+";path=/;max-age=31536000;SameSite=Lax"; location.reload(); }
 
   let _guildsLoaded = false;
@@ -174,7 +159,7 @@ const COMMON_SCRIPT = /* v2.3 (Clean up) */ `
                     const escW = escapeHTML(w.word);
                     return '<div style="display:flex; justify-content:space-between; align-items:center; background:#192734; padding:8px 12px; border-radius:4px; border:1px solid #38444d;">' +
                            '<span style="font-family:monospace;">' + escW + '</span>' +
-                           '<button onclick="removeNg(\'' + escW + '\')" class="btn" style="width:24px; height:24px; padding:0; line-height:22px; color:#f4212e; border-color:#38444d; display:flex; align-items:center; justify-content:center;">＋</button>' +
+                           '<button onclick="removeNg(\'' + escW + '\')" class="btn" style="width:24px; height:24px; padding:0; line-height:22px; color:#f4212e; border-color:#38444d; display:flex; align-items:center; justify-content:center;">�E�E/button>' +
                            '</div>';
                 }).join("");
             }
@@ -189,9 +174,9 @@ const COMMON_SCRIPT = /* v2.3 (Clean up) */ `
         }
      };
 
-     window.removeNg = async (w) => { await post("/api/ngwords/remove", {guild: selGuild.value, word: w }); reload(); };
-     $("addNg").onclick = async () => { const w = $("newNg").value; if(!w)return; await post("/api/ngwords/add", {guild: selGuild.value, word: w }); $("newNg").value=""; reload(); };
-     $("btn_clear").onclick = async () => { if(!confirm("Clear all?"))return; await post("/api/ngwords/clear", {guild: selGuild.value }); reload(); };
+     window.removeNg = async (w) => { await api("/api/ngwords/remove", {guild: selGuild.value, word: w }); reload(); };
+     $("addNg").onclick = async () => { const w = $("newNg").value; if(!w)return; await api("/api/ngwords/add", {guild: selGuild.value, word: w }); $("newNg").value=""; reload(); };
+     $("btn_clear").onclick = async () => { if(!confirm("Clear all?"))return; await api("/api/ngwords/clear", {guild: selGuild.value }); reload(); };
      
      $("save").onclick = async () => {
         const body = {
@@ -202,10 +187,10 @@ const COMMON_SCRIPT = /* v2.3 (Clean up) */ `
             ng_threshold: parseInt($("threshold").value),
             timeout_minutes: parseInt($("timeout").value)
         };
-        const res = await post("/api/settings/update", body);
+        const res = await api("/api/settings/update", body);
         const stat = $("saveStatus");
         if(res.ok) {
-            stat.textContent = "✅" + t("save_success");
+            stat.textContent = "✁E + t("save_success");
             stat.style.color = "var(--success-color)";
             setTimeout(() => stat.textContent="", 3000);
         } else {
@@ -253,8 +238,8 @@ const COMMON_SCRIPT = /* v2.3 (Clean up) */ `
           let html = "";
           data.forEach(r => {
              const av = r.avatar_url || "";
-             const roleTxt = r.has_role ? '<span style="color:#1da1f2;">✅</span>' : '<span style="color:var(--danger-color);">❌</span>';
-             const introTxt = r.has_intro ? '<span style="color:#1da1f2;">✅</span>' : '<span style="color:var(--danger-color);">❌</span>';
+             const roleTxt = r.has_role ? '<span style="color:#1da1f2;">✁E/span>' : '<span style="color:var(--danger-color);">❁E/span>';
+             const introTxt = r.has_intro ? '<span style="color:#1da1f2;">✁E/span>' : '<span style="color:var(--danger-color);">❁E/span>';
              const statusStyle = r.status === "OK" ? 'color:#1da1f2; font-weight:bold;' : 'color:var(--danger-color); font-weight:bold;';
              const detailedStatus = r.status === "OK" ? "OK" : (!r.has_role ? "No Role" : (!r.has_intro ? "No Intro" : "No VC Activity"));
              
@@ -285,7 +270,7 @@ const COMMON_SCRIPT = /* v2.3 (Clean up) */ `
        window.releaseTimeout = async (uid) => {
            const gid = selGuild.value;
            if(!confirm("Release timeout for this user?")) return;
-           const res = await post("/api/timeout/release", { guild: gid, user_id: uid });
+           const res = await api("/api/timeout/release", { guild: gid, user_id: uid });
            if(res.ok) {
                alert("Timeout released!");
                runScan();
@@ -309,7 +294,7 @@ const COMMON_SCRIPT = /* v2.3 (Clean up) */ `
          loading.style.display = "none";
          
          if(!res.ok) { 
-             const errorMsg = res.error.includes("Upgrade") ? "﨟樒區 " + res.error + ' <a href="/admin/dashboard" style="margin-left:8px;">Check Plans</a>' : res.error;
+             const errorMsg = res.error.includes("Upgrade") ? "�E�樒區 " + res.error + ' <a href="/admin/dashboard" style="margin-left:8px;">Check Plans</a>' : res.error;
              rows.innerHTML = '<tr><td colspan="6" style="color:red; text-align:center;">' + errorMsg + '</td></tr>'; 
              return; 
          }
@@ -344,7 +329,7 @@ function renderLayout({ title, content, user, activeTab, oauth = false, scripts 
     const navItem = (lbl, href, act) => `<a href="${href}" class="nav-item ${act ? 'active' : ''}">${lbl}</a>`;
     const langBtn = lang === 'ja'
         ? `<span class="lang-switch" onclick="setLang('en')">English</span>`
-        : `<span class="lang-switch" onclick="setLang('ja')">日本語</span>`;
+        : `<span class="lang-switch" onclick="setLang('ja')">日本誁E/span>`;
 
     return `<!DOCTYPE html>
 <html lang="${lang}">
@@ -373,15 +358,17 @@ function renderLayout({ title, content, user, activeTab, oauth = false, scripts 
     <div id="main-content">${content}</div>
     <div style="text-align:center; padding: 20px; color: #8899a6; font-size:0.8em; margin-top:40px;">&copy; 2026 Akatsuki Bot</div>
     <script>
-        const lang = "${lang}";
-        const DICTIONARY = ${JSON.stringify(DICTIONARY)};
-        function t(key, params = {}) {
-            const dict = DICTIONARY[lang] || DICTIONARY['ja'];
-            let text = dict[key] || key;
-            Object.keys(params).forEach(p => { text = text.replace('{'+p+'}', params[p]); });
-            return text;
-        }
-        ${COMMON_SCRIPT}
+        (function(){
+            window.lang = "${lang}";
+            const DICTIONARY = ${JSON.stringify(DICTIONARY)};
+            window.t = (key, params = {}) => {
+                const dict = DICTIONARY[window.lang] || DICTIONARY['ja'];
+                let text = dict[key] || key;
+                Object.keys(params).forEach(p => { text = text.replace('{'+p+'}', params[p]); });
+                return text;
+            };
+            ${COMMON_SCRIPT}
+        })();
     </script>
     ${scripts}
 </body></html>`;
@@ -413,7 +400,7 @@ export function renderAdminSettingsHTML({ user, req }) {
                 <label style="display:block; margin-bottom:5px; font-size:12px; font-weight:bold; color:#8899a6;">${t("ng_add_label", lang)}</label>
                 <div style="display:flex; gap:10px;">
                     <textarea id="newNg" rows="1" placeholder="${t("ng_msg_placeholder", lang)}" style="flex:1; padding:10px; border:1px solid #38444d; background:#192734; color:white; border-radius:4px; resize:vertical; font-family:inherit;"></textarea>
-                    <button id="addNg" class="btn" style="width:40px; font-size:20px; padding:0; display:flex; align-items:center; justify-content:center;">＋</button>
+                    <button id="addNg" class="btn" style="width:40px; font-size:20px; padding:0; display:flex; align-items:center; justify-content:center;">�E�E/button>
                 </div>
             </div>
             
@@ -446,12 +433,12 @@ export function renderAdminSettingsHTML({ user, req }) {
             <div>
                 <label style="display:block; margin-bottom:8px;">${t("timeout_label", lang)}</label>
                 <select id="timeout" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;">
-                    <option value="1">1分 (60秒)</option>
-                    <option value="5">5分</option>
-                    <option value="10">10分</option>
+                    <option value="1">1刁E(60私E</option>
+                    <option value="5">5刁E/option>
+                    <option value="10">10刁E/option>
                     <option value="60">1時間</option>
                     <option value="1440">1日</option>
-                     <option value="10080">1週間</option>
+                     <option value="10080">1週閁E/option>
                 </select>
             </div>
         </div>

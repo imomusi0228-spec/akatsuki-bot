@@ -23,7 +23,12 @@ export async function handleApiRoute(req, res, pathname, url) {
 
     const method = req.method;
 
-    // JSON Body Parser helper
+    // Response Helpers
+    const resJson = (data, status = 200) => {
+        res.writeHead(status, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(data));
+    };
+
     const getBody = async () => {
         return new Promise((resolve) => {
             let body = "";
@@ -36,26 +41,19 @@ export async function handleApiRoute(req, res, pathname, url) {
 
     // GET /api/guilds
     if (pathname === "/api/guilds") {
-        console.log(`[API] /api/guilds requested by session=${session.id.substring(0, 8)}...`);
         try {
             const userGuilds = await discordApi(session.accessToken, "/users/@me/guilds");
             if (!Array.isArray(userGuilds)) throw new Error("Failed to fetch guilds from Discord");
 
-            const adminGuilds = userGuilds.filter(g => hasManageGuild(g.permissions));
-            const availableGuilds = [];
-            for (const g of adminGuilds) {
-                if (client.guilds.cache.has(g.id)) {
-                    availableGuilds.push({ id: g.id, name: g.name, icon: g.icon });
-                }
-            }
+            const availableGuilds = userGuilds
+                .filter(g => hasManageGuild(g.permissions))
+                .filter(g => client.guilds.cache.has(g.id))
+                .map(g => ({ id: g.id, name: g.name, icon: g.icon }));
 
-            console.log(`[API] /api/guilds: Returning ${availableGuilds.length} guilds`);
-            res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ ok: true, guilds: availableGuilds }));
+            resJson({ ok: true, guilds: availableGuilds });
         } catch (e) {
             console.error(`[API ERROR] /api/guilds:`, e.message);
-            res.writeHead(500, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ ok: false, error: e.message }));
+            resJson({ ok: false, error: e.message }, 500);
         }
         return;
     }
@@ -79,53 +77,43 @@ export async function handleApiRoute(req, res, pathname, url) {
 
     // GET /api/stats
     if (pathname === "/api/stats") {
-        if (!guildId) {
-            res.writeHead(400, { "Content-Type": "application/json" });
-            return res.end(JSON.stringify({ ok: false, error: "Missing guild ID" }));
-        }
+        if (!guildId) return resJson({ ok: false, error: "Missing guild ID" }, 400);
 
-        console.log(`[API] /api/stats: Requested for guild=${guildId}, month=${url.searchParams.get("month")}`);
         try {
-            // VC Stats
-            const vcRes = await dbQuery("SELECT COUNT(*) as cnt FROM vc_sessions WHERE guild_id = $1 AND join_time > NOW() - INTERVAL '30 days'", [guildId]);
+            // Fetch necessary data
+            const [vcRes, tier, subRes, ngCountRes, ngTopRes] = await Promise.all([
+                dbQuery("SELECT COUNT(*) as cnt FROM vc_sessions WHERE guild_id = $1 AND join_time > NOW() - INTERVAL '30 days'", [guildId]),
+                getTier(guildId),
+                dbQuery("SELECT valid_until FROM subscriptions WHERE guild_id = $1", [guildId]),
+                dbQuery("SELECT COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 AND created_at > NOW() - INTERVAL '30 days'", [guildId]),
+                dbQuery("SELECT user_id, COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 GROUP BY user_id ORDER BY cnt DESC LIMIT 5", [guildId])
+            ]);
 
-            // Subscription Info
-            const tier = await getTier(guildId);
-            const subRes = await dbQuery("SELECT valid_until FROM subscriptions WHERE guild_id = $1", [guildId]);
             const subData = { tier, valid_until: subRes.rows[0]?.valid_until || null };
-            const tierName = TIER_NAMES[subData.tier];
             const features = getFeatures(subData.tier);
 
-            // NG Stats
-            const ngCountRes = await dbQuery("SELECT COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 AND created_at > NOW() - INTERVAL '30 days'", [guildId]);
-            const ngTopRes = await dbQuery("SELECT user_id, COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 GROUP BY user_id ORDER BY cnt DESC LIMIT 5", [guildId]);
-
-            // Enrich with Discord Data (PB: Parallel Fetch with Timeout)
-            console.log(`[API] /api/stats: Fetching user data for ${ngTopRes.rows.length} users`);
+            // Enrich with Discord Data
             const topUsers = await Promise.all(ngTopRes.rows.map(async (row) => {
                 let user = client.users.cache.get(row.user_id);
                 if (!user) {
                     try {
-                        // Set a short timeout for user fetch to prevent hanging
                         user = await Promise.race([
                             client.users.fetch(row.user_id),
-                            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3000))
+                            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000))
                         ]);
-                    } catch (e) { console.log(`[API DEBUG] User fetch failed for ${row.user_id}: ${e.message}`); }
+                    } catch (e) { }
                 }
                 return {
                     user_id: row.user_id,
-                    display_name: user ? (user.globalName || user.username) : (row.user_name || "Unknown User"),
+                    display_name: user ? (user.globalName || user.username) : "Unknown User",
                     avatar_url: user ? user.displayAvatarURL({ size: 64 }) : null,
                     cnt: row.cnt
                 };
             }));
 
-            console.log(`[API] /api/stats: Success for guild=${guildId}`);
-            res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({
+            resJson({
                 ok: true,
-                subscription: { tier: subData.tier, name: tierName, features, valid_until: subData.valid_until },
+                subscription: { tier: subData.tier, name: TIER_NAMES[subData.tier], features, valid_until: subData.valid_until },
                 stats: {
                     summary: {
                         joins: vcRes.rows[0]?.cnt || 0,
@@ -135,11 +123,10 @@ export async function handleApiRoute(req, res, pathname, url) {
                     },
                     topNgUsers: topUsers
                 }
-            }));
+            });
         } catch (error) {
-            console.error("Dashboard Stats API Error:", error.message);
-            res.writeHead(500, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ ok: false, error: error.message }));
+            console.error("Dashboard Stats Error:", error.message);
+            resJson({ ok: false, error: error.message }, 500);
         }
         return;
     }
