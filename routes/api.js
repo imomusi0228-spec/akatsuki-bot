@@ -99,7 +99,7 @@ export async function handleApiRoute(req, res, pathname, url) {
                     try {
                         user = await Promise.race([
                             client.users.fetch(row.user_id),
-                            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000))
+                            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 500))
                         ]);
                     } catch (e) { }
                 }
