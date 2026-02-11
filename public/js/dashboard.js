@@ -225,7 +225,7 @@ async function initActivity() {
             const statusStyle = r.status === "OK" ? 'color:#1da1f2; font-weight:bold;' : 'color:var(--danger-color); font-weight:bold;';
             const detailedStatus = r.status === "OK" ? t("status_ok") : (!r.has_role ? t("status_no_role") : (!r.has_intro ? t("status_no_intro") : t("status_no_vc")));
 
-            const releaseBtn = r.status !== "OK" ? ('<button onclick="releaseTimeout(\'' + r.id + '\')" class="btn" style="padding:2px 8px; font-size:10px; background:var(--danger-color); color:white; border:none; margin-left:8px;">Release</button>') : "";
+            const releaseBtn = r.status !== "OK" ? ('<button onclick="releaseTimeout(\'' + r.id + '\')" class="btn" style="padding:2px 8px; font-size:10px; background:var(--danger-color); color:white; border:none; margin-left:8px;">' + t("btn_release") + '</button>') : "";
 
             html += '<tr>' +
                 '<td>' + (r.joined_at || '-') + '</td>' +
@@ -251,10 +251,10 @@ async function initActivity() {
 
     window.releaseTimeout = async (uid) => {
         const gid = selGuild.value;
-        if (!confirm("Release timeout for this user?")) return;
+        if (!confirm(t("confirm_release"))) return;
         const res = await api("/api/timeout/release", { guild: gid, user_id: uid });
         if (res.ok) {
-            alert("Timeout released!");
+            alert(t("release_success"));
             runScan();
         } else {
             alert("Error: " + res.error);

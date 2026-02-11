@@ -127,6 +127,9 @@ export const DICTIONARY = {
         status_no_role: "ロール不足",
         status_no_intro: "自己紹介未済",
         status_no_vc: "VC不参加",
+        btn_release: "解除",
+        confirm_release: "このユーザーのタイムアウトを解除しますか？",
+        release_success: "タイムアウトを解除しました！",
 
         // Errors / Notices
         upgrade_required: "プランのアップグレードが必要です",
@@ -248,6 +251,9 @@ export const DICTIONARY = {
         status_no_role: "No Role",
         status_no_intro: "No Intro",
         status_no_vc: "No VC Activity",
+        btn_release: "Release",
+        confirm_release: "Release timeout for this user?",
+        release_success: "Timeout released!",
 
         // Errors / Notices
         upgrade_required: "Plan Upgrade Required",
