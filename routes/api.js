@@ -5,10 +5,12 @@ import { client } from "../core/client.js";
 import { TIERS, getFeatures, TIER_NAMES } from "../core/tiers.js";
 import { getTier } from "../core/subscription.js";
 
-function hasManageGuild(permissions) {
+function hasManageGuild(permissions, owner = false) {
+    if (owner === true) return true;
     const MANAGE_GUILD = 0x20n;
-    // Permissions are string in API
-    return (BigInt(permissions) & MANAGE_GUILD) === MANAGE_GUILD;
+    const ADMINISTRATOR = 0x8n;
+    const p = BigInt(permissions || "0");
+    return (p & MANAGE_GUILD) === MANAGE_GUILD || (p & ADMINISTRATOR) === ADMINISTRATOR;
 }
 
 const memberCache = new Map();
@@ -46,9 +48,12 @@ export async function handleApiRoute(req, res, pathname, url) {
             if (!Array.isArray(userGuilds)) throw new Error("Failed to fetch guilds from Discord");
 
             const availableGuilds = userGuilds
-                .filter(g => hasManageGuild(g.permissions))
+                .filter(g => hasManageGuild(g.permissions, g.owner))
                 .filter(g => client.guilds.cache.has(g.id))
                 .map(g => ({ id: g.id, name: g.name, icon: g.icon }));
+
+            // Save to session to speed up subsequent permission checks
+            session.guilds = userGuilds;
 
             resJson({ ok: true, guilds: availableGuilds });
         } catch (e) {
@@ -61,20 +66,26 @@ export async function handleApiRoute(req, res, pathname, url) {
     // Helper: Verify guild ownership and permissions
     const verifyGuild = async (guildId) => {
         if (!guildId) return false;
-        
+
         try {
             // Check if bot is even in the guild
             if (!client.guilds.cache.has(guildId)) return false;
 
-            // Fetch user's guilds from Discord to verify permissions
-            // Note: In a production app, caching this in the session would be better for performance.
-            const userGuilds = await discordApi(session.accessToken, "/users/@me/guilds");
-            if (!Array.isArray(userGuilds)) return false;
+            // Use session cache if available to avoid redundant API calls and potential rate limits
+            if (!session.guilds) {
+                const userGuilds = await discordApi(session.accessToken, "/users/@me/guilds");
+                if (Array.isArray(userGuilds)) {
+                    session.guilds = userGuilds;
+                } else {
+                    console.error(`[AUTH ERROR] Failed to fetch guilds for user ${session.user.id}`);
+                    return false;
+                }
+            }
 
-            const targetGuild = userGuilds.find(g => g.id === guildId);
+            const targetGuild = session.guilds.find(g => g.id === guildId);
             if (!targetGuild) return false;
 
-            return hasManageGuild(targetGuild.permissions);
+            return hasManageGuild(targetGuild.permissions, targetGuild.owner);
         } catch (e) {
             console.error(`[AUTH ERROR] verifyGuild failed for ${guildId}:`, e.message);
             return false;
