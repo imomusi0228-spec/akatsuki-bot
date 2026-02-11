@@ -123,6 +123,10 @@ export const DICTIONARY = {
         no_intro: "未記入",
         has_role: "保持",
         no_role: "未保持",
+        status_ok: "OK",
+        status_no_role: "ロール不足",
+        status_no_intro: "自己紹介未済",
+        status_no_vc: "VC不参加",
 
         // Errors / Notices
         upgrade_required: "プランのアップグレードが必要です",
@@ -240,6 +244,10 @@ export const DICTIONARY = {
         no_intro: "Missing",
         has_role: "Yes",
         no_role: "No",
+        status_ok: "OK",
+        status_no_role: "No Role",
+        status_no_intro: "No Intro",
+        status_no_vc: "No VC Activity",
 
         // Errors / Notices
         upgrade_required: "Plan Upgrade Required",
