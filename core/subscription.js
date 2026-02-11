@@ -38,5 +38,6 @@ export async function getTier(guildId) {
         }
     }
 
-    return sub.tier;
+    // Ensure we return a valid integer, defaulting to FREE if null/undefined
+    return sub.tier ?? TIERS.FREE;
 }
