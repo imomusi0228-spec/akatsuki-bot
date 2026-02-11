@@ -38,7 +38,7 @@ const COMMON_CSS = `
   .lang-switch:hover { color: #fff; }
 `;
 
-const COMMON_SCRIPT = /* v2.1 (Fix: escapeHTML & DB) */ `
+const COMMON_SCRIPT = /* v2.3 (Clean up) */ `
   const $ = (id) => document.getElementById(id);
   const escapeHTML = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   function yyyymmNow(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
@@ -374,13 +374,12 @@ function renderLayout({ title, content, user, activeTab, oauth = false, scripts 
     <div style="text-align:center; padding: 20px; color: #8899a6; font-size:0.8em; margin-top:40px;">&copy; 2026 Akatsuki Bot</div>
     <script>
         const lang = "${lang}";
-        const DICT = ${JSON.stringify(DICTIONARY)};
-        function t(k, p={}) {
-            if (typeof p !== 'object') p = {}; // Guard
-            const d = DICT[lang] || DICT['ja'];
-            let txt = d[k] || k;
-            Object.keys(p).forEach(key => txt = txt.replace('{'+key+'}', p[key]));
-            return txt;
+        const DICTIONARY = ${JSON.stringify(DICTIONARY)};
+        function t(key, params = {}) {
+            const dict = DICTIONARY[lang] || DICTIONARY['ja'];
+            let text = dict[key] || key;
+            Object.keys(params).forEach(p => { text = text.replace('{'+p+'}', params[p]); });
+            return text;
         }
         ${COMMON_SCRIPT}
     </script>
