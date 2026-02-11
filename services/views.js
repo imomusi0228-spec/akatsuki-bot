@@ -11,13 +11,23 @@ export function escapeHTML(s = "") {
 }
 
 const COMMON_CSS = `
-  :root { --bg-color: #0b1622; --card-bg: #15202b; --text-primary: #ffffff; --text-secondary: #8b9bb4; --border-color: #253341; --accent-color: #1d9bf0; --danger-color: #f4212e; --success-color: #00ba7c; }
+  :root { 
+    --bg-color: #0b1622; 
+    --card-bg: #15202b; 
+    --text-primary: #ffffff; 
+    --text-secondary: #8b9bb4; 
+    --border-color: #253341; 
+    --accent-color: #1d9bf0; 
+    --primary-color: #1d9bf0;
+    --danger-color: #f4212e; 
+    --success-color: #00ba7c; 
+  }
   body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 16px; background-color: var(--bg-color); color: var(--text-primary); }
   a { color: var(--accent-color); text-decoration: none; } a:hover { text-decoration: underline; }
-  .btn { display: inline-block; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; cursor: pointer; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary); transition: background 0.2s; }
-  .btn:hover { background: #2c3640; text-decoration: none; }
+  .btn { display: inline-block; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; cursor: pointer; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary); transition: all 0.2s; }
+  .btn:hover { background: #2c3640; border-color: var(--accent-color); text-decoration: none; }
   .btn-primary { background: var(--accent-color); border-color: var(--accent-color); color: #fff; }
-  .btn-primary:hover { opacity: 0.9; }
+  .btn-primary:hover { opacity: 0.9; box-shadow: 0 0 15px rgba(29, 155, 240, 0.4); }
   .card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 16px; max-width: 900px; margin-left: auto; margin-right: auto; }
   .muted { color: var(--text-secondary); font-size: 0.9em; }
   input, select, button { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: #000; color: #fff; font-size: 14px; }
@@ -30,8 +40,6 @@ const COMMON_CSS = `
   .nav-item { padding: 8px 16px; border-radius: 6px; color: var(--text-secondary); font-weight: 600; }
   .nav-item:hover { background: rgba(255,255,255,0.05); text-decoration: none; }
   .nav-item.active { color: var(--accent-color); background: rgba(29, 155, 240, 0.1); }
-  .pricing-table th, .pricing-table td { border: 1px solid #38444d; padding: 12px; text-align: center; }
-  .pricing-table th { background: #192734; }
   .check { color: #00ba7c; font-weight: bold; }
   .cross { color: #f91880; font-weight: bold; }
   .lang-switch { cursor: pointer; color: #8899a6; margin-left: 15px; font-size: 0.9em; }
@@ -532,12 +540,12 @@ export function renderFeaturesHTML(req) {
         .tab-btn.active { background: var(--primary-color); color: white; border-color: var(--primary-color); box-shadow: 0 4px 12px rgba(29, 161, 242, 0.2); }
         .tab-content { display: none; animation: fadeIn 0.4s ease-out; }
         .tab-content.active { display: block; }
-        .feature-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 25px; max-width: 800px; margin-left: auto; margin-right: auto; }
-        .plan-card { background: rgba(25, 39, 52, 0.5); border: 1px solid var(--border-color); border-radius: 16px; padding: 40px 20px; text-align: center; max-width: 1100px; margin: 0 auto; }
+        .feature-grid { display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 25px; max-width: 600px; margin-left: auto; margin-right: auto; }
+        .plan-card { background: rgba(25, 39, 52, 0.5); border: 1px solid var(--border-color); border-radius: 20px; padding: 40px 20px; text-align: center; max-width: 600px; margin: 0 auto; transition: all 0.3s; }
         .plan-price { font-size: 36px; font-weight: 900; margin: 10px 0; color: var(--primary-color); }
-        .plan-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; background: rgba(29, 161, 242, 0.1); color: var(--primary-color); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
-        .feature-item-card { background: #15202b; border: 1px solid rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; text-align: left; transition: transform 0.2s; }
-        .feature-item-card:hover { transform: translateY(-3px); border-color: var(--primary-color); }
+        .plan-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; background: rgba(29, 161, 242, 0.1); color: var(--primary-color); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; }
+        .feature-list { text-align: left; margin: 25px auto; max-width: 400px; line-height: 2; color: #fff; font-size: 15px; }
+        .feature-list i { color: var(--success-color); margin-right: 10px; font-style: normal; font-weight: bold; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         .recommend-container { display:grid; grid-template-columns: repeat(2, 1fr); gap:15px; max-width:600px; margin:0 auto; }
         .recommend-card { background:rgba(25, 39, 52, 0.5); padding:20px; border-radius:12px; border:1px solid var(--border-color); font-weight:bold; color:var(--text-primary); text-align:left; display:flex; align-items:center; gap:10px; }
@@ -549,9 +557,9 @@ export function renderFeaturesHTML(req) {
         .notice-header { color:var(--text-primary); font-weight:bold; margin-bottom:8px; border-bottom:1px solid var(--border-color); padding-bottom:5px; display:inline-block; }
     </style>
 
-    <div style="text-align:center; padding: 40px 20px 20px;">
-        <h1 style="font-size: 42px; margin-bottom: 10px;">${t("features_title", lang)}</h1>
-        <p style="font-size: 17px; color: #8899a6; margin-bottom: 30px; max-width: 600px; margin-left: auto; margin-right: auto;">${t("features_subtitle", lang)}</p>
+    <div style="text-align:center; padding: 60px 20px 20px;">
+        <h1 style="font-size: 48px; margin-bottom: 10px; letter-spacing: -1px;">${t("features_title", lang)}</h1>
+        <p style="font-size: 18px; color: #8899a6; margin-bottom: 40px; max-width: 600px; margin-left: auto; margin-right: auto;">${t("features_subtitle", lang)}</p>
     </div>
 
     <div class="feature-tabs">
@@ -563,121 +571,96 @@ export function renderFeaturesHTML(req) {
     <div id="tab-free" class="tab-content active">
         <div class="plan-card">
             <span class="plan-badge">${t("plan_badge_std", lang)}</span>
-            <h2 style="font-size: 28px;">${t("plan_free", lang)}</h2>
+            <h2 style="font-size: 32px; margin-bottom: 5px;">${t("plan_free", lang)}</h2>
             <div class="plan-price">¥0 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_forever", lang)}</span></div>
-            <p style="color:#8899a6; margin-bottom:25px; max-width: 700px; margin-left: auto; margin-right: auto;">${t("plan_free_desc", lang)}</p>
-            <div class="feature-grid">
-                <div class="feature-item-card">
-                    <h4 style="margin-bottom:8px;">${t("feat_sec_basic", lang)}</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">${t("feature_ng_limit", lang)} ${t("limit_5", lang)}<br/>${t("feat_desc_basic_sec", lang)}</p>
-                </div>
-                <div class="feature-item-card">
-                    <h4 style="margin-bottom:8px;">${t("feat_vc_track", lang)}</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">${t("feat_desc_vc", lang)}</p>
-                </div>
+            <p style="color:#8899a6; margin-bottom:10px;">${t("plan_free_desc", lang)}</p>
+            <div class="feature-list">
+                ${t("feat_list_free", lang).split('<br/>').map(f => `<div><i>✓</i> ${f.replace('・', '')}</div>`).join('')}
             </div>
         </div>
     </div>
 
     <div id="tab-pro" class="tab-content">
-        <div class="plan-card" style="border: 2px solid var(--primary-color); background: rgba(29, 161, 242, 0.03);">
-            <span class="plan-badge" style="background:transparent; color:var(--primary-color); border:2px solid var(--primary-color);">${t("plan_badge_rec", lang)}</span>
-            <h2 style="font-size: 28px;">${t("plan_pro", lang)}</h2>
+        <div class="plan-card" style="border: 3px solid var(--primary-color); background: rgba(29, 161, 242, 0.05); box-shadow: 0 10px 30px rgba(29, 161, 242, 0.15);">
+            <span class="plan-badge" style="background:var(--primary-color); color:white;">${t("plan_badge_rec", lang)}</span>
+            <h2 style="font-size: 32px; margin-bottom: 5px;">${t("plan_pro", lang)}</h2>
             <div class="plan-price">¥500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_month", lang)}</span></div>
-            <p style="color:#8899a6; margin-bottom:25px; max-width: 700px; margin-left: auto; margin-right: auto;">${t("plan_pro_desc", lang)}</p>
-            <div class="feature-grid" style="grid-template-columns: repeat(3, 1fr); max-width: 1000px;">
-                <div class="feature-item-card">
-                    <h4 style="margin-bottom:8px;">${t("feat_sec_adv", lang)}</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">${t("feature_ng_limit", lang)} ${t("limit_20", lang)}<br/>${t("features_detail_security", lang)}</p>
-                </div>
-                <div class="feature-item-card">
-                    <h4 style="margin-bottom:8px;">${t("feat_live_log", lang)}</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">${t("features_detail_log", lang)}</p>
-                </div>
-                <div class="feature-item-card">
-                    <h4 style="margin-bottom:8px;">${t("feat_web_dash", lang)}</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">${t("feat_desc_web", lang)}</p>
-                </div>
+            <p style="color:#8899a6; margin-bottom:10px;">${t("plan_pro_desc", lang)}</p>
+            <div class="feature-list">
+                ${t("feat_list_pro", lang).split('<br/>').map(f => `<div><i>✓</i> ${f.replace('・', '')}</div>`).join('')}
             </div>
         </div>
     </div>
 
     <div id="tab-pro-plus" class="tab-content">
-        <div class="plan-card" style="border: 2px solid #ffd700; background: rgba(255, 215, 0, 0.02);">
+        <div class="plan-card" style="border: 2px solid #ffd700; background: rgba(255, 215, 0, 0.03); box-shadow: 0 10px 30px rgba(255, 215, 0, 0.1);">
             <span class="plan-badge" style="background:#ffd700; color:black;">${t("plan_badge_prm", lang)}</span>
-            <h2 style="font-size: 28px;">${t("plan_pro_plus", lang)}</h2>
+            <h2 style="font-size: 32px; margin-bottom: 5px;">${t("plan_pro_plus", lang)}</h2>
             <div class="plan-price">¥1,500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_month", lang)}</span></div>
-            <p style="color:#8899a6; margin-bottom:25px; max-width: 700px; margin-left: auto; margin-right: auto;">${t("plan_pro_plus_desc", lang)}</p>
-            <div class="feature-grid">
-                <div class="feature-item-card">
-                    <h4 style="margin-bottom:8px;">${t("feat_multi", lang)}</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">${t("feat_desc_multi", lang)}</p>
-                </div>
-                <div class="feature-item-card">
-                    <h4 style="margin-bottom:8px;">${t("feat_audit", lang)}</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">${t("features_detail_audit", lang)}</p>
-                </div>
-                <div class="feature-item-card">
-                    <h4 style="margin-bottom:8px;">${t("feat_data", lang)}</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">${t("feat_desc_data", lang)}</p>
-                </div>
-                <div class="feature-item-card">
-                    <h4 style="margin-bottom:8px;">${t("feat_ultra", lang)}</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">${t("feature_ng_limit", lang)} ${t("limit_50", lang)}<br/>${t("feat_desc_ultra", lang)}</p>
-                </div>
+            <p style="color:#8899a6; margin-bottom:10px;">${t("plan_pro_plus_desc", lang)}</p>
+            <div class="feature-list">
+                ${t("feat_list_pro_plus", lang).split('<br/>').map(f => `<div><i>✓</i> ${f.replace('・', '')}</div>`).join('')}
             </div>
         </div>
     </div>
 
-    <div class="card" style="margin-top: 40px; padding: 30px;">
-        <h3 style="text-align:center; margin-bottom:20px;">${t("quick_comparison", lang)}</h3>
+    <div class="card" style="margin-top: 60px; padding: 40px; border-color: rgba(255,255,255,0.1);">
+        <h3 style="text-align:center; margin-bottom:30px; font-size: 24px;">${t("quick_comparison", lang)}</h3>
         <style>
-            .compare-table { width: 100%; border-collapse: separate; border-spacing: 0; }
-            .compare-table thead th { background: #192734; padding: 16px 12px; text-align: center; font-weight: bold; border: 1px solid #38444d; }
-            .compare-table thead th:first-child { text-align: left; }
-            .compare-table tbody td { padding: 14px 12px; border: 1px solid #38444d; text-align: center; }
-            .compare-table tbody td:first-child { text-align: left; font-weight: bold; background: rgba(255,255,255,0.02); }
+            .compare-table { width: 100%; border-collapse: separate; border-spacing: 0; border-radius: 12px; overflow: hidden; border: 1px solid #38444d; }
+            .compare-table thead th { background: #192734; padding: 20px 12px; text-align: center; font-weight: bold; border-bottom: 1px solid #38444d; border-right: 1px solid #38444d; }
+            .compare-table thead th:last-child { border-right: none; }
+            .compare-table tbody td { padding: 18px 12px; border-bottom: 1px solid #38444d; border-right: 1px solid #38444d; text-align: center; }
+            .compare-table tbody td:last-child { border-right: none; }
+            .compare-table tbody tr:last-child td { border-bottom: none; }
+            .compare-table tbody td:first-child { text-align: left; font-weight: bold; background: rgba(255,255,255,0.02); padding-left: 20px; }
             .compare-table tbody tr:hover { background: rgba(255,255,255,0.03); }
-            .feature-check { color: #00ba7c; font-size: 20px; font-weight: bold; }
-            .feature-cross { color: #f91880; font-size: 20px; font-weight: bold; }
-            .feature-number { color: var(--accent-color); font-weight: bold; font-size: 16px; }
+            .feature-check { color: #00ba7c; font-size: 22px; font-weight: bold; }
+            .feature-cross { color: #f91880; font-size: 22px; font-weight: bold; }
+            .feature-number { color: var(--accent-color); font-weight: bold; font-size: 18px; }
         </style>
         <table class="compare-table">
             <thead>
                 <tr>
-                    <th style="text-align:left;"></th>
+                    <th style="text-align:left; padding-left: 20px;">Features</th>
                     <th>${t("plan_free", lang)}</th>
-                    <th style="background: rgba(29, 161, 242, 0.1); border-color: var(--accent-color);">${t("plan_pro", lang)}</th>
-                    <th style="background: rgba(255, 215, 0, 0.1); border-color: #ffd700;">${t("plan_pro_plus", lang)}</th>
+                    <th style="background: rgba(29, 161, 242, 0.1); color: var(--accent-color);">${t("plan_pro", lang)}</th>
+                    <th style="background: rgba(255, 215, 0, 0.05); color: #ffd700;">${t("plan_pro_plus", lang)}</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td style="text-align:left; font-weight:bold;">${t("feature_max_guilds", lang)}</td>
+                    <td>${t("feature_max_guilds", lang)}</td>
                     <td><span class="feature-number">1</span></td>
                     <td><span class="feature-number">1</span></td>
                     <td><span class="feature-number">3</span></td>
                 </tr>
                 <tr>
-                    <td style="text-align:left; font-weight:bold;">${t("feature_ng_limit", lang)}</td>
-                    <td><span class="feature-number">${t("limit_10", lang)}</span></td>
-                    <td><span class="feature-number">${t("limit_50", lang)}</span></td>
-                    <td><span class="feature-number">${t("limit_100", lang)}</span></td>
+                    <td>${t("feature_ng_limit", lang)}</td>
+                    <td><span class="feature-number">5</span></td>
+                    <td><span class="feature-number">20</span></td>
+                    <td><span class="feature-number">50</span></td>
                 </tr>
                 <tr>
-                    <td style="text-align:left; font-weight:bold;">${t("feature_logs", lang)}</td>
+                    <td>${t("feature_logs", lang)}</td>
                     <td><span class="feature-cross">×</span></td>
                     <td><span class="feature-check">✓</span></td>
                     <td><span class="feature-check">✓</span></td>
                 </tr>
                 <tr>
-                    <td style="text-align:left; font-weight:bold;">${t("feature_activity", lang)}</td>
+                    <td>${t("feature_dashboard", lang)}</td>
+                    <td><span class="feature-cross">×</span></td>
+                    <td><span class="feature-check">✓</span></td>
+                    <td><span class="feature-check">✓</span></td>
+                </tr>
+                <tr>
+                    <td>${t("feature_activity", lang)}</td>
                     <td><span class="feature-cross">×</span></td>
                     <td><span class="feature-cross">×</span></td>
                     <td><span class="feature-check">✓</span></td>
                 </tr>
                 <tr>
-                    <td style="text-align:left; font-weight:bold;">${t("feature_csv", lang)}</td>
+                    <td>${t("feature_csv", lang)}</td>
                     <td><span class="feature-cross">×</span></td>
                     <td><span class="feature-cross">×</span></td>
                     <td><span class="feature-check">✓</span></td>
@@ -709,9 +692,9 @@ export function renderFeaturesHTML(req) {
         </div>
     </div>
 
-    <div style="text-align:center; padding: 60px 0;">
-        <p style="font-size: 14px; color: #f4212e; margin-bottom: 15px; font-weight: bold;">※ Bot招待時には管理者権限が必要です</p>
-        <a href="https://discord.com/oauth2/authorize?client_id=1468816330999468122&permissions=8&integration_type=0&scope=bot" target="_blank" class="btn btn-primary" style="padding:18px 60px; font-size:20px; border-radius:50px;">${t("get_started", lang)}</a>
+    <div style="text-align:center; padding: 80px 0;">
+        <p style="font-size: 15px; color: #f4212e; margin-bottom: 20px; font-weight: bold;">※ Bot招待時には管理者権限が必要です</p>
+        <a href="https://discord.com/oauth2/authorize?client_id=1468816330999468122&permissions=8&integration_type=0&scope=bot" target="_blank" class="btn btn-primary" style="padding:20px 70px; font-size:22px; border-radius:50px; box-shadow: 0 10px 20px rgba(29, 155, 240, 0.3);">${t("get_started", lang)}</a>
     </div>
 
     <div class="notice-container">

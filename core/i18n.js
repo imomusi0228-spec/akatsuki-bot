@@ -34,9 +34,15 @@ export const DICTIONARY = {
         limit_20: "20個",
         available: "常時利用可",
         unavailable: "×",
-        plan_free_desc: "VC入退室ログの自動記録 / NGワード検知（単語・正規表現） / VC参加時間ランキング表示",
-        plan_pro_desc: "Web管理ダッシュボード / 管理ログの可視化・通知 / 高度なNGワードフィルタリング（最大20個）",
-        plan_pro_plus_desc: "アクティビティ監査（幽霊部員検知） / CSVエクスポート / 過去ログスキャン※ / スマート解除機能\n※現在はβ機能として全プランで開放中",
+        plan_free_desc: "基本機能を無料で体験。小規模サーバーや試用に最適。",
+        plan_pro_desc: "サーバー運営を効率化し、メンバーに安心感を提供します。",
+        plan_pro_plus_desc: "徹底的なサーバー監査と高度な分析で、完璧な統治を実現します。",
+        
+        // Detailed features for list (NEW)
+        feat_list_free: "・VC入退室ログの自動記録<br/>・NGワード検知（最大5個）<br/>・基本的な統計表示",
+        feat_list_pro: "・Web管理ダッシュボード<br/>・管理ログの可視化・通知<br/>・NGワード登録数 20個<br/>・メッセージ自動削除・警告",
+        feat_list_pro_plus: "・メンバー監査（幽霊部員検知）<br/>・CSVエクスポート機能<br/>・NGワード登録数 50個<br/>・過去ログ一括スキャン",
+
         features_detail_security: "NGワードの自動削除と警告しきい値による自動タイムアウトで、サーバーの平和を鉄壁に守ります。",
         features_detail_audit: "ロールの所持、自己紹介の有無、VCの参加状況を統合し、幽霊部員を瞬時に特定します。",
         features_detail_log: "サーバー内で起きた重要なイベントを専用チャンネルに記録。何かあった時の追跡も容易です。",
