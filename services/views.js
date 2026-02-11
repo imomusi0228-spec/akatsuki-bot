@@ -625,11 +625,6 @@ export function renderFeaturesHTML(req) {
                     <h4 style="margin-bottom:8px;">${t("feat_ultra", lang)}</h4>
                     <p class="muted" style="font-size:13px; line-height:1.6;">${t("feature_ng_limit", lang)} ${t("limit_50", lang)}<br/>${t("feat_desc_ultra", lang)}</p>
                 </div>
-                <div class="feature-item-card">
-                    <h4 style="margin-bottom:8px;">${t("feat_lang", lang)}</h4>
-                    <p class="muted" style="font-size:13px; line-height:1.6;">${t("feat_desc_lang", lang)}</p>
-                </div>
-                </div>
             </div>
         </div>
     </div>
