@@ -475,25 +475,25 @@ export function renderAdminActivityHTML({ user, req }) {
     const lang = getLang(req);
     const content = `<div class="card">
         <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
-            <div style="flex:1; min-width:200px;">
-                <label style="display:block; font-size:12px; margin-bottom:4px; font-weight:bold;">${t("label_guild", lang)}</label>
-                <select id="guild" style="width:100%; padding:10px;"></select>
+            <div style="flex:1; min-width:120px;">
+                <label style="display:block; font-size:11px; margin-bottom:2px; font-weight:bold; white-space:nowrap;">${t("label_guild", lang)}</label>
+                <select id="guild" style="width:100%; padding:6px; font-size:13px;"></select>
             </div>
-            <div style="flex:1; min-width:200px;">
-                <label style="display:block; font-size:12px; margin-bottom:4px; font-weight:bold;">${t("audit_role", lang)}</label>
-                <select id="auditRole" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
+            <div style="flex:1.2; min-width:120px;">
+                <label style="display:block; font-size:11px; margin-bottom:2px; font-weight:bold; white-space:nowrap;">${t("audit_role", lang)}</label>
+                <select id="auditRole" style="width:100%; padding:6px; font-size:13px; background:#192734; border:1px solid #555; color:white;"></select>
             </div>
-            <div style="flex:1; min-width:200px;">
-                <label style="display:block; font-size:12px; margin-bottom:4px; font-weight:bold;">${t("intro_channel", lang)}</label>
-                <select id="introCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
+            <div style="flex:1.2; min-width:120px;">
+                <label style="display:block; font-size:11px; margin-bottom:2px; font-weight:bold; white-space:nowrap;">${t("intro_channel", lang)}</label>
+                <select id="introCh" style="width:100%; padding:6px; font-size:13px; background:#192734; border:1px solid #555; color:white;"></select>
             </div>
-            <div style="flex:1; min-width:150px;">
-                <label style="display:block; font-size:12px; margin-bottom:4px; font-weight:bold;">VC未利用期間(週)</label>
-                <input id="vcWeeks" type="number" min="0" max="52" value="0" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white; outline:none;">
+            <div style="flex:0.5; min-width:80px;">
+                <label style="display:block; font-size:11px; margin-bottom:2px; font-weight:bold; white-space:nowrap;">VC未利用(週)</label>
+                <input id="vcWeeks" type="number" min="0" max="52" value="0" style="width:100%; padding:6px; font-size:13px; background:#192734; border:1px solid #555; color:white; outline:none;">
             </div>
-            <div style="display:flex; gap:8px; margin-left: auto;">
-                <button id="scan" class="btn btn-primary">🔍 ${t("scan_btn", lang)}</button>
-                <button id="csvExport" class="btn" style="border-color: #ffd700; color: #ffd700;">📥 CSV</button>
+            <div style="display:flex; gap:5px; margin-left: auto;">
+                <button id="scan" class="btn btn-primary" style="padding:6px 12px; font-size:13px; white-space:nowrap;">🔍 ${t("scan_btn", lang)}</button>
+                <button id="csvExport" class="btn" style="padding:6px 12px; font-size:13px; border-color: #ffd700; color: #ffd700; white-space:nowrap;">📥 CSV</button>
             </div>
         </div>
     </div>
