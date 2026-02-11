@@ -367,6 +367,7 @@ function renderLayout({ title, content, user, activeTab, oauth = false, scripts 
             return text;
         };
         ${COMMON_SCRIPT}
+
     </script>
     ${scripts}
 </body></html>`;
