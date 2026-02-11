@@ -138,31 +138,49 @@ const COMMON_SCRIPT = /* v2.4 (Optimized) */ `
      const selGuild = $("guild");
 
      const loadMasters = async (gid) => {
-        const [ch, rl] = await Promise.all([api("/api/channels?guild=" + gid), api("/api/roles?guild=" + gid)]);
-        const channels = (ch.ok && ch.channels) ? ch.channels : [];
+        try {
+            const [ch, rl] = await Promise.all([api("/api/channels?guild=" + gid), api("/api/roles?guild=" + gid)]);
+            
+            // Debug info
+            console.log("Channels API:", ch);
+            
+            const channels = (ch.ok && ch.channels) ? ch.channels : [];
+            const errorMsg = !ch.ok ? (ch.error || "API Error") : (channels.length === 0 ? "No Text Channels" : null);
 
-        // 1. Log Channel
-        const elLog = document.getElementById("logCh");
-        if(elLog) {
-            elLog.innerHTML = '<option value="">(None / Disable)</option>';
-            channels.forEach(c => {
-                 const o = document.createElement("option");
-                 o.value = c.id;
-                 o.textContent = "#" + c.name;
-                 elLog.appendChild(o);
-            });
-        }
+            // 1. Log Channel
+            const elLog = document.getElementById("logCh");
+            if(elLog) {
+                if(errorMsg) {
+                    elLog.innerHTML = '<option value="">(Error: ' + errorMsg + ')</option>';
+                } else {
+                    elLog.innerHTML = '<option value="">(None / Disable)</option>';
+                    channels.forEach(c => {
+                        const o = document.createElement("option");
+                        o.value = c.id;
+                        o.textContent = "#" + c.name;
+                        elLog.appendChild(o);
+                    });
+                }
+            }
 
-        // 2. NG Log Channel
-        const elNgLog = document.getElementById("ngLogCh");
-        if(elNgLog) {
-            elNgLog.innerHTML = '<option value="">(None / Same as VC Log)</option>';
-            channels.forEach(c => {
-                 const o = document.createElement("option");
-                 o.value = c.id;
-                 o.textContent = "#" + c.name;
-                 elNgLog.appendChild(o);
-            });
+            // 2. NG Log Channel
+            const elNgLog = document.getElementById("ngLogCh");
+            if(elNgLog) {
+                 if(errorMsg) {
+                    elNgLog.innerHTML = '<option value="">(Error: ' + errorMsg + ')</option>';
+                } else {
+                    elNgLog.innerHTML = '<option value="">(None / Same as VC Log)</option>';
+                    channels.forEach(c => {
+                        const o = document.createElement("option");
+                        o.value = c.id;
+                        o.textContent = "#" + c.name;
+                        elNgLog.appendChild(o);
+                    });
+                }
+            }
+        } catch(e) {
+            console.error("loadMasters Error:", e);
+            alert("Error loading channels: " + e.message);
         }
      };
 
