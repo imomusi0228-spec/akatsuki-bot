@@ -40,7 +40,7 @@ export const DICTIONARY = {
         plan_pro_plus_desc: "徹底的なサーバー監査と高度な分析で、完璧な統治を実現します。",
 
         // Detailed features for list (NEW)
-        feat_list_free: "・VC入退室ログの自動記録<br/>・NGワード検知（最大5個）<br/>・基本的な統計表示<br/>・NGワード削除時の自動タイムアウト救済",
+        feat_list_free: "・VC入退室ログの自動記録<br/>・NGワード検知（最大5個）<br/>・基本的な統計表示",
         feat_list_pro: "・Web管理ダッシュボード<br/>・管理ログの可視化・通知<br/>・NGワード登録数 20個<br/>・メッセージ自動削除・警告<br/>・NGワード削除時の自動タイムアウト救済",
         feat_list_pro_plus: "・メンバー監査（幽霊部員検知）<br/>・CSVエクスポート機能<br/>・NGワード登録数 50個<br/>・過去ログ一括スキャン<br/>・NGワード削除時の自動タイムアウト救済",
 
@@ -209,7 +209,7 @@ export const DICTIONARY = {
         plan_pro_plus_desc: "Achieve perfect governance with thorough server auditing and advanced analysis.",
 
         // Detailed features for list (NEW)
-        feat_list_free: "・Auto-record VC join/leave logs<br/>・NG word detection (Up to 5)<br/>・Basic statistics display<br/>・Auto Timeout Relief on NG Deletion",
+        feat_list_free: "・Auto-record VC join/leave logs<br/>・NG word detection (Up to 5)<br/>・Basic statistics display",
         feat_list_pro: "・Web management dashboard<br/>・Log visualization & notification<br/>・20 NG words capacity<br/>・Auto-delete/warn/release",
         feat_list_pro_plus: "・Member audit (Ghost detection)<br/>・CSV export functionality<br/>・50 NG words capacity<br/>・Past log bulk scanning<br/>・Auto Timeout Relief on NG Deletion",
 
