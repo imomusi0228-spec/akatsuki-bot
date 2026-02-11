@@ -300,7 +300,16 @@ const COMMON_SCRIPT = /* v2.4 (Optimized) */ `
 
          rows.innerHTML = ""; 
          loading.style.display = "block";
-         const res = await api("/api/activity?guild=" + gid + "&audit_role_id=" + ar + "&intro_channel_id=" + ic + "&refresh=1");
+      const runScan = async () => {
+         const gid = selGuild.value;
+         const ar = $("auditRole").value;
+         const ic = $("introCh").value;
+         const vw = $("vcWeeks").value;
+         if(!gid) return;
+ 
+         rows.innerHTML = ""; 
+         loading.style.display = "block";
+         const res = await api("/api/activity?guild=" + gid + "&audit_role_id=" + ar + "&intro_channel_id=" + ic + "&vc_weeks=" + vw + "&refresh=1");
          loading.style.display = "none";
          
          if(!res.ok) { 
@@ -310,8 +319,6 @@ const COMMON_SCRIPT = /* v2.4 (Optimized) */ `
          }
          
          currentData = res.data || [];
-         // Default sort: NG first (already done by API? Yes, but let's keep it). 
-         // API sorts by status NG first. Jst render.
          renderRows(currentData);
       };
 
@@ -480,6 +487,15 @@ export function renderAdminActivityHTML({ user, req }) {
                 <label style="display:block; font-size:12px; margin-bottom:4px; font-weight:bold;">${t("intro_channel", lang)}</label>
                 <select id="introCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
             </div>
+            <div style="flex:1; min-width:150px;">
+                <label style="display:block; font-size:12px; margin-bottom:4px; font-weight:bold;">${t("label_vc_weeks", lang) || "VC活動なし"}</label>
+                <select id="vcWeeks" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;">
+                    <option value="0">制限なし</option>
+                    <option value="1">1週間以上</option>
+                    <option value="2">2週間以上</option>
+                    <option value="4">4週間以上</option>
+                </select>
+            </div>
             <div style="display:flex; gap:8px;">
                 <button id="scan" class="btn btn-primary">🔍 ${t("scan_btn", lang)}</button>
                 <button id="csvExport" class="btn" style="border-color: #ffd700; color: #ffd700;">📥 CSV</button>
@@ -505,8 +521,9 @@ export function renderAdminActivityHTML({ user, req }) {
             const gid = $("guild").value;
             const ar = $("auditRole").value;
             const ic = $("introCh").value;
+            const vw = $("vcWeeks").value;
             if(!gid) return;
-            window.location.href = \`/api/activity/export?guild=\${gid}&audit_role_id=\${ar}&intro_channel_id=\${ic}\`;
+            window.location.href = \`/api/activity/export?guild=\${gid}&audit_role_id=\${ar}&intro_channel_id=\${ic}&vc_weeks=\${vw}\`;
         };
     </script>`;
     return renderLayout({ title: t("activity", lang), content, user, activeTab: "activity", oauth: true, scripts }, lang);

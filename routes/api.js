@@ -354,20 +354,23 @@ export async function handleApiRoute(req, res, pathname, url) {
         const introSet = new Set();
         if (settings.intro_channel_id) {
             try {
-                const channel = client.channels.cache.get(settings.intro_channel_id) || await guild.channels.fetch(settings.intro_channel_id);
+                const channel = client.channels.cache.get(settings.intro_channel_id) || await guild.channels.fetch(settings.intro_channel_id).catch(() => null);
                 if (channel && channel.isTextBased()) {
-                    // Increased limit to 1000 to improve accuracy for busy servers
-                    const messages = await channel.messages.fetch({ limit: 100 }).catch(() => []);
-                    messages.forEach(msg => introSet.add(msg.author.id));
-
-                    // If we need even more, we could loop, but 1000 is a good start for Pro+
-                    if (messages.size === 100) {
-                        const moreMessages = await channel.messages.fetch({ limit: 100, before: messages.last()?.id }).catch(() => []);
-                        moreMessages.forEach(msg => introSet.add(msg.author.id));
+                    let lastId = null;
+                    let fetchCount = 0;
+                    // Full scan: Fetch up to 1000 messages
+                    while (fetchCount < 1000) {
+                        const msgs = await channel.messages.fetch({ limit: 100, before: lastId }).catch(() => null);
+                        if (!msgs || msgs.size === 0) break;
+                        msgs.forEach(msg => introSet.add(msg.author.id));
+                        lastId = msgs.last().id;
+                        fetchCount += msgs.size;
+                        if (msgs.size < 100) break;
                     }
                 }
             } catch (e) { console.error("Intro Scan Error:", e); }
         }
+        const vcWeeks = parseInt(url.searchParams.get("vc_weeks")) || 0;
         const auditResults = [];
         try {
             let members;
@@ -394,10 +397,16 @@ export async function handleApiRoute(req, res, pathname, url) {
                 const hasRole = settings.audit_role_id ? m.roles.cache.has(settings.audit_role_id) : true;
                 const hasIntro = settings.intro_channel_id ? introSet.has(m.user.id) : true;
 
+                // VC Threshold Check
+                let vcOk = !!(lastVcDate || inVcNow);
+                if (vcWeeks > 0 && lastVcDate) {
+                    const thresholdDate = new Date();
+                    thresholdDate.setDate(thresholdDate.getDate() - (vcWeeks * 7));
+                    if (new Date(lastVcDate) < thresholdDate) vcOk = false;
+                }
+
                 // Audit Status Logic:
                 let status = "OK";
-                const vcOk = lastVcDate || inVcNow;
-
                 if (!hasRole || !hasIntro || !vcOk) status = "NG";
 
                 const fmtDate = (d) => {
@@ -463,11 +472,15 @@ export async function handleApiRoute(req, res, pathname, url) {
             try {
                 const ch = await guild.channels.fetch(settings.intro_channel_id).catch(() => null);
                 if (ch?.isTextBased()) {
-                    const msgs = await ch.messages.fetch({ limit: 100 }).catch(() => []);
-                    msgs.forEach(m => introSet.add(m.author.id));
-                    if (msgs.size === 100) {
-                        const more = await ch.messages.fetch({ limit: 100, before: msgs.last()?.id }).catch(() => []);
-                        more.forEach(m => introSet.add(m.author.id));
+                    let lastId = null;
+                    let count = 0;
+                    while (count < 1000) {
+                        const msgs = await ch.messages.fetch({ limit: 100, before: lastId }).catch(() => null);
+                        if (!msgs || msgs.size === 0) break;
+                        msgs.forEach(m => introSet.add(m.author.id));
+                        lastId = msgs.last().id;
+                        count += msgs.size;
+                        if (msgs.size < 100) break;
                     }
                 }
             } catch (e) { }
@@ -486,8 +499,18 @@ export async function handleApiRoute(req, res, pathname, url) {
                 const hasRole = settings.audit_role_id ? m.roles.cache.has(settings.audit_role_id) : true;
                 const hasIntro = settings.intro_channel_id ? introSet.has(m.user.id) : true;
 
-                const vcOk = lastVcDate || inVcNow;
+                // VC Threshold Check
+                let vcOk = !!(lastVcDate || inVcNow);
+                const vcWeeks_exp = parseInt(url.searchParams.get("vc_weeks")) || 0;
+                if (vcWeeks_exp > 0 && lastVcDate) {
+                    const thresholdDate = new Date();
+                    thresholdDate.setDate(thresholdDate.getDate() - (vcWeeks_exp * 7));
+                    if (new Date(lastVcDate) < thresholdDate) vcOk = false;
+                }
+
                 const status = (hasRole && hasIntro && vcOk) ? "OK" : "NG";
+
+                if (status === "OK") return; // Reverted: Only NG users in CSV
 
                 const fmtDate = (d) => {
                     if (!d) return "None";
