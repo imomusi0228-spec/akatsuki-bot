@@ -488,10 +488,10 @@ export function renderAdminActivityHTML({ user, req }) {
                 <select id="introCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
             </div>
             <div style="flex:1; min-width:150px;">
-                <label style="display:block; font-size:12px; margin-bottom:4px; font-weight:bold;">${t("label_vc_weeks", lang) || "VC未利用期間(週)"}</label>
+                <label style="display:block; font-size:12px; margin-bottom:4px; font-weight:bold;">VC未利用期間(週)</label>
                 <input id="vcWeeks" type="number" min="0" max="52" value="0" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white; outline:none;">
             </div>
-            <div style="display:flex; gap:8px;">
+            <div style="display:flex; gap:8px; margin-left: auto;">
                 <button id="scan" class="btn btn-primary">🔍 ${t("scan_btn", lang)}</button>
                 <button id="csvExport" class="btn" style="border-color: #ffd700; color: #ffd700;">📥 CSV</button>
             </div>
