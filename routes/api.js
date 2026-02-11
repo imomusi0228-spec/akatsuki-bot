@@ -103,11 +103,18 @@ export async function handleApiRoute(req, res, pathname, url) {
                         ]);
                     } catch (e) { }
                 }
+                // Fetch member to check timeout status
+                let member = null;
+                try {
+                    member = await guild.members.fetch(row.user_id).catch(() => null);
+                } catch (e) { }
+
                 return {
                     user_id: row.user_id,
                     display_name: user ? (user.globalName || user.username) : "Unknown User",
                     avatar_url: user ? user.displayAvatarURL({ size: 64 }) : null,
-                    cnt: row.cnt
+                    cnt: row.cnt,
+                    is_timed_out: member && member.communicationDisabledUntil && member.communicationDisabledUntil > new Date()
                 };
             }));
 

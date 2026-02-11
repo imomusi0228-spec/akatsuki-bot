@@ -85,9 +85,10 @@ async function initDashboard() {
                     let rows = "";
                     (res.stats.topNgUsers || []).forEach(u => {
                         const av = u.avatar_url ? '<img src="' + u.avatar_url + '" style="width:24px; height:24px; border-radius:50%; vertical-align:middle; margin-right:8px;">' : '';
-                        rows += `<tr><td>${av}${escapeHTML(u.display_name || 'Unknown')}</td><td style="text-align:right">${u.cnt}</td></tr>`;
+                        const releaseBtn = u.is_timed_out ? '<button onclick="releaseNgTimeout(\'' + u.user_id + '\', \'' + $("guild").value + '\')" class="btn" style="padding:2px 8px; font-size:10px; background:var(--danger-color); color:white; border:none; margin-left:8px;">' + t("btn_release") + '</button>' : '';
+                        rows += `<tr><td>${av}${escapeHTML(u.display_name || 'Unknown')}</td><td style="text-align:right">${u.cnt}</td><td style="text-align:right">${releaseBtn}</td></tr>`;
                     });
-                    $("topNg").innerHTML = rows || '<tr><td colspan="2" class="muted" style="text-align:center; padding:10px;">None</td></tr>';
+                    $("topNg").innerHTML = rows || '<tr><td colspan="3" class="muted" style="text-align:center; padding:10px;">None</td></tr>';
                 } else {
                     $("summary").innerText = "Error: " + res.error;
                 }
@@ -102,6 +103,17 @@ async function initDashboard() {
         alert("Dashboard initialization failed: " + e.message);
     }
 }
+
+window.releaseNgTimeout = async (uid, gid) => {
+    if (!confirm(t("confirm_release"))) return;
+    const res = await api("/api/timeout/release", { guild: gid, user_id: uid });
+    if (res.ok) {
+        alert(t("release_success"));
+        $("reload").click(); // ダッシュボードをリロード
+    } else {
+        alert("Error: " + res.error);
+    }
+};
 
 async function initSettings() {
     if (!await loadGuilds()) return;
@@ -225,7 +237,6 @@ async function initActivity() {
             const statusStyle = r.status === "OK" ? 'color:#1da1f2; font-weight:bold;' : 'color:var(--danger-color); font-weight:bold;';
             const detailedStatus = r.status === "OK" ? t("status_ok") : (!r.has_role ? t("status_no_role") : (!r.has_intro ? t("status_no_intro") : t("status_no_vc")));
 
-            const releaseBtn = r.status !== "OK" ? ('<button onclick="releaseTimeout(\'' + r.id + '\')" class="btn" style="padding:2px 8px; font-size:10px; background:var(--danger-color); color:white; border:none; margin-left:8px;">' + t("btn_release") + '</button>') : "";
 
             html += '<tr>' +
                 '<td>' + (r.joined_at || '-') + '</td>' +
@@ -233,7 +244,7 @@ async function initActivity() {
                 '<td style="text-align:center;">' + roleTxt + '</td>' +
                 '<td style="text-align:center;">' + introTxt + '</td>' +
                 '<td style="text-align:center;">' + r.last_vc + '</td>' +
-                '<td style="text-align:center; ' + statusStyle + '">' + detailedStatus + releaseBtn + '</td>' +
+                '<td style="text-align:center; ' + statusStyle + '">' + detailedStatus + '</td>' +
                 '</tr>';
         });
         rows.innerHTML = html || '<tr><td colspan="6" class="muted" style="text-align:center;">' + t("ng_none") + '</td></tr>';
