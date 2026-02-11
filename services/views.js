@@ -139,8 +139,11 @@ const COMMON_SCRIPT = /* v2.4 (Optimized) */ `
      const loadMasters = async (gid) => {
         const [ch, rl] = await Promise.all([api(\`/api/channels?guild=\${gid}\`), api(\`/api/roles?guild=\${gid}\`)]);
         if(selLog) {
-            selLog.innerHTML = '<option value="">(None / No Log)</option>';
             if(ch.ok) ch.channels.forEach(c => { const o=document.createElement("option"); o.value=c.id; o.textContent="#"+c.name; selLog.appendChild(o); });
+        }
+        if($("ngLogCh")) {
+            $("ngLogCh").innerHTML = '<option value="">(None / Same as VC Log)</option>';
+            if(ch.ok) ch.channels.forEach(c => { const o=document.createElement("option"); o.value=c.id; o.textContent="#"+c.name; $("ngLogCh").appendChild(o); });
         }
         if($("auditRole")) {
             $("auditRole").innerHTML = '<option value="">(None / No Audit)</option>';
@@ -177,6 +180,7 @@ const COMMON_SCRIPT = /* v2.4 (Optimized) */ `
         }
         if(st.ok && st.settings) {
             if(selLog) selLog.value = st.settings.log_channel_id || "";
+            if($("ngLogCh")) $("ngLogCh").value = st.settings.ng_log_channel_id || "";
             if($("auditRole")) $("auditRole").value = st.settings.audit_role_id || "";
             if($("introCh")) $("introCh").value = st.settings.intro_channel_id || "";
             if($("threshold")) $("threshold").value = st.settings.ng_threshold ?? 3;
@@ -192,6 +196,7 @@ const COMMON_SCRIPT = /* v2.4 (Optimized) */ `
         const body = {
             guild: selGuild.value,
             log_channel_id: selLog.value,
+            ng_log_channel_id: $("ngLogCh")?.value || "",
             audit_role_id: $("auditRole")?.value || "",
             intro_channel_id: $("introCh")?.value || "",
             ng_threshold: parseInt($("threshold").value),
@@ -437,12 +442,29 @@ export function renderAdminSettingsHTML({ user, req }) {
         <h3>${t("config_general", lang)}</h3>
         
         <div class="row" style="margin-bottom:15px;">
-           <label style="display:block; margin-bottom:5px; font-weight:bold;">${t("log_channel", lang)}</label>
+           <label style="display:block; margin-bottom:5px; font-weight:bold;">${t("log_channel", lang)} <span class="muted" style="font-weight:normal; font-size:0.9em;">(VC入退室)</span></label>
            <p class="muted" style="margin-bottom:8px;">${t("log_channel_desc", lang)}</p>
            <select id="logCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
         </div>
 
+        <div class="row" style="margin-bottom:15px;">
+           <label style="display:block; margin-bottom:5px; font-weight:bold;">${t("ng_log_channel", lang)} <span class="muted" style="font-weight:normal; font-size:0.9em;">(NG検知・管理ログ)</span></label>
+           <p class="muted" style="margin-bottom:8px;">${t("ng_log_channel_desc", lang)}</p>
+           <select id="ngLogCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
+        </div>
 
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px; border-top: 1px solid var(--border-color); padding-top:20px;">
+             <div>
+                <label style="display:block; margin-bottom:8px; font-weight:bold;">${t("intro_channel", lang)}</label>
+                <p class="muted" style="margin-bottom:8px; font-size:0.85em;">${t("intro_channel_desc", lang)}</p>
+                <select id="introCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
+             </div>
+             <div>
+                <label style="display:block; margin-bottom:8px; font-weight:bold;">${t("audit_role", lang)}</label>
+                <p class="muted" style="margin-bottom:8px; font-size:0.85em;">${t("audit_role_desc", lang)}</p>
+                <select id="auditRole" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
+             </div>
+        </div>
 
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-top:20px; border-top: 1px solid var(--border-color); padding-top:20px;">
             <div>

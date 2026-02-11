@@ -4,17 +4,18 @@ import { dbQuery } from "./db.js";
 /**
  * 共通ログ投稿関数
  * @param {import("discord.js").Guild} guild 
- * @param {'vc' | 'ng'} type ログの種類
+ * @param {'vc' | 'ng' | 'vc_in' | 'vc_out'} type ログの種類
  * @param {import("discord.js").EmbedBuilder} embed 投稿するEmbed
+ * @param {Date | number} [date] ログの日付（指定がない場合は現在時刻）
  */
-export async function sendLog(guild, type, embed) {
+export async function sendLog(guild, type, embed, date = new Date()) {
     try {
         const settingsRes = await dbQuery("SELECT log_channel_id, ng_log_channel_id FROM settings WHERE guild_id = $1", [guild.id]);
         const settings = settingsRes.rows[0];
         if (!settings) return;
 
         // 種別に応じてログチャンネルを選択
-        const channelId = type === 'vc' ? settings.log_channel_id : (settings.ng_log_channel_id || settings.log_channel_id);
+        const channelId = type.startsWith('vc') ? settings.log_channel_id : (settings.ng_log_channel_id || settings.log_channel_id);
         if (!channelId) return;
 
         const channel = await guild.channels.fetch(channelId).catch(() => null);
@@ -24,21 +25,42 @@ export async function sendLog(guild, type, embed) {
             // VCログはスレッド化
             const isOut = type === 'vc_out';
             const prefix = isOut ? "退室" : "入室";
-            const today = new Date().toISOString().split("T")[0];
-            const threadName = `${prefix}-${today}`;
+
+            // 日付処理
+            const dateObj = new Date(date);
+            if (isNaN(dateObj.getTime())) return; // Invalid Date
+
+            const dateStr = dateObj.toISOString().split("T")[0];
+            const threadName = `${prefix}-${dateStr}`;
 
             let thread = channel.threads.cache.find(t => t.name === threadName && !t.archived);
 
             if (!thread) {
-                const fetchedThreads = await channel.threads.fetchActive();
-                thread = fetchedThreads.threads.find(t => t.name === threadName);
+                // アーカイブされているスレッドも検索
+                try {
+                    const fetchedThreads = await channel.threads.fetchActive();
+                    thread = fetchedThreads.threads.find(t => t.name === threadName);
 
-                if (!thread) {
-                    thread = await channel.threads.create({
-                        name: threadName,
-                        autoArchiveDuration: 1440,
-                        reason: `Daily VC ${prefix} Log Thread`,
-                    }).catch(() => null);
+                    if (!thread) {
+                        const archivedThreads = await channel.threads.fetchArchived({ type: 'public', limit: 50 }).catch(() => null);
+                        if (archivedThreads) {
+                            thread = archivedThreads.threads.find(t => t.name === threadName);
+                        }
+                    }
+
+                    if (!thread) {
+                        // 新規作成 (過去の日付でも、スキャン等のために作成)
+                        thread = await channel.threads.create({
+                            name: threadName,
+                            autoArchiveDuration: 1440,
+                            reason: `VC ${prefix} Log Thread for ${dateStr}`,
+                        }).catch(() => null);
+                    } else if (thread.archived) {
+                        // アーカイブされていたら復元
+                        await thread.setArchived(false);
+                    }
+                } catch (e) {
+                    console.error("Thread Fetch Error:", e);
                 }
             }
 

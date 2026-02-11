@@ -329,19 +329,20 @@ export async function handleApiRoute(req, res, pathname, url) {
         const check = await dbQuery("SELECT guild_id FROM settings WHERE guild_id = $1", [body.guild]);
         if (check.rows.length === 0) {
             await dbQuery(`INSERT INTO settings 
-                (guild_id, log_channel_id, audit_role_id, intro_channel_id, ng_threshold, timeout_minutes) 
-                VALUES ($1, $2, $3, $4, $5, $6)`,
-                [body.guild, body.log_channel_id, body.audit_role_id, body.intro_channel_id, body.ng_threshold, body.timeout_minutes]);
+                (guild_id, log_channel_id, ng_log_channel_id, audit_role_id, intro_channel_id, ng_threshold, timeout_minutes) 
+                VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                [body.guild, body.log_channel_id, body.ng_log_channel_id, body.audit_role_id, body.intro_channel_id, body.ng_threshold, body.timeout_minutes]);
         } else {
             await dbQuery(`UPDATE settings SET 
                 log_channel_id = $1, 
-                audit_role_id = $2, 
-                intro_channel_id = $3, 
-                ng_threshold = $4, 
-                timeout_minutes = $5,
+                ng_log_channel_id = $2,
+                audit_role_id = $3, 
+                intro_channel_id = $4, 
+                ng_threshold = $5, 
+                timeout_minutes = $6,
                 updated_at = NOW()
-                WHERE guild_id = $6`,
-                [body.log_channel_id, body.audit_role_id, body.intro_channel_id, body.ng_threshold, body.timeout_minutes, body.guild]);
+                WHERE guild_id = $7`,
+                [body.log_channel_id, body.ng_log_channel_id, body.audit_role_id, body.intro_channel_id, body.ng_threshold, body.timeout_minutes, body.guild]);
         }
 
         res.writeHead(200, { "Content-Type": "application/json" });
