@@ -134,37 +134,28 @@ const COMMON_SCRIPT = /* v2.4 (Optimized) */ `
      
      const lang = document.documentElement.lang || 'ja';
      const selLog = $("logCh");
+     const selNgLog = $("ngLogCh");
      const selGuild = $("guild");
 
-     const loadMasters = async (gid) => {
-        const [ch, rl] = await Promise.all([api(\`/api/channels?guild=\${gid}\`), api(\`/api/roles?guild=\${gid}\`)]);
-        
-        // Reset Log Channel (was missing clear)
-        if(selLog) {
-            selLog.innerHTML = '<option value="">(None / Disable)</option>';
-            if(ch.ok && ch.channels) {
-                 ch.channels.forEach(c => { 
-                    const o=document.createElement("option"); 
-                    o.value=c.id; 
-                    o.textContent="#"+c.name; 
-                    selLog.appendChild(o); 
-                 });
-            }
-        }
+     const populateSelect = (sel, channels, defaultText = "(None)") => {
+         if (!sel) return;
+         sel.innerHTML = '<option value="">' + defaultText + '</option>';
+         if (channels && Array.isArray(channels)) {
+             channels.forEach(c => {
+                 const o = document.createElement("option");
+                 o.value = c.id;
+                 o.textContent = "#" + c.name;
+                 sel.appendChild(o);
+             });
+         }
+     };
 
-        // Reset NG Log Channel
-        const selNgLog = $("ngLogCh");
-        if(selNgLog) {
-            selNgLog.innerHTML = '<option value="">(None / Same as VC Log)</option>';
-            if(ch.ok && ch.channels) {
-                ch.channels.forEach(c => { 
-                    const o=document.createElement("option"); 
-                    o.value=c.id; 
-                    o.textContent="#"+c.name; 
-                    selNgLog.appendChild(o); 
-                });
-            }
-        }
+     const loadMasters = async (gid) => {
+        const [ch, rl] = await Promise.all([api("/api/channels?guild=" + gid), api("/api/roles?guild=" + gid)]);
+        
+        const channels = (ch.ok && ch.channels) ? ch.channels : [];
+        populateSelect(selLog, channels, "(None / Disable)");
+        populateSelect(selNgLog, channels, "(None / Same as VC Log)");
      };
 
      const reload = async () => {
