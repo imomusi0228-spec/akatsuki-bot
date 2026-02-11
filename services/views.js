@@ -585,7 +585,7 @@ export function renderFeaturesHTML(req) {
             <h2 style="font-size: 28px;">${t("plan_pro", lang)}</h2>
             <div class="plan-price">¥500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_month", lang)}</span></div>
             <p style="color:#8899a6; margin-bottom:25px; max-width: 700px; margin-left: auto; margin-right: auto;">${t("plan_pro_desc", lang)}</p>
-            <div class="feature-grid">
+            <div class="feature-grid" style="grid-template-columns: repeat(3, 1fr); max-width: 1000px;">
                 <div class="feature-item-card">
                     <h4 style="margin-bottom:8px;">${t("feat_sec_adv", lang)}</h4>
                     <p class="muted" style="font-size:13px; line-height:1.6;">${t("feature_ng_limit", lang)} ${t("limit_20", lang)}<br/>${t("features_detail_security", lang)}</p>
