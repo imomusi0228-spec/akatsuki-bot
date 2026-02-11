@@ -20,35 +20,40 @@ export const FEATURES = {
         maxGuilds: 1,
         logs: false,
         dashboard: false,
-        activity: false
+        activity: false,
+        autoRelease: false
     },
     [TIERS.PRO_MONTHLY]: {
         maxNgWords: 20,
         maxGuilds: 1,
         logs: true,
         dashboard: true,
-        activity: false
+        activity: false,
+        autoRelease: true
     },
     [TIERS.PRO_YEARLY]: {
         maxNgWords: 20,
         maxGuilds: 1,
         logs: true,
         dashboard: true,
-        activity: false
+        activity: false,
+        autoRelease: true
     },
     [TIERS.PRO_PLUS_MONTHLY]: {
         maxNgWords: 50,
         maxGuilds: 3,
         logs: true,
         dashboard: true,
-        activity: true
+        activity: true,
+        autoRelease: true
     },
     [TIERS.PRO_PLUS_YEARLY]: {
         maxNgWords: 50,
         maxGuilds: 3,
         logs: true,
         dashboard: true,
-        activity: true
+        activity: true,
+        autoRelease: true
     }
 };
 

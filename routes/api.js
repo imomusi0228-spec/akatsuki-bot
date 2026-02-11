@@ -221,26 +221,33 @@ export async function handleApiRoute(req, res, pathname, url) {
 
         try {
             // Automatic Timeout Release Logic
-            // 1. Find users who were logged for this specific word
-            const logRes = await dbQuery("SELECT DISTINCT user_id FROM ng_logs WHERE guild_id = $1 AND word = $2", [body.guild, body.word]);
-            const userIds = logRes.rows.map(r => r.user_id);
+            const tier = await getTier(body.guild);
+            const features = getFeatures(tier);
 
-            if (userIds.length > 0) {
-                const guild = client.guilds.cache.get(body.guild);
-                if (guild) {
-                    // Process concurrently but catch errors individually
-                    await Promise.all(userIds.map(async (userId) => {
-                        try {
-                            const member = await guild.members.fetch(userId).catch(() => null);
-                            if (member && member.isCommunicationDisabled()) {
-                                await member.timeout(null, `NG Word "${body.word}" deleted by admin`);
-                                console.log(`[Auto-Release] Removed timeout for ${member.user.tag} in ${guild.name}`);
+            if (features.autoRelease) {
+                // 1. Find users who were logged for this specific word
+                const logRes = await dbQuery("SELECT DISTINCT user_id FROM ng_logs WHERE guild_id = $1 AND word = $2", [body.guild, body.word]);
+                const userIds = logRes.rows.map(r => r.user_id);
+
+                if (userIds.length > 0) {
+                    const guild = client.guilds.cache.get(body.guild);
+                    if (guild) {
+                        // Process concurrently but catch errors individually
+                        await Promise.all(userIds.map(async (userId) => {
+                            try {
+                                const member = await guild.members.fetch(userId).catch(() => null);
+                                if (member && member.isCommunicationDisabled()) {
+                                    await member.timeout(null, `NG Word "${body.word}" deleted by admin`);
+                                    console.log(`[Auto-Release] Removed timeout for ${member.user.tag} in ${guild.name}`);
+                                }
+                            } catch (e) {
+                                console.error(`[Auto-Release] Failed for user ${userId}:`, e.message);
                             }
-                        } catch (e) {
-                            console.error(`[Auto-Release] Failed for user ${userId}:`, e.message);
-                        }
-                    }));
+                        }));
+                    }
                 }
+            } else {
+                console.log(`[Auto-Release] Skipped for guild ${body.guild} (Tier: ${tier}) - Feature disabled for this tier`);
             }
 
             await dbQuery("DELETE FROM ng_words WHERE guild_id = $1 AND word = $2", [body.guild, body.word]);

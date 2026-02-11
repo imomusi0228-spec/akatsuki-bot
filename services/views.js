@@ -666,7 +666,7 @@ export function renderFeaturesHTML(req) {
                 </tr>
                 <tr>
                     <td>${t("feature_auto_release", lang)}</td>
-                    <td><span class="feature-check">✓</span></td>
+                    <td><span class="feature-cross">×</span></td>
                     <td><span class="feature-check">✓</span></td>
                     <td><span class="feature-check">✓</span></td>
                 </tr>
