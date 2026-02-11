@@ -92,21 +92,34 @@ export async function initDb() {
 
             // Fix vc_sessions legacy columns
             `DO $$ 
-            BEGIN 
-                -- Handle join_ts -> join_time migration
-                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vc_sessions' AND column_name='join_ts') THEN
-                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vc_sessions' AND column_name='join_time') THEN
-                        -- Both exist, drop legacy join_ts
-                        ALTER TABLE vc_sessions DROP COLUMN join_ts;
-                    ELSE
-                        -- Only join_ts exists, rename it
-                        ALTER TABLE vc_sessions RENAME COLUMN join_ts TO join_time;
+                -- Ensure ID is the PRIMARY KEY and not some legacy combo
+                IF EXISTS (
+                    SELECT 1 
+                    FROM information_schema.table_constraints tc 
+                    JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name 
+                    WHERE tc.table_name = 'vc_sessions' 
+                    AND tc.constraint_type = 'PRIMARY KEY' 
+                    AND kcu.column_name != 'id'
+                ) THEN
+                    -- Drop old PK
+                    ALTER TABLE vc_sessions DROP CONSTRAINT vc_sessions_pkey;
+                    
+                    -- Ensure id exists
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vc_sessions' AND column_name='id') THEN
+                        ALTER TABLE vc_sessions ADD COLUMN id SERIAL;
                     END IF;
-                END IF;
 
-                -- Ensure ID exists
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vc_sessions' AND column_name='id') THEN
-                    ALTER TABLE vc_sessions ADD COLUMN id SERIAL;
+                    -- Set id as PK
+                    ALTER TABLE vc_sessions ADD PRIMARY KEY (id);
+                ELSIF NOT EXISTS (
+                    SELECT 1 FROM information_schema.table_constraints 
+                    WHERE table_name = 'vc_sessions' AND constraint_type = 'PRIMARY KEY'
+                ) THEN
+                    -- No PK at all? Ensure id exists and make it PK
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vc_sessions' AND column_name='id') THEN
+                        ALTER TABLE vc_sessions ADD COLUMN id SERIAL;
+                    END IF;
+                    ALTER TABLE vc_sessions ADD PRIMARY KEY (id);
                 END IF;
             END $$;`,
 
