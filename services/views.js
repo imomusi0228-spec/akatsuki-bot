@@ -580,7 +580,7 @@ export function renderFeaturesHTML(req) {
     </div>
 
     <div id="tab-pro" class="tab-content">
-        <div class="plan-card" style="border-color: var(--primary-color); background: rgba(29, 161, 242, 0.03);">
+        <div class="plan-card" style="border: 2px solid var(--primary-color); background: rgba(29, 161, 242, 0.03);">
             <span class="plan-badge" style="background:var(--primary-color); color:white;">${t("plan_badge_rec", lang)}</span>
             <h2 style="font-size: 28px;">${t("plan_pro", lang)}</h2>
             <div class="plan-price">¥500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_month", lang)}</span></div>
