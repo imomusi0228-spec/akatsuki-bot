@@ -496,7 +496,14 @@ export function renderAdminActivityHTML({ user, req }) {
                     <option value="4">4週間以上</option>
                 </select>
             </div>
-            <div style="display:flex; gap:5px; margin-left: auto;">
+            <div style="display:flex; gap:5px; margin-left: auto; align-items:flex-end;">
+                <div style="text-align:left;">
+                    <label style="display:block; font-size:9px; margin-bottom:2px; font-weight:bold; color:var(--text-secondary);">CSV Scope</label>
+                    <select id="csvFilter" style="padding:6px; font-size:12px; border-radius:6px; background:#15202b; border:1px solid #38444d; color:white;">
+                        <option value="ng">NG Only</option>
+                        <option value="all">All Users</option>
+                    </select>
+                </div>
                 <button id="scan" class="btn btn-primary" style="padding:6px 12px; font-size:13px; white-space:nowrap;">🔍 ${t("scan_btn", lang)}</button>
                 <button id="csvExport" class="btn" style="padding:6px 12px; font-size:13px; border-color: #ffd700; color: #ffd700; white-space:nowrap;">📥 CSV</button>
             </div>
@@ -522,8 +529,9 @@ export function renderAdminActivityHTML({ user, req }) {
             const ar = $("auditRole").value;
             const ic = $("introCh").value;
             const vw = $("vcWeeks").value;
+            const cf = $("csvFilter").value || "ng";
             if(!gid) return;
-            window.location.href = \`/api/activity/export?guild=\${gid}&audit_role_id=\${ar}&intro_channel_id=\${ic}&vc_weeks=\${vw}\`;
+            window.location.href = \`/api/activity/export?guild=\${gid}&audit_role_id=\${ar}&intro_channel_id=\${ic}&vc_weeks=\${vw}&filter=\${cf}\`;
         };
     </script>`;
     return renderLayout({ title: t("activity", lang), content, user, activeTab: "activity", oauth: true, scripts }, lang);

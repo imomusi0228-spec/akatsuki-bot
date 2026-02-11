@@ -404,7 +404,6 @@ export async function handleApiRoute(req, res, pathname, url) {
                 }
             } catch (e) { console.error("Intro Scan Error:", e); }
         }
-        const vcWeeks = parseInt(url.searchParams.get("vc_weeks")) || 0;
         const auditResults = [];
         try {
             let members;
@@ -415,8 +414,18 @@ export async function handleApiRoute(req, res, pathname, url) {
             if (!refresh && cached && Date.now() - cached.ts < 5 * 60 * 1000) {
                 members = cached.data;
             } else {
-                members = await guild.members.fetch();
-                memberCache.set(cacheKey, { ts: Date.now(), data: members });
+                try {
+                    members = await guild.members.fetch();
+                    memberCache.set(cacheKey, { ts: Date.now(), data: members });
+                } catch (fetchErr) {
+                    if (fetchErr.name === 'GatewayRateLimitError' || fetchErr.code === 50035 || String(fetchErr).includes('rate limited')) {
+                        const retryAfter = fetchErr.data?.retry_after || 5;
+                        console.warn(`[Activity Scan] Rate limited! Retry after ${retryAfter}s. Guild: ${guildId}`);
+                        res.writeHead(429, { "Content-Type": "application/json", "Retry-After": retryAfter });
+                        return res.end(JSON.stringify({ ok: false, error: "Rate limited by Discord. Please try again in a few seconds.", retry_after: retryAfter }));
+                    }
+                    throw fetchErr;
+                }
             }
 
             members.forEach(m => {
@@ -520,6 +529,7 @@ export async function handleApiRoute(req, res, pathname, url) {
             } catch (e) { }
         }
 
+        const filter = url.searchParams.get("filter") || "ng";
         let csv = "\uFEFFUser ID,Display Name,Role Audit,Intro Audit,Last VC,Status\r\n";
         try {
             const members = await guild.members.fetch();
@@ -544,7 +554,7 @@ export async function handleApiRoute(req, res, pathname, url) {
 
                 const status = (hasRole && hasIntro && vcOk) ? "OK" : "NG";
 
-                if (status === "OK") return; // Reverted: Only NG users in CSV
+                if (filter === "ng" && status === "OK") return;
 
                 const fmtDate = (d) => {
                     if (!d) return "None";
