@@ -37,7 +37,7 @@ export const DICTIONARY = {
         plan_free_desc: "基本機能を無料で体験。小規模サーバーや試用に最適。",
         plan_pro_desc: "サーバー運営を効率化し、メンバーに安心感を提供します。",
         plan_pro_plus_desc: "徹底的なサーバー監査と高度な分析で、完璧な統治を実現します。",
-        
+
         // Detailed features for list (NEW)
         feat_list_free: "・VC入退室ログの自動記録<br/>・NGワード検知（最大5個）<br/>・基本的な統計表示",
         feat_list_pro: "・Web管理ダッシュボード<br/>・管理ログの可視化・通知<br/>・NGワード登録数 20個<br/>・メッセージ自動削除・警告",
@@ -201,9 +201,15 @@ export const DICTIONARY = {
         limit_20: "20 Words",
         available: "Yes",
         unavailable: "No",
-        plan_free_desc: "Experience the core features for free. Perfect for small servers or testing the waters.",
-        plan_pro_desc: "Web Dashboard / Log Visualization & Notification / Advanced NG Filter",
-        plan_pro_plus_desc: "Activity Audit (Ghost Member Detection) / CSV Export / Past Log Scan* / Smart Release\n*Currently available for all plans (Beta)",
+        plan_free_desc: "Experience core features for free. Perfect for small servers or testing the waters.",
+        plan_pro_desc: "Streamline server operations and provide peace of mind to members.",
+        plan_pro_plus_desc: "Achieve perfect governance with thorough server auditing and advanced analysis.",
+
+        // Detailed features for list (NEW)
+        feat_list_free: "・Auto-record VC join/leave logs<br/>・NG word detection (Up to 5)<br/>・Basic statistics display",
+        feat_list_pro: "・Web management dashboard<br/>・Log visualization & notification<br/>・20 NG words capacity<br/>・Auto-delete & warnings",
+        feat_list_pro_plus: "・Member audit (Ghost detection)<br/>・CSV export functionality<br/>・50 NG words capacity<br/>・Past log bulk scanning",
+
         features_detail_security: "Auto-delete messages and set warning thresholds to keep your server safe and orderly.",
         features_detail_audit: "Audit members based on roles, introductions, and VC activity to identify inactive members instantly.",
         features_detail_log: "Records important server events to a dedicated channel for easy tracking and moderation.",
