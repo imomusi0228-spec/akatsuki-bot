@@ -137,25 +137,33 @@ const COMMON_SCRIPT = /* v2.4 (Optimized) */ `
      const selNgLog = $("ngLogCh");
      const selGuild = $("guild");
 
-     const populateSelect = (sel, channels, defaultText = "(None)") => {
-         if (!sel) return;
-         sel.innerHTML = '<option value="">' + defaultText + '</option>';
-         if (channels && Array.isArray(channels)) {
-             channels.forEach(c => {
+     const loadMasters = async (gid) => {
+        const [ch, rl] = await Promise.all([api("/api/channels?guild=" + gid), api("/api/roles?guild=" + gid)]);
+        const channels = (ch.ok && ch.channels) ? ch.channels : [];
+
+        // 1. Log Channel
+        const elLog = document.getElementById("logCh");
+        if(elLog) {
+            elLog.innerHTML = '<option value="">(None / Disable)</option>';
+            channels.forEach(c => {
                  const o = document.createElement("option");
                  o.value = c.id;
                  o.textContent = "#" + c.name;
-                 sel.appendChild(o);
-             });
-         }
-     };
+                 elLog.appendChild(o);
+            });
+        }
 
-     const loadMasters = async (gid) => {
-        const [ch, rl] = await Promise.all([api("/api/channels?guild=" + gid), api("/api/roles?guild=" + gid)]);
-        
-        const channels = (ch.ok && ch.channels) ? ch.channels : [];
-        populateSelect(selLog, channels, "(None / Disable)");
-        populateSelect(selNgLog, channels, "(None / Same as VC Log)");
+        // 2. NG Log Channel
+        const elNgLog = document.getElementById("ngLogCh");
+        if(elNgLog) {
+            elNgLog.innerHTML = '<option value="">(None / Same as VC Log)</option>';
+            channels.forEach(c => {
+                 const o = document.createElement("option");
+                 o.value = c.id;
+                 o.textContent = "#" + c.name;
+                 elNgLog.appendChild(o);
+            });
+        }
      };
 
      const reload = async () => {
