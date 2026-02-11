@@ -39,9 +39,9 @@ export const DICTIONARY = {
         plan_pro_plus_desc: "徹底的なサーバー監査と高度な分析で、完璧な統治を実現します。",
 
         // Detailed features for list (NEW)
-        feat_list_free: "・VC入退室ログの自動記録<br/>・NGワード検知（最大5個）<br/>・基本的な統計表示",
-        feat_list_pro: "・Web管理ダッシュボード<br/>・管理ログの可視化・通知<br/>・NGワード登録数 20個<br/>・メッセージ自動削除・警告",
-        feat_list_pro_plus: "・メンバー監査（幽霊部員検知）<br/>・CSVエクスポート機能<br/>・NGワード登録数 50個<br/>・過去ログ一括スキャン",
+        feat_list_free: "・VC入退室ログの自動記録<br/>・NGワード検知（最大5個）<br/>・基本的な統計表示<br/>・自動タイムアウト解除",
+        feat_list_pro: "・Web管理ダッシュボード<br/>・管理ログの可視化・通知<br/>・NGワード登録数 20個<br/>・メッセージ自動削除・警告<br/>・NGワード削除時の自動救済",
+        feat_list_pro_plus: "・メンバー監査（幽霊部員検知）<br/>・CSVエクスポート機能<br/>・NGワード登録数 50個<br/>・過去ログ一括スキャン<br/>・NGワード削除時の自動救済",
 
         features_detail_security: "NGワードの自動削除と警告しきい値による自動タイムアウトで、サーバーの平和を鉄壁に守ります。",
         features_detail_audit: "ロールの所持、自己紹介の有無、VCの参加状況を統合し、幽霊部員を瞬時に特定します。",
@@ -207,9 +207,9 @@ export const DICTIONARY = {
         plan_pro_plus_desc: "Achieve perfect governance with thorough server auditing and advanced analysis.",
 
         // Detailed features for list (NEW)
-        feat_list_free: "・Auto-record VC join/leave logs<br/>・NG word detection (Up to 5)<br/>・Basic statistics display",
-        feat_list_pro: "・Web management dashboard<br/>・Log visualization & notification<br/>・20 NG words capacity<br/>・Auto-delete & warnings",
-        feat_list_pro_plus: "・Member audit (Ghost detection)<br/>・CSV export functionality<br/>・50 NG words capacity<br/>・Past log bulk scanning",
+        feat_list_free: "・Auto-record VC join/leave logs<br/>・NG word detection (Up to 5)<br/>・Basic statistics display<br/>・Auto Timeout Release",
+        feat_list_pro: "・Web management dashboard<br/>・Log visualization & notification<br/>・20 NG words capacity<br/>・Auto-delete/warn/release",
+        feat_list_pro_plus: "・Member audit (Ghost detection)<br/>・CSV export functionality<br/>・50 NG words capacity<br/>・Past log bulk scanning<br/>・Auto Timeout Release",
 
         features_detail_security: "Auto-delete messages and set warning thresholds to keep your server safe and orderly.",
         features_detail_audit: "Audit members based on roles, introductions, and VC activity to identify inactive members instantly.",
