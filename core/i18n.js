@@ -41,7 +41,7 @@ export const DICTIONARY = {
 
         // Detailed features for list (NEW)
         feat_list_free: "・VC入退室ログの自動記録<br/>・NGワード検知（最大5個）<br/>・基本的な統計表示<br/>・NGワード削除時の自動タイムアウト救済",
-        feat_list_pro: "・Web管理ダッシュボード<br/>・管理ログの可視化・通知<br/>・NGワード登録数 20個<br/>・メッセージ自動削除・警告<br/>・NGワード削除時の自動救済",
+        feat_list_pro: "・Web管理ダッシュボード<br/>・管理ログの可視化・通知<br/>・NGワード登録数 20個<br/>・メッセージ自動削除・警告<br/>・NGワード削除時の自動タイムアウト救済",
         feat_list_pro_plus: "・メンバー監査（幽霊部員検知）<br/>・CSVエクスポート機能<br/>・NGワード登録数 50個<br/>・過去ログ一括スキャン<br/>・NGワード削除時の自動タイムアウト救済",
 
         features_detail_security: "NGワードの自動削除と警告しきい値による自動タイムアウトで、サーバーの平和を鉄壁に守ります。",
