@@ -13,6 +13,7 @@
   - autorole_enabled (boolean)
   - updated_at (timestamp with time zone)
   - audit_role_id (text)
+  - ng_log_channel_id (text)
 
 [Table: ng_words]
   - guild_id (text)
@@ -32,9 +33,9 @@
   - id (integer)
 
 [Table: subscriptions]
-  - server_id (character varying)
+  - guild_id (character varying)
   - user_id (character varying)
-  - plan_tier (character varying)
+  - tier (character varying)
   - start_date (timestamp without time zone)
   - expiry_date (timestamp without time zone)
   - is_active (boolean)
@@ -43,6 +44,7 @@
   - valid_until (timestamp with time zone)
   - updated_at (timestamp with time zone)
   - expiry_warning_sent (boolean)
+  - created_at (timestamp without time zone)
 
 [Table: ng_logs]
   - id (integer)

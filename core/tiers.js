@@ -3,7 +3,8 @@ export const TIERS = {
     PRO_MONTHLY: 1,
     PRO_YEARLY: 2,
     PRO_PLUS_MONTHLY: 3,
-    PRO_PLUS_YEARLY: 4
+    PRO_PLUS_YEARLY: 4,
+    TRIAL_PRO_PLUS: 5
 };
 
 export const TIER_NAMES = {
@@ -11,7 +12,8 @@ export const TIER_NAMES = {
     [TIERS.PRO_MONTHLY]: "Pro (Monthly)",
     [TIERS.PRO_YEARLY]: "Pro (Yearly)",
     [TIERS.PRO_PLUS_MONTHLY]: "Pro+ (Monthly)",
-    [TIERS.PRO_PLUS_YEARLY]: "Pro+ (Yearly)"
+    [TIERS.PRO_PLUS_YEARLY]: "Pro+ (Yearly)",
+    [TIERS.TRIAL_PRO_PLUS]: "Trial Pro+"
 };
 
 export const FEATURES = {
@@ -54,6 +56,15 @@ export const FEATURES = {
     [TIERS.PRO_PLUS_YEARLY]: {
         maxNgWords: 50,
         maxGuilds: 3,
+        ngLog: true,
+        vcLog: true,
+        dashboard: true,
+        activity: true,
+        autoRelease: true
+    },
+    [TIERS.TRIAL_PRO_PLUS]: {
+        maxNgWords: 50,
+        maxGuilds: 1,
         ngLog: true,
         vcLog: true,
         dashboard: true,
