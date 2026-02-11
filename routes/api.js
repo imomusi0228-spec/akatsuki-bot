@@ -356,8 +356,15 @@ export async function handleApiRoute(req, res, pathname, url) {
             try {
                 const channel = client.channels.cache.get(settings.intro_channel_id) || await guild.channels.fetch(settings.intro_channel_id);
                 if (channel && channel.isTextBased()) {
-                    const messages = await channel.messages.fetch({ limit: 100 });
+                    // Increased limit to 1000 to improve accuracy for busy servers
+                    const messages = await channel.messages.fetch({ limit: 100 }).catch(() => []);
                     messages.forEach(msg => introSet.add(msg.author.id));
+
+                    // If we need even more, we could loop, but 1000 is a good start for Pro+
+                    if (messages.size === 100) {
+                        const moreMessages = await channel.messages.fetch({ limit: 100, before: messages.last()?.id }).catch(() => []);
+                        moreMessages.forEach(msg => introSet.add(msg.author.id));
+                    }
                 }
             } catch (e) { console.error("Intro Scan Error:", e); }
         }
@@ -454,8 +461,15 @@ export async function handleApiRoute(req, res, pathname, url) {
         const introSet = new Set();
         if (settings.intro_channel_id) {
             try {
-                const ch = await guild.channels.fetch(settings.intro_channel_id);
-                if (ch?.isTextBased()) { (await ch.messages.fetch({ limit: 100 })).forEach(m => introSet.add(m.author.id)); }
+                const ch = await guild.channels.fetch(settings.intro_channel_id).catch(() => null);
+                if (ch?.isTextBased()) {
+                    const msgs = await ch.messages.fetch({ limit: 100 }).catch(() => []);
+                    msgs.forEach(m => introSet.add(m.author.id));
+                    if (msgs.size === 100) {
+                        const more = await ch.messages.fetch({ limit: 100, before: msgs.last()?.id }).catch(() => []);
+                        more.forEach(m => introSet.add(m.author.id));
+                    }
+                }
             } catch (e) { }
         }
 
@@ -474,8 +488,6 @@ export async function handleApiRoute(req, res, pathname, url) {
 
                 const vcOk = lastVcDate || inVcNow;
                 const status = (hasRole && hasIntro && vcOk) ? "OK" : "NG";
-
-                if (status === "OK") return;
 
                 const fmtDate = (d) => {
                     if (!d) return "None";
