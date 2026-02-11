@@ -118,23 +118,49 @@ window.releaseNgTimeout = async (uid, gid) => {
 async function initSettings() {
     if (!await loadGuilds()) return;
 
-    // const lang = document.documentElement.lang || 'ja'; // Not really needed if we use window.t
     const selLog = $("logCh");
+    const selNgLog = $("ngLogCh");
     const selGuild = $("guild");
 
     const loadMasters = async (gid) => {
-        const [ch, rl] = await Promise.all([api(`/api/channels?guild=${gid}`), api(`/api/roles?guild=${gid}`)]);
-        if (selLog) {
-            selLog.innerHTML = '<option value="">(None / No Log)</option>';
-            if (ch.ok) ch.channels.forEach(c => { const o = document.createElement("option"); o.value = c.id; o.textContent = "#" + c.name; selLog.appendChild(o); });
-        }
-        if ($("auditRole")) {
-            $("auditRole").innerHTML = '<option value="">(None / No Audit)</option>';
-            if (rl.ok) rl.roles.forEach(r => { const o = document.createElement("option"); o.value = r.id; o.textContent = r.name; $("auditRole").appendChild(o); });
-        }
-        if ($("introCh")) {
-            $("introCh").innerHTML = '<option value="">(None / No Intro Check)</option>';
-            if (ch.ok) ch.channels.forEach(c => { const o = document.createElement("option"); o.value = c.id; o.textContent = "#" + c.name; $("introCh").appendChild(o); });
+        try {
+            const [ch, rl] = await Promise.all([api("/api/channels?guild=" + gid), api("/api/roles?guild=" + gid)]);
+
+            const channels = (ch.ok && ch.channels) ? ch.channels : [];
+            const errorMsg = !ch.ok ? (ch.error || "API Error") : (channels.length === 0 ? "No Text Channels" : null);
+
+            // 1. Log Channel
+            if (selLog) {
+                if (errorMsg) {
+                    selLog.innerHTML = '<option value="">(Error: ' + errorMsg + ')</option>';
+                } else {
+                    selLog.innerHTML = '<option value="">(None / Disable)</option>';
+                    channels.forEach(c => {
+                        const o = document.createElement("option");
+                        o.value = c.id;
+                        o.textContent = "#" + c.name;
+                        selLog.appendChild(o);
+                    });
+                }
+            }
+
+            // 2. NG Log Channel
+            if (selNgLog) {
+                if (errorMsg) {
+                    selNgLog.innerHTML = '<option value="">(Error: ' + errorMsg + ')</option>';
+                } else {
+                    selNgLog.innerHTML = '<option value="">(None / Same as VC Log)</option>';
+                    channels.forEach(c => {
+                        const o = document.createElement("option");
+                        o.value = c.id;
+                        o.textContent = "#" + c.name;
+                        selNgLog.appendChild(o);
+                    });
+                }
+            }
+        } catch (e) {
+            console.error("loadMasters Error:", e);
+            alert("Error loading channels: " + e.message);
         }
     };
 
@@ -142,7 +168,7 @@ async function initSettings() {
         saveGuildSelection(); const gid = selGuild.value; if (!gid) return;
 
         await loadMasters(gid);
-        const [ng, st] = await Promise.all([api(`/api/ngwords?guild=${gid}`), api(`/api/settings?guild=${gid}`)]);
+        const [ng, st] = await Promise.all([api("/api/ngwords?guild=" + gid), api("/api/settings?guild=" + gid)]);
 
         if (ng.ok) {
             const list = $("ngList");
@@ -163,8 +189,7 @@ async function initSettings() {
         }
         if (st.ok && st.settings) {
             if (selLog) selLog.value = st.settings.log_channel_id || "";
-            if ($("auditRole")) $("auditRole").value = st.settings.audit_role_id || "";
-            if ($("introCh")) $("introCh").value = st.settings.intro_channel_id || "";
+            if (selNgLog) selNgLog.value = st.settings.ng_log_channel_id || "";
             if ($("threshold")) $("threshold").value = st.settings.ng_threshold ?? 3;
             if ($("timeout")) $("timeout").value = st.settings.timeout_minutes ?? 10;
         }
@@ -177,9 +202,13 @@ async function initSettings() {
     $("save").onclick = async () => {
         const body = {
             guild: selGuild.value,
-            log_channel_id: selLog.value,
-            audit_role_id: $("auditRole")?.value || "",
-            intro_channel_id: $("introCh")?.value || "",
+            log_channel_id: selLog ? selLog.value : "",
+            ng_log_channel_id: selNgLog ? selNgLog.value : "",
+
+            // Removed from UI but still in DB/API (optional, send null/empty or fallback)
+            audit_role_id: null,
+            intro_channel_id: null,
+
             ng_threshold: parseInt($("threshold").value),
             timeout_minutes: parseInt($("timeout").value)
         };
