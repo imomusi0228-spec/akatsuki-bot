@@ -598,6 +598,31 @@ export async function handleApiRoute(req, res, pathname, url) {
         return;
     }
 
+    // POST /api/timeout/release
+    if (pathname === "/api/timeout/release" && method === "POST") {
+        const body = await getBody();
+        if (!body.guild || !body.user_id) return resJson({ ok: false, error: "Missing fields" }, 400);
+        if (!await verifyGuild(body.guild)) return resJson({ ok: false, error: "Forbidden" }, 403);
+
+        try {
+            const guild = client.guilds.cache.get(body.guild);
+            if (!guild) return resJson({ ok: false, error: "Guild not found" }, 404);
+
+            const member = await guild.members.fetch(body.user_id).catch(() => null);
+            if (!member) return resJson({ ok: false, error: "Member not found" }, 404);
+
+            if (member.isCommunicationDisabled()) {
+                await member.timeout(null, "Manual release from Web Dashboard");
+                return resJson({ ok: true });
+            } else {
+                return resJson({ ok: false, error: "Member is not timed out" });
+            }
+        } catch (e) {
+            console.error("Timeout Release Error:", e);
+            return resJson({ ok: false, error: "Internal Error" }, 500);
+        }
+    }
+
     res.writeHead(404, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: false, error: "Not Found" }));
 }
