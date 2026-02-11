@@ -159,7 +159,7 @@ const COMMON_SCRIPT = /* v2.4 (Optimized) */ `
                     const escW = escapeHTML(w.word);
                     return '<div style="display:flex; justify-content:space-between; align-items:center; background:#192734; padding:8px 12px; border-radius:4px; border:1px solid #38444d;">' +
                            '<span style="font-family:monospace;">' + escW + '</span>' +
-                           '<button onclick="removeNg(\'' + escW + '\')" class="btn" style="width:24px; height:24px; padding:0; line-height:22px; color:#f4212e; border-color:#38444d; display:flex; align-items:center; justify-content:center;">�E�E/button>' +
+                           '<button onclick="removeNg(\'' + escW + '\')" class="btn" style="width:24px; height:24px; padding:0; line-height:22px; color:#f4212e; border-color:#38444d; display:flex; align-items:center; justify-content:center;">・・/button>' +
                            '</div>';
                 }).join("");
             }
@@ -190,7 +190,7 @@ const COMMON_SCRIPT = /* v2.4 (Optimized) */ `
         const res = await api("/api/settings/update", body);
         const stat = $("saveStatus");
         if(res.ok) {
-            stat.textContent = "✁E + t("save_success");
+            stat.textContent = "笨・ + t("save_success");
             stat.style.color = "var(--success-color)";
             setTimeout(() => stat.textContent="", 3000);
         } else {
@@ -238,8 +238,8 @@ const COMMON_SCRIPT = /* v2.4 (Optimized) */ `
           let html = "";
           data.forEach(r => {
              const av = r.avatar_url || "";
-             const roleTxt = r.has_role ? '<span style="color:#1da1f2;">✁E/span>' : '<span style="color:var(--danger-color);">❁E/span>';
-             const introTxt = r.has_intro ? '<span style="color:#1da1f2;">✁E/span>' : '<span style="color:var(--danger-color);">❁E/span>';
+             const roleTxt = r.has_role ? '<span style="color:#1da1f2;">笨・/span>' : '<span style="color:var(--danger-color);">笶・/span>';
+             const introTxt = r.has_intro ? '<span style="color:#1da1f2;">笨・/span>' : '<span style="color:var(--danger-color);">笶・/span>';
              const statusStyle = r.status === "OK" ? 'color:#1da1f2; font-weight:bold;' : 'color:var(--danger-color); font-weight:bold;';
              const detailedStatus = r.status === "OK" ? "OK" : (!r.has_role ? "No Role" : (!r.has_intro ? "No Intro" : "No VC Activity"));
              
@@ -294,7 +294,7 @@ const COMMON_SCRIPT = /* v2.4 (Optimized) */ `
          loading.style.display = "none";
          
          if(!res.ok) { 
-             const errorMsg = res.error.includes("Upgrade") ? "�E�樒區 " + res.error + ' <a href="/admin/dashboard" style="margin-left:8px;">Check Plans</a>' : res.error;
+             const errorMsg = res.error.includes("Upgrade") ? "・滓ｨ貞項 " + res.error + ' <a href="/admin/dashboard" style="margin-left:8px;">Check Plans</a>' : res.error;
              rows.innerHTML = '<tr><td colspan="6" style="color:red; text-align:center;">' + errorMsg + '</td></tr>'; 
              return; 
          }
@@ -329,15 +329,15 @@ function renderLayout({ title, content, user, activeTab, oauth = false, scripts 
     const navItem = (lbl, href, act) => `<a href="${href}" class="nav-item ${act ? 'active' : ''}">${lbl}</a>`;
     const langBtn = lang === 'ja'
         ? `<span class="lang-switch" onclick="setLang('en')">English</span>`
-        : `<span class="lang-switch" onclick="setLang('ja')">日本誁E/span>`;
+        : `<span class="lang-switch" onclick="setLang('ja')">譌･譛ｬ隱・/span>`;
 
     return `<!DOCTYPE html>
 <html lang="${lang}">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${title} | ☾</title><style>${COMMON_CSS}</style></head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${title} | 笘ｾ</title><style>${COMMON_CSS}</style></head>
 <body>
     <div class="nav-bar" style="border:none; justify-content: space-between; align-items: center; margin-bottom: 0; padding:16px 0;">
         <div style="font-size: 24px; font-weight: bold; display:flex; align-items:center;">
-            <span style="color:#f91880; margin-right:10px;">☾</span> ${oauth ? t("admin_title", lang) : t("title", lang)} ${langBtn}
+            <span style="color:#f91880; margin-right:10px;">笘ｾ</span> ${oauth ? t("admin_title", lang) : t("title", lang)} ${langBtn}
         </div>
         <div>
             ${oauth && user ? `
@@ -358,17 +358,15 @@ function renderLayout({ title, content, user, activeTab, oauth = false, scripts 
     <div id="main-content">${content}</div>
     <div style="text-align:center; padding: 20px; color: #8899a6; font-size:0.8em; margin-top:40px;">&copy; 2026 Akatsuki Bot</div>
     <script>
-        (function(){
-            window.lang = "${lang}";
-            const DICTIONARY = ${JSON.stringify(DICTIONARY)};
-            window.t = (key, params = {}) => {
-                const dict = DICTIONARY[window.lang] || DICTIONARY['ja'];
-                let text = dict[key] || key;
-                Object.keys(params).forEach(p => { text = text.replace('{'+p+'}', params[p]); });
-                return text;
-            };
-            ${COMMON_SCRIPT}
-        })();
+        window.lang = "${lang}";
+        window.DICTIONARY = ${JSON.stringify(DICTIONARY)};
+        window.t = (key, params = {}) => {
+            const dict = window.DICTIONARY[window.lang] || window.DICTIONARY['ja'];
+            let text = dict[key] || key;
+            Object.keys(params).forEach(p => { text = text.replace('{'+p+'}', params[p]); });
+            return text;
+        };
+        ${COMMON_SCRIPT}
     </script>
     ${scripts}
 </body></html>`;
@@ -400,7 +398,7 @@ export function renderAdminSettingsHTML({ user, req }) {
                 <label style="display:block; margin-bottom:5px; font-size:12px; font-weight:bold; color:#8899a6;">${t("ng_add_label", lang)}</label>
                 <div style="display:flex; gap:10px;">
                     <textarea id="newNg" rows="1" placeholder="${t("ng_msg_placeholder", lang)}" style="flex:1; padding:10px; border:1px solid #38444d; background:#192734; color:white; border-radius:4px; resize:vertical; font-family:inherit;"></textarea>
-                    <button id="addNg" class="btn" style="width:40px; font-size:20px; padding:0; display:flex; align-items:center; justify-content:center;">�E�E/button>
+                    <button id="addNg" class="btn" style="width:40px; font-size:20px; padding:0; display:flex; align-items:center; justify-content:center;">・・/button>
                 </div>
             </div>
             
@@ -433,12 +431,12 @@ export function renderAdminSettingsHTML({ user, req }) {
             <div>
                 <label style="display:block; margin-bottom:8px;">${t("timeout_label", lang)}</label>
                 <select id="timeout" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;">
-                    <option value="1">1刁E(60私E</option>
-                    <option value="5">5刁E/option>
-                    <option value="10">10刁E/option>
-                    <option value="60">1時間</option>
-                    <option value="1440">1日</option>
-                     <option value="10080">1週閁E/option>
+                    <option value="1">1蛻・(60遘・</option>
+                    <option value="5">5蛻・/option>
+                    <option value="10">10蛻・/option>
+                    <option value="60">1譎る俣</option>
+                    <option value="1440">1譌･</option>
+                     <option value="10080">1騾ｱ髢・/option>
                 </select>
             </div>
         </div>
@@ -469,8 +467,8 @@ export function renderAdminActivityHTML({ user, req }) {
                 <select id="introCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
             </div>
             <div style="display:flex; gap:8px;">
-                <button id="scan" class="btn btn-primary">🔍 ${t("scan_btn", lang)}</button>
-                <button id="csvExport" class="btn" style="border-color: #ffd700; color: #ffd700;">📥 CSV</button>
+                <button id="scan" class="btn btn-primary">�剥 ${t("scan_btn", lang)}</button>
+                <button id="csvExport" class="btn" style="border-color: #ffd700; color: #ffd700;">�踏 CSV</button>
             </div>
         </div>
     </div>
@@ -478,8 +476,8 @@ export function renderAdminActivityHTML({ user, req }) {
         <h3 style="display:flex; align-items:center; gap:10px;">
             ${t("activity", lang)}
             <div style="font-size:12px; font-weight:normal; margin-left:auto; display:flex; gap:10px;">
-                <button onclick="sortActivity('joined_at')" class="btn" style="padding:4px 8px;">${t("sort_joined", lang)} ▼</button>
-                <button onclick="sortActivity('display_name')" class="btn" style="padding:4px 8px;">${t("sort_user", lang)} ▼</button>
+                <button onclick="sortActivity('joined_at')" class="btn" style="padding:4px 8px;">${t("sort_joined", lang)} 笆ｼ</button>
+                <button onclick="sortActivity('display_name')" class="btn" style="padding:4px 8px;">${t("sort_user", lang)} 笆ｼ</button>
             </div>
         </h3>
         <p class="muted">${t("activity_desc", lang)}</p>
@@ -504,7 +502,7 @@ export function renderLandingHTML(req) {
     const lang = getLang(req);
     const content = `
     <div style="text-align:center; padding: 100px 20px;">
-        <h1 style="font-size: 56px; margin-bottom: 20px;">☾ ${t("title", lang)}</h1>
+        <h1 style="font-size: 56px; margin-bottom: 20px;">笘ｾ ${t("title", lang)}</h1>
         <p style="font-size: 20px; color: #8899a6; margin-bottom: 50px; max-width: 600px; margin-left: auto; margin-right: auto;">${t("subtitle", lang)}</p>
         <div style="display:flex; justify-content:center; gap:20px; flex-wrap: wrap;">
            <a href="/login" class="btn btn-primary" style="padding:16px 48px; font-size:18px;">${t("login", lang)}</a>
@@ -551,7 +549,7 @@ export function renderFeaturesHTML(req) {
         <div class="plan-card">
             <span class="plan-badge">${t("plan_badge_std", lang)}</span>
             <h2 style="font-size: 28px;">${t("plan_free", lang)}</h2>
-            <div class="plan-price">¥0 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_forever", lang)}</span></div>
+            <div class="plan-price">ﾂ･0 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_forever", lang)}</span></div>
             <p style="color:#8899a6; margin-bottom:25px; max-width: 700px; margin-left: auto; margin-right: auto;">${t("plan_free_desc", lang)}</p>
             <div class="feature-grid">
                 <div class="feature-item-card">
@@ -570,7 +568,7 @@ export function renderFeaturesHTML(req) {
         <div class="plan-card" style="border-color: var(--primary-color); background: rgba(29, 161, 242, 0.03);">
             <span class="plan-badge" style="background:var(--primary-color); color:white;">${t("plan_badge_rec", lang)}</span>
             <h2 style="font-size: 28px;">${t("plan_pro", lang)}</h2>
-            <div class="plan-price">¥500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_month", lang)}</span></div>
+            <div class="plan-price">ﾂ･500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_month", lang)}</span></div>
             <p style="color:#8899a6; margin-bottom:25px; max-width: 700px; margin-left: auto; margin-right: auto;">${t("plan_pro_desc", lang)}</p>
             <div class="feature-grid">
                 <div class="feature-item-card">
@@ -593,7 +591,7 @@ export function renderFeaturesHTML(req) {
         <div class="plan-card" style="border-color: #ffd700; background: rgba(255, 215, 0, 0.02);">
             <span class="plan-badge" style="background:#ffd700; color:black;">${t("plan_badge_prm", lang)}</span>
             <h2 style="font-size: 28px;">${t("plan_pro_plus", lang)}</h2>
-            <div class="plan-price">¥1,500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_month", lang)}</span></div>
+            <div class="plan-price">ﾂ･1,500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_month", lang)}</span></div>
             <p style="color:#8899a6; margin-bottom:25px; max-width: 700px; margin-left: auto; margin-right: auto;">${t("plan_pro_plus_desc", lang)}</p>
             <div class="feature-grid">
                 <div class="feature-item-card">
