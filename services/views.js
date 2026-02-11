@@ -532,7 +532,7 @@ export function renderFeaturesHTML(req) {
         .tab-btn.active { background: var(--primary-color); color: white; border-color: var(--primary-color); box-shadow: 0 4px 12px rgba(29, 161, 242, 0.2); }
         .tab-content { display: none; animation: fadeIn 0.4s ease-out; }
         .tab-content.active { display: block; }
-        .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-top: 25px; max-width: 1000px; margin-left: auto; margin-right: auto; }
+        .feature-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 25px; max-width: 800px; margin-left: auto; margin-right: auto; }
         .plan-card { background: rgba(25, 39, 52, 0.5); border: 1px solid var(--border-color); border-radius: 16px; padding: 40px 20px; text-align: center; max-width: 1100px; margin: 0 auto; }
         .plan-price { font-size: 36px; font-weight: 900; margin: 10px 0; color: var(--primary-color); }
         .plan-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; background: rgba(29, 161, 242, 0.1); color: var(--primary-color); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
