@@ -360,6 +360,10 @@ function renderLayout({ title, content, user, activeTab, oauth = false, scripts 
     <div id="main-content">${content}</div>
     <div style="text-align:center; padding: 20px; color: #8899a6; font-size:0.8em; margin-top:40px;">&copy; 2026 Akatsuki Bot</div>
     <script>
+        window.onerror = function(msg, url, line, col, error) {
+            alert("System Error: " + msg + "\\nLine: " + line);
+            return false;
+        };
         window.lang = "${lang}";
         window.DICTIONARY = ${JSON.stringify(DICTIONARY)};
         window.t = (key, params = {}) => {
