@@ -689,6 +689,12 @@ export function renderFeaturesHTML(req) {
                     <td><span class="feature-number">50</span></td>
                 </tr>
                 <tr>
+                    <td>${t("feature_vclog", lang)}</td>
+                    <td><span class="feature-check">✓</span></td>
+                    <td><span class="feature-check">✓</span></td>
+                    <td><span class="feature-check">✓</span></td>
+                </tr>
+                <tr>
                     <td>${t("feature_logs", lang)}</td>
                     <td><span class="feature-cross">×</span></td>
                     <td><span class="feature-check">✓</span></td>
