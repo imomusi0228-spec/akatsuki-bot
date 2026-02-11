@@ -710,7 +710,8 @@ export function renderFeaturesHTML(req) {
     </div>
 
     <div style="text-align:center; padding: 60px 0;">
-        <a href="/login" class="btn btn-primary" style="padding:18px 60px; font-size:20px; border-radius:50px;">${t("get_started", lang)}</a>
+        <p style="font-size: 14px; color: #f4212e; margin-bottom: 15px; font-weight: bold;">※ Bot招待時には管理者権限が必要です</p>
+        <a href="https://discord.com/oauth2/authorize?client_id=1468816330999468122&permissions=8&integration_type=0&scope=bot" target="_blank" class="btn btn-primary" style="padding:18px 60px; font-size:20px; border-radius:50px;">${t("get_started", lang)}</a>
     </div>
 
     <div class="notice-container">
