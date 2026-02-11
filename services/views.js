@@ -658,12 +658,6 @@ export function renderFeaturesHTML(req) {
             </thead>
             <tbody>
                 <tr>
-                    <td style="text-align:left; font-weight:bold;">${t("feature_lang", lang)}</td>
-                    <td><span class="feature-check">✓</span></td>
-                    <td><span class="feature-check">✓</span></td>
-                    <td><span class="feature-check">✓</span></td>
-                </tr>
-                <tr>
                     <td style="text-align:left; font-weight:bold;">${t("feature_max_guilds", lang)}</td>
                     <td><span class="feature-number">1</span></td>
                     <td><span class="feature-number">1</span></td>
