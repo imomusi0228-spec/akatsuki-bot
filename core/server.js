@@ -1,4 +1,6 @@
 import http from "node:http";
+import fs from "node:fs";
+import path from "node:path";
 import { ENV, BASE_REDIRECT_URI } from "../config/env.js";
 import { client } from "./client.js";
 import { handleAuthRoute } from "../routes/auth.js";
@@ -60,6 +62,23 @@ export async function startServer() {
                 res.writeHead(200, { "Content-Type": "application/json" });
                 res.end(JSON.stringify(status, null, 2));
                 return;
+            }
+
+            // 7. Static Files (JS)
+            if (pathname.startsWith("/js/")) {
+                const safePath = path.normalize(pathname).replace(/^(\.\.[\/\\])+/, '');
+                const filePath = path.join(process.cwd(), "public", safePath);
+
+                // Simple security check to prevent directory traversal
+                if (!filePath.startsWith(path.join(process.cwd(), "public"))) {
+                    res.writeHead(403); res.end("Forbidden"); return;
+                }
+
+                if (fs.existsSync(filePath)) {
+                    res.writeHead(200, { "Content-Type": "application/javascript" });
+                    fs.createReadStream(filePath).pipe(res);
+                    return;
+                }
             }
 
             // 404

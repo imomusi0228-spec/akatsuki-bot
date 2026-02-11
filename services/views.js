@@ -372,9 +372,8 @@ function renderLayout({ title, content, user, activeTab, oauth = false, scripts 
             Object.keys(params).forEach(p => { text = text.replace('{'+p+'}', params[p]); });
             return text;
         };
-        ${COMMON_SCRIPT}
-
     </script>
+    <script src="/js/dashboard.js"></script>
     ${scripts}
 </body></html>`;
 }
