@@ -1,0 +1,55 @@
+--- DB SCHEMA REPORT START ---
+
+[Table: settings]
+  - guild_id (text)
+  - log_channel_id (text)
+  - ng_threshold (integer)
+  - timeout_minutes (integer)
+  - activity_weeks (integer)
+  - intro_channel_id (text)
+  - target_role_id (text)
+  - log_channel_name (text)
+  - autorole_id (text)
+  - autorole_enabled (boolean)
+  - updated_at (timestamp with time zone)
+  - audit_role_id (text)
+
+[Table: ng_words]
+  - guild_id (text)
+  - kind (text)
+  - word (text)
+  - flags (text)
+  - created_by (text)
+  - created_at (timestamp with time zone)
+
+[Table: vc_sessions]
+  - guild_id (text)
+  - user_id (text)
+  - channel_id (text)
+  - join_time (timestamp with time zone)
+  - leave_time (timestamp with time zone)
+  - duration_seconds (integer)
+  - id (integer)
+
+[Table: subscriptions]
+  - server_id (character varying)
+  - user_id (character varying)
+  - plan_tier (character varying)
+  - start_date (timestamp without time zone)
+  - expiry_date (timestamp without time zone)
+  - is_active (boolean)
+  - auto_renew (boolean)
+  - notes (text)
+  - valid_until (timestamp with time zone)
+  - updated_at (timestamp with time zone)
+  - expiry_warning_sent (boolean)
+
+[Table: ng_logs]
+  - id (integer)
+  - guild_id (text)
+  - user_id (text)
+  - user_name (text)
+  - word (text)
+  - created_at (timestamp with time zone)
+
+--- DB SCHEMA REPORT END ---

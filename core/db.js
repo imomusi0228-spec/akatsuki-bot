@@ -64,11 +64,24 @@ export async function initDb() {
             // Fix subscriptions table (Legacy names: server_id, plan_tier)
             `DO $$ 
             BEGIN 
+                -- Handle subscriptions migration
                 IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subscriptions' AND column_name='server_id') THEN
-                    ALTER TABLE subscriptions RENAME COLUMN server_id TO guild_id;
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subscriptions' AND column_name='guild_id') THEN
+                        -- Both exist? Data might already be migrated or it's a mess. 
+                        -- For safety, we drop server_id ONLY if guild_id is populated? 
+                        -- Let's just RENAME if guild_id doesn't exist, else drop.
+                        ALTER TABLE subscriptions DROP COLUMN server_id;
+                    ELSE
+                        ALTER TABLE subscriptions RENAME COLUMN server_id TO guild_id;
+                    END IF;
                 END IF;
+
                 IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subscriptions' AND column_name='plan_tier') THEN
-                    ALTER TABLE subscriptions RENAME COLUMN plan_tier TO tier;
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subscriptions' AND column_name='tier') THEN
+                        ALTER TABLE subscriptions DROP COLUMN plan_tier;
+                    ELSE
+                        ALTER TABLE subscriptions RENAME COLUMN plan_tier TO tier;
+                    END IF;
                 END IF;
             END $$;`,
             `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS guild_id TEXT;`,
