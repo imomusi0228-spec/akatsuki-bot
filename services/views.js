@@ -76,7 +76,9 @@ const COMMON_SCRIPT = /* v2.4 (Optimized) */ `
        sel.selectedIndex = selectedIndex; sel.disabled = false; _guildsLoaded = true; return true;
      }
      const o = document.createElement("option"); o.textContent = "(No Guilds)"; sel.appendChild(o);
-     $("guildStatus").textContent = "Check Bot Permissions/Invite"; return false;
+     const errMsg = (d && d.error) ? d.error : "Check Bot Permissions/Invite";
+     $("guildStatus").innerHTML = '<span style="color:var(--danger-color)">' + escapeHTML(errMsg) + '</span>';
+     return false;
   }
   function saveGuildSelection() { const sel = $("guild"); if(sel && sel.value) localStorage.setItem("last_guild_id", sel.value); }
 

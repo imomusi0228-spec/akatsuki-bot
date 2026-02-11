@@ -68,6 +68,10 @@ export async function discordApi(token, endpoint) {
     const res = await fetch(`https://discord.com/api/v10${endpoint}`, {
         headers: { Authorization: `Bearer ${token}` },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+        const txt = await res.text(); // logging detail
+        console.error(`[Discord API Error] ${endpoint}: ${res.status} ${res.statusText}`, txt);
+        return null;
+    }
     return await res.json();
 }
