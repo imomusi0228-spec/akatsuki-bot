@@ -665,7 +665,7 @@ export function renderFeaturesHTML(req) {
                     <td><span class="feature-check">✓</span></td>
                 </tr>
                 <tr>
-                    <td>Auto Timeout Release</td>
+                    <td>${t("feature_auto_release", lang)}</td>
                     <td><span class="feature-check">✓</span></td>
                     <td><span class="feature-check">✓</span></td>
                     <td><span class="feature-check">✓</span></td>

@@ -27,6 +27,7 @@ export const DICTIONARY = {
         feature_dashboard: "Webダッシュボード",
         feature_activity: "アクティビティ監視",
         feature_csv: "CSVエクスポート",
+        feature_auto_release: "タイムアウト自動解除",
         limit_10: "5個",
         limit_50: "20個",
         limit_100: "50個",
@@ -39,9 +40,9 @@ export const DICTIONARY = {
         plan_pro_plus_desc: "徹底的なサーバー監査と高度な分析で、完璧な統治を実現します。",
 
         // Detailed features for list (NEW)
-        feat_list_free: "・VC入退室ログの自動記録<br/>・NGワード検知（最大5個）<br/>・基本的な統計表示<br/>・自動タイムアウト解除",
+        feat_list_free: "・VC入退室ログの自動記録<br/>・NGワード検知（最大5個）<br/>・基本的な統計表示<br/>・タイムアウト自動解除",
         feat_list_pro: "・Web管理ダッシュボード<br/>・管理ログの可視化・通知<br/>・NGワード登録数 20個<br/>・メッセージ自動削除・警告<br/>・NGワード削除時の自動救済",
-        feat_list_pro_plus: "・メンバー監査（幽霊部員検知）<br/>・CSVエクスポート機能<br/>・NGワード登録数 50個<br/>・過去ログ一括スキャン<br/>・NGワード削除時の自動救済",
+        feat_list_pro_plus: "・メンバー監査（幽霊部員検知）<br/>・CSVエクスポート機能<br/>・NGワード登録数 50個<br/>・過去ログ一括スキャン<br/>・タイムアウト自動解除",
 
         features_detail_security: "NGワードの自動削除と警告しきい値による自動タイムアウトで、サーバーの平和を鉄壁に守ります。",
         features_detail_audit: "ロールの所持、自己紹介の有無、VCの参加状況を統合し、幽霊部員を瞬時に特定します。",
@@ -195,6 +196,7 @@ export const DICTIONARY = {
         feature_dashboard: "Web Dashboard",
         feature_activity: "Activity Monitor",
         feature_csv: "CSV Export",
+        feature_auto_release: "Auto Timeout Release",
         limit_10: "5 Words",
         limit_50: "20 Words",
         limit_100: "50 Words",
