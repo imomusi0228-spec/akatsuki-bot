@@ -138,14 +138,33 @@ const COMMON_SCRIPT = /* v2.4 (Optimized) */ `
 
      const loadMasters = async (gid) => {
         const [ch, rl] = await Promise.all([api(\`/api/channels?guild=\${gid}\`), api(\`/api/roles?guild=\${gid}\`)]);
+        
+        // Reset Log Channel (was missing clear)
         if(selLog) {
-            if(ch.ok) ch.channels.forEach(c => { const o=document.createElement("option"); o.value=c.id; o.textContent="#"+c.name; selLog.appendChild(o); });
-        }
-        if($("ngLogCh")) {
-            $("ngLogCh").innerHTML = '<option value="">(None / Same as VC Log)</option>';
-            if(ch.ok) ch.channels.forEach(c => { const o=document.createElement("option"); o.value=c.id; o.textContent="#"+c.name; $("ngLogCh").appendChild(o); });
+            selLog.innerHTML = '<option value="">(None / Disable)</option>';
+            if(ch.ok && ch.channels) {
+                 ch.channels.forEach(c => { 
+                    const o=document.createElement("option"); 
+                    o.value=c.id; 
+                    o.textContent="#"+c.name; 
+                    selLog.appendChild(o); 
+                 });
+            }
         }
 
+        // Reset NG Log Channel
+        const selNgLog = $("ngLogCh");
+        if(selNgLog) {
+            selNgLog.innerHTML = '<option value="">(None / Same as VC Log)</option>';
+            if(ch.ok && ch.channels) {
+                ch.channels.forEach(c => { 
+                    const o=document.createElement("option"); 
+                    o.value=c.id; 
+                    o.textContent="#"+c.name; 
+                    selNgLog.appendChild(o); 
+                });
+            }
+        }
      };
 
      const reload = async () => {
