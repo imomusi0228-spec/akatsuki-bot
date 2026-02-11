@@ -1,6 +1,8 @@
 import { Events, EmbedBuilder } from "discord.js";
 import { dbQuery } from "../core/db.js";
 import { sendLog } from "../core/logger.js";
+import { getTier } from "../core/subscription.js";
+import { getFeatures } from "../core/tiers.js";
 
 export default {
     name: Events.VoiceStateUpdate,
@@ -11,6 +13,12 @@ export default {
         const guild = newState.guild || oldState.guild;
         const guildId = guild.id;
         const userId = member.id;
+
+        const tier = await getTier(guildId);
+        const features = getFeatures(tier);
+
+        // VC Log restriction
+        if (!features.vcLog) return;
 
         try {
             // Join

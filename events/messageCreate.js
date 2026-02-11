@@ -101,7 +101,7 @@ export default {
                 const features = getFeatures(tier);
 
                 // Log to Channel
-                if (features.logs) {
+                if (features.ngLog) {
                     const embed = new EmbedBuilder()
                         .setAuthor({ name: message.member?.displayName || message.author.tag, iconURL: message.author.displayAvatarURL() })
                         .setColor(0xFF0000)
