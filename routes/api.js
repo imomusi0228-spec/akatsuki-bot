@@ -430,20 +430,25 @@ export async function handleApiRoute(req, res, pathname, url) {
             const cached = memberCache.get(cacheKey);
             const refresh = url.searchParams.get("refresh") === "1";
 
-            if (!refresh && cached && Date.now() - cached.ts < 5 * 60 * 1000) {
+            if (!refresh && cached && Date.now() - cached.ts < 15 * 60 * 1000) { // Increased to 15 min
                 members = cached.data;
             } else {
                 try {
                     members = await guild.members.fetch();
                     memberCache.set(cacheKey, { ts: Date.now(), data: members });
                 } catch (fetchErr) {
-                    if (fetchErr.name === 'GatewayRateLimitError' || fetchErr.code === 50035 || String(fetchErr).includes('rate limited')) {
+                    // Check if we have cached data even if it's old (Stale-while-error)
+                    if (cached && (fetchErr.name === 'GatewayRateLimitError' || fetchErr.code === 50035 || String(fetchErr).includes('rate limited'))) {
+                        console.warn(`[Activity Scan] Rate limited, using stale cache for guild ${guildId}`);
+                        members = cached.data;
+                    } else if (fetchErr.name === 'GatewayRateLimitError' || fetchErr.code === 50035 || String(fetchErr).includes('rate limited')) {
                         const retryAfter = fetchErr.data?.retry_after || 5;
                         console.warn(`[Activity Scan] Rate limited! Retry after ${retryAfter}s. Guild: ${guildId}`);
                         res.writeHead(429, { "Content-Type": "application/json", "Retry-After": retryAfter });
                         return res.end(JSON.stringify({ ok: false, error: "Rate limited by Discord. Please try again in a few seconds.", retry_after: retryAfter }));
+                    } else {
+                        throw fetchErr;
                     }
-                    throw fetchErr;
                 }
             }
 

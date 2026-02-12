@@ -14,36 +14,27 @@ process.on("unhandledRejection", (reason, promise) => {
 });
 
 (async () => {
-    console.log("▶️  Step 0: Bootstrapping...");
+    console.log("🚀  Booting Akatsuki Bot...");
     console.log("    Environment Token:", ENV.TOKEN ? `Present (${ENV.TOKEN.length} chars)` : "MISSING");
 
     // 1. Initialize Database
-    console.log("▶️  Step 1: Initializing Database...");
     await initDb();
 
     // 2. Load Event Handlers
-    console.log("▶️  Step 2: Loading Events & Commands...");
     await loadCommands();
     await loadEvents();
+
     // 3. Register Commands
-    console.log("▶️  Step 3: Registering Slash Commands...");
     await registerCommands();
 
     // 4. Start Web Server
-    console.log("▶️  Step 4: Starting Web Server (with Health Check)...");
     await startServer();
 
     // 5. Login
-    console.log("▶️  Step 5: Logging into Discord...");
+    console.log("⏳ Logging into Discord...");
 
     // Add Debug Logging
 
-
-    // Detailed WebSocket Logging for Debugging
-    client.on("debug", (m) => {
-        // Log EVERYTHING to find the stuck point
-        console.log(`🛠️ [DEBUG] ${m}`);
-    });
 
     client.ws.on("error", (err) => console.error("❌ [WS] Error:", err));
     client.ws.on("close", (code, reason) => console.warn(`⚠️ [WS] Closed: ${code} - ${reason}`));

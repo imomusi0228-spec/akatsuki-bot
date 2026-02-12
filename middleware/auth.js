@@ -9,7 +9,7 @@ export function setCookie(res, name, value, options = {}) {
     if (options.maxAge) cookie += `; Max-Age=${options.maxAge}`;
     if (options.secure || ENV.PUBLIC_URL.includes("https")) cookie += `; Secure`;
 
-    console.log(`[AUTH DEBUG] setCookie: ${name}=${value} (Opts: ${JSON.stringify(options)}) -> ${cookie}`);
+    // console.log(`[AUTH DEBUG] setCookie: ${name}=${value} (Opts: ${JSON.stringify(options)}) -> ${cookie}`);
 
     let prev = res.getHeader("Set-Cookie");
     if (prev) {
@@ -47,20 +47,20 @@ export async function getSession(req) {
     });
 
     const sid = cookies.sid;
-    console.log(`[AUTH DEBUG] getSession: CookieSID=${sid}, SessionExists=${sessions.has(sid)}`);
+    // console.log(`[AUTH DEBUG] getSession: CookieSID=${sid}, SessionExists=${sessions.has(sid)}`);
 
     if (!sid || !sessions.has(sid)) {
-        console.log(`[AUTH DEBUG] getSession: No session found for SID=${sid}`);
+        // console.log(`[AUTH DEBUG] getSession: No session found for SID=${sid}`);
         return null;
     }
 
     const session = sessions.get(sid);
     if (session.expiresAt < Date.now()) {
-        console.log(`[AUTH DEBUG] getSession: Session expired for SID=${sid}`);
+        // console.log(`[AUTH DEBUG] getSession: Session expired for SID=${sid}`);
         sessions.delete(sid);
         return null;
     }
-    console.log(`[AUTH DEBUG] getSession: Session OK for SID=${sid}, User=${session.user.username}`);
+    // console.log(`[AUTH DEBUG] getSession: Session OK for SID=${sid}, User=${session.user.username}`);
     return session;
 }
 
