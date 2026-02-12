@@ -35,8 +35,9 @@ export const FEATURES = {
         ngLog: true,
         vcLog: true,
         dashboard: true,
-        activity: false,
+        activity: true, // Limited to 7 days
         autoRelease: true,
+        antiraid: true, // Alerts only
         spamProtection: true
     },
     [TIERS.PRO_YEARLY]: {
@@ -45,8 +46,9 @@ export const FEATURES = {
         ngLog: true,
         vcLog: true,
         dashboard: true,
-        activity: false,
+        activity: true, // Limited to 7 days
         autoRelease: true,
+        antiraid: true, // Alerts only
         spamProtection: true
     },
     [TIERS.PRO_PLUS_MONTHLY]: {
@@ -85,8 +87,9 @@ export const FEATURES = {
         ngLog: true,
         vcLog: true,
         dashboard: true,
-        activity: false,
+        activity: true,
         autoRelease: true,
+        antiraid: true,
         spamProtection: true
     }
 };

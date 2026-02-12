@@ -88,3 +88,29 @@ export function checkSpam(guildId, userId, content) {
         return { isSpam: false, count: 1 };
     }
 }
+const mentionCache = new Map();
+
+/**
+ * Checks if a message contains mention spam.
+ */
+export function checkMentionSpam(guildId, userId, mentionCount) {
+    if (mentionCount === 0) return { isSpam: false, count: 0 };
+
+    // One-message burst check
+    if (mentionCount >= 5) return { isSpam: true, count: mentionCount };
+
+    if (!mentionCache.has(guildId)) mentionCache.set(guildId, new Map());
+    const guildMap = mentionCache.get(guildId);
+
+    const now = Date.now();
+    const entry = guildMap.get(userId);
+
+    if (entry && (now - entry.timestamp < 30000)) {
+        entry.count += mentionCount;
+        entry.timestamp = now;
+        return { isSpam: entry.count >= 8, count: entry.count };
+    } else {
+        guildMap.set(userId, { count: mentionCount, timestamp: now });
+        return { isSpam: false, count: mentionCount };
+    }
+}

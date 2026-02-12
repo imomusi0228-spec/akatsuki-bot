@@ -434,10 +434,38 @@ export function renderLoginHTML(req) {
 
 export function renderAdminDashboardHTML({ user, req }) {
     const lang = getLang(req);
-    const content = `<div class="card"><div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; align-items:center;"><select id="guild" style="flex:1; max-width:250px; padding:10px;"></select><input id="month" type="month" style="padding:9px;" /><button id="reload" class="btn">Reload</button><span id="guildStatus" class="muted"></span> <div style="margin-left:auto;">${t("plan_label", lang)}: <span id="plan-info">Loading...</span></div></div></div>
-  <div class="card"><h3>${t("summary", lang)}</h3><div id="summary">Loading...</div></div>
-  <div class="card"><h3>${t("top_ng_users", lang)}</h3><table class="data-table"><thead><tr><th>${t("header_user", lang)}</th><th style="text-align:right">${t("header_count", lang)}</th></tr></thead><tbody id="topNg"></tbody></table></div>`;
-    const scripts = `<script>initDashboard();</script>`;
+    const content = `<div class="card">
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; align-items:center;">
+            <select id="guild" style="flex:1; max-width:250px; padding:10px; border-radius:8px; background:#15202b; border:1px solid #38444d; color:white;"></select>
+            <input id="month" type="month" style="padding:9px; border-radius:8px; background:#15202b; border:1px solid #38444d; color:white;" />
+            <button id="reload" class="btn btn-primary">Reload</button>
+            <span id="guildStatus" class="muted"></span> 
+            <div style="margin-left:auto;">${t("plan_label", lang)}: <span id="plan-info" style="color:var(--accent-color); font-weight:bold;">Loading...</span></div>
+        </div>
+    </div>
+    
+    <div id="summary" style="margin-bottom:20px;"></div>
+
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:20px; margin-bottom:20px;">
+        <div class="card" style="margin-bottom:0; min-height:300px;">
+            <h3>📈 ${t("growth_trend", lang) || "メンバー推移 (14日間)"}</h3>
+            <canvas id="growthChart"></canvas>
+        </div>
+        <div class="card" style="margin-bottom:0; min-height:300px;">
+            <h3>🔥 ${t("heatmap", lang) || "VCアクティビティ (時間帯別)"}</h3>
+            <canvas id="heatmapChart"></canvas>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>🚨 ${t("top_ng_users", lang)}</h3>
+        <table class="data-table"><thead><tr><th style="text-align:left">${t("header_user", lang)}</th><th style="text-align:right">${t("header_count", lang)}</th><th style="text-align:right">Action</th></tr></thead>
+        <tbody id="topNg"></tbody></table>
+    </div>`;
+    const scripts = `
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>initDashboard();</script>
+    `;
     return renderLayout({ title: t("dashboard", lang), content, user, activeTab: "dashboard", oauth: true, scripts }, lang);
 }
 
@@ -498,6 +526,39 @@ export function renderAdminSettingsHTML({ user, req }) {
                     <option value="1440">1日</option>
                      <option value="10080">1週間</option>
                 </select>
+            </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px; margin-top:20px;">
+            <div class="card" style="margin-bottom:0;">
+                <h3>🛡️ Advanced Moderation</h3>
+                <div style="margin-bottom:15px;">
+                    <label class="switch-label">
+                        <input type="checkbox" id="antiraidEnabled" />
+                        <span>アンチ・レイドを有効化</span>
+                    </label>
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label style="display:block; font-size:11px; margin-bottom:4px; font-weight:bold;">検知しきい値 (参加数/分)</label>
+                    <input type="number" id="antiraidThreshold" style="width:100%; padding:10px; border-radius:6px; background:#15202b; border:1px solid #38444d; color:white;" />
+                </div>
+            </div>
+            <div class="card" style="margin-bottom:0;">
+                <h3>🚪 Self-Introduction Gate</h3>
+                <div style="margin-bottom:15px;">
+                    <label class="switch-label">
+                        <input type="checkbox" id="introGateEnabled" />
+                        <span>自動自己紹介ゲートを有効化</span>
+                    </label>
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label style="display:block; font-size:11px; margin-bottom:4px; font-weight:bold;">付与するロール</label>
+                    <select id="introRole" style="width:100%; padding:10px; border-radius:6px; background:#15202b; border:1px solid #38444d; color:white;"></select>
+                </div>
+                <div>
+                    <label style="display:block; font-size:11px; margin-bottom:4px; font-weight:bold;">最低必要文字数</label>
+                    <input type="number" id="introMinLen" style="width:100%; padding:10px; border-radius:6px; background:#15202b; border:1px solid #38444d; color:white;" />
+                </div>
             </div>
         </div>
 
@@ -737,6 +798,18 @@ export function renderFeaturesHTML(req) {
                 </tr>
                 <tr>
                     <td>${t("feature_activity", lang)}</td>
+                    <td><span class="feature-cross">×</span></td>
+                    <td><span class="feature-check" style="color:var(--warning-color)">⚠ 7d</span></td>
+                    <td><span class="feature-check">✓ 30d</span></td>
+                </tr>
+                <tr>
+                    <td>${t("feature_antiraid", lang)}</td>
+                    <td><span class="feature-cross">×</span></td>
+                    <td><span class="feature-check" style="color:var(--warning-color)">⚠ Alert</span></td>
+                    <td><span class="feature-check">✓ Full</span></td>
+                </tr>
+                <tr>
+                    <td>${t("feature_intro_gate", lang)}</td>
                     <td><span class="feature-cross">×</span></td>
                     <td><span class="feature-cross">×</span></td>
                     <td><span class="feature-check">✓</span></td>

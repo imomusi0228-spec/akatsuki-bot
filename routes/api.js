@@ -174,6 +174,70 @@ export async function handleApiRoute(req, res, pathname, url) {
         return;
     }
 
+    // GET /api/stats/heatmap (Pro)
+    if (pathname === "/api/stats/heatmap") {
+        if (!guildId) return resJson({ ok: false, error: "Missing guild ID" }, 400);
+        if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
+
+        try {
+            // Aggregate VC activity by hour of day (0-23) over last 30 days
+            const heatmapRes = await dbQuery(`
+                SELECT 
+                    EXTRACT(HOUR FROM join_time) as hour,
+                    COUNT(*) as count
+                FROM vc_sessions
+                WHERE guild_id = $1 AND join_time > NOW() - INTERVAL '30 days'
+                GROUP BY hour
+                ORDER BY hour
+            `, [guildId]);
+
+            const heatmap = Array(24).fill(0);
+            heatmapRes.rows.forEach(r => {
+                heatmap[parseInt(r.hour)] = parseInt(r.count);
+            });
+
+            resJson({ ok: true, heatmap });
+        } catch (e) {
+            resJson({ ok: false, error: e.message }, 500);
+        }
+        return;
+    }
+
+    // GET /api/stats/growth (Pro/Pro+)
+    if (pathname === "/api/stats/growth") {
+        if (!guildId) return resJson({ ok: false, error: "Missing guild ID" }, 400);
+        if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
+
+        const tier = await getTier(guildId);
+        const features = getFeatures(tier);
+        if (!features.activity) {
+            return resJson({ ok: false, error: "Pro tier required" }, 403);
+        }
+
+        // Pro+ gets 14 days, Pro gets 7 days
+        const isProPlus = (tier >= TIERS.PRO_PLUS_MONTHLY && tier <= TIERS.PRO_PLUS_YEARLY) || tier === TIERS.TRIAL_PRO_PLUS;
+        const days = isProPlus ? 14 : 7;
+
+        try {
+            // Member join/leave trends per day
+            const growthRes = await dbQuery(`
+                SELECT 
+                    DATE(created_at) as date,
+                    event_type,
+                    COUNT(*) as count
+                FROM member_events
+                WHERE guild_id = $1 AND created_at > NOW() - INTERVAL '${days} days'
+                GROUP BY date, event_type
+                ORDER BY date
+            `, [guildId]);
+
+            resJson({ ok: true, events: growthRes.rows, limit_days: days });
+        } catch (e) {
+            resJson({ ok: false, error: e.message }, 500);
+        }
+        return;
+    }
+
     // GET /api/ngwords
     if (pathname === "/api/ngwords") {
         if (!guildId) return res.end(JSON.stringify({ ok: false }));
@@ -339,9 +403,11 @@ export async function handleApiRoute(req, res, pathname, url) {
         const check = await dbQuery("SELECT guild_id FROM settings WHERE guild_id = $1", [body.guild]);
         if (check.rows.length === 0) {
             await dbQuery(`INSERT INTO settings 
-                (guild_id, log_channel_id, ng_log_channel_id, audit_role_id, intro_channel_id, ng_threshold, timeout_minutes) 
-                VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-                [body.guild, body.log_channel_id, body.ng_log_channel_id, body.audit_role_id, body.intro_channel_id, body.ng_threshold, body.timeout_minutes]);
+                (guild_id, log_channel_id, ng_log_channel_id, audit_role_id, intro_channel_id, ng_threshold, timeout_minutes, 
+                 antiraid_enabled, antiraid_threshold, self_intro_enabled, self_intro_role_id, self_intro_min_length) 
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+                [body.guild, body.log_channel_id, body.ng_log_channel_id, body.audit_role_id, body.intro_channel_id, body.ng_threshold, body.timeout_minutes,
+                body.antiraid_enabled, body.antiraid_threshold, body.self_intro_enabled, body.self_intro_role_id, body.self_intro_min_length]);
         } else {
             await dbQuery(`UPDATE settings SET 
                 log_channel_id = $1, 
@@ -350,9 +416,15 @@ export async function handleApiRoute(req, res, pathname, url) {
                 intro_channel_id = $4, 
                 ng_threshold = $5, 
                 timeout_minutes = $6,
+                antiraid_enabled = $7,
+                antiraid_threshold = $8,
+                self_intro_enabled = $9,
+                self_intro_role_id = $10,
+                self_intro_min_length = $11,
                 updated_at = NOW()
-                WHERE guild_id = $7`,
-                [body.log_channel_id, body.ng_log_channel_id, body.audit_role_id, body.intro_channel_id, body.ng_threshold, body.timeout_minutes, body.guild]);
+                WHERE guild_id = $12`,
+                [body.log_channel_id, body.ng_log_channel_id, body.audit_role_id, body.intro_channel_id, body.ng_threshold, body.timeout_minutes,
+                body.antiraid_enabled, body.antiraid_threshold, body.self_intro_enabled, body.self_intro_role_id, body.self_intro_min_length, body.guild]);
         }
 
         res.writeHead(200, { "Content-Type": "application/json" });

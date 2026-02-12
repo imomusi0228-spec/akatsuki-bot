@@ -20,43 +20,51 @@ export default {
             const features = getFeatures(tier);
 
             if (features.spamProtection) {
+                // 1. Content Similarity Spam
                 const spamCheck = checkSpam(message.guild.id, message.author.id, message.content);
-                if (spamCheck.isSpam) {
-                    console.log(`[DEBUG] Spam detected for ${message.author.tag} in guild ${message.guild.id} (count: ${spamCheck.count})`);
+
+                // 2. Mention Spam
+                const mentionCount = message.mentions.users.size + message.mentions.roles.size;
+                const mentionCheck = checkMentionSpam(message.guild.id, message.author.id, mentionCount);
+
+                if (spamCheck.isSpam || mentionCheck.isSpam) {
+                    const isMentionSpam = mentionCheck.isSpam;
+                    const count = isMentionSpam ? mentionCheck.count : spamCheck.count;
+
+                    console.log(`[DEBUG] Spam detected for ${message.author.tag}: content=${spamCheck.isSpam}, mentions=${mentionCheck.isSpam}, count=${count}`);
 
                     // Delete the spam message
                     await message.delete().catch((e) => { console.error("[DEBUG] Spam Delete Failed:", e.message); });
 
                     // Actions based on count
-                    if (spamCheck.count >= 5) {
+                    if (count >= 5 || (isMentionSpam && count >= 8)) {
                         // Kick the user
                         const member = await message.guild.members.fetch(message.author.id);
                         if (member.kickable) {
-                            await member.kick("Spam detection threshold reached (Similarity)").catch(e => console.error("[DEBUG] Kick failed:", e));
+                            const reason = isMentionSpam ? "Mention Spam detector" : "Content Spam detector";
+                            await member.kick(reason).catch(e => console.error("[DEBUG] Kick failed:", e));
 
                             // Log Kick
                             if (features.ngLog) {
                                 const embed = new EmbedBuilder()
                                     .setAuthor({ name: message.member?.displayName || message.author.tag, iconURL: message.author.displayAvatarURL() })
                                     .setColor(0xFF0000)
-                                    .setTitle("🔨 Anti-Spam: User Kicked")
-                                    .setDescription(`**対象ユーザー**: <@${message.author.id}>\n**理由**: 類似メッセージの連投（スパム）`)
+                                    .setTitle(`🔨 Anti-Spam: User Kicked (${isMentionSpam ? 'Mentions' : 'Content'})`)
+                                    .setDescription(`**対象ユーザー**: <@${message.author.id}>\n**理由**: ${isMentionSpam ? 'メンションの大量送信' : '類似メッセージの連投'}`)
                                     .setTimestamp();
                                 await sendLog(message.guild, 'ng', embed);
                             }
                         }
-                    } else if (spamCheck.count >= 3) {
-                        // Warn via DM or Channel (already deleted the message)
+                    } else if (count >= 3) {
+                        // Warn
                         try {
-                            const warningMsg = `⚠️ **連投スパムを検知しました / Spam detected**\n\n` +
+                            const warningMsg = `⚠️ **スパムを検知しました / Spam detected**\n\n` +
                                 `サーバー: **${message.guild.name}**\n` +
-                                `似たような内容を繰り返し送信しないでください。 / Please do not repeat similar messages.\n` +
-                                `このまま続けるとサーバーから退出させられる可能性があります。 / Continued spamming will result in a kick.`;
+                                `${isMentionSpam ? 'メンションを一度に大量に送信しないでください。' : '似たような内容を繰り返し送信しないでください。'}\n` +
+                                `このまま続けるとサーバーから退出させられる可能性があります。`;
                             await message.author.send(warningMsg);
                         } catch (e) { }
                     }
-
-                    // If it's spam, we probably don't need to check for NG words again
                     return;
                 }
             }
@@ -168,6 +176,27 @@ export default {
                         .setTimestamp();
 
                     await sendLog(message.guild, 'ng', embed);
+                }
+            }
+
+            // 3. Automated Self-Introduction Gate (Pro+ Only)
+            if (features.activity && settings.self_intro_enabled && settings.intro_channel_id === message.channel.id) {
+                const minLength = settings.self_intro_min_length || 10;
+
+                if (message.content.length >= minLength) {
+                    const roleId = settings.self_intro_role_id;
+                    if (roleId) {
+                        try {
+                            const member = await message.guild.members.fetch(message.author.id);
+                            if (!member.roles.cache.has(roleId)) {
+                                await member.roles.add(roleId, "Automated Self-Intro Gate");
+                                console.log(`[INTRO-GATE] Role assigned to ${message.author.tag}`);
+                                await message.react("✅").catch(() => { });
+                            }
+                        } catch (e) {
+                            console.error("[INTRO-GATE ERROR] Failed to assign role:", e.message);
+                        }
+                    }
                 }
             }
 

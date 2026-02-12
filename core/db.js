@@ -169,12 +169,27 @@ export async function initDb() {
             );`,
             `CREATE INDEX IF NOT EXISTS idx_ng_logs_guild_user ON ng_logs(guild_id, user_id);`,
 
+            `CREATE TABLE IF NOT EXISTS member_events (
+                id SERIAL PRIMARY KEY,
+                guild_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                event_type TEXT NOT NULL, -- 'join' or 'leave'
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );`,
             // Performance Indices
             `CREATE INDEX IF NOT EXISTS idx_vc_sessions_guild_user ON vc_sessions(guild_id, user_id);`,
             `CREATE INDEX IF NOT EXISTS idx_vc_sessions_join ON vc_sessions(join_time);`,
             `CREATE INDEX IF NOT EXISTS idx_ng_words_guild ON ng_words(guild_id);`,
             `CREATE INDEX IF NOT EXISTS idx_ng_logs_guild_created ON ng_logs(guild_id, created_at);`,
-            `CREATE INDEX IF NOT EXISTS idx_ng_logs_user_recent ON ng_logs(user_id, created_at);`
+            `CREATE INDEX IF NOT EXISTS idx_ng_logs_user_recent ON ng_logs(user_id, created_at);`,
+            `CREATE INDEX IF NOT EXISTS idx_member_events_guild_type ON member_events(guild_id, event_type, created_at);`,
+
+            // New settings columns for v1.2.0
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS antiraid_enabled BOOLEAN DEFAULT FALSE;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS antiraid_threshold INTEGER DEFAULT 10; -- joins per minute`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS self_intro_role_id TEXT;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS self_intro_min_length INTEGER DEFAULT 10;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS self_intro_enabled BOOLEAN DEFAULT FALSE;`
         ];
 
         for (const query of queries) {

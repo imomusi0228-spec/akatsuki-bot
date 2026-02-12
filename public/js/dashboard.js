@@ -58,6 +58,58 @@ async function loadGuilds() {
 
 function saveGuildSelection() { const sel = $("guild"); if (sel && sel.value) localStorage.setItem("last_guild_id", sel.value); }
 
+const charts = {};
+
+function renderChart(id, type, labels, datasets, options = {}) {
+    if (charts[id]) charts[id].destroy();
+    const ctx = document.getElementById(id);
+    if (!ctx) return;
+    charts[id] = new Chart(ctx, {
+        type,
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: "#8899a6" } } },
+            scales: {
+                x: { ticks: { color: "#8899a6" }, grid: { color: "rgba(255,255,255,0.1)" } },
+                y: { ticks: { color: "#8899a6" }, grid: { color: "rgba(255,255,255,0.1)" }, beginAtZero: true }
+            },
+            ...options
+        }
+    });
+}
+
+async function updateCharts(gid, tier) {
+    // 1. Heatmap (Pro)
+    const heatmapRes = await api(`/api/stats/heatmap?guild=${gid}`);
+    if (heatmapRes.ok) {
+        renderChart("heatmapChart", "bar",
+            Array.from({ length: 24 }, (_, i) => i + "h"),
+            [{
+                label: "VC Joins",
+                data: heatmapRes.heatmap,
+                backgroundColor: "rgba(29, 161, 242, 0.5)",
+                borderColor: "rgb(29, 161, 242)",
+                borderWidth: 1
+            }]
+        );
+    }
+
+    // 2. Growth (Pro+)
+    const growthRes = await api(`/api/stats/growth?guild=${gid}`);
+    if (growthRes.ok) {
+        const labels = [...new Set(growthRes.events.map(e => e.date.split("T")[0]))];
+        const joinData = labels.map(d => growthRes.events.find(e => e.date.split("T")[0] === d && e.event_type === 'join')?.count || 0);
+        const leaveData = labels.map(d => growthRes.events.find(e => e.date.split("T")[0] === d && e.event_type === 'leave')?.count || 0);
+
+        renderChart("growthChart", "line", labels, [
+            { label: "Joins", data: joinData, borderColor: "#1da1f2", tension: 0.3 },
+            { label: "Leaves", data: leaveData, borderColor: "#f4212e", tension: 0.3 }
+        ]);
+    }
+}
+
 async function initDashboard() {
     try {
         if (!await loadGuilds()) return;
@@ -77,7 +129,7 @@ async function initDashboard() {
                     const s = res.stats.summary;
                     const sub = res.subscription;
                     const validUntil = sub.valid_until ? '(' + sub.valid_until.split('T')[0] + ')' : '';
-                    $("plan-info").innerHTML = `<span style="color:var(--accent-color); font-weight:bold;">${sub.name}</span> ${validUntil}`;
+                    $("plan-info").innerHTML = `${sub.name} ${validUntil}`;
 
                     const box = (l, v) => `<div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; text-align:center;"><div style="font-size:24px; font-weight:bold;">${v}</div><div style="font-size:11px; color:#888;">${l}</div></div>`;
                     $("summary").innerHTML = `<div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; width:100%;">${box(t("vc_joins"), s.joins)} ${box(t("leaves"), s.leaves)} ${box(t("timeouts"), s.timeouts)} ${box(t("ng_detect"), s.ngDetected)}</div>`;
@@ -89,6 +141,9 @@ async function initDashboard() {
                         rows += `<tr><td>${av}${escapeHTML(u.display_name || 'Unknown')}</td><td style="text-align:right">${u.cnt}</td><td style="text-align:right">${releaseBtn}</td></tr>`;
                     });
                     $("topNg").innerHTML = rows || '<tr><td colspan="3" class="muted" style="text-align:center; padding:10px;">None</td></tr>';
+
+                    // Update Charts
+                    await updateCharts(gid, sub.tier);
                 } else {
                     $("summary").innerText = "Error: " + res.error;
                 }
@@ -127,40 +182,29 @@ async function initSettings() {
             const [ch, rl] = await Promise.all([api("/api/channels?guild=" + gid), api("/api/roles?guild=" + gid)]);
 
             const channels = (ch.ok && ch.channels) ? ch.channels : [];
+            const roles = (rl.ok && rl.roles) ? rl.roles : [];
             const errorMsg = !ch.ok ? (ch.error || "API Error") : (channels.length === 0 ? "No Text Channels" : null);
 
-            // 1. Log Channel
-            if (selLog) {
-                if (errorMsg) {
-                    selLog.innerHTML = '<option value="">(Error: ' + errorMsg + ')</option>';
-                } else {
-                    selLog.innerHTML = '<option value="">(None / Disable)</option>';
+            // 1. Log Channels
+            [selLog, selNgLog].forEach(s => {
+                if (s) {
+                    s.innerHTML = '<option value="">(None)</option>';
                     channels.forEach(c => {
-                        const o = document.createElement("option");
-                        o.value = c.id;
-                        o.textContent = "#" + c.name;
-                        selLog.appendChild(o);
+                        const o = document.createElement("option"); o.value = c.id; o.textContent = "#" + c.name; s.appendChild(o);
                     });
                 }
-            }
+            });
 
-            // 2. NG Log Channel
-            if (selNgLog) {
-                if (errorMsg) {
-                    selNgLog.innerHTML = '<option value="">(Error: ' + errorMsg + ')</option>';
-                } else {
-                    selNgLog.innerHTML = '<option value="">(None / Same as VC Log)</option>';
-                    channels.forEach(c => {
-                        const o = document.createElement("option");
-                        o.value = c.id;
-                        o.textContent = "#" + c.name;
-                        selNgLog.appendChild(o);
-                    });
-                }
+            // 2. Roles (Self Intro)
+            const selIntroRole = $("introRole");
+            if (selIntroRole) {
+                selIntroRole.innerHTML = '<option value="">(None)</option>';
+                roles.forEach(r => {
+                    const o = document.createElement("option"); o.value = r.id; o.textContent = r.name; selIntroRole.appendChild(o);
+                });
             }
         } catch (e) {
             console.error("loadMasters Error:", e);
-            alert("Error loading channels: " + e.message);
         }
     };
 
@@ -173,44 +217,40 @@ async function initSettings() {
         if (ng.ok) {
             const list = $("ngList");
             const words = ng.words || [];
-            if (words.length === 0) {
-                const noneText = t("ng_none");
-                list.innerHTML = '<div class="muted" style="padding:10px; text-align:center;">' + noneText + '</div>';
-            } else {
-                list.innerHTML = words.map(w => {
-                    const escW = escapeHTML(w.word);
-                    return '<div style="display:flex; justify-content:space-between; align-items:center; background:#192734; padding:8px 12px; border-radius:4px; border:1px solid #38444d;">' +
-                        '<span style="font-family:monospace;">' + escW + '</span>' +
-                        '<button onclick="removeNg(\'' + escW + '\')" class="btn" style="width:24px; height:24px; padding:0; line-height:22px; color:#f4212e; border-color:#38444d; display:flex; align-items:center; justify-content:center;">×</button>' +
-                        '</div>';
-                }).join("");
-            }
+            if (words.length === 0) list.innerHTML = '<div class="muted" style="padding:10px; text-align:center;">' + t("ng_none") + '</div>';
+            else list.innerHTML = words.map(w => '<div class="ng-item"><span>' + escapeHTML(w.word) + '</span><button onclick="removeNg(\'' + escapeHTML(w.word) + '\')">×</button></div>').join("");
             if ($("ngCount")) $("ngCount").textContent = words.length + " " + t("words");
         }
+
         if (st.ok && st.settings) {
-            if (selLog) selLog.value = st.settings.log_channel_id || "";
-            if (selNgLog) selNgLog.value = st.settings.ng_log_channel_id || "";
-            if ($("threshold")) $("threshold").value = st.settings.ng_threshold ?? 3;
-            if ($("timeout")) $("timeout").value = st.settings.timeout_minutes ?? 10;
+            const s = st.settings;
+            if (selLog) selLog.value = s.log_channel_id || "";
+            if (selNgLog) selNgLog.value = s.ng_log_channel_id || "";
+            if ($("threshold")) $("threshold").value = s.ng_threshold ?? 3;
+            if ($("timeout")) $("timeout").value = s.timeout_minutes ?? 10;
+
+            // New Fields
+            if ($("antiraidEnabled")) $("antiraidEnabled").checked = s.antiraid_enabled;
+            if ($("antiraidThreshold")) $("antiraidThreshold").value = s.antiraid_threshold ?? 10;
+            if ($("introGateEnabled")) $("introGateEnabled").checked = s.self_intro_enabled;
+            if ($("introRole")) $("introRole").value = s.self_intro_role_id || "";
+            if ($("introMinLen")) $("introMinLen").value = s.self_intro_min_length ?? 10;
         }
     };
-
-    window.removeNg = async (w) => { await api("/api/ngwords/remove", { guild: selGuild.value, word: w }); reload(); };
-    $("addNg").onclick = async () => { const w = $("newNg").value; if (!w) return; await api("/api/ngwords/add", { guild: selGuild.value, word: w }); $("newNg").value = ""; reload(); };
-    $("btn_clear").onclick = async () => { if (!confirm("Clear all?")) return; await api("/api/ngwords/clear", { guild: selGuild.value }); reload(); };
 
     $("save").onclick = async () => {
         const body = {
             guild: selGuild.value,
             log_channel_id: selLog ? selLog.value : "",
             ng_log_channel_id: selNgLog ? selNgLog.value : "",
-
-            // Removed from UI but still in DB/API (optional, send null/empty or fallback)
-            audit_role_id: null,
-            intro_channel_id: null,
-
             ng_threshold: parseInt($("threshold").value),
-            timeout_minutes: parseInt($("timeout").value)
+            timeout_minutes: parseInt($("timeout").value),
+
+            antiraid_enabled: $("antiraidEnabled").checked,
+            antiraid_threshold: parseInt($("antiraidThreshold").value),
+            self_intro_enabled: $("introGateEnabled").checked,
+            self_intro_role_id: $("introRole").value,
+            self_intro_min_length: parseInt($("introMinLen").value)
         };
         const res = await api("/api/settings/update", body);
         const stat = $("saveStatus");
