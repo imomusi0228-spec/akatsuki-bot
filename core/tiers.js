@@ -26,7 +26,8 @@ export const FEATURES = {
         vcLog: true,
         dashboard: false,
         activity: false,
-        autoRelease: false
+        autoRelease: false,
+        spamProtection: false
     },
     [TIERS.PRO_MONTHLY]: {
         maxNgWords: 20,
@@ -35,7 +36,8 @@ export const FEATURES = {
         vcLog: true,
         dashboard: true,
         activity: false,
-        autoRelease: true
+        autoRelease: true,
+        spamProtection: true
     },
     [TIERS.PRO_YEARLY]: {
         maxNgWords: 20,
@@ -44,7 +46,8 @@ export const FEATURES = {
         vcLog: true,
         dashboard: true,
         activity: false,
-        autoRelease: true
+        autoRelease: true,
+        spamProtection: true
     },
     [TIERS.PRO_PLUS_MONTHLY]: {
         maxNgWords: 50,
@@ -53,7 +56,8 @@ export const FEATURES = {
         vcLog: true,
         dashboard: true,
         activity: true,
-        autoRelease: true
+        autoRelease: true,
+        spamProtection: true
     },
     [TIERS.PRO_PLUS_YEARLY]: {
         maxNgWords: 50,
@@ -62,7 +66,8 @@ export const FEATURES = {
         vcLog: true,
         dashboard: true,
         activity: true,
-        autoRelease: true
+        autoRelease: true,
+        spamProtection: true
     },
     [TIERS.TRIAL_PRO_PLUS]: {
         maxNgWords: 50,
@@ -71,7 +76,8 @@ export const FEATURES = {
         vcLog: true,
         dashboard: true,
         activity: true,
-        autoRelease: true
+        autoRelease: true,
+        spamProtection: true
     },
     [TIERS.TRIAL_PRO]: {
         maxNgWords: 20,
@@ -80,7 +86,8 @@ export const FEATURES = {
         vcLog: true,
         dashboard: true,
         activity: false,
-        autoRelease: true
+        autoRelease: true,
+        spamProtection: true
     }
 };
 

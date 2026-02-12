@@ -29,6 +29,7 @@ export const DICTIONARY = {
         feature_activity: "アクティビティ監視",
         feature_csv: "CSVエクスポート",
         feature_auto_release: "NGワード削除時の自動タイムアウト救済",
+        feature_spam: "スパム保護（類似メッセージ連投検知）",
         limit_10: "5個",
         limit_50: "20個",
         limit_100: "50個",
@@ -42,16 +43,16 @@ export const DICTIONARY = {
 
         // Detailed features for list (NEW)
         feat_list_free: "・VC入退室ログの自動記録<br/>・NGワード検知（最大5個）<br/>・基本的な統計表示",
-        feat_list_pro: "・Web管理ダッシュボード<br/>・管理ログの可視化・通知<br/>・NGワード登録数 20個<br/>・メッセージ自動削除・警告<br/>・NGワード削除時の自動タイムアウト救済",
-        feat_list_pro_plus: "・メンバー監査（幽霊部員検知）<br/>・CSVエクスポート機能<br/>・NGワード登録数 50個<br/>・過去ログ一括スキャン<br/>・NGワード削除時の自動タイムアウト救済",
+        feat_list_pro: "・Web管理ダッシュボード<br/>・スパム保護（類似メッセージ連投検知）<br/>・NGワード登録数 20個<br/>・メッセージ自動削除・警告・キック<br/>・NGワード削除時の自動タイムアウト救済",
+        feat_list_pro_plus: "・メンバー監査（幽霊部員検知）<br/>・CSVエクスポート機能<br/>・NGワード登録数 50個<br/>・最大3つのサーバーで利用可能<br/>・過去ログ一括スキャン",
 
         features_detail_security: "NGワードの自動削除と警告しきい値による自動タイムアウトで、サーバーの平和を鉄壁に守ります。",
         features_detail_audit: "ロールの所持、自己紹介の有無、VCの参加状況を統合し、幽霊部員を瞬時に特定します。",
         features_detail_log: "サーバー内で起きた重要なイベントを専用チャンネルに記録。何かあった時の追跡も容易です。",
 
         // Legal / Sales
-        sec_sales: "※販売内容について",
-        text_sales: "本商品は Botの利用権の販売 です。Botそのものをダウンロード・所有する商品ではありません。Pro / Pro+ 機能は 期間制 で提供されます。利用期限は Bot により自動管理されます。期限終了後は Free Tier に戻ります。",
+        sec_sales: "※プラン内容とトライアルについて",
+        text_sales: "Pro / Pro+ 機能は 期間制 で提供されます。Trial Pro は 14日間、Trial Pro+ は 7日間 の試用期間が自動設定されます。期限終了後は Free Tier に戻ります。各機能は Bot により自動管理されます。",
         sec_support: "※反映・サポートについて",
         text_support: "購入確認後、Bot管理者が手動で利用権を付与します。反映まで 最大24時間程度 かかる場合があります。個人開発のため、即時対応を保証するものではありません。",
         sec_caution: "※注意事項",
@@ -201,6 +202,7 @@ export const DICTIONARY = {
         feature_activity: "Activity Monitor",
         feature_csv: "CSV Export",
         feature_auto_release: "Auto Timeout Relief on NG Deletion",
+        feature_spam: "Spam Protection (Similarity Detection)",
         limit_10: "5 Words",
         limit_50: "20 Words",
         limit_100: "50 Words",
@@ -214,8 +216,8 @@ export const DICTIONARY = {
 
         // Detailed features for list (NEW)
         feat_list_free: "・Auto-record VC join/leave logs<br/>・NG word detection (Up to 5)<br/>・Basic statistics display",
-        feat_list_pro: "・Web management dashboard<br/>・Log visualization & notification<br/>・20 NG words capacity<br/>・Auto-delete/warn/release",
-        feat_list_pro_plus: "・Member audit (Ghost detection)<br/>・CSV export functionality<br/>・50 NG words capacity<br/>・Past log bulk scanning<br/>・Auto Timeout Relief on NG Deletion",
+        feat_list_pro: "・Web management dashboard<br/>・Spam Protection (Similarity detection)<br/>・20 NG words capacity<br/>・Auto-delete/warn/kick<br/>・Auto Timeout Relief",
+        feat_list_pro_plus: "・Member audit (Ghost detection)<br/>・CSV export functionality<br/>・50 NG words capacity<br/>・Support up to 3 servers<br/>・Past log bulk scanning",
 
         features_detail_security: "Auto-delete messages and set warning thresholds to keep your server safe and orderly.",
         features_detail_audit: "Audit members based on roles, introductions, and VC activity to identify inactive members instantly.",

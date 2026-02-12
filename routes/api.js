@@ -4,6 +4,7 @@ import { PermissionFlagsBits } from "discord.js";
 import { client } from "../core/client.js";
 import { TIERS, getFeatures, TIER_NAMES } from "../core/tiers.js";
 import { getTier } from "../core/subscription.js";
+import { ENV } from "../config/env.js";
 
 function hasManageGuild(permissions, owner = false) {
     if (owner === true) return true;
@@ -17,8 +18,17 @@ const memberCache = new Map();
 const introCache = new Map();
 
 export async function handleApiRoute(req, res, pathname, url) {
+    // Check for API Key (Admin Token) for backend routes
+    const authHeader = req.headers.authorization;
+    const adminToken = ENV.ADMIN_TOKEN;
+    let isAdminApi = false;
+
+    if (pathname === "/api/license/update" && adminToken && (authHeader === `Bearer ${adminToken}` || authHeader === adminToken)) {
+        isAdminApi = true;
+    }
+
     const session = await getSession(req);
-    if (!session) {
+    if (!session && !isAdminApi) {
         res.writeHead(401, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
         return;
@@ -585,35 +595,85 @@ export async function handleApiRoute(req, res, pathname, url) {
 
     // POST /api/license/update (Improved with per-user server limit)
     if (pathname === "/api/license/update" && method === "POST") {
-        const body = await getBody();
-        if (!body.guild || body.tier === undefined || !body.user_id) {
-            return res.end(JSON.stringify({ ok: false, error: "Missing required fields" }));
-        }
-
-        const targetTier = parseInt(body.tier);
-        const features = getFeatures(targetTier);
-
-        // Check how many servers the user already has at this tier (or higher, for safety)
-        // If tier=0 (Free), we don't usually need a limit here, but let's be generic
-        if (targetTier > 0) {
-            const usageRes = await dbQuery("SELECT COUNT(*) as cnt FROM subscriptions WHERE user_id = $1 AND tier >= $2 AND guild_id != $3", [body.user_id, targetTier, body.guild]);
-            const currentUsage = parseInt(usageRes.rows[0].cnt);
-
-            if (currentUsage >= (features.maxGuilds || 1)) {
-                res.writeHead(403, { "Content-Type": "application/json" });
-                return res.end(JSON.stringify({ ok: false, error: `Limit reached. Your plan allows up to ${features.maxGuilds} servers.` }));
+        try {
+            const body = await getBody();
+            if (!body.guild || body.tier === undefined || !body.user_id) {
+                return res.end(JSON.stringify({ ok: false, error: "Missing required fields" }));
             }
-        }
 
-        // Upsert
-        const check = await dbQuery("SELECT guild_id FROM subscriptions WHERE guild_id = $1", [body.guild]);
-        if (check.rows.length === 0) {
-            await dbQuery("INSERT INTO subscriptions (guild_id, tier, user_id) VALUES ($1, $2, $3)", [body.guild, targetTier, body.user_id]);
-        } else {
-            await dbQuery("UPDATE subscriptions SET tier = $1, user_id = $2, updated_at = NOW() WHERE guild_id = $3", [targetTier, body.user_id, body.guild]);
+            const targetTier = parseInt(body.tier);
+            const features = getFeatures(targetTier);
+            // Check how many servers the user already has at this tier (or higher, for safety)
+            if (targetTier > 0) {
+                // Fix: Fetch all user subscriptions and filter in JS to avoid SQL casting errors on mixed string/int 'tier' column
+                const usageRes = await dbQuery("SELECT tier, guild_id FROM subscriptions WHERE user_id = $1", [body.user_id]);
+
+                const currentUsage = usageRes.rows.filter(r => {
+                    if (r.guild_id === body.guild) return false; // Exclude current guild if upgrading
+
+                    // Handle mixed types (int or "Trial Pro")
+                    let tierVal = parseInt(r.tier);
+                    if (isNaN(tierVal)) {
+                        // If logic ever needs to handle "Trial Pro" string as a value, do it here. 
+                        // For now, assume strings are effectively tier 0 or legacy, so ignore if we are checking >= targetTier (and targetTier is usually > 0)
+                        // Actually, if existing is "Trial Pro" (6), we should probably treat it as 6?
+                        // Let's assume strings are lower precedence or legacy if not parseable to int?
+                        // "Trial Pro" -> NaN.
+                        // Let's rely on standard logic: if it's not a number, it doesn't count towards the limit of "Pro" servers?
+                        // But wait! If user has "Trial Pro" string in DB, and effectively checking against Trial Pro limit...
+                        // Let's try to map known strings.
+                        if (r.tier === "Trial Pro") tierVal = TIERS.TRIAL_PRO;
+                        else if (r.tier === "Trial Pro+") tierVal = TIERS.TRIAL_PRO_PLUS;
+                        else return false; // Unknown string tier -> ignore
+                    }
+
+                    return tierVal >= targetTier;
+                }).length;
+
+                if (currentUsage >= (features.maxGuilds || 1)) {
+                    res.writeHead(403, { "Content-Type": "application/json" });
+                    return res.end(JSON.stringify({ ok: false, error: `Limit reached. Your plan allows up to ${features.maxGuilds} servers.` }));
+                }
+            }
+
+            // Calculate Valid Until
+            let validUntil = null;
+
+            if (body.days) {
+                const d = new Date();
+                d.setDate(d.getDate() + parseInt(body.days));
+                validUntil = d;
+            } else if (body.valid_until) {
+                validUntil = new Date(body.valid_until);
+            } else {
+                // Default rules for Trials
+                if (targetTier === TIERS.TRIAL_PRO) {
+                    const d = new Date();
+                    d.setDate(d.getDate() + 14); // 14 Days
+                    validUntil = d;
+                } else if (targetTier === TIERS.TRIAL_PRO_PLUS) {
+                    const d = new Date();
+                    d.setDate(d.getDate() + 7); // 7 Days
+                    validUntil = d;
+                }
+            }
+
+            // Upsert
+            const check = await dbQuery("SELECT guild_id FROM subscriptions WHERE guild_id = $1", [body.guild]);
+            if (check.rows.length === 0) {
+                await dbQuery("INSERT INTO subscriptions (guild_id, tier, user_id, valid_until) VALUES ($1, $2, $3, $4)",
+                    [body.guild, targetTier, body.user_id, validUntil]);
+            } else {
+                await dbQuery("UPDATE subscriptions SET tier = $1, user_id = $2, valid_until = $3, updated_at = NOW() WHERE guild_id = $4",
+                    [targetTier, body.user_id, validUntil, body.guild]);
+            }
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ ok: true }));
+        } catch (e) {
+            console.error("License Update Error:", e);
+            res.writeHead(500, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ ok: false, error: "Internal Error" }));
         }
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ ok: true }));
         return;
     }
 
