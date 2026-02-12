@@ -1,5 +1,6 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js";
 import { dbQuery } from "../core/db.js";
+import { cache } from "../core/cache.js";
 
 export const data = new SlashCommandBuilder()
     .setName("ngword")
@@ -8,21 +9,24 @@ export const data = new SlashCommandBuilder()
     .addSubcommand(sub =>
         sub.setName("add")
             .setDescription("NGワードを追加")
-            .addStringOption(opt => opt.setName("word").setDescription("追加する言葉").setRequired(true))
-            .addBooleanOption(opt => opt.setName("regex").setDescription("正規表現として追加").setRequired(false))
+            .addStringOption(opt => opt.setName("word").setDescription("検知する言葉 (または正規表現 /pattern/flags)").setRequired(true))
+            .addStringOption(opt =>
+                opt.setName("kind")
+                    .setDescription("一致方法")
+                    .addChoices(
+                        { name: "部分一致 (Default)", value: "exact" },
+                        { name: "正規表現 (Advanced)", value: "regex" }
+                    )
+            )
     )
     .addSubcommand(sub =>
         sub.setName("remove")
             .setDescription("NGワードを削除")
-            .addStringOption(opt => opt.setName("word").setDescription("削除する言葉").setRequired(true))
+            .addIntegerOption(opt => opt.setName("id").setDescription("削除するID (listで確認してください)").setRequired(true))
     )
     .addSubcommand(sub =>
         sub.setName("list")
-            .setDescription("NGワード一覧を表示")
-    )
-    .addSubcommand(sub =>
-        sub.setName("clear")
-            .setDescription("NGワードを全削除")
+            .setDescription("現在のNGワード一覧を表示")
     );
 
 export async function execute(interaction) {
@@ -31,34 +35,41 @@ export async function execute(interaction) {
 
     if (sub === "add") {
         const word = interaction.options.getString("word");
-        const isRegex = interaction.options.getBoolean("regex") || false;
+        const kind = interaction.options.getString("kind") || "exact";
 
-        await dbQuery("INSERT INTO ng_words (guild_id, word, kind, created_by) VALUES ($1, $2, $3, $4)", [guildId, word, isRegex ? "regex" : "exact", interaction.user.tag]);
-        await interaction.reply({ content: `✅ NGワードを追加しました: \`${word}\` (${isRegex ? "正規表現" : "完全一致"})`, ephemeral: true });
-    }
+        await dbQuery("INSERT INTO ng_words (guild_id, word, kind, created_by) VALUES ($1, $2, $3, $4)",
+            [guildId, word, kind, interaction.user.id]);
 
-    if (sub === "remove") {
-        const word = interaction.options.getString("word");
-        const res = await dbQuery("DELETE FROM ng_words WHERE guild_id = $1 AND word = $2 RETURNING *", [guildId, word]);
-        if (res.rowCount > 0) {
-            await interaction.reply({ content: `✅ NGワードを削除しました: \`${word}\``, ephemeral: true });
-        } else {
-            await interaction.reply({ content: `⚠️ その言葉は登録されていません: \`${word}\``, ephemeral: true });
+        // Invalidate Cache
+        cache.clearNgWords(guildId);
+
+        await interaction.reply({ content: `✅ NGワード \`${word}\` (${kind}) を追加しました。`, flags: [MessageFlags.Ephemeral] });
+
+    } else if (sub === "remove") {
+        const id = interaction.options.getInteger("id");
+
+        const res = await dbQuery("DELETE FROM ng_words WHERE id = $1 AND guild_id = $2 RETURNING word", [id, guildId]);
+        if (res.rowCount === 0) {
+            return interaction.reply({ content: "❌ 指定されたIDが見つからないか、権限がありません。", flags: [MessageFlags.Ephemeral] });
         }
-    }
 
-    if (sub === "list") {
-        const res = await dbQuery("SELECT word, kind FROM ng_words WHERE guild_id = $1", [guildId]);
+        // Invalidate Cache
+        cache.clearNgWords(guildId);
+
+        await interaction.reply({ content: `✅ NGワード \`${res.rows[0].word}\` を削除しました。`, flags: [MessageFlags.Ephemeral] });
+
+    } else if (sub === "list") {
+        const res = await dbQuery("SELECT id, word, kind FROM ng_words WHERE guild_id = $1", [guildId]);
         if (res.rows.length === 0) {
-            await interaction.reply({ content: "NGワードは登録されていません。", ephemeral: true });
+            await interaction.reply({ content: "NGワードは登録されていません。", flags: [MessageFlags.Ephemeral] });
             return;
         }
-        const list = res.rows.map(r => `・\`${r.word}\` (${r.kind})`).join("\n");
-        await interaction.reply({ content: `📋 **NGワード一覧**\n${list}`, ephemeral: true });
+        const list = res.rows.map(r => `・ID:${r.id} \`${r.word}\` (${r.kind})`).join("\n");
+        await interaction.reply({ content: `📋 **NGワード一覧**\n${list}`, flags: [MessageFlags.Ephemeral] });
     }
 
     if (sub === "clear") {
         await dbQuery("DELETE FROM ng_words WHERE guild_id = $1", [guildId]);
-        await interaction.reply({ content: "🗑️ NGワードを全て削除しました。", ephemeral: true });
+        await interaction.reply({ content: "🗑️ NGワードを全て削除しました。", flags: [MessageFlags.Ephemeral] });
     }
 }

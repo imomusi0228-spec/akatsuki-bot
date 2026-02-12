@@ -6,6 +6,7 @@ import { getTier } from "../core/subscription.js";
 import { getFeatures } from "../core/tiers.js";
 import { sendLog } from "../core/logger.js";
 import { checkSpam } from "../core/protection.js";
+import { cache } from "../core/cache.js";
 
 export default {
     name: Events.MessageCreate,
@@ -61,8 +62,12 @@ export default {
             }
 
             // Load NG words
-            const res = await dbQuery("SELECT * FROM ng_words WHERE guild_id = $1", [message.guild.id]);
-            const ngWords = res.rows;
+            let ngWords = cache.getNgWords(message.guild.id);
+            if (!ngWords) {
+                const res = await dbQuery("SELECT * FROM ng_words WHERE guild_id = $1", [message.guild.id]);
+                ngWords = res.rows;
+                cache.setNgWords(message.guild.id, ngWords);
+            }
 
             if (ngWords.length === 0) return;
 
@@ -88,8 +93,13 @@ export default {
                 await message.delete().catch((e) => { console.error("[DEBUG] Delete Failed:", e.message); });
 
                 // Fetch Settings
-                const settingsRes = await dbQuery("SELECT * FROM settings WHERE guild_id = $1", [message.guild.id]);
-                const settings = settingsRes.rows[0] || {};
+                let settings = cache.getSettings(message.guild.id);
+                if (!settings) {
+                    const settingsRes = await dbQuery("SELECT * FROM settings WHERE guild_id = $1", [message.guild.id]);
+                    settings = settingsRes.rows[0] || {};
+                    cache.setSettings(message.guild.id, settings);
+                }
+
                 const threshold = settings.ng_threshold || 3;
                 const timeoutMin = settings.timeout_minutes || 10;
 

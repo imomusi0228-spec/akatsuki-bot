@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js";
 import { ENV } from "../config/env.js";
 
 export const data = new SlashCommandBuilder()
@@ -10,6 +10,6 @@ export async function execute(interaction) {
     const url = ENV.PUBLIC_URL || `http://localhost:${ENV.PORT}`;
     await interaction.reply({
         content: `Bot機能の詳細はこちらで確認できます。\n👉 ${url}/features`,
-        ephemeral: true
+        flags: [MessageFlags.Ephemeral]
     });
 }

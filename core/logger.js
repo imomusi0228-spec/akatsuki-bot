@@ -7,8 +7,9 @@ import { dbQuery } from "./db.js";
  * @param {'vc' | 'ng' | 'vc_in' | 'vc_out'} type ログの種類
  * @param {import("discord.js").EmbedBuilder} embed 投稿するEmbed
  * @param {Date | number} [date] ログの日付（指定がない場合は現在時刻）
+ * @param {{ checkDuplicate?: boolean }} [options] オプション
  */
-export async function sendLog(guild, type, embed, date = new Date()) {
+export async function sendLog(guild, type, embed, date = new Date(), options = {}) {
     try {
         const settingsRes = await dbQuery("SELECT log_channel_id, ng_log_channel_id FROM settings WHERE guild_id = $1", [guild.id]);
         const settings = settingsRes.rows[0];
@@ -65,6 +66,30 @@ export async function sendLog(guild, type, embed, date = new Date()) {
             }
 
             if (thread) {
+                // 重複チェック
+                if (options.checkDuplicate) {
+                    const messages = await thread.messages.fetch({ limit: 50 }).catch(() => null);
+                    if (messages) {
+                        const isDuplicate = messages.some(msg => {
+                            if (msg.embeds.length === 0) return false;
+                            const e = msg.embeds[0];
+                            // 著者名, タイトル(なければ説明), タイムスタンプが一致するか確認
+                            const sameAuthor = e.author?.name === embed.data.author?.name;
+                            const sameDesc = e.description === embed.data.description;
+
+                            // タイムスタンプ比較 (秒単位で比較、ミリ秒は無視)
+                            const targetTime = embed.data.timestamp ? new Date(embed.data.timestamp).getTime() : null;
+                            const msgTime = e.timestamp ? new Date(e.timestamp).getTime() : null;
+                            const sameTime = targetTime && msgTime && Math.floor(targetTime / 1000) === Math.floor(msgTime / 1000);
+
+                            return sameAuthor && sameDesc && sameTime;
+                        });
+                        if (isDuplicate) {
+                            console.log(`[LOGGER] Duplicate ${type} log skipped for ${embed.data.author?.name}`);
+                            return;
+                        }
+                    }
+                }
                 await thread.send({ embeds: [embed] }).catch(() => null);
             } else {
                 // スレッド作成に失敗した場合は直接送る（フォールバック）
@@ -72,6 +97,27 @@ export async function sendLog(guild, type, embed, date = new Date()) {
             }
         } else {
             // NGワードログは直接投稿
+            if (options.checkDuplicate) {
+                const messages = await channel.messages.fetch({ limit: 50 }).catch(() => null);
+                if (messages) {
+                    const isDuplicate = messages.some(msg => {
+                        if (msg.embeds.length === 0) return false;
+                        const e = msg.embeds[0];
+                        const sameDesc = e.description === embed.data.description;
+
+                        // タイムスタンプ比較 (秒単位)
+                        const targetTime = embed.data.timestamp ? new Date(embed.data.timestamp).getTime() : null;
+                        const msgTime = e.timestamp ? new Date(e.timestamp).getTime() : null;
+                        const sameTime = targetTime && msgTime && Math.floor(targetTime / 1000) === Math.floor(msgTime / 1000);
+
+                        return sameDesc && sameTime;
+                    });
+                    if (isDuplicate) {
+                        console.log(`[LOGGER] Duplicate ${type} log skipped`);
+                        return;
+                    }
+                }
+            }
             await channel.send({ embeds: [embed] }).catch(() => null);
         }
     } catch (e) {

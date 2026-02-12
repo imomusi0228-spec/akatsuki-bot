@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags } from "discord.js";
 import { dbQuery } from "../core/db.js";
 import { sendLog } from "../core/logger.js";
 
@@ -22,7 +22,7 @@ export async function execute(interaction) {
     const limit = interaction.options.getInteger("limit") || (type === 'vc' ? 3 : 50);
     const guildId = interaction.guild.id;
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
     if (type === 'vc') {
         const days = Math.min(limit, 30); // Max 30 days
@@ -45,8 +45,16 @@ export async function execute(interaction) {
         let recoveredCount = 0;
         await interaction.editReply(`⏳ 過去${days}日間のVCログを復元中... (${res.rows.length}件)`);
 
+        // Optimization: Batch fetch members to warm the cache and avoid rate limits in loop
+        // We extract unique user IDs first
+        const userIds = [...new Set(res.rows.map(r => r.user_id))];
+        console.log(`[DEBUG] Warming member cache for ${userIds.length} users...`);
+        // Batch fetch (Discord.js will handle splitting if too many, but here we just ensure they are in cache)
+        await interaction.guild.members.fetch({ user: userIds }).catch(e => console.error("[DEBUG] Batch fetch failed:", e));
+
         for (const session of res.rows) {
-            const member = await interaction.guild.members.fetch(session.user_id).catch(() => null);
+            // Use cache first (it should be warmed now)
+            const member = interaction.guild.members.cache.get(session.user_id);
             const userDisplay = member ? `${member.displayName}` : `User(${session.user_id})`;
             const avatarUrl = member ? member.user.displayAvatarURL() : null;
 
@@ -66,7 +74,7 @@ export async function execute(interaction) {
                 .setFooter({ text: "過去ログスキャンによる復元" })
                 .setTimestamp(joinDate);
 
-            await sendLog(interaction.guild, 'vc_in', embedJoin, joinDate);
+            await sendLog(interaction.guild, 'vc_in', embedJoin, joinDate, { checkDuplicate: true });
             recoveredCount++;
 
             // LEAVE Log (if exists)
@@ -84,7 +92,7 @@ export async function execute(interaction) {
                     .setFooter({ text: "過去ログスキャンによる復元" })
                     .setTimestamp(leaveDate);
 
-                await sendLog(interaction.guild, 'vc_out', embedLeave, leaveDate);
+                await sendLog(interaction.guild, 'vc_out', embedLeave, leaveDate, { checkDuplicate: true });
                 recoveredCount++;
             }
         }
@@ -140,7 +148,7 @@ export async function execute(interaction) {
                     .setTimestamp(msg.createdAt);
 
                 // Pass message creation date to sendLog to ensure it goes to correct thread
-                await sendLog(interaction.guild, 'ng', embed, msg.createdAt);
+                await sendLog(interaction.guild, 'ng', embed, msg.createdAt, { checkDuplicate: true });
             }
         }
 

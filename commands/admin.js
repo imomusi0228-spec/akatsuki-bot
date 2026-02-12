@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { SlashCommandBuilder, MessageFlags } from "discord.js";
 import { ENV } from "../config/env.js";
 
 export const data = new SlashCommandBuilder()
@@ -14,6 +14,6 @@ export async function execute(interaction) {
 
     await interaction.reply({
         content: `Web管理画面はこちらです:\n${url}/login`,
-        ephemeral: true
+        flags: [MessageFlags.Ephemeral]
     });
 }

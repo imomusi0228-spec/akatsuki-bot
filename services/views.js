@@ -648,7 +648,7 @@ export function renderFeaturesHTML(req) {
         <div class="plan-card" style="border: 3px solid var(--primary-color); background: rgba(29, 161, 242, 0.05); box-shadow: 0 10px 30px rgba(29, 161, 242, 0.15);">
             <span class="plan-badge" style="background:var(--primary-color); color:white;">${t("plan_badge_rec", lang)}</span>
             <h2 style="font-size: 32px; margin-bottom: 5px;">${t("plan_pro", lang)}</h2>
-            <div class="plan-price">¥500 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_month", lang)}</span></div>
+            <div class="plan-price">¥680 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_month", lang)}</span></div>
             <p style="color:#8899a6; margin-bottom:10px;">${t("plan_pro_desc", lang)}</p>
             <div class="feature-list">
                 ${t("feat_list_pro", lang).split('<br/>').map(f => `<div><i>✓</i> ${f.replace('・', '')}</div>`).join('')}
@@ -660,7 +660,7 @@ export function renderFeaturesHTML(req) {
         <div class="plan-card" style="border: 2px solid #ffd700; background: rgba(255, 215, 0, 0.03); box-shadow: 0 10px 30px rgba(255, 215, 0, 0.1);">
             <span class="plan-badge" style="background:#ffd700; color:black;">${t("plan_badge_prm", lang)}</span>
             <h2 style="font-size: 32px; margin-bottom: 5px;">${t("plan_pro_plus", lang)}</h2>
-            <div class="plan-price">¥1,200 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_month", lang)}</span></div>
+            <div class="plan-price">¥1,800 <span style="font-size:14px; color:#8899a6; font-weight:normal;">${t("period_month", lang)}</span></div>
             <p style="color:#8899a6; margin-bottom:10px;">${t("plan_pro_plus_desc", lang)}</p>
             <div class="feature-list">
                 ${t("feat_list_pro_plus", lang).split('<br/>').map(f => `<div><i>✓</i> ${f.replace('・', '')}</div>`).join('')}

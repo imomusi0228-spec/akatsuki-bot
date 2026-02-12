@@ -1,21 +1,35 @@
 import { dbQuery } from "./db.js";
 import { TIERS, FEATURES } from "./tiers.js";
 import { ENV } from "../config/env.js";
+import { cache } from "./cache.js";
 
 /**
  * Get the subscription tier for a guild
  * Support server always gets PRO_PLUS
  */
 export async function getTier(guildId) {
-    // Check if this is the support server
+    // 1. Check Cache
+    const cachedTier = cache.getTier(guildId);
+    if (cachedTier !== null) return cachedTier;
+
+    let tier = TIERS.FREE;
+
+    // 2. Check if this is the support server
     if (ENV.SUPPORT_SERVER_ID && guildId === ENV.SUPPORT_SERVER_ID) {
-        return TIERS.PRO_PLUS_YEARLY;
+        tier = TIERS.PRO_PLUS_YEARLY;
+        cache.setTier(guildId, tier);
+        return tier;
     }
 
-    // Fetch subscription for this guild
+    // 3. Fetch subscription for this guild from DB
     const res = await dbQuery("SELECT * FROM subscriptions WHERE guild_id = $1", [guildId]);
     const sub = res.rows[0];
-    if (!sub) return TIERS.FREE;
+
+    if (!sub) {
+        tier = TIERS.FREE;
+        cache.setTier(guildId, tier);
+        return tier;
+    }
 
     // Normalize tier to number
     sub.tier = parseInt(sub.tier, 10);
@@ -51,5 +65,7 @@ export async function getTier(guildId) {
     }
 
     // Ensure we return a valid integer, defaulting to FREE if null/undefined
-    return sub.tier ? parseInt(sub.tier, 10) : TIERS.FREE;
+    const finalTier = sub.tier ? parseInt(sub.tier, 10) : TIERS.FREE;
+    cache.setTier(guildId, finalTier);
+    return finalTier;
 }
