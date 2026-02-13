@@ -44,6 +44,27 @@ const COMMON_CSS = `
   .cross { color: #f91880; font-weight: bold; }
   .lang-switch { cursor: pointer; color: #8899a6; margin-left: 15px; font-size: 0.9em; }
   .lang-switch:hover { color: #fff; }
+  
+  /* Accordion Styles */
+  .accordion-item { border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 12px; background: var(--card-bg); overflow: hidden; }
+  .accordion-header { padding: 16px 20px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-weight: bold; font-size: 1.1em; transition: background 0.2s; }
+  .accordion-header:hover { background: rgba(255,255,255,0.03); }
+  .accordion-content { display: none; padding: 20px; border-top: 1px solid var(--border-color); background: rgba(0,0,0,0.1); }
+  .accordion-item.active .accordion-content { display: block; }
+  .accordion-arrow { transition: transform 0.2s; color: var(--text-secondary); }
+  .accordion-item.active .accordion-arrow { transform: rotate(180deg); }
+  
+  /* Tooltip Styles */
+  .help-icon { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: #38444d; color: #8899a6; font-size: 12px; cursor: help; margin-left: 6px; vertical-align: middle; position: relative; }
+  .help-icon:hover { background: var(--accent-color); color: white; }
+  .help-icon:hover::after { content: attr(data-help); position: absolute; bottom: 125%; left: 50%; transform: translateX(-50%); background: #000; color: #fff; padding: 10px; border-radius: 8px; font-size: 12px; width: 220px; line-height: 1.4; z-index: 100; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid var(--border-color); white-space: normal; pointer-events: none; }
+  
+  .setting-section { margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px dashed var(--border-color); }
+  .setting-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .setting-title { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: var(--accent-color); font-size: 16px; font-weight: bold; }
+  
+  .switch-label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+  .switch-label input { width: 18px; height: 18px; cursor: pointer; }
 `;
 
 const COMMON_SCRIPT = /* v2.4 (Optimized) */ `
@@ -586,134 +607,168 @@ export function renderAdminSettingsHTML({ user, req }) {
     const lang = getLang(req);
     const content = `<div class="card"><div class="row" style="margin-bottom:16px;"><select id="guild" style="width:100%; max-width:300px; padding:10px;"></select> <button id="reload" class="btn">Reload</button></div></div>
     
-    <div id="card-ng" class="card">
-        <h3>${t("ng_words", lang)}</h3>
-        <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; border:1px solid #38444d;">
-            <div style="margin-bottom:15px;">
-                <label style="display:block; margin-bottom:5px; font-size:12px; font-weight:bold; color:#8899a6;">${t("ng_add_label", lang)}</label>
-                <div style="display:flex; gap:10px;">
-                    <textarea id="newNg" rows="1" placeholder="${t("ng_msg_placeholder", lang)}" style="flex:1; padding:10px; border:1px solid #38444d; background:#192734; color:white; border-radius:4px; resize:vertical; font-family:inherit;"></textarea>
-                    <button id="addNg" class="btn" style="width:40px; font-size:20px; padding:0; display:flex; align-items:center; justify-content:center;">+</button>
-                </div>
+    <div style="max-width: 900px; margin: 0 auto;">
+        <!-- NG Words Accordion -->
+        <div class="accordion-item" id="accordion-ng">
+            <div class="accordion-header" onclick="toggleAccordion('accordion-ng')">
+                <span><i class="icon">🚫</i> ${t("ng_words", lang)}</span>
+                <span class="accordion-arrow">▼</span>
             </div>
-            
-            <label style="display:block; margin-bottom:5px; font-size:12px; font-weight:bold; color:#8899a6;">${t("ng_delete_label", lang)}</label>
-            <div id="ngList" style="display:flex; flex-direction:column; gap:8px; max-height:300px; overflow-y:auto; padding:5px;"></div>
-            
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:15px; border-top:1px solid #38444d; padding-top:10px;">
-                <span id="ngCount" class="muted">0 ${t("words", lang)}</span>
-                <button id="btn_clear" class="btn" style="color:#f4212e; border-color:#f4212e; padding:4px 12px; font-size:12px;">${t("ng_clear_all", lang)}</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="card-general" class="card">
-        <h3>${t("config_general", lang)}</h3>
-        
-        <div class="row" style="margin-bottom:15px;">
-           <label style="display:block; margin-bottom:5px; font-weight:bold;">${t("log_channel", lang)} <span class="muted" style="font-weight:normal; font-size:0.9em;">(VC入退室)</span></label>
-           <p class="muted" style="margin-bottom:8px;">${t("log_channel_desc", lang)}</p>
-           <select id="logCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
-        </div>
-
-        <div class="row" style="margin-bottom:15px;">
-           <label style="display:block; margin-bottom:5px; font-weight:bold;">${t("ng_log_channel", lang)} <span class="muted" style="font-weight:normal; font-size:0.9em;">(NG検知・管理ログ)</span></label>
-           <p class="muted" style="margin-bottom:8px;">${t("ng_log_channel_desc", lang)}</p>
-           <select id="ngLogCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
-        </div>
-
-
-
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-top:20px; border-top: 1px solid var(--border-color); padding-top:20px;">
-            <div>
-                <label style="display:block; margin-bottom:8px;">${t("threshold_label", lang)}</label>
-                <input id="threshold" type="number" min="1" max="100" style="width:100%; padding:10px;">
-            </div>
-            <div>
-                <label style="display:block; margin-bottom:8px;">${t("timeout_label", lang)}</label>
-                <select id="timeout" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;">
-                    <option value="1">1分(60秒)</option>
-                    <option value="5">5分</option>
-                    <option value="10">10分</option>
-                    <option value="60">1時間</option>
-                    <option value="1440">1日</option>
-                     <option value="10080">1週間</option>
-                </select>
-            </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns: 1fr 1.2fr; gap:24px; margin-top:20px;">
-            <div class="card" style="margin-bottom:0;">
-                <h3>🛡️ Advanced Moderation</h3>
-                <div style="margin-bottom:15px;">
-                    <label class="switch-label">
-                        <input type="checkbox" id="antiraidEnabled" />
-                        <span>アンチ・レイドを有効化</span>
-                    </label>
-                </div>
-                <div style="margin-bottom:10px;">
-                    <label style="display:block; font-size:11px; margin-bottom:4px; font-weight:bold;">検知しきい値 (参加数/分)</label>
-                    <input type="number" id="antiraidThreshold" style="width:100%; padding:10px; border-radius:6px; background:#15202b; border:1px solid #38444d; color:white;" />
-                </div>
-            </div>
-            <div class="card" style="margin-bottom:0;">
-                <h3>🚪 Self-Introduction Gate</h3>
-                <div style="margin-bottom:15px;">
-                    <label class="switch-label">
-                        <input type="checkbox" id="introGateEnabled" />
-                        <span>自動自己紹介ゲートを有効化</span>
-                    </label>
-                </div>
-                <div style="margin-bottom:10px;">
-                    <label style="display:block; font-size:11px; margin-bottom:4px; font-weight:bold;">付与するロール</label>
-                    <select id="introRole" style="width:100%; padding:10px; border-radius:6px; background:#15202b; border:1px solid #38444d; color:white;"></select>
-                </div>
-                <div>
-                    <label style="display:block; font-size:11px; margin-bottom:4px; font-weight:bold;">最低必要文字数</label>
-                    <input type="number" id="introMinLen" style="width:100%; padding:10px; border-radius:6px; background:#15202b; border:1px solid #38444d; color:white;" />
+            <div class="accordion-content">
+                <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; border:1px solid #38444d;">
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block; margin-bottom:5px; font-size:12px; font-weight:bold; color:#8899a6;">${t("ng_add_label", lang)}</label>
+                        <div style="display:flex; gap:10px;">
+                            <textarea id="newNg" rows="1" placeholder="${t("ng_msg_placeholder", lang)}" style="flex:1; padding:10px; border:1px solid #38444d; background:#192734; color:white; border-radius:4px; resize:vertical; font-family:inherit;"></textarea>
+                            <button id="addNg" class="btn" style="width:40px; font-size:20px; padding:0; display:flex; align-items:center; justify-content:center;">+</button>
+                        </div>
+                    </div>
+                    
+                    <label style="display:block; margin-bottom:5px; font-size:12px; font-weight:bold; color:#8899a6;">${t("ng_delete_label", lang)}</label>
+                    <div id="ngList" style="display:flex; flex-direction:column; gap:8px; max-height:300px; overflow-y:auto; padding:5px;"></div>
+                    
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:15px; border-top:1px solid #38444d; padding-top:10px;">
+                        <span id="ngCount" class="muted">0 ${t("words", lang)}</span>
+                        <button id="btn_clear" class="btn" style="color:#f4212e; border-color:#f4212e; padding:4px 12px; font-size:12px;">${t("ng_clear_all", lang)}</button>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div id="card-vc" class="card" style="margin-top:24px;">
-            <h3>📊 VC Engagement</h3>
-            <div style="display:grid; grid-template-columns: 1fr 1.2fr; gap:24px;">
-                <div>
-                    <h4 style="margin-top:0; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">定期ランキングレポート</h4>
+        <!-- General Config Accordion -->
+        <div class="accordion-item active" id="accordion-general">
+            <div class="accordion-header" onclick="toggleAccordion('accordion-general')">
+                <span><i class="icon">⚙️</i> ${t("config_general", lang)}</span>
+                <span class="accordion-arrow">▼</span>
+            </div>
+            <div class="accordion-content">
+                <!-- Section 1: Logging -->
+                <div class="setting-section">
+                    <div class="setting-title">
+                        通知・ログ構成
+                        <span class="help-icon" data-help="Botが検知したイベントやVCのログをどこに送信するか設定します。">?</span>
+                    </div>
+                    <div class="row" style="margin-bottom:15px;">
+                        <label style="display:block; margin-bottom:5px; font-weight:bold;">${t("log_channel", lang)} <span class="muted" style="font-weight:normal; font-size:0.9em;">(VC入退室)</span></label>
+                        <select id="logCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
+                    </div>
+                    <div class="row">
+                        <label style="display:block; margin-bottom:5px; font-weight:bold;">${t("ng_log_channel", lang)} <span class="muted" style="font-weight:normal; font-size:0.9em;">(NG検知・管理ログ)</span></label>
+                        <select id="ngLogCh" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;"></select>
+                    </div>
+                </div>
+
+                <!-- Section 2: Punishments -->
+                <div class="setting-section">
+                    <div class="setting-title">
+                        処罰しきい値設定
+                        <span class="help-icon" data-help="一定時間内にNGワードを何回発言したら自動的にタイムアウトさせるかを設定します。">?</span>
+                    </div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                        <div>
+                            <label style="display:block; margin-bottom:8px;">${t("threshold_label", lang)}</label>
+                            <input id="threshold" type="number" min="1" max="100" style="width:100%; padding:10px;">
+                        </div>
+                        <div>
+                            <label style="display:block; margin-bottom:8px;">${t("timeout_label", lang)}</label>
+                            <select id="timeout" style="width:100%; padding:10px; background:#192734; border:1px solid #555; color:white;">
+                                <option value="1">1分(60秒)</option>
+                                <option value="5">5分</option>
+                                <option value="10">10分</option>
+                                <option value="60">1時間</option>
+                                <option value="1440">1日</option>
+                                <option value="10080">1週間</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Advanced Moderation -->
+                <div class="setting-section">
+                    <div class="setting-title">
+                        🛡️ 高度なモデレーション
+                        <span class="help-icon" data-help="短時間に大量のユーザーが参加する『レイド』を検知し、管理者に通知したりサーバーを保護したりします。">?</span>
+                    </div>
                     <div style="margin-bottom:15px;">
                         <label class="switch-label">
-                            <input type="checkbox" id="vcReportEnabled" />
-                            <span>自動レポートを有効化</span>
+                            <input type="checkbox" id="antiraidEnabled" />
+                            <span>アンチ・レイドを有効化</span>
                         </label>
                     </div>
-                    <div style="margin-bottom:12px;">
-                        <label style="display:block; font-size:11px; margin-bottom:4px; font-weight:bold;">投稿先チャンネル</label>
-                        <select id="vcReportCh" style="width:100%; padding:10px; border-radius:6px; background:#15202b; border:1px solid #38444d; color:white;"></select>
-                    </div>
-                    <div>
-                        <label style="display:block; font-size:11px; margin-bottom:4px; font-weight:bold;">投稿頻度</label>
-                        <select id="vcReportInterval" style="width:100%; padding:10px; border-radius:6px; background:#15202b; border:1px solid #38444d; color:white;">
-                            <option value="daily">毎日</option>
-                            <option value="weekly">毎週</option>
-                            <option value="monthly">毎月</option>
-                        </select>
+                    <div style="margin-bottom:10px;">
+                        <label style="display:block; font-size:11px; margin-bottom:4px; font-weight:bold;">検知しきい値 (参加数/分)</label>
+                        <input type="number" id="antiraidThreshold" style="width:100%; padding:10px; border-radius:6px; background:#15202b; border:1px solid #38444d; color:white;" />
                     </div>
                 </div>
-                <div>
-                    <h4 style="margin-top:0; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">VC時間報酬（自動ロール）</h4>
-                    <p class="muted" style="margin-bottom:12px;">今月の合計VC滞在時間に応じてロールを付与します。</p>
-                    <div id="roleRulesList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px;">
-                        <!-- Rules added here by JS -->
+
+                <!-- Section 4: Self-Intro Gate -->
+                <div class="setting-section">
+                    <div class="setting-title">
+                        🚪 自己紹介ゲート
+                        <span class="help-icon" data-help="新規メンバーが指定されたチャンネルで自己紹介を書くまで、特定のロール（権限）を付与しないように制限します。">?</span>
                     </div>
-                    <button type="button" onclick="addRoleRule()" class="btn" style="width:100%; padding:8px; font-size:12px; border-style:dashed; border-color:#555;">+ ルールを追加</button>
-                    <p class="muted" style="margin-top:10px; font-size:10px;">※ルールは毎時チェックされ、条件を満たさなくなるとロールは剥奪されます。</p>
+                    <div style="margin-bottom:15px;">
+                        <label class="switch-label">
+                            <input type="checkbox" id="introGateEnabled" />
+                            <span>自動自己紹介ゲートを有効化</span>
+                        </label>
+                    </div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                        <div>
+                            <label style="display:block; font-size:11px; margin-bottom:4px; font-weight:bold;">付与するロール</label>
+                            <select id="introRole" style="width:100%; padding:10px; border-radius:6px; background:#15202b; border:1px solid #38444d; color:white;"></select>
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:11px; margin-bottom:4px; font-weight:bold;">最低必要文字数</label>
+                            <input type="number" id="introMinLen" style="width:100%; padding:10px; border-radius:6px; background:#15202b; border:1px solid #38444d; color:white;" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 5: VC Engagement -->
+                <div class="setting-section">
+                    <div class="setting-title">
+                        📊 VCエンゲージメント
+                        <span class="help-icon" data-help="ボイスチャンネルの活動履歴を元に、定期的なレポートを投稿したり、滞在時間に応じた役職を自動付与したりします。">?</span>
+                    </div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                        <div>
+                            <h4 style="margin-top:0; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">定期ランキングレポート</h4>
+                            <div style="margin-bottom:12px;">
+                                <label class="switch-label">
+                                    <input type="checkbox" id="vcReportEnabled" />
+                                    <span>自動レポートを有効化</span>
+                                </label>
+                            </div>
+                            <div style="margin-bottom:12px;">
+                                <label style="display:block; font-size:11px; margin-bottom:4px; font-weight:bold;">投稿先チャンネル</label>
+                                <select id="vcReportCh" style="width:100%; padding:10px; border-radius:6px; background:#15202b; border:1px solid #38444d; color:white;"></select>
+                            </div>
+                            <div>
+                                <label style="display:block; font-size:11px; margin-bottom:4px; font-weight:bold;">投稿頻度</label>
+                                <select id="vcReportInterval" style="width:100%; padding:10px; border-radius:6px; background:#15202b; border:1px solid #38444d; color:white;">
+                                    <option value="daily">毎日</option>
+                                    <option value="weekly">毎週</option>
+                                    <option value="monthly">毎月</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 style="margin-top:0; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">VC時間報酬（自動ロール）</h4>
+                            <div id="roleRulesList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px;">
+                                <!-- Rules added here by JS -->
+                            </div>
+                            <button type="button" onclick="addRoleRule()" class="btn" style="width:100%; padding:8px; font-size:12px; border-style:dashed; border-color:#555;">+ ルールを追加</button>
+                            <p class="muted" style="margin-top:10px; font-size:10px;">※ルールは毎時チェックされ、条件を満たさなくなるとロールは剥奪されます。</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div style="margin-top:30px; text-align:center;">
-            <button id="save" class="btn btn-primary" style="padding:12px 40px; font-size:16px;">${t("save", lang)}</button>
-            <div id="saveStatus" style="margin-top:10px; min-height:20px; font-weight:bold;"></div>
+        <div style="margin-top:30px; text-align:center; margin-bottom: 50px;">
+            <button id="save" class="btn btn-primary" style="padding:12px 60px; font-size:18px;">${t("save", lang)}</button>
+            <div id="saveStatus" style="margin-top:15px; min-height:24px; font-weight:bold;"></div>
         </div>
     </div>`;
     const scripts = `<script>initSettings();</script>`;

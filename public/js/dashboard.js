@@ -73,7 +73,12 @@ function renderChart(id, type, labels, datasets, options = {}) {
             plugins: { legend: { labels: { color: "#8899a6" } } },
             scales: {
                 x: { ticks: { color: "#8899a6" }, grid: { color: "rgba(255,255,255,0.1)" } },
-                y: { ticks: { color: "#8899a6" }, grid: { color: "rgba(255,255,255,0.1)" }, beginAtZero: true }
+                y: {
+                    ticks: { color: "#8899a6" },
+                    grid: { color: "rgba(255,255,255,0.1)" },
+                    beginAtZero: true,
+                    suggestedMax: 1000
+                }
             },
             ...options
         }
@@ -87,7 +92,7 @@ async function updateCharts(gid, tier) {
         renderChart("heatmapChart", "bar",
             Array.from({ length: 24 }, (_, i) => i + "h"),
             [{
-                label: "VC Joins",
+                label: "参加 (VC)",
                 data: heatmapRes.heatmap,
                 backgroundColor: "rgba(29, 161, 242, 0.5)",
                 borderColor: "rgb(29, 161, 242)",
@@ -104,8 +109,8 @@ async function updateCharts(gid, tier) {
         const leaveData = labels.map(d => growthRes.events.find(e => e.date.split("T")[0] === d && e.event_type === 'leave')?.count || 0);
 
         renderChart("growthChart", "line", labels, [
-            { label: "Joins", data: joinData, borderColor: "#1da1f2", tension: 0.3 },
-            { label: "Leaves", data: leaveData, borderColor: "#f4212e", tension: 0.3 }
+            { label: "参加", data: joinData, borderColor: "#1da1f2", tension: 0.3 },
+            { label: "退出", data: leaveData, borderColor: "#f4212e", tension: 0.3 }
         ]);
     }
 }
@@ -183,6 +188,7 @@ async function initSettings() {
 
             const channels = (ch.ok && ch.channels) ? ch.channels : [];
             const roles = (rl.ok && rl.roles) ? rl.roles : [];
+            window._serverRoles = roles; // Store for addRoleRule
             const errorMsg = !ch.ok ? (ch.error || "API Error") : (channels.length === 0 ? "No Text Channels" : null);
 
             // 1. Log Channels
@@ -235,6 +241,14 @@ async function initSettings() {
             if ($("introGateEnabled")) $("introGateEnabled").checked = s.self_intro_enabled;
             if ($("introRole")) $("introRole").value = s.self_intro_role_id || "";
             if ($("introMinLen")) $("introMinLen").value = s.self_intro_min_length ?? 10;
+
+            // Load VC Role Rules
+            const rulesList = $("roleRulesList");
+            if (rulesList) {
+                rulesList.innerHTML = "";
+                const rules = s.vc_role_rules || [];
+                rules.forEach(r => addRoleRule(r));
+            }
         }
     };
 
@@ -250,7 +264,16 @@ async function initSettings() {
             antiraid_threshold: parseInt($("antiraidThreshold").value),
             self_intro_enabled: $("introGateEnabled").checked,
             self_intro_role_id: $("introRole").value,
-            self_intro_min_length: parseInt($("introMinLen").value)
+            self_intro_min_length: parseInt($("introMinLen").value),
+
+            // VC Role Rules
+            vc_role_rules: Array.from(document.querySelectorAll(".role-rule-item")).map(item => ({
+                role_id: item.querySelector(".rule-role").value,
+                hours: parseInt(item.querySelector(".rule-hours").value)
+            })),
+            vc_report_enabled: $("vcReportEnabled").checked,
+            vc_report_channel_id: $("vcReportCh") ? $("vcReportCh").value : "",
+            vc_report_interval: $("vcReportInterval") ? $("vcReportInterval").value : "weekly"
         };
         const res = await api("/api/settings/update", body);
         const stat = $("saveStatus");
@@ -372,3 +395,34 @@ async function initActivity() {
 
     reloadCriteria();
 }
+
+window.toggleAccordion = (id) => {
+    const item = document.getElementById(id);
+    if (!item) return;
+    const isActive = item.classList.contains("active");
+    // Option: Close others? (Ojou didn't specify, but often better)
+    // document.querySelectorAll(".accordion-item").forEach(el => el.classList.remove("active"));
+    if (isActive) item.classList.remove("active");
+    else item.classList.add("active");
+};
+
+window.addRoleRule = (data = { role_id: "", hours: 1 }) => {
+    const list = document.getElementById("roleRulesList");
+    if (!list) return;
+    const item = document.createElement("div");
+    item.className = "role-rule-item";
+    item.style = "display:flex; gap:8px; align-items:center; background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; border:1px solid #38444d;";
+
+    let roleOptions = '<option value="">(Select Role)</option>';
+    (window._serverRoles || []).forEach(r => {
+        roleOptions += `<option value="${r.id}" ${r.id === data.role_id ? 'selected' : ''}>${escapeHTML(r.name)}</option>`;
+    });
+
+    item.innerHTML = `
+        <select class="rule-role" style="flex:1; font-size:12px;">${roleOptions}</select>
+        <input type="number" class="rule-hours" value="${data.hours}" min="1" style="width:60px; font-size:12px;" />
+        <span style="font-size:11px; color:#888;">時間</span>
+        <button type="button" onclick="this.parentElement.remove()" class="btn" style="padding:4px 8px; color:var(--danger-color); border-color:transparent;">×</button>
+    `;
+    list.appendChild(item);
+};

@@ -113,12 +113,14 @@ export async function handleApiRoute(req, res, pathname, url) {
 
         try {
             // Fetch necessary data
-            const [vcRes, tier, subRes, ngCountRes, ngTopRes] = await Promise.all([
+            const [vcRes, tier, subRes, ngCountRes, ngTopRes, leaveRes, timeoutRes] = await Promise.all([
                 dbQuery("SELECT COUNT(*) as cnt FROM vc_sessions WHERE guild_id = $1 AND join_time > NOW() - INTERVAL '30 days'", [guildId]),
                 getTier(guildId),
                 dbQuery("SELECT valid_until FROM subscriptions WHERE guild_id = $1", [guildId]),
                 dbQuery("SELECT COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 AND created_at > NOW() - INTERVAL '30 days'", [guildId]),
-                dbQuery("SELECT user_id, COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 GROUP BY user_id ORDER BY cnt DESC LIMIT 5", [guildId])
+                dbQuery("SELECT user_id, COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 GROUP BY user_id ORDER BY cnt DESC LIMIT 5", [guildId]),
+                dbQuery("SELECT COUNT(*) as cnt FROM member_events WHERE guild_id = $1 AND event_type = 'leave' AND created_at > NOW() - INTERVAL '30 days'", [guildId]),
+                dbQuery("SELECT COUNT(*) as cnt FROM member_events WHERE guild_id = $1 AND event_type = 'timeout' AND created_at > NOW() - INTERVAL '30 days'", [guildId])
             ]);
 
             const subData = { tier, valid_until: subRes.rows[0]?.valid_until || null };
@@ -161,8 +163,8 @@ export async function handleApiRoute(req, res, pathname, url) {
                 stats: {
                     summary: {
                         joins: vcRes.rows[0]?.cnt || 0,
-                        leaves: 0,
-                        timeouts: 0,
+                        leaves: leaveRes.rows[0]?.cnt || 0,
+                        timeouts: timeoutRes.rows[0]?.cnt || 0,
                         ngDetected: parseInt(ngCountRes.rows[0]?.cnt || 0)
                     },
                     topNgUsers: topUsers

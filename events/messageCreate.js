@@ -44,7 +44,11 @@ export default {
                             const reason = isMentionSpam ? "Mention Spam detector" : "Content Spam detector";
                             await member.kick(reason).catch(e => console.error("[DEBUG] Kick failed:", e));
 
-                            // Log Kick
+                            // Log Kick to member_events
+                            await dbQuery("INSERT INTO member_events (guild_id, user_id, event_type) VALUES ($1, $2, 'kick')",
+                                [message.guild.id, message.author.id]);
+
+                            // Log Kick to UI Channel
                             if (features.ngLog) {
                                 const embed = new EmbedBuilder()
                                     .setAuthor({ name: message.member?.displayName || message.author.tag, iconURL: message.author.displayAvatarURL() })
@@ -149,6 +153,11 @@ export default {
                         if (member.moderatable) {
                             if (timeoutMin > 0) {
                                 await member.timeout(timeoutMin * 60 * 1000, "NG Word Threshold Exceeded");
+
+                                // Log Timeout to member_events
+                                await dbQuery("INSERT INTO member_events (guild_id, user_id, event_type) VALUES ($1, $2, 'timeout')",
+                                    [message.guild.id, message.author.id]);
+
                                 actionTaken = `Timeout (${timeoutMin}m)`;
                                 console.log(`[DEBUG] Timeout Success!`);
                             } else {
