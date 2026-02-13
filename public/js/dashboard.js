@@ -136,7 +136,7 @@ async function initDashboard() {
                     const validUntil = sub.valid_until ? '(' + sub.valid_until.split('T')[0] + ')' : '';
                     $("plan-info").innerHTML = `${sub.name} ${validUntil}`;
 
-                    const box = (l, v) => `<div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; text-align:center;"><div style="font-size:24px; font-weight:bold;">${v}</div><div style="font-size:11px; color:#888;">${l}</div></div>`;
+                    const box = (l, v) => `<div style="background:rgba(255,255,255,0.03); padding:8px; border-radius:6px; text-align:center; border:1px solid rgba(255,255,255,0.05);"><div style="font-size:18px; font-weight:bold; color:var(--accent-color);">${v}</div><div style="font-size:10px; color:var(--text-secondary);">${l}</div></div>`;
                     $("summary").innerHTML = `<div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; width:100%;">${box(t("vc_joins"), s.joins)} ${box(t("leaves"), s.leaves)} ${box(t("timeouts"), s.timeouts)} ${box(t("ng_detect"), s.ngDetected)}</div>`;
 
                     let rows = "";
