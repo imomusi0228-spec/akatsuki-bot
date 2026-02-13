@@ -8,6 +8,14 @@ export const TIERS = {
     TRIAL_PRO: 6
 };
 
+export const MILESTONES = {
+    M1_PROTECTION: 1, // v1.1.1
+    M2_DEFENSE: 2,    // v1.2.0
+    M3_STRATEGY: 3,   // v1.2.1
+    M4_GOVERNANCE: 4, // v1.3.0
+    M5_ULTIMATE: 5    // Pro+ Full
+};
+
 export const TIER_NAMES = {
     [TIERS.FREE]: "Free",
     [TIERS.PRO_MONTHLY]: "Pro (Monthly)",
@@ -94,6 +102,36 @@ export const FEATURES = {
     }
 };
 
-export function getFeatures(tier) {
-    return FEATURES[tier] || FEATURES[TIERS.FREE];
+export function getFeatures(tier, milestone = 5) {
+    const baseFeatures = FEATURES[tier] || FEATURES[TIERS.FREE];
+
+    // If milestone is 5 (Ultimate) or it's Pro+ with no gating needed for simplicity, 
+    // but the user wants "Coming Soon", so we apply gating to all tiers if milestone < 5.
+
+    const gated = { ...baseFeatures };
+
+    // Milestone Gating Logic
+    if (milestone < MILESTONES.M2_DEFENSE) {
+        gated.antiraid = false;
+        gated.self_intro = false;
+        gated.mention_protection = false;
+    }
+    if (milestone < MILESTONES.M3_STRATEGY) {
+        gated.activity_detailed = false;
+        gated.trends = false;
+    }
+    if (milestone < MILESTONES.M4_GOVERNANCE) {
+        gated.vc_report = false;
+        gated.vc_auto_roles = false;
+        gated.vc_context_menu = false;
+    }
+    if (milestone < MILESTONES.M5_ULTIMATE) {
+        gated.csv_export = false;
+        gated.unlimited_history = false;
+    }
+
+    // Add metadata for UI
+    gated._milestone = milestone;
+
+    return gated;
 }

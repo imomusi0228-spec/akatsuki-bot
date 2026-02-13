@@ -8,9 +8,8 @@ import { cache } from "./cache.js";
  * Support server always gets PRO_PLUS
  */
 export async function getTier(guildId) {
-    // 1. Check Cache
-    const cachedTier = cache.getTier(guildId);
-    if (cachedTier !== null) return cachedTier;
+    const cached = cache.getTier(guildId); // cache.getTier currently returns just number or null
+    if (cached !== null) return cached;
 
     let tier = TIERS.FREE;
 
@@ -30,6 +29,12 @@ export async function getTier(guildId) {
         cache.setTier(guildId, tier);
         return tier;
     }
+
+    // Return extended info if needed? Or just let it be.
+    // For now, getTier always returns tier number to avoid breaking changes.
+    // We will use a separate getSubscriptionInfo for the dashboard.
+
+    tier = parseInt(sub.tier, 10) || TIERS.FREE;
 
     // Normalize tier to number
     sub.tier = parseInt(sub.tier, 10);
@@ -64,8 +69,27 @@ export async function getTier(guildId) {
         }
     }
 
-    // Ensure we return a valid integer, defaulting to FREE if null/undefined
-    const finalTier = sub.tier ? parseInt(sub.tier, 10) : TIERS.FREE;
+    const finalTier = tier;
     cache.setTier(guildId, finalTier);
     return finalTier;
+}
+
+/**
+ * Get full subscription info including milestone
+ */
+export async function getSubscriptionInfo(guildId) {
+    const res = await dbQuery("SELECT * FROM subscriptions WHERE guild_id = $1", [guildId]);
+    const sub = res.rows[0];
+
+    if (!sub) {
+        return { tier: TIERS.FREE, milestone: 5 }; // Default to max milestone for legacy/free if no record
+    }
+
+    const tier = await getTier(guildId); // Re-run logic for limits/cache
+    return {
+        tier: tier,
+        milestone: sub.current_milestone ?? 1,
+        auto_unlock: sub.auto_unlock_enabled ?? false,
+        trial_started_at: sub.trial_started_at
+    };
 }

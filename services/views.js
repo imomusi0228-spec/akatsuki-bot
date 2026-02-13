@@ -165,19 +165,38 @@ const COMMON_SCRIPT = /* v2.4 (Optimized) */ `
 
             // 2. NG Log Channel
             const elNgLog = document.getElementById("ngLogCh");
-            if(elNgLog) {
-                 if(errorMsg) {
-                    elNgLog.innerHTML = '<option value="">(Error: ' + errorMsg + ')</option>';
-                } else {
-                    elNgLog.innerHTML = '<option value="">(None / Same as VC Log)</option>';
-                    channels.forEach(c => {
-                        const o = document.createElement("option");
-                        o.value = c.id;
-                        o.textContent = "#" + c.name;
-                        elNgLog.appendChild(o);
-                    });
+                if(elNgLog) {
+                     if(errorMsg) {
+                        elNgLog.innerHTML = '<option value="">(Error: ' + errorMsg + ')</option>';
+                    } else {
+                        elNgLog.innerHTML = '<option value="">(None / Same as VC Log)</option>';
+                        channels.forEach(c => {
+                            const o = document.createElement("option");
+                            o.value = c.id;
+                            o.textContent = "#" + c.name;
+                            elNgLog.appendChild(o);
+                        });
+                    }
                 }
-            }
+
+                // 3. VC Report Channel
+                const elVcrLog = document.getElementById("vcReportCh");
+                if(elVcrLog) {
+                    if(errorMsg) {
+                        elVcrLog.innerHTML = '<option value="">(Error: ' + errorMsg + ')</option>';
+                    } else {
+                        elVcrLog.innerHTML = '<option value="">(Select Channel)</option>';
+                        channels.forEach(c => {
+                            const o = document.createElement("option");
+                            o.value = c.id;
+                            o.textContent = "#" + c.name;
+                            elVcrLog.appendChild(o);
+                        });
+                    }
+                }
+
+                // 4. Populate Role Dropdowns for Rules
+                window._serverRoles = (rl.ok && rl.roles) ? rl.roles : [];
         } catch(e) {
             console.error("loadMasters Error:", e);
             alert("Error loading channels: " + e.message);
@@ -213,7 +232,94 @@ const COMMON_SCRIPT = /* v2.4 (Optimized) */ `
 
             if($("threshold")) $("threshold").value = st.settings.ng_threshold ?? 3;
             if($("timeout")) $("timeout").value = st.settings.timeout_minutes ?? 10;
+
+            if($("vcReportEnabled")) $("vcReportEnabled").checked = st.settings.vc_report_enabled || false;
+            if($("vcReportCh")) $("vcReportCh").value = st.settings.vc_report_channel_id || "";
+            if($("vcReportInterval")) $("vcReportInterval").value = st.settings.vc_report_interval || "weekly";
+
+            // Render Role Rules
+            const list = $("roleRulesList");
+            list.innerHTML = "";
+            const rules = st.settings.vc_role_rules || [];
+            rules.forEach((r, idx) => addRoleRule(r.hours, r.role_id));
+
+            // Milestone logic
+            if (st.subscription) {
+                const m = st.subscription.milestone || 1;
+                $("milestoneCard").style.display = "block";
+                $("milestoneLabel").textContent = "M" + m;
+                $("milestoneProgress").style.width = (m * 20) + "%";
+                $("unlockNext").style.display = (m >= 5) ? "none" : "inline-block";
+                $("autoUnlockEnabled").checked = st.subscription.auto_unlock || false;
+                
+                // Highlight "Coming Soon" sections
+                applyGatingUI(m);
+            }
         }
+     };
+
+     const applyGatingUI = (m) => {
+         const config = [
+             { milestone: 2, id: "card-raid", name: "M2: 警備 (Security)" },
+             { milestone: 4, id: "card-vc", name: "M4: 統治 (Engagement)" }
+         ];
+         
+         config.forEach(c => {
+             const el = document.getElementById(c.id);
+             if (!el) return;
+             
+             // Remove existing overlay
+             const old = el.querySelector(".locked-overlay");
+             if (old) old.remove();
+             el.style.position = m < c.milestone ? "relative" : "";
+             el.style.opacity = m < c.milestone ? "0.6" : "1";
+             el.style.pointerEvents = m < c.milestone ? "none" : "";
+
+             if (m < c.milestone) {
+                 const overlay = document.createElement("div");
+                 overlay.className = "locked-overlay";
+                 overlay.style = "position:absolute; inset:0; background:rgba(0,0,0,0.4); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; border-radius:inherit; z-index:10;";
+                 overlay.innerHTML = '<div style="background:var(--accent-color); color:white; padding:8px 16px; border-radius:40px; font-weight:bold; box-shadow:0 4px 15px rgba(0,0,0,0.5);">Coming Soon... (' + c.name + ')</div>';
+                 el.appendChild(overlay);
+             }
+         });
+     };
+
+     $("unlockNext").onclick = async () => {
+         if (!confirm("次のフェーズの機能を解放しますか？")) return;
+         const res = await api("/api/milestone/unlock", { guild: selGuild.value });
+         if (res.ok) {
+             alert("M" + res.milestone + " 解放完了！");
+             reload();
+         }
+     };
+
+     $("autoUnlockEnabled").onchange = async (e) => {
+         await api("/api/milestone/auto_unlock", { guild: selGuild.value, enabled: e.target.checked });
+     };
+
+     $("broadcastUpdate").onclick = async () => {
+         if (!confirm("UPDATE_LOG.mdの最新情報を全サーバーに配信しますか？")) return;
+         const res = await api("/api/milestone/broadcast", { guild: selGuild.value });
+         if (res.ok) alert("配信を開始しました。");
+     };
+
+     window.addRoleRule = (hours = 10, roleId = "") => {
+         const list = $("roleRulesList");
+         const div = document.createElement("div");
+         div.className = "role-rule-item";
+         div.style = "display:flex; gap:8px; align-items:center; background:rgba(255,255,255,0.03); padding:8px; border-radius:6px; border:1px solid #38444d;";
+         
+         const roleOptions = (window._serverRoles || []).map(r => '<' + 'option value="' + r.id + '"' + (r.id === roleId ? ' selected' : '') + '>' + escapeHTML(r.name) + '</' + 'option>').join("");
+         
+         div.innerHTML = '<' + 'input type="number" step="0.5" value="' + hours + '" style="width:60px; padding:6px; font-size:12px;" class="rule-hours">' +
+            '<span style="font-size:12px;">時間以上で</span>' +
+            '<' + 'select style="flex:1; padding:6px; font-size:12px; background:#15202b; color:white; border:1px solid #38444d;" class="rule-role">' +
+                '<' + 'option value="">(ロールを選択)</' + 'option>' +
+                roleOptions +
+            '</' + 'select>' +
+            '<' + 'button type="button" onclick="this.parentElement.remove()" class="btn" style="padding:4px 8px; color:var(--danger-color); border-color:#38444d;">×</' + 'button>';
+         list.appendChild(div);
      };
 
      window.removeNg = async (w) => { await api("/api/ngwords/remove", {guild: selGuild.value, word: w }); reload(); };
@@ -228,7 +334,14 @@ const COMMON_SCRIPT = /* v2.4 (Optimized) */ `
             audit_role_id: "",
             intro_channel_id: "",
             ng_threshold: parseInt($("threshold").value),
-            timeout_minutes: parseInt($("timeout").value)
+            timeout_minutes: parseInt($("timeout").value),
+            vc_report_enabled: $("vcReportEnabled").checked,
+            vc_report_channel_id: $("vcReportCh").value,
+            vc_report_interval: $("vcReportInterval").value,
+            vc_role_rules: Array.from(document.querySelectorAll(".role-rule-item")).map(el => ({
+                hours: parseFloat(el.querySelector(".rule-hours").value),
+                role_id: el.querySelector(".rule-role").value
+            })).filter(r => r.role_id)
         };
         const res = await api("/api/settings/update", body);
         const stat = $("saveStatus");
@@ -457,8 +570,8 @@ export function renderAdminDashboardHTML({ user, req }) {
         </div>
     </div>
 
-    <div class="card">
-        <h3>🚨 ${t("top_ng_users", lang)}</h3>
+    <div id="card-raid" class="card">
+        <h3>🛡️ Anti-Raid & Security</h3>
         <table class="data-table"><thead><tr><th style="text-align:left">${t("header_user", lang)}</th><th style="text-align:right">${t("header_count", lang)}</th><th style="text-align:right">Action</th></tr></thead>
         <tbody id="topNg"></tbody></table>
     </div>`;
@@ -473,7 +586,7 @@ export function renderAdminSettingsHTML({ user, req }) {
     const lang = getLang(req);
     const content = `<div class="card"><div class="row" style="margin-bottom:16px;"><select id="guild" style="width:100%; max-width:300px; padding:10px;"></select> <button id="reload" class="btn">Reload</button></div></div>
     
-    <div class="card">
+    <div id="card-ng" class="card">
         <h3>${t("ng_words", lang)}</h3>
         <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; border:1px solid #38444d;">
             <div style="margin-bottom:15px;">
@@ -494,7 +607,7 @@ export function renderAdminSettingsHTML({ user, req }) {
         </div>
     </div>
 
-    <div class="card">
+    <div id="card-general" class="card">
         <h3>${t("config_general", lang)}</h3>
         
         <div class="row" style="margin-bottom:15px;">
@@ -529,7 +642,7 @@ export function renderAdminSettingsHTML({ user, req }) {
             </div>
         </div>
 
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px; margin-top:20px;">
+        <div style="display:grid; grid-template-columns: 1fr 1.2fr; gap:24px; margin-top:20px;">
             <div class="card" style="margin-bottom:0;">
                 <h3>🛡️ Advanced Moderation</h3>
                 <div style="margin-bottom:15px;">
@@ -558,6 +671,42 @@ export function renderAdminSettingsHTML({ user, req }) {
                 <div>
                     <label style="display:block; font-size:11px; margin-bottom:4px; font-weight:bold;">最低必要文字数</label>
                     <input type="number" id="introMinLen" style="width:100%; padding:10px; border-radius:6px; background:#15202b; border:1px solid #38444d; color:white;" />
+                </div>
+            </div>
+        </div>
+
+        <div id="card-vc" class="card" style="margin-top:24px;">
+            <h3>📊 VC Engagement</h3>
+            <div style="display:grid; grid-template-columns: 1fr 1.2fr; gap:24px;">
+                <div>
+                    <h4 style="margin-top:0; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">定期ランキングレポート</h4>
+                    <div style="margin-bottom:15px;">
+                        <label class="switch-label">
+                            <input type="checkbox" id="vcReportEnabled" />
+                            <span>自動レポートを有効化</span>
+                        </label>
+                    </div>
+                    <div style="margin-bottom:12px;">
+                        <label style="display:block; font-size:11px; margin-bottom:4px; font-weight:bold;">投稿先チャンネル</label>
+                        <select id="vcReportCh" style="width:100%; padding:10px; border-radius:6px; background:#15202b; border:1px solid #38444d; color:white;"></select>
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:11px; margin-bottom:4px; font-weight:bold;">投稿頻度</label>
+                        <select id="vcReportInterval" style="width:100%; padding:10px; border-radius:6px; background:#15202b; border:1px solid #38444d; color:white;">
+                            <option value="daily">毎日</option>
+                            <option value="weekly">毎週</option>
+                            <option value="monthly">毎月</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <h4 style="margin-top:0; color:var(--text-secondary); font-size:12px; text-transform:uppercase;">VC時間報酬（自動ロール）</h4>
+                    <p class="muted" style="margin-bottom:12px;">今月の合計VC滞在時間に応じてロールを付与します。</p>
+                    <div id="roleRulesList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px;">
+                        <!-- Rules added here by JS -->
+                    </div>
+                    <button type="button" onclick="addRoleRule()" class="btn" style="width:100%; padding:8px; font-size:12px; border-style:dashed; border-color:#555;">+ ルールを追加</button>
+                    <p class="muted" style="margin-top:10px; font-size:10px;">※ルールは毎時チェックされ、条件を満たさなくなるとロールは剥奪されます。</p>
                 </div>
             </div>
         </div>

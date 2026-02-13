@@ -4,6 +4,8 @@ import { client, loadCommands } from "./core/client.js";
 import { loadEvents } from "./core/eventLoader.js";
 import { startServer } from "./core/server.js";
 import { registerCommands } from "./register-commands.js";
+import { runEngagementCheck } from "./services/engagement.js";
+import { runAnnouncerCheck } from "./services/announcer.js";
 
 // Global Error Handlers
 process.on("uncaughtException", (err) => {
@@ -63,6 +65,12 @@ process.on("unhandledRejection", (reason, promise) => {
         await client.login(ENV.TOKEN);
 
         console.log("✅ Discord login OK");
+
+        // 6. Start Background Tasks
+        runEngagementCheck();
+        runAnnouncerCheck();
+        setInterval(runEngagementCheck, 60 * 60 * 1000); // Every 1 hour
+        setInterval(runAnnouncerCheck, 24 * 60 * 60 * 1000); // Every 24 hours for broadcasts/unlocks
     } catch (e) {
         console.error("❌ Discord login FAILED:", e);
         // Do not exit process, let web server run so we can see logs

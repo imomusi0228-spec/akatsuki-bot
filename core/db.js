@@ -189,7 +189,15 @@ export async function initDb() {
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS antiraid_threshold INTEGER DEFAULT 10; -- joins per minute`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS self_intro_role_id TEXT;`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS self_intro_min_length INTEGER DEFAULT 10;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS self_intro_enabled BOOLEAN DEFAULT FALSE;`
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS self_intro_enabled BOOLEAN DEFAULT FALSE;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS vc_report_enabled BOOLEAN DEFAULT FALSE;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS vc_report_channel_id TEXT;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS vc_report_interval TEXT DEFAULT 'weekly';`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS vc_report_last_sent TIMESTAMPTZ;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS vc_role_rules JSONB DEFAULT '[]';`,
+            `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS current_milestone INT DEFAULT 1;`,
+            `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS auto_unlock_enabled BOOLEAN DEFAULT FALSE;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS last_announced_version TEXT;`
         ];
 
         for (const query of queries) {

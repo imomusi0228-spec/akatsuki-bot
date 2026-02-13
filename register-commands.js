@@ -13,7 +13,11 @@ export async function registerCommands() {
         const filePath = path.join(commandsPath, file);
         const command = await import(pathToFileURL(filePath).href);
         if (command.data && command.execute) {
-            commands.push(command.data.toJSON());
+            if (Array.isArray(command.data)) {
+                command.data.forEach(d => commands.push(d.toJSON()));
+            } else {
+                commands.push(command.data.toJSON());
+            }
         } else {
             console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
         }

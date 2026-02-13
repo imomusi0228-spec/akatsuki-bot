@@ -3,7 +3,8 @@ import { getSession, discordApi } from "../middleware/auth.js";
 import { PermissionFlagsBits } from "discord.js";
 import { client } from "../core/client.js";
 import { TIERS, getFeatures, TIER_NAMES } from "../core/tiers.js";
-import { getTier } from "../core/subscription.js";
+import { getTier, getSubscriptionInfo } from "../core/subscription.js";
+import { runAnnouncerCheck } from "../services/announcer.js";
 import { ENV } from "../config/env.js";
 
 function hasManageGuild(permissions, owner = false) {
@@ -356,8 +357,14 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (!guildId) return res.end(JSON.stringify({ ok: false }));
         if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
         const resDb = await dbQuery("SELECT * FROM settings WHERE guild_id = $1", [guildId]);
+        const subInfo = await getSubscriptionInfo(guildId);
+
         res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ ok: true, settings: resDb.rows[0] || {} }));
+        res.end(JSON.stringify({
+            ok: true,
+            settings: resDb.rows[0] || {},
+            subscription: subInfo
+        }));
         return;
     }
 
@@ -404,10 +411,12 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (check.rows.length === 0) {
             await dbQuery(`INSERT INTO settings 
                 (guild_id, log_channel_id, ng_log_channel_id, audit_role_id, intro_channel_id, ng_threshold, timeout_minutes, 
-                 antiraid_enabled, antiraid_threshold, self_intro_enabled, self_intro_role_id, self_intro_min_length) 
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+                 antiraid_enabled, antiraid_threshold, self_intro_enabled, self_intro_role_id, self_intro_min_length,
+                 vc_report_enabled, vc_report_channel_id, vc_report_interval, vc_role_rules) 
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
                 [body.guild, body.log_channel_id, body.ng_log_channel_id, body.audit_role_id, body.intro_channel_id, body.ng_threshold, body.timeout_minutes,
-                body.antiraid_enabled, body.antiraid_threshold, body.self_intro_enabled, body.self_intro_role_id, body.self_intro_min_length]);
+                body.antiraid_enabled, body.antiraid_threshold, body.self_intro_enabled, body.self_intro_role_id, body.self_intro_min_length,
+                body.vc_report_enabled, body.vc_report_channel_id, body.vc_report_interval, JSON.stringify(body.vc_role_rules)]);
         } else {
             await dbQuery(`UPDATE settings SET 
                 log_channel_id = $1, 
@@ -421,10 +430,15 @@ export async function handleApiRoute(req, res, pathname, url) {
                 self_intro_enabled = $9,
                 self_intro_role_id = $10,
                 self_intro_min_length = $11,
+                vc_report_enabled = $12,
+                vc_report_channel_id = $13,
+                vc_report_interval = $14,
+                vc_role_rules = $15,
                 updated_at = NOW()
-                WHERE guild_id = $12`,
+                WHERE guild_id = $16`,
                 [body.log_channel_id, body.ng_log_channel_id, body.audit_role_id, body.intro_channel_id, body.ng_threshold, body.timeout_minutes,
-                body.antiraid_enabled, body.antiraid_threshold, body.self_intro_enabled, body.self_intro_role_id, body.self_intro_min_length, body.guild]);
+                body.antiraid_enabled, body.antiraid_threshold, body.self_intro_enabled, body.self_intro_role_id, body.self_intro_min_length,
+                body.vc_report_enabled, body.vc_report_channel_id, body.vc_report_interval, JSON.stringify(body.vc_role_rules), body.guild]);
         }
 
         res.writeHead(200, { "Content-Type": "application/json" });
