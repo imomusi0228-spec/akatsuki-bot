@@ -580,12 +580,12 @@ export function renderAdminDashboardHTML({ user, req }) {
     
     <div id="summary" style="margin-bottom:20px;"></div>
 
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:20px; margin-bottom:20px;">
-        <div class="card" style="margin-bottom:0; min-height:300px;">
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:20px; margin-bottom:20px; max-width: 900px; margin-left: auto; margin-right: auto;">
+        <div class="card" style="margin-bottom:0; min-height:200px;">
             <h3>📈 ${t("growth_trend", lang) || "メンバー推移 (14日間)"}</h3>
             <canvas id="growthChart"></canvas>
         </div>
-        <div class="card" style="margin-bottom:0; min-height:300px;">
+        <div class="card" style="margin-bottom:0; min-height:200px;">
             <h3>🔥 ${t("heatmap", lang) || "VCアクティビティ (時間帯別)"}</h3>
             <canvas id="heatmapChart"></canvas>
         </div>
