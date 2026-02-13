@@ -76,7 +76,7 @@ function renderChart(id, type, labels, datasets, options = {}) {
                 y: {
                     ticks: { color: "#8899a6" },
                     beginAtZero: true,
-                    suggestedMax: 100
+                    suggestedMax: 50
                 }
             },
             ...options
@@ -214,7 +214,7 @@ async function initSettings() {
             if (selVcReport) {
                 selVcReport.innerHTML = '<option value="">(None)</option>';
                 channels.forEach(c => {
-                    const o = document.createElement("option"); o.value = c.id; o.textContent = "#" + c.name; selVcReport.appendChild(o);
+                    const o = document.createElement("option"); o.value = c.id; o.textContent = "#" + (c.name || "channel"); selVcReport.appendChild(o);
                 });
             }
         } catch (e) {

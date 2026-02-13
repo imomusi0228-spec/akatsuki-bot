@@ -18,10 +18,10 @@ export const MILESTONES = {
 
 export const TIER_NAMES = {
     [TIERS.FREE]: "Free",
-    [TIERS.PRO_MONTHLY]: "Pro (Monthly)",
-    [TIERS.PRO_YEARLY]: "Pro (Yearly)",
-    [TIERS.PRO_PLUS_MONTHLY]: "Pro+ (Monthly)",
-    [TIERS.PRO_PLUS_YEARLY]: "Pro+ (Yearly)",
+    [TIERS.PRO_MONTHLY]: "Pro",
+    [TIERS.PRO_YEARLY]: "Pro",
+    [TIERS.PRO_PLUS_MONTHLY]: "Pro+",
+    [TIERS.PRO_PLUS_YEARLY]: "Pro+",
     [TIERS.TRIAL_PRO_PLUS]: "Trial Pro+",
     [TIERS.TRIAL_PRO]: "Trial Pro"
 };
