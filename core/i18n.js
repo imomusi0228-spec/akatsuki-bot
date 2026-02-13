@@ -41,12 +41,12 @@ export const DICTIONARY = {
         unavailable: "×",
         plan_free_desc: "基本機能を無料で体験。小規模サーバーや試用に最適。",
         plan_pro_desc: "サーバー運営を効率化し、メンバーに安心感を提供します。",
-        plan_pro_plus_desc: "徹底的なサーバー監査と高度な分析で、完璧な統治を実現します。",
+        plan_pro_plus_desc: "徹底的なサーバー監査と高度な統計、複数サーバー管理で完璧な統治を実現します。",
 
         // Detailed features for list (NEW)
         feat_list_free: "・VC入退室ログの自動記録<br/>・NGワード検知（最大5個）<br/>・基本的な統計表示",
-        feat_list_pro: "・Web管理ダッシュボード<br/>・スパム保護（類似メッセージ連投検知）<br/>・アンチ・レイド（警告ログ送信）<br/>・メンバー推移トレンド（直近7日間）<br/>・NGワード登録数 20個<br/>・NGワード削除時の自動タイムアウト救済",
-        feat_list_pro_plus: "・メンバー監査（幽霊部員検知）<br/>・アンチ・レイド（警告・自動制限）<br/>・自動自己紹介ゲート<br/>・成長トレンド（30日間）+ CSV出力<br/>・NGワード登録数 50個<br/>・最大3つのサーバーで利用可能",
+        feat_list_pro: "・Web管理ダッシュボード<br/>・スパム保護（類似メッセージ連投検知）<br/>・メンバー推移トレンド（直近7日間）<br/>・NGワード登録数 20個<br/>・NGワード削除時の自動タイムアウト救済",
+        feat_list_pro_plus: "・メンバー成長トレンド（30日間）+ CSV出力<br/>・高度なサーバー統計表示<br/>・NGワード登録数 50個<br/>・最大3つのサーバーで利用可能",
 
         features_detail_security: "NGワードの自動削除と警告しきい値による自動タイムアウトで、サーバーの平和を鉄壁に守ります。",
         features_detail_audit: "ロールの所持、自己紹介の有無、VCの参加状況を統合し、幽霊部員を瞬時に特定します。",
@@ -174,6 +174,17 @@ export const DICTIONARY = {
         label_guild: "サーバー選択",
         msg_scanning: "スキャン中...",
         msg_admin_req: "※ Bot招待時には管理者権限が必要です",
+
+        // Roadmap
+        roadmap_title: "順次公開予定 (Roadmap)",
+        roadmap_subtitle: "以下の機能は現在開発中であり、準備が整い次第順次公開されます。",
+        roadmap_audit: "メンバー監査 (幽霊部員検知)",
+        roadmap_audit_desc: "ロール所持・自己紹介・VC活動状況からアクティブでないメンバーを抽出します。",
+        roadmap_antiraid: "アンチ・レイド (高度な防衛)",
+        roadmap_antiraid_desc: "大量の不審な参加を検知し、自動でサーバーを保護・制限します。",
+        roadmap_introgate: "自動自己紹介ゲート",
+        roadmap_introgate_desc: "適切な自己紹介を書くまで特定のロールを付与しない制限機能です。",
+        roadmap_tag: "Coming Soon",
     },
     en: {
         // General
@@ -216,7 +227,7 @@ export const DICTIONARY = {
         unavailable: "No",
         plan_free_desc: "Experience core features for free. Perfect for small servers or testing the waters.",
         plan_pro_desc: "Streamline server operations and provide peace of mind to members.",
-        plan_pro_plus_desc: "Achieve perfect governance with thorough server auditing and advanced analysis.",
+        plan_pro_plus_desc: "Achieve perfect governance with advanced statistics, CSV exports, and multi-server support.",
 
         // Detailed features for list (NEW)
         feat_list_free: "・Auto-record VC join/leave logs<br/>・NG word detection (Up to 5)<br/>・Basic statistics display",
@@ -344,6 +355,17 @@ export const DICTIONARY = {
         faq_a6: "A. Yes, but designed for continuous operation.",
         faq_q7: "Q. Official Discord Service?",
         faq_a7: "A. No. Not affiliated with Discord Inc.",
+
+        // Roadmap
+        roadmap_title: "Upcoming Features (Roadmap)",
+        roadmap_subtitle: "These features are currently under development and will be released sequentially.",
+        roadmap_audit: "Member Audit (Ghost Detection)",
+        roadmap_audit_desc: "Identifies inactive members based on roles, intros, and VC activity.",
+        roadmap_antiraid: "Anti-Raid (Advanced Protection)",
+        roadmap_antiraid_desc: "Detects mass suspicious joins and automatically restricts server access.",
+        roadmap_introgate: "Auto Self-Introduction Gate",
+        roadmap_introgate_desc: "Restricts access until a proper introduction is posted.",
+        roadmap_tag: "Coming Soon",
     }
 };
 

@@ -11,8 +11,9 @@ import { EmbedBuilder } from "discord.js";
 export async function runAnnouncerCheck() {
     console.log("[ANNOUNCER] Running background check...");
 
-    // Process Broadcasts
-    await processUpdateBroadcast();
+    // processUpdateBroadcast() は全サーバーに送信されるため、
+    // ユーザーの要望により管理Botからの手動告知システムに移行しました。
+    // await processUpdateBroadcast();
 }
 
 /**

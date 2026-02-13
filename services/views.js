@@ -948,20 +948,20 @@ export function renderFeaturesHTML(req) {
                 <tr>
                     <td>${t("feature_activity", lang)}</td>
                     <td><span class="feature-cross">×</span></td>
-                    <td><span class="feature-check" style="color:var(--warning-color)">⚠ 7d</span></td>
-                    <td><span class="feature-check">✓ 30d</span></td>
+                    <td><span class="muted" style="font-size:11px;">(Soon)</span></td>
+                    <td><span class="muted" style="font-size:11px;">(Soon)</span></td>
                 </tr>
                 <tr>
                     <td>${t("feature_antiraid", lang)}</td>
                     <td><span class="feature-cross">×</span></td>
-                    <td><span class="feature-check" style="color:var(--warning-color)">⚠ Alert</span></td>
-                    <td><span class="feature-check">✓ Full</span></td>
+                    <td><span class="muted" style="font-size:11px;">(Soon)</span></td>
+                    <td><span class="muted" style="font-size:11px;">(Soon)</span></td>
                 </tr>
                 <tr>
                     <td>${t("feature_intro_gate", lang)}</td>
                     <td><span class="feature-cross">×</span></td>
                     <td><span class="feature-cross">×</span></td>
-                    <td><span class="feature-check">✓</span></td>
+                    <td><span class="muted" style="font-size:11px;">(Soon)</span></td>
                 </tr>
                 <tr>
                     <td>${t("feature_csv", lang)}</td>
@@ -993,6 +993,29 @@ export function renderFeaturesHTML(req) {
             <div class="faq-item"><div class="faq-q"><span style="color:var(--accent-color);">Q.</span> ${t("faq_q5", lang)}</div><div class="faq-a">${t("faq_a5", lang)}</div></div>
             <div class="faq-item"><div class="faq-q"><span style="color:var(--accent-color);">Q.</span> ${t("faq_q6", lang)}</div><div class="faq-a">${t("faq_a6", lang)}</div></div>
             <div class="faq-item"><div class="faq-q"><span style="color:var(--accent-color);">Q.</span> ${t("faq_q7", lang)}</div><div class="faq-a">${t("faq_a7", lang)}</div></div>
+        </div>
+    </div>
+
+    <div style="margin-top: 80px; text-align: left; max-width: 800px; margin-left: auto; margin-right: auto;">
+        <h2 style="font-size: 32px; margin-bottom: 20px; text-align: center;">🚀 ${t("roadmap_title", lang)}</h2>
+        <p style="text-align: center; color: #8899a6; margin-bottom: 40px;">${t("roadmap_subtitle", lang)}</p>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+            <div class="card" style="margin: 0; padding: 25px;">
+                <span class="plan-badge" style="background: rgba(255,255,255,0.05); color: #fff;">${t("roadmap_tag", lang)}</span>
+                <h4 style="margin: 10px 0;">${t("roadmap_audit", lang)}</h4>
+                <p class="muted" style="font-size: 13px;">${t("roadmap_audit_desc", lang)}</p>
+            </div>
+            <div class="card" style="margin: 0; padding: 25px;">
+                <span class="plan-badge" style="background: rgba(255,255,255,0.05); color: #fff;">${t("roadmap_tag", lang)}</span>
+                <h4 style="margin: 10px 0;">${t("roadmap_antiraid", lang)}</h4>
+                <p class="muted" style="font-size: 13px;">${t("roadmap_antiraid_desc", lang)}</p>
+            </div>
+            <div class="card" style="margin: 0; padding: 25px;">
+                <span class="plan-badge" style="background: rgba(255,255,255,0.05); color: #fff;">${t("roadmap_tag", lang)}</span>
+                <h4 style="margin: 10px 0;">${t("roadmap_introgate", lang)}</h4>
+                <p class="muted" style="font-size: 13px;">${t("roadmap_introgate_desc", lang)}</p>
+            </div>
         </div>
     </div>
 

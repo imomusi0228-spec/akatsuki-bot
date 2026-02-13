@@ -6,7 +6,9 @@
     "main": "index.js",
     "scripts": {
         "start": "node index.js",
-        "register": "node register-commands.js"
+        "register": "node register-commands.js",
+        "build": "echo 'No build step required'",
+        "notify": "node scripts/notify-management.js"
     },
     "dependencies": {
         "discord.js": "^14.16.0",
