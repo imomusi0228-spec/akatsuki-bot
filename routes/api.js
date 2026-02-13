@@ -361,10 +361,14 @@ export async function handleApiRoute(req, res, pathname, url) {
         const resDb = await dbQuery("SELECT * FROM settings WHERE guild_id = $1", [guildId]);
         const subInfo = await getSubscriptionInfo(guildId);
 
+        const settings = resDb.rows[0] || {};
+        // Ensure alpha_features is always an array
+        if (!settings.alpha_features) settings.alpha_features = [];
+
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({
             ok: true,
-            settings: resDb.rows[0] || {},
+            settings: settings,
             subscription: subInfo
         }));
         return;

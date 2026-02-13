@@ -693,9 +693,10 @@ export function renderAdminSettingsHTML({ user, req }) {
 
                 <!-- Section 3: Advanced Moderation -->
                 <div class="setting-section">
-                    <div class="setting-title">
+                    <div class="setting-title" style="display:flex; align-items:center; gap:8px;">
                         🛡️ 高度なモデレーション
-                        <span class="help-icon" data-help="短時間に大量のユーザーが参加する『レイド』を検知し、管理者に通知したりサーバーを保護したりします。">?</span>
+                        <span style="font-size:10px; background:rgba(255,255,255,0.1); color:var(--text-secondary); padding:2px 8px; border-radius:10px; border:1px solid var(--border-color); font-weight:normal;">${t("status_soon", lang)}</span>
+                        <span class="help-icon" data-help="短時間に大量のユーザーが参加する『レイド』を検知し、管理者に通知したりサーバーを保護したりします。（現在順次実装中）">?</span>
                     </div>
                     <div style="margin-bottom:15px;">
                         <label class="switch-label">
@@ -711,9 +712,10 @@ export function renderAdminSettingsHTML({ user, req }) {
 
                 <!-- Section 4: Self-Intro Gate -->
                 <div class="setting-section">
-                    <div class="setting-title">
+                    <div class="setting-title" style="display:flex; align-items:center; gap:8px;">
                         🚪 自己紹介ゲート
-                        <span class="help-icon" data-help="新規メンバーが指定されたチャンネルで自己紹介を書くまで、特定のロール（権限）を付与しないように制限します。">?</span>
+                        <span style="font-size:10px; background:rgba(255,255,255,0.1); color:var(--text-secondary); padding:2px 8px; border-radius:10px; border:1px solid var(--border-color); font-weight:normal;">${t("status_soon", lang)}</span>
+                        <span class="help-icon" data-help="新規メンバーが指定されたチャンネルで自己紹介を書くまで、特定のロール（権限）を付与しないように制限します。（現在順次実装中）">?</span>
                     </div>
                     <div style="margin-bottom:15px;">
                         <label class="switch-label">
@@ -1011,8 +1013,8 @@ export function renderFeaturesHTML(req) {
                 <tr>
                     <td>${t("feature_activity", lang)}</td>
                     <td><span class="feature-cross">×</span></td>
-                    <td><span class="muted" style="font-size:11px;">(Soon)</span></td>
-                    <td><span class="muted" style="font-size:11px;">(Soon)</span></td>
+                    <td><span class="feature-cross">×</span></td>
+                    <td><span class="feature-check">✓</span></td>
                 </tr>
                 <tr>
                     <td>${t("feature_antiraid", lang)}</td>
@@ -1065,7 +1067,7 @@ export function renderFeaturesHTML(req) {
         
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
             <div class="card" style="margin: 0; padding: 25px;">
-                <span class="plan-badge" style="background: rgba(255,255,255,0.05); color: #fff;">${t("roadmap_tag", lang)}</span>
+                <span class="plan-badge" style="background: var(--success-color); color: #fff;">${t("roadmap_released", lang)}</span>
                 <h4 style="margin: 10px 0;">${t("roadmap_audit", lang)}</h4>
                 <p class="muted" style="font-size: 13px;">${t("roadmap_audit_desc", lang)}</p>
             </div>

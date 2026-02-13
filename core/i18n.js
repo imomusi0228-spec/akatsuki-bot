@@ -184,7 +184,9 @@ export const DICTIONARY = {
         roadmap_antiraid_desc: "大量の不審な参加を検知し、自動でサーバーを保護・制限します。",
         roadmap_introgate: "自動自己紹介ゲート",
         roadmap_introgate_desc: "適切な自己紹介を書くまで特定のロールを付与しない制限機能です。",
-        roadmap_tag: "Coming Soon",
+        roadmap_tag: "順次実装",
+        roadmap_released: "公開中",
+        status_soon: "順次実装予定",
     },
     en: {
         // General
@@ -365,7 +367,9 @@ export const DICTIONARY = {
         roadmap_antiraid_desc: "Detects mass suspicious joins and automatically restricts server access.",
         roadmap_introgate: "Auto Self-Introduction Gate",
         roadmap_introgate_desc: "Restricts access until a proper introduction is posted.",
-        roadmap_tag: "Coming Soon",
+        roadmap_tag: "Soon",
+        roadmap_released: "Live",
+        status_soon: "Coming Soon",
     }
 };
 

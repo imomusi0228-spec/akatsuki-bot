@@ -197,7 +197,8 @@ export async function initDb() {
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS vc_role_rules JSONB DEFAULT '[]';`,
             `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS current_milestone INT DEFAULT 1;`,
             `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS auto_unlock_enabled BOOLEAN DEFAULT FALSE;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS last_announced_version TEXT;`
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS last_announced_version TEXT;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS alpha_features JSONB DEFAULT '[]';`
         ];
 
         for (const query of queries) {

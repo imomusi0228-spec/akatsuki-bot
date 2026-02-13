@@ -235,12 +235,38 @@ async function initSettings() {
             if ($("threshold")) $("threshold").value = s.ng_threshold ?? 3;
             if ($("timeout")) $("timeout").value = s.timeout_minutes ?? 10;
 
-            // New Fields
             if ($("antiraidEnabled")) $("antiraidEnabled").checked = s.antiraid_enabled;
             if ($("antiraidThreshold")) $("antiraidThreshold").value = s.antiraid_threshold ?? 10;
             if ($("introGateEnabled")) $("introGateEnabled").checked = s.self_intro_enabled;
             if ($("introRole")) $("introRole").value = s.self_intro_role_id || "";
             if ($("introMinLen")) $("introMinLen").value = s.self_intro_min_length ?? 10;
+
+            // Alpha Features Logic
+            const alpha = s.alpha_features || [];
+            const isAlphaAntiRaid = alpha.includes("antiraid");
+            const isAlphaIntroGate = alpha.includes("introgate");
+
+            // Helper to toggle section state
+            const toggleAlphaSection = (id, enabled) => {
+                const section = $(id)?.closest(".setting-section");
+                if (!section) return;
+                const inputs = section.querySelectorAll("input, select, button:not(.help-icon)");
+                inputs.forEach(i => {
+                    i.disabled = !enabled;
+                    if (!enabled) i.style.opacity = "0.5";
+                    else i.style.opacity = "1";
+                });
+                if (!enabled) {
+                    section.style.background = "rgba(0,0,0,0.1)";
+                    section.style.borderStyle = "dotted";
+                } else {
+                    section.style.background = "transparent";
+                    section.style.borderStyle = "none none dashed none";
+                }
+            };
+
+            toggleAlphaSection("antiraidEnabled", isAlphaAntiRaid);
+            toggleAlphaSection("introGateEnabled", isAlphaIntroGate);
 
             // Load VC Role Rules
             const rulesList = $("roleRulesList");
