@@ -75,9 +75,8 @@ function renderChart(id, type, labels, datasets, options = {}) {
                 x: { ticks: { color: "#8899a6" }, grid: { color: "rgba(255,255,255,0.1)" } },
                 y: {
                     ticks: { color: "#8899a6" },
-                    grid: { color: "rgba(255,255,255,0.1)" },
                     beginAtZero: true,
-                    suggestedMax: 500
+                    suggestedMax: 100
                 }
             },
             ...options
@@ -136,7 +135,7 @@ async function initDashboard() {
                     const validUntil = sub.valid_until ? '(' + sub.valid_until.split('T')[0] + ')' : '';
                     $("plan-info").innerHTML = `${sub.name} ${validUntil}`;
 
-                    const item = (l, v) => `<span style="font-weight:bold; color:var(--accent-color);">${v}</span> <span style="font-size:11px; margin-right:8px;">${l}</span>`;
+                    const item = (l, v) => `<span style="font-weight:bold; color:var(--accent-color); font-size:14px;">${v}</span> <span style="font-size:12px; margin-right:8px;">${l}</span>`;
                     $("summary").innerHTML = `${item(t("vc_joins"), s.joins)} | ${item(t("leaves"), s.leaves)} | ${item(t("timeouts"), s.timeouts)} | ${item(t("ng_detect"), s.ngDetected)}`;
 
                     let rows = "";
@@ -209,6 +208,15 @@ async function initSettings() {
                     const o = document.createElement("option"); o.value = r.id; o.textContent = r.name; selIntroRole.appendChild(o);
                 });
             }
+
+            // 3. Channels (VC Report)
+            const selVcReport = $("vcReportCh");
+            if (selVcReport) {
+                selVcReport.innerHTML = '<option value="">(None)</option>';
+                channels.forEach(c => {
+                    const o = document.createElement("option"); o.value = c.id; o.textContent = "#" + c.name; selVcReport.appendChild(o);
+                });
+            }
         } catch (e) {
             console.error("loadMasters Error:", e);
         }
@@ -267,6 +275,11 @@ async function initSettings() {
 
             toggleAlphaSection("antiraidEnabled", isAlphaAntiRaid);
             toggleAlphaSection("introGateEnabled", isAlphaIntroGate);
+
+            // VC Report Fields
+            if ($("vcReportEnabled")) $("vcReportEnabled").checked = s.vc_report_enabled;
+            if ($("vcReportCh")) $("vcReportCh").value = s.vc_report_channel_id || "";
+            if ($("vcReportInterval")) $("vcReportInterval").value = s.vc_report_interval || "weekly";
 
             // Load VC Role Rules
             const rulesList = $("roleRulesList");

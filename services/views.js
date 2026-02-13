@@ -589,13 +589,13 @@ export function renderAdminDashboardHTML({ user, req }) {
 
     <!-- Compact Charts Row -->
     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:15px; margin-bottom:15px; max-width: 1000px; margin-left: auto; margin-right: auto;">
-        <div class="card" style="padding:10px; margin-bottom:0; min-height:180px;">
+        <div class="card" style="padding:10px; margin-bottom:0; min-height:230px;">
             <h4 style="margin:0 0 8px 0; font-size:13px; font-weight:bold; color:var(--accent-color);">📈 ${t("growth_trend", lang) || "メンバー推移"}</h4>
-            <div style="height:140px;"><canvas id="growthChart"></canvas></div>
+            <div style="height:190px;"><canvas id="growthChart"></canvas></div>
         </div>
-        <div class="card" style="padding:10px; margin-bottom:0; min-height:180px;">
+        <div class="card" style="padding:10px; margin-bottom:0; min-height:230px;">
             <h4 style="margin:0 0 8px 0; font-size:13px; font-weight:bold; color:var(--accent-color);">🔥 ${t("heatmap", lang) || "VCアクティビティ"}</h4>
-            <div style="height:140px;"><canvas id="heatmapChart"></canvas></div>
+            <div style="height:190px;"><canvas id="heatmapChart"></canvas></div>
         </div>
     </div>
 
