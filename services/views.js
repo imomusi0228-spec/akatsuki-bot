@@ -22,13 +22,13 @@ const COMMON_CSS = `
     --danger-color: #f4212e; 
     --success-color: #00ba7c; 
   }
-  body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 12px; background-color: var(--bg-color); color: var(--text-primary); line-height: 1.4; }
+  body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 16px; background-color: var(--bg-color); color: var(--text-primary); }
   a { color: var(--accent-color); text-decoration: none; } a:hover { text-decoration: underline; }
   .btn { display: inline-block; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; cursor: pointer; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary); transition: all 0.2s; }
   .btn:hover { background: #2c3640; border-color: var(--accent-color); text-decoration: none; }
   .btn-primary { background: var(--accent-color); border-color: var(--accent-color); color: #fff; }
   .btn-primary:hover { opacity: 0.9; box-shadow: 0 0 15px rgba(29, 155, 240, 0.4); }
-  .card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 12px; max-width: 930px; margin-left: auto; margin-right: auto; }
+  .card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 16px; max-width: 900px; margin-left: auto; margin-right: auto; }
   .muted { color: var(--text-secondary); font-size: 0.9em; }
   input, select, button { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: #000; color: #fff; font-size: 14px; }
   h1, h2, h3 { color: var(--text-primary); margin-top: 0; }
@@ -36,7 +36,7 @@ const COMMON_CSS = `
   th { text-align: left; color: var(--text-secondary); border-bottom: 1px solid var(--border-color); padding: 8px; }
   td { border-bottom: 1px solid var(--border-color); padding: 8px; }
   tr:last-child td { border-bottom: none; }
-  .nav-bar { display: flex; gap: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; max-width: 930px; margin-left: auto; margin-right: auto; }
+  .nav-bar { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; max-width: 900px; margin-left: auto; margin-right: auto; }
   .nav-item { padding: 8px 16px; border-radius: 6px; color: var(--text-secondary); font-weight: 600; }
   .nav-item:hover { background: rgba(255,255,255,0.05); text-decoration: none; }
   .nav-item.active { color: var(--accent-color); background: rgba(29, 155, 240, 0.1); }
@@ -569,29 +569,38 @@ export function renderLoginHTML(req) {
 export function renderAdminDashboardHTML({ user, req }) {
     const lang = getLang(req);
     const content = `
-    <div class="card" style="padding: 12px; margin-bottom: 12px; max-width: 930px; margin-left: auto; margin-right: auto;">
-        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:12px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
-            <select id="guild" style="flex:1; max-width:180px; padding:6px; font-size:13px;"></select>
-            <input id="month" type="month" style="padding:5px; font-size:13px; background:#000; color:#fff;" />
-            <button id="reload" class="btn btn-primary" style="padding:4px 12px; font-size:13px;">Reload</button>
-            <div style="margin-left:auto; font-size:12px;">${t("plan_label", lang)}: <span id="plan-info" style="color:var(--accent-color); font-weight:bold;">...</span></div>
-        </div>
-        <div id="summary"></div>
-    </div>
-    
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:12px; margin-bottom:12px; max-width: 930px; margin-left: auto; margin-right: auto;">
-        <div class="card" style="margin-bottom:0; min-height:180px; padding: 12px; background: rgba(0,0,0,0.2);">
-            <h3 style="font-size: 13px; margin: 0 0 8px 0; color: var(--text-secondary);">📈 ${t("growth_trend", lang) || "メンバー推移"}</h3>
-            <div style="height: 140px;"><canvas id="growthChart"></canvas></div>
-        </div>
-        <div class="card" style="margin-bottom:0; min-height:180px; padding: 12px; background: rgba(0,0,0,0.2);">
-            <h3 style="font-size: 13px; margin: 0 0 8px 0; color: var(--text-secondary);">🔥 ${t("heatmap", lang) || "VCアクティビティ"}</h3>
-            <div style="height: 140px;"><canvas id="heatmapChart"></canvas></div>
+    <!-- Compact Header & Summary -->
+    <div class="card" style="padding: 10px; margin-bottom: 15px; max-width: 1000px;">
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:nowrap; font-size:12px;">
+            <select id="guild" style="padding:4px 8px; font-size:12px; min-width:140px;"></select>
+            <input id="month" type="month" style="padding:4px; font-size:12px; width:115px;" />
+            
+            <div id="summary" style="display:flex; gap:12px; background:rgba(255,255,255,0.03); padding:4px 12px; border-radius:6px; border:1px solid var(--border-color); flex:1; justify-content:center; white-space:nowrap; color:var(--text-secondary);">
+                ${t("dashboard_loading", lang) || "Loading Statistics..."}
+            </div>
+
+            <div style="white-space:nowrap; font-size:11px;">
+                <span class="muted">${t("plan_label", lang)}:</span> <span id="plan-info" style="color:var(--accent-color); font-weight:bold;">...</span>
+            </div>
+            
+            <button id="reload" class="btn btn-primary" style="padding:4px 12px; font-size:12px; min-width:70px;">Reload</button>
         </div>
     </div>
 
-    <div id="card-raid" class="card" style="padding: 12px; max-width: 930px; margin-left: auto; margin-right: auto;">
-        <h3 style="font-size: 13px; margin: 0 0 8px 0; color: var(--text-secondary);">🛡️ Anti-Raid & Security</h3>
+    <!-- Compact Charts Row -->
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:15px; margin-bottom:15px; max-width: 1000px; margin-left: auto; margin-right: auto;">
+        <div class="card" style="padding:10px; margin-bottom:0; min-height:180px;">
+            <h4 style="margin:0 0 8px 0; font-size:13px; font-weight:bold; color:var(--accent-color);">📈 ${t("growth_trend", lang) || "メンバー推移"}</h4>
+            <div style="height:140px;"><canvas id="growthChart"></canvas></div>
+        </div>
+        <div class="card" style="padding:10px; margin-bottom:0; min-height:180px;">
+            <h4 style="margin:0 0 8px 0; font-size:13px; font-weight:bold; color:var(--accent-color);">🔥 ${t("heatmap", lang) || "VCアクティビティ"}</h4>
+            <div style="height:140px;"><canvas id="heatmapChart"></canvas></div>
+        </div>
+    </div>
+
+    <div id="card-raid" class="card" style="padding:12px; max-width: 1000px;">
+        <h4 style="margin:0 0 10px 0; font-size:13px; display:flex; align-items:center; gap:6px;">🛡️ Anti-Raid & Security</h4>
         <table class="data-table" style="font-size:12px;"><thead><tr><th style="text-align:left">${t("header_user", lang)}</th><th style="text-align:right">${t("header_count", lang)}</th><th style="text-align:right">Action</th></tr></thead>
         <tbody id="topNg"></tbody></table>
     </div>`;

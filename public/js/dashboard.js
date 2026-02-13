@@ -77,7 +77,7 @@ function renderChart(id, type, labels, datasets, options = {}) {
                     ticks: { color: "#8899a6" },
                     grid: { color: "rgba(255,255,255,0.1)" },
                     beginAtZero: true,
-                    suggestedMax: 1000
+                    suggestedMax: 500
                 }
             },
             ...options
@@ -136,8 +136,8 @@ async function initDashboard() {
                     const validUntil = sub.valid_until ? '(' + sub.valid_until.split('T')[0] + ')' : '';
                     $("plan-info").innerHTML = `${sub.name} ${validUntil}`;
 
-                    const box = (l, v) => `<div style="background:rgba(255,255,255,0.03); padding:8px; border-radius:6px; text-align:center; border:1px solid rgba(255,255,255,0.05);"><div style="font-size:18px; font-weight:bold; color:var(--accent-color);">${v}</div><div style="font-size:10px; color:var(--text-secondary);">${l}</div></div>`;
-                    $("summary").innerHTML = `<div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; width:100%;">${box(t("vc_joins"), s.joins)} ${box(t("leaves"), s.leaves)} ${box(t("timeouts"), s.timeouts)} ${box(t("ng_detect"), s.ngDetected)}</div>`;
+                    const item = (l, v) => `<span style="font-weight:bold; color:var(--accent-color);">${v}</span> <span style="font-size:11px; margin-right:8px;">${l}</span>`;
+                    $("summary").innerHTML = `${item(t("vc_joins"), s.joins)} | ${item(t("leaves"), s.leaves)} | ${item(t("timeouts"), s.timeouts)} | ${item(t("ng_detect"), s.ngDetected)}`;
 
                     let rows = "";
                     (res.stats.topNgUsers || []).forEach(u => {
