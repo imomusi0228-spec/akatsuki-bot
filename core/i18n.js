@@ -46,7 +46,7 @@ export const DICTIONARY = {
         // Detailed features for list (NEW)
         feat_list_free: "・VC入退室ログの自動記録<br/>・NGワード検知（最大5個）<br/>・基本的な統計表示",
         feat_list_pro: "・Web管理ダッシュボード<br/>・スパム保護（類似メッセージ連投検知）<br/>・メンバー推移トレンド（直近7日間）<br/>・NGワード登録数 20個<br/>・NGワード削除時の自動タイムアウト救済",
-        feat_list_pro_plus: "・メンバー成長トレンド（30日間）+ CSV出力<br/>・高度なサーバー統計表示<br/>・NGワード登録数 50個<br/>・最大3つのサーバーで利用可能",
+        feat_list_pro_plus: "・メンバー監査 (幽霊部員検知)<br/>・メンバー成長トレンド（30日間）+ CSV出力<br/>・高度なサーバー統計表示<br/>・NGワード登録数 50個<br/>・最大3つのサーバーで利用可能",
 
         features_detail_security: "NGワードの自動削除と警告しきい値による自動タイムアウトで、サーバーの平和を鉄壁に守ります。",
         features_detail_audit: "ロールの所持、自己紹介の有無、VCの参加状況を統合し、幽霊部員を瞬時に特定します。",
@@ -233,8 +233,8 @@ export const DICTIONARY = {
 
         // Detailed features for list (NEW)
         feat_list_free: "・Auto-record VC join/leave logs<br/>・NG word detection (Up to 5)<br/>・Basic statistics display",
-        feat_list_pro: "・Web management dashboard<br/>・Spam Protection (Similarity detection)<br/>・Anti-Raid (Alerts only)<br/>・Member Growth Trends (7 Days)<br/>・20 NG words capacity<br/>・Auto Timeout Relief",
-        feat_list_pro_plus: "・Member audit (Ghost detection)<br/>・Anti-Raid (Alerts + Auto Restriction)<br/>・Auto Self-Introduction Gate<br/>・Growth Trends (30 Days) + CSV<br/>・50 NG words capacity<br/>・Support up to 3 servers",
+        feat_list_pro: "・Web management dashboard<br/>・Spam Protection (Similarity detection)<br/>・Member Growth Trends (7 Days)<br/>・20 NG words capacity<br/>・Auto Timeout Relief",
+        feat_list_pro_plus: "・Member Audit (Ghost detection)<br/>・Growth Trends (30 Days) + CSV<br/>・50 NG words capacity<br/>・Support up to 3 servers",
 
         features_detail_security: "Auto-delete messages and set warning thresholds to keep your server safe and orderly.",
         features_detail_audit: "Audit members based on roles, introductions, and VC activity to identify inactive members instantly.",

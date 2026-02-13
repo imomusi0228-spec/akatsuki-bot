@@ -1017,18 +1017,6 @@ export function renderFeaturesHTML(req) {
                     <td><span class="feature-check">✓</span></td>
                 </tr>
                 <tr>
-                    <td>${t("feature_antiraid", lang)}</td>
-                    <td><span class="feature-cross">×</span></td>
-                    <td><span class="muted" style="font-size:11px;">(Soon)</span></td>
-                    <td><span class="muted" style="font-size:11px;">(Soon)</span></td>
-                </tr>
-                <tr>
-                    <td>${t("feature_intro_gate", lang)}</td>
-                    <td><span class="feature-cross">×</span></td>
-                    <td><span class="feature-cross">×</span></td>
-                    <td><span class="muted" style="font-size:11px;">(Soon)</span></td>
-                </tr>
-                <tr>
                     <td>${t("feature_csv", lang)}</td>
                     <td><span class="feature-cross">×</span></td>
                     <td><span class="feature-cross">×</span></td>
@@ -1065,12 +1053,7 @@ export function renderFeaturesHTML(req) {
         <h2 style="font-size: 32px; margin-bottom: 20px; text-align: center;">🚀 ${t("roadmap_title", lang)}</h2>
         <p style="text-align: center; color: #8899a6; margin-bottom: 40px;">${t("roadmap_subtitle", lang)}</p>
         
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
-            <div class="card" style="margin: 0; padding: 25px;">
-                <span class="plan-badge" style="background: var(--success-color); color: #fff;">${t("roadmap_released", lang)}</span>
-                <h4 style="margin: 10px 0;">${t("roadmap_audit", lang)}</h4>
-                <p class="muted" style="font-size: 13px;">${t("roadmap_audit_desc", lang)}</p>
-            </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 800px; margin: 0 auto;">
             <div class="card" style="margin: 0; padding: 25px;">
                 <span class="plan-badge" style="background: rgba(255,255,255,0.05); color: #fff;">${t("roadmap_tag", lang)}</span>
                 <h4 style="margin: 10px 0;">${t("roadmap_antiraid", lang)}</h4>
