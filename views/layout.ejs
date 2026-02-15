@@ -168,7 +168,9 @@
     window.t = (key, params = {}) => {
         const dict = (window.DICTIONARY && window.DICTIONARY[window.lang]) || (window.DICTIONARY && window.DICTIONARY['ja']) || {};
         let text = dict[key] || key;
-        Object.keys(params).forEach(p => { text = text.replace('{' + p + '}', params[p]); });
+        if (params) {
+            Object.keys(params).forEach(p => { text = text.replace('{' + p + '}', params[p]); });
+        }
         return text;
     };
 </script>
@@ -219,8 +221,9 @@
                 <%- content %>
             </div>
 
-            <div style="text-align:center; padding: 20px; color: #8899a6; font-size:0.8em; margin-top:40px;">&copy; <%=
-                    new Date().getFullYear() %> Akatsuki Bot</div>
+            <div style="text-align:center; padding: 20px; color: #8899a6; font-size:0.8em; margin-top:40px;">
+                &copy; <%= new Date().getFullYear() %> Akatsuki Bot
+            </div>
 
             <%- scripts %>
 </body>
