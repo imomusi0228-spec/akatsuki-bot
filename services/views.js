@@ -4,7 +4,6 @@ import { t, DICTIONARY } from "../core/i18n.js";
 import path from "path";
 import ejs from "ejs";
 import { fileURLToPath } from "url";
-import { t, DICTIONARY } from "../core/i18n.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const VIEWS_DIR = path.join(__dirname, "../views");
