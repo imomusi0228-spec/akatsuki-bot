@@ -157,19 +157,13 @@
             color: #fff;
         }
     </style>
-    <!-- Critical core utilities defined first in a separate block to ensure availability -->
     <script>
         window.$ = (id) => document.getElementById(id);
         window.escapeHTML = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
         window.setLang = (l) => { document.cookie = "lang=" + l + ";path=/;max-age=31536000;SameSite=Lax"; location.reload(); };
-        console.log("☾ Akatsuki Utilities loaded.");
     </script>
     <script>
         window.lang = "<%= lang %>";
-        /* 
-           Crucial: We strictly use <%- without spaces. 
-           If syntax fails here, $ is already defined above.
-        */
         window.DICTIONARY = <% - dictionary %>;
         window.t = (key, params = {}) => {
             const dict = (window.DICTIONARY && window.DICTIONARY[window.lang]) || (window.DICTIONARY && window.DICTIONARY['ja']) || {};
