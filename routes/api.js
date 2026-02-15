@@ -759,14 +759,17 @@ export async function handleApiRoute(req, res, pathname, url) {
                 }
             }
 
-            // Upsert
+            // Upsert with milestone support
+            const currentMilestone = body.current_milestone !== undefined ? parseInt(body.current_milestone) : 1;
+            const autoUnlock = body.auto_unlock_enabled === true;
+
             const check = await dbQuery("SELECT guild_id FROM subscriptions WHERE guild_id = $1", [body.guild]);
             if (check.rows.length === 0) {
-                await dbQuery("INSERT INTO subscriptions (guild_id, tier, user_id, valid_until) VALUES ($1, $2, $3, $4)",
-                    [body.guild, targetTier, body.user_id, validUntil]);
+                await dbQuery("INSERT INTO subscriptions (guild_id, tier, user_id, valid_until, current_milestone, auto_unlock_enabled) VALUES ($1, $2, $3, $4, $5, $6)",
+                    [body.guild, targetTier, body.user_id, validUntil, currentMilestone, autoUnlock]);
             } else {
-                await dbQuery("UPDATE subscriptions SET tier = $1, user_id = $2, valid_until = $3, updated_at = NOW() WHERE guild_id = $4",
-                    [targetTier, body.user_id, validUntil, body.guild]);
+                await dbQuery("UPDATE subscriptions SET tier = $1, user_id = $2, valid_until = $3, current_milestone = $4, auto_unlock_enabled = $5, updated_at = NOW() WHERE guild_id = $6",
+                    [targetTier, body.user_id, validUntil, currentMilestone, autoUnlock, body.guild]);
             }
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ ok: true }));
