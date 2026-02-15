@@ -254,7 +254,8 @@ async function initSettings() {
 
             // Helper to toggle section state
             const toggleAlphaSection = (id, enabled) => {
-                const section = $(id)?.closest(".setting-section");
+                const el = $(id);
+                const section = el ? el.closest(".setting-section") : null;
                 if (!section) return;
                 const inputs = section.querySelectorAll("input, select, button:not(.help-icon)");
                 inputs.forEach(i => {
@@ -294,21 +295,21 @@ async function initSettings() {
             guild: selGuild.value,
             log_channel_id: selLog ? selLog.value : "",
             ng_log_channel_id: selNgLog ? selNgLog.value : "",
-            ng_threshold: parseInt($("threshold").value),
-            timeout_minutes: parseInt($("timeout").value),
+            ng_threshold: parseInt($("threshold")?.value || 3),
+            timeout_minutes: parseInt($("timeout")?.value || 10),
 
-            antiraid_enabled: $("antiraidEnabled").checked,
-            antiraid_threshold: parseInt($("antiraidThreshold").value),
-            self_intro_enabled: $("introGateEnabled").checked,
-            self_intro_role_id: $("introRole").value,
-            self_intro_min_length: parseInt($("introMinLen").value),
+            antiraid_enabled: $("antiraidEnabled")?.checked || false,
+            antiraid_threshold: parseInt($("antiraidThreshold")?.value || 10),
+            self_intro_enabled: $("introGateEnabled")?.checked || false,
+            self_intro_role_id: $("introRole")?.value || "",
+            self_intro_min_length: parseInt($("introMinLen")?.value || 10),
 
             // VC Role Rules
             vc_role_rules: Array.from(document.querySelectorAll(".role-rule-item")).map(item => ({
                 role_id: item.querySelector(".rule-role").value,
                 hours: parseInt(item.querySelector(".rule-hours").value)
             })),
-            vc_report_enabled: $("vcReportEnabled").checked,
+            vc_report_enabled: $("vcReportEnabled")?.checked || false,
             vc_report_channel_id: $("vcReportCh") ? $("vcReportCh").value : "",
             vc_report_interval: $("vcReportInterval") ? $("vcReportInterval").value : "weekly"
         };
