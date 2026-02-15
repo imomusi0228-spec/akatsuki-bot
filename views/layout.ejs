@@ -159,17 +159,18 @@
     </style>
 </head>
 <script>
+    window.$ = (id) => document.getElementById(id);
+    window.escapeHTML = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    window.setLang = (l) => { document.cookie = "lang=" + l + ";path=/;max-age=31536000;SameSite=Lax"; location.reload(); };
+
     window.lang = "<%= lang %>";
     window.DICTIONARY = <% - dictionary %>;
     window.t = (key, params = {}) => {
-        const dict = window.DICTIONARY[window.lang] || window.DICTIONARY['ja'] || {};
+        const dict = (window.DICTIONARY && window.DICTIONARY[window.lang]) || (window.DICTIONARY && window.DICTIONARY['ja']) || {};
         let text = dict[key] || key;
         Object.keys(params).forEach(p => { text = text.replace('{' + p + '}', params[p]); });
         return text;
     };
-    window.$ = (id) => document.getElementById(id);
-    window.escapeHTML = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-    window.setLang = (l) => { document.cookie = "lang=" + l + ";path=/;max-age=31536000;SameSite=Lax"; location.reload(); }
 </script>
 
 <body>
