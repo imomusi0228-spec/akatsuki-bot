@@ -68,21 +68,24 @@ export async function sendLog(guild, type, embed, date = new Date(), options = {
             if (thread) {
                 // 重複チェック
                 if (options.checkDuplicate) {
-                    const messages = await thread.messages.fetch({ limit: 50 }).catch(() => null);
+                    // Fetch more messages to ensure we don't duplicate older logs being scanned
+                    const messages = await thread.messages.fetch({ limit: 100 }).catch(() => null);
                     if (messages) {
                         const isDuplicate = messages.some(msg => {
                             if (msg.embeds.length === 0) return false;
                             const e = msg.embeds[0];
-                            // 著者名, タイトル(なければ説明), タイムスタンプが一致するか確認
+                            // 著者名, タイトル(なければ説明), タイムスタンプ, フッターが一致するか確認
+                            // フッターも含めることで通常ログと復元ログを区別
                             const sameAuthor = e.author?.name === embed.data.author?.name;
                             const sameDesc = e.description === embed.data.description;
+                            const sameFooter = e.footer?.text === embed.data.footer?.text;
 
                             // タイムスタンプ比較 (秒単位で比較、ミリ秒は無視)
                             const targetTime = embed.data.timestamp ? new Date(embed.data.timestamp).getTime() : null;
                             const msgTime = e.timestamp ? new Date(e.timestamp).getTime() : null;
                             const sameTime = targetTime && msgTime && Math.floor(targetTime / 1000) === Math.floor(msgTime / 1000);
 
-                            return sameAuthor && sameDesc && sameTime;
+                            return sameAuthor && sameDesc && sameTime && sameFooter;
                         });
                         if (isDuplicate) {
                             console.log(`[LOGGER] Duplicate ${type} log skipped for ${embed.data.author?.name}`);
@@ -98,19 +101,20 @@ export async function sendLog(guild, type, embed, date = new Date(), options = {
         } else {
             // NGワードログは直接投稿
             if (options.checkDuplicate) {
-                const messages = await channel.messages.fetch({ limit: 50 }).catch(() => null);
+                const messages = await channel.messages.fetch({ limit: 100 }).catch(() => null);
                 if (messages) {
                     const isDuplicate = messages.some(msg => {
                         if (msg.embeds.length === 0) return false;
                         const e = msg.embeds[0];
                         const sameDesc = e.description === embed.data.description;
+                        const sameFooter = e.footer?.text === embed.data.footer?.text;
 
                         // タイムスタンプ比較 (秒単位)
                         const targetTime = embed.data.timestamp ? new Date(embed.data.timestamp).getTime() : null;
                         const msgTime = e.timestamp ? new Date(e.timestamp).getTime() : null;
                         const sameTime = targetTime && msgTime && Math.floor(targetTime / 1000) === Math.floor(msgTime / 1000);
 
-                        return sameDesc && sameTime;
+                        return sameDesc && sameTime && sameFooter;
                     });
                     if (isDuplicate) {
                         console.log(`[LOGGER] Duplicate ${type} log skipped`);
