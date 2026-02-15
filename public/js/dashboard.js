@@ -247,33 +247,22 @@ async function initSettings() {
             if ($("introRole")) $("introRole").value = s.self_intro_role_id || "";
             if ($("introMinLen")) $("introMinLen").value = s.self_intro_min_length ?? 10;
 
-            // Alpha Features Logic
-            const alpha = s.alpha_features || [];
-            const isAlphaAntiRaid = alpha.includes("antiraid");
-            const isAlphaIntroGate = alpha.includes("introgate");
-
-            // Helper to toggle section state
+            // Alpha Features Logic - Ojou says "Open everything!"
             const toggleAlphaSection = (id, enabled) => {
                 const el = $(id);
-                const section = el ? el.closest(".setting-section") : null;
+                const section = el ? el.closest(".accordion-item") : null;
                 if (!section) return;
-                const inputs = section.querySelectorAll("input, select, button:not(.help-icon)");
+                const inputs = section.querySelectorAll("input, select, button");
                 inputs.forEach(i => {
-                    i.disabled = !enabled;
-                    if (!enabled) i.style.opacity = "0.5";
-                    else i.style.opacity = "1";
+                    i.disabled = false;
+                    i.style.opacity = "1";
                 });
-                if (!enabled) {
-                    section.style.background = "rgba(0,0,0,0.1)";
-                    section.style.borderStyle = "dotted";
-                } else {
-                    section.style.background = "transparent";
-                    section.style.borderStyle = "none none dashed none";
-                }
+                section.style.background = "rgba(255, 255, 255, 0.02)";
+                section.style.borderStyle = "solid";
             };
 
-            toggleAlphaSection("antiraidEnabled", isAlphaAntiRaid);
-            toggleAlphaSection("introGateEnabled", isAlphaIntroGate);
+            // Force enable all sections based on the new accordion structure
+            ["antiraidEnabled", "introGateEnabled"].forEach(id => toggleAlphaSection(id, true));
 
             // VC Report Fields
             if ($("vcReportEnabled")) $("vcReportEnabled").checked = s.vc_report_enabled;

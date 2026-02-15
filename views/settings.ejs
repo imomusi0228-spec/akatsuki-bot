@@ -1,3 +1,73 @@
+<style>
+    .accordion-item {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin-bottom: 12px;
+        background: rgba(255, 255, 255, 0.02);
+        overflow: hidden;
+    }
+
+    .accordion-header {
+        padding: 14px 20px;
+        background: rgba(255, 255, 255, 0.03);
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 600;
+        transition: background 0.2s;
+    }
+
+    .accordion-header:hover {
+        background: rgba(255, 255, 255, 0.07);
+    }
+
+    .accordion-content {
+        padding: 20px;
+        display: none;
+        border-top: 1px solid var(--border-color);
+        background: var(--card-bg);
+    }
+
+    .accordion-item.active .accordion-content {
+        display: block;
+    }
+
+    .accordion-item.active .accordion-header {
+        background: rgba(29, 155, 240, 0.1);
+        color: var(--accent-color);
+    }
+
+    .ng-item {
+        display: inline-flex;
+        align-items: center;
+        background: rgba(244, 33, 46, 0.1);
+        color: #f4212e;
+        border: 1px solid rgba(244, 33, 46, 0.2);
+        padding: 4px 12px;
+        border-radius: 20px;
+        margin: 4px;
+        font-size: 13px;
+    }
+
+    .ng-item button {
+        background: none;
+        border: none;
+        color: #f4212e;
+        margin-left: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        padding: 0 4px;
+    }
+
+    .help-icon {
+        color: var(--text-secondary);
+        cursor: help;
+        font-size: 14px;
+        margin-left: 6px;
+    }
+</style>
+
 <div class="card" style="max-width: 1000px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
         <h3 style="margin:0;">
@@ -6,55 +76,163 @@
         <span id="saveStatus" style="font-size:14px; font-weight:bold;"></span>
     </div>
 
-    <div class="setting-section">
-        <label class="setting-title">Select Server</label>
-        <div style="display:flex; gap:10px; align-items:center;">
+    <!-- 1. Server Selector -->
+    <div class="setting-section" style="margin-bottom:24px;">
+        <label class="muted">Select Server</label>
+        <div style="display:flex; gap:10px; align-items:center; margin-top:8px;">
             <select id="guild" style="flex:1;"></select>
             <button id="reload" class="btn">Reload</button>
         </div>
         <div id="guildStatus" style="font-size:12px; margin-top:4px;"></div>
     </div>
 
-    <div class="setting-section">
-        <div class="setting-title">🛡️ <%= t("anti_raid_settings") %>
-        </div>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-            <div>
-                <label class="muted">
-                    <%= t("ng_threshold") %>
-                </label><br />
-                <input id="threshold" type="number" min="1" max="10" style="width:100%; margin-top:5px;">
-            </div>
-            <div>
-                <label class="muted">
-                    <%= t("timeout_minutes") %>
-                </label><br />
-                <input id="timeout" type="number" min="1" max="1440" style="width:100%; margin-top:5px;">
-            </div>
-        </div>
-    </div>
+    <!-- ACCORDION START -->
+    <div id="settings-accordion">
 
-    <div class="setting-section">
-        <div class="setting-title">📢 <%= t("log_settings") %>
-        </div>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-            <div>
-                <label class="muted">
-                    <%= t("vc_log_ch") %>
-                </label><br />
-                <select id="logCh" style="width:100%; margin-top:5px;"></select>
+        <!-- 2. NG Words -->
+        <div class="accordion-item active" id="sec-ng">
+            <div class="accordion-header" onclick="toggleAccordion('sec-ng')">
+                <span>🚫 <%= t("feature_ng_limit") %> <span id="ngCount" class="muted"
+                            style="margin-left:10px; font-weight: normal;">0 <%= t("words") %></span></span>
+                <span>▼</span>
             </div>
-            <div>
-                <label class="muted">
-                    <%= t("ng_log_ch") %>
-                </label><br />
-                <select id="ngLogCh" style="width:100%; margin-top:5px;"></select>
+            <div class="accordion-content">
+                <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <input id="newWord" type="text" placeholder="Add word..." style="flex:1;">
+                    <button onclick="addNg()" class="btn btn-primary">+</button>
+                </div>
+                <div id="ngList" style="background:rgba(0,0,0,0.2); border-radius:8px; padding:10px; min-height:60px;">
+                </div>
+                <p class="muted" style="margin-top:10px; font-size:11px;">※スラッシュで囲むと正規表現として扱われます (例: /badword/i)</p>
             </div>
         </div>
+
+        <!-- 3. Anti-Raid & Timeouts -->
+        <div class="accordion-item" id="sec-raid">
+            <div class="accordion-header" onclick="toggleAccordion('sec-raid')">
+                <span>🛡️ <%= t("anti_raid_settings") %></span>
+                <span>▼</span>
+            </div>
+            <div class="accordion-content">
+                <div style="margin-bottom:15px;">
+                    <label style="display:flex; align-items:center; cursor:pointer;">
+                        <input type="checkbox" id="antiraidEnabled" style="width:18px; height:18px; margin-right:10px;">
+                        <span>アンチ・レイド防衛を有効化</span>
+                    </label>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                    <div>
+                        <label class="muted">
+                            <%= t("ng_threshold") %>
+                        </label><br />
+                        <input id="threshold" type="number" min="1" max="100" style="width:100%; margin-top:5px;">
+                    </div>
+                    <div>
+                        <label class="muted">
+                            <%= t("timeout_minutes") %>
+                        </label><br />
+                        <input id="timeout" type="number" min="1" max="1440" style="width:100%; margin-top:5px;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Self Introduction Gate -->
+        <div class="accordion-item" id="sec-intro">
+            <div class="accordion-header" onclick="toggleAccordion('sec-intro')">
+                <span>📝 <%= t("roadmap_introgate") %></span>
+                <span>▼</span>
+            </div>
+            <div class="accordion-content">
+                <div style="margin-bottom:15px;">
+                    <label style="display:flex; align-items:center; cursor:pointer;">
+                        <input type="checkbox" id="introGateEnabled"
+                            style="width:18px; height:18px; margin-right:10px;">
+                        <span>自己紹介ゲートを有効化</span>
+                    </label>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                    <div>
+                        <label class="muted">付与するロール</label><br />
+                        <select id="introRole" style="width:100%; margin-top:5px;"></select>
+                    </div>
+                    <div>
+                        <label class="muted">必要最小文字数</label><br />
+                        <input id="introMinLen" type="number" min="1" value="10" style="width:100%; margin-top:5px;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Channels -->
+        <div class="accordion-item" id="sec-ch">
+            <div class="accordion-header" onclick="toggleAccordion('sec-ch')">
+                <span>📢 <%= t("log_settings") %></span>
+                <span>▼</span>
+            </div>
+            <div class="accordion-content">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                    <div>
+                        <label class="muted">
+                            <%= t("vc_log_ch") %>
+                        </label><br />
+                        <select id="logCh" style="width:100%; margin-top:5px;"></select>
+                    </div>
+                    <div>
+                        <label class="muted">
+                            <%= t("ng_log_ch") %>
+                        </label><br />
+                        <select id="ngLogCh" style="width:100%; margin-top:5px;"></select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. VC Related (Roles & Reports) -->
+        <div class="accordion-item" id="sec-vc">
+            <div class="accordion-header" onclick="toggleAccordion('sec-vc')">
+                <span>🎤 VC高度設定 (Roles & Reports)</span>
+                <span>▼</span>
+            </div>
+            <div class="accordion-content">
+                <!-- Role Rules -->
+                <div style="margin-bottom:24px;">
+                    <label class="muted" style="display:block; margin-bottom:10px;">VC活動時間に応じたロール自動付与</label>
+                    <div id="roleRulesList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;">
+                    </div>
+                    <button type="button" onclick="addRoleRule()" class="btn" style="font-size:12px; width:100%;">+
+                        ルールを追加</button>
+                </div>
+
+                <!-- Reports -->
+                <div style="border-top:1px solid var(--border-color); padding-top:20px;">
+                    <label style="display:flex; align-items:center; cursor:pointer; margin-bottom:15px;">
+                        <input type="checkbox" id="vcReportEnabled" style="width:18px; height:18px; margin-right:10px;">
+                        <span>VCアクティビティ週報を有効化</span>
+                    </label>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                        <div>
+                            <label class="muted">レポート送信先</label><br />
+                            <select id="vcReportCh" style="width:100%; margin-top:5px;"></select>
+                        </div>
+                        <div>
+                            <label class="muted">送信間隔</label><br />
+                            <select id="vcReportInterval" style="width:100%; margin-top:5px;">
+                                <option value="daily">毎日</option>
+                                <option value="weekly" selected>毎週</option>
+                                <option value="monthly">毎月</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
+    <!-- ACCORDION END -->
 
     <div style="margin-top:30px; display:flex; gap:15px;">
-        <button id="save" class="btn btn-primary" style="flex:1; padding:12px;">
+        <button id="save" class="btn btn-primary" style="flex:1; padding:12px; font-size:16px;">
             <%= t("save_settings") %>
         </button>
     </div>
