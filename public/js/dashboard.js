@@ -1,6 +1,4 @@
-
-const $ = (id) => document.getElementById(id);
-const escapeHTML = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+// Utility functions ($ and escapeHTML) are provided by layout.ejs
 function yyyymmNow() { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); }
 
 const api = async (path, body) => {
