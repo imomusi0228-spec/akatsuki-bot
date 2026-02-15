@@ -26,7 +26,7 @@
     "feature_activity": "アクティビティ監視",
     "feature_csv": "CSVエクスポート",
     "save": "設定を保存",
-    "save_success": "設定を保存しました",
+    "save_success": "変更を反映しました",
     "audit_role": "監査基準ロール",
     "intro_channel": "自己紹介チャンネル",
     "log_channel": "通知・ログ送信用チャンネル",
@@ -80,7 +80,7 @@
     "log_settings": "通知・ログ送信用チャンネル設定",
     "vc_log_ch": "入退室ログチャンネル",
     "ng_log_ch": "NGログチャンネル",
-    "save_settings": "変更を反映する",
+    "save_settings": "設定を保存する",
     "loading": "読み込み中",
     "no_guilds": "サーバーが見つかりません"
 }

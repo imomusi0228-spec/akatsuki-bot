@@ -305,7 +305,8 @@ async function initSettings() {
         const res = await api("/api/settings/update", body);
         const stat = $("saveStatus");
         if (res.ok) {
-            stat.textContent = "保存 " + t("save_success");
+            alert(t("save_success"));
+            stat.textContent = t("save_success");
             stat.style.color = "var(--success-color)";
             setTimeout(() => stat.textContent = "", 3000);
         } else {
