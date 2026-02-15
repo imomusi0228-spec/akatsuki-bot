@@ -6,6 +6,7 @@ import { startServer } from "./core/server.js";
 import { registerCommands } from "./register-commands.js";
 import { runEngagementCheck } from "./services/engagement.js";
 import { runAnnouncerCheck } from "./services/announcer.js";
+import { runDataPruning } from "./services/pruning.js";
 
 // Global Error Handlers
 process.on("uncaughtException", (err) => {
