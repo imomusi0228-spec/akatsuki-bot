@@ -61,6 +61,7 @@
     "growth_trend": "メンバー増加数推移",
     "heatmap": "時間別アクティビティ (Heatmap)",
     "vc_joins": "VC参加",
+    "vc_activity_mins": "VC活動時間(分)",
     "leaves": "退出",
     "timeouts": "タイムアウト",
     "ng_detect": "NG検知",

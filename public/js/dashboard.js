@@ -89,7 +89,7 @@ async function updateCharts(gid, tier) {
         renderChart("heatmapChart", "bar",
             Array.from({ length: 24 }, (_, i) => i + "h"),
             [{
-                label: t("vc_joins"),
+                label: t("vc_activity_mins"),
                 data: heatmapRes.heatmap,
                 backgroundColor: "rgba(29, 161, 242, 0.5)",
                 borderColor: "rgb(29, 161, 242)",

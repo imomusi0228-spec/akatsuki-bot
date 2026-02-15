@@ -187,20 +187,35 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
 
         try {
-            // Aggregate VC activity by hour of day (0-23) over last 30 days
+            // Aggregate total VC minutes per hour of day over last 30 days
             const heatmapRes = await dbQuery(`
+                WITH hour_series AS (
+                    SELECT generate_series(
+                        date_trunc('hour', NOW() - INTERVAL '30 days'),
+                        date_trunc('hour', NOW()),
+                        '1 hour'::interval
+                    ) as hr_start
+                ),
+                overlaps AS (
+                    SELECT 
+                        EXTRACT(HOUR FROM s.hr_start) as hour_of_day,
+                        LEAST(s.hr_start + '1 hour'::interval, COALESCE(v.leave_time, NOW())) - GREATEST(s.hr_start, v.join_time) as overlap_duration
+                    FROM hour_series s
+                    JOIN vc_sessions v ON v.guild_id = $1
+                    WHERE v.join_time < s.hr_start + '1 hour'::interval
+                      AND COALESCE(v.leave_time, NOW()) > s.hr_start
+                )
                 SELECT 
-                    EXTRACT(HOUR FROM join_time) as hour,
-                    COUNT(*) as count
-                FROM vc_sessions
-                WHERE guild_id = $1 AND join_time > NOW() - INTERVAL '30 days'
-                GROUP BY hour
-                ORDER BY hour
+                    hour_of_day,
+                    SUM(EXTRACT(EPOCH FROM overlap_duration)) / 60 as total_minutes
+                FROM overlaps
+                GROUP BY hour_of_day
+                ORDER BY hour_of_day
             `, [guildId]);
 
             const heatmap = Array(24).fill(0);
             heatmapRes.rows.forEach(r => {
-                heatmap[parseInt(r.hour)] = parseInt(r.count);
+                heatmap[parseInt(r.hour_of_day)] = Math.round(parseFloat(r.total_minutes));
             });
 
             resJson({ ok: true, heatmap });
