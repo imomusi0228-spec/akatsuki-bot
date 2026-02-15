@@ -32,13 +32,13 @@ export async function startServer() {
             // 4. Public Pages
             if (pathname === "/") {
                 res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-                res.end(renderLandingHTML(req));
+                res.end(await renderLandingHTML(req));
                 return;
             }
 
             if (pathname === "/features") {
                 res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-                res.end(renderFeaturesHTML(req));
+                res.end(await renderFeaturesHTML(req));
                 return;
             }
 

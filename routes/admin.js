@@ -31,7 +31,7 @@ export async function handleAdminRoute(req, res, pathname, url) {
     // Not logged in
     if (!session) {
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-        res.end(renderLoginHTML(req));
+        res.end(await renderLoginHTML(req));
         return;
     }
 
@@ -40,17 +40,17 @@ export async function handleAdminRoute(req, res, pathname, url) {
     // Router
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     if (pathname === "/admin/dashboard") {
-        const html = renderAdminDashboardHTML({ user, req });
+        const html = await renderAdminDashboardHTML({ user, req });
         res.end(html);
     } else if (pathname === "/admin/settings") {
-        const html = renderAdminSettingsHTML({ user, req });
+        const html = await renderAdminSettingsHTML({ user, req });
         res.end(html);
     } else if (pathname === "/admin/activity") {
-        const html = renderAdminActivityHTML({ user, req });
+        const html = await renderAdminActivityHTML({ user, req });
         res.end(html);
     } else {
         // Default: Dashboard if no other path matches
-        const html = renderAdminDashboardHTML({ user, req });
+        const html = await renderAdminDashboardHTML({ user, req });
         res.end(html);
     }
 }
