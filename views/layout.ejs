@@ -1,90 +1,227 @@
 <!DOCTYPE html>
 <html lang="<%= lang %>">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= title %> | ☾</title>
+    <title>
+        <%= title %> | ☾
+    </title>
     <style>
-        :root { 
-            --bg-color: #0b1622; 
-            --card-bg: #15202b; 
-            --text-primary: #ffffff; 
-            --text-secondary: #8b9bb4; 
-            --border-color: #253341; 
-            --accent-color: #1d9bf0; 
+        :root {
+            --bg-color: #0b1622;
+            --card-bg: #15202b;
+            --text-primary: #ffffff;
+            --text-secondary: #8b9bb4;
+            --border-color: #253341;
+            --accent-color: #1d9bf0;
             --primary-color: #1d9bf0;
-            --danger-color: #f4212e; 
-            --success-color: #00ba7c; 
+            --danger-color: #f4212e;
+            --success-color: #00ba7c;
         }
-        body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 16px; background-color: var(--bg-color); color: var(--text-primary); }
-        a { color: var(--accent-color); text-decoration: none; } a:hover { text-decoration: underline; }
-        .btn { display: inline-block; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; cursor: pointer; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary); transition: all 0.2s; }
-        .btn:hover { background: #2c3640; border-color: var(--accent-color); text-decoration: none; }
-        .btn-primary { background: var(--accent-color); border-color: var(--accent-color); color: #fff; }
-        .btn-primary:hover { opacity: 0.9; box-shadow: 0 0 15px rgba(29, 155, 240, 0.4); }
-        .card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 16px; max-width: 900px; margin-left: auto; margin-right: auto; }
-        .muted { color: var(--text-secondary); font-size: 0.9em; }
-        input, select, button { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: #000; color: #fff; font-size: 14px; }
-        h1, h2, h3 { color: var(--text-primary); margin-top: 0; }
-        table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; color: var(--text-secondary); border-bottom: 1px solid var(--border-color); padding: 8px; }
-        td { border-bottom: 1px solid var(--border-color); padding: 8px; }
-        .nav-bar { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; max-width: 900px; margin-left: auto; margin-right: auto; }
-        .nav-item { padding: 8px 16px; border-radius: 6px; color: var(--text-secondary); font-weight: 600; }
-        .nav-item:hover { background: rgba(255,255,255,0.05); text-decoration: none; }
-        .nav-item.active { color: var(--accent-color); background: rgba(29, 155, 240, 0.1); }
-        .lang-switch { cursor: pointer; color: #8899a6; margin-left: 15px; font-size: 0.9em; }
-        .lang-switch:hover { color: #fff; }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 16px;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+        }
+
+        a {
+            color: var(--accent-color);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            color: var(--text-primary);
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #2c3640;
+            border-color: var(--accent-color);
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            border-color: var(--accent-color);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            box-shadow: 0 0 15px rgba(29, 155, 240, 0.4);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .muted {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+
+        input,
+        select,
+        button {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: #000;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: var(--text-primary);
+            margin-top: 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 8px;
+        }
+
+        td {
+            border-bottom: 1px solid var(--border-color);
+            padding: 8px;
+        }
+
+        .nav-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .nav-item {
+            padding: 8px 16px;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            text-decoration: none;
+        }
+
+        .nav-item.active {
+            color: var(--accent-color);
+            background: rgba(29, 155, 240, 0.1);
+        }
+
+        .lang-switch {
+            cursor: pointer;
+            color: #8899a6;
+            margin-left: 15px;
+            font-size: 0.9em;
+        }
+
+        .lang-switch:hover {
+            color: #fff;
+        }
     </style>
 </head>
+<script>
+    window.lang = "<%= lang %>";
+    window.DICTIONARY = <% - dictionary %>;
+    window.t = (key, params = {}) => {
+        const dict = window.DICTIONARY[window.lang] || window.DICTIONARY['ja'] || {};
+        let text = dict[key] || key;
+        Object.keys(params).forEach(p => { text = text.replace('{' + p + '}', params[p]); });
+        return text;
+    };
+    const $ = (id) => document.getElementById(id);
+    const escapeHTML = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    function setLang(l) { document.cookie = "lang=" + l + ";path=/;max-age=31536000;SameSite=Lax"; location.reload(); }
+</script>
+
 <body>
-    <div class="nav-bar" style="border:none; justify-content: space-between; align-items: center; margin-bottom: 0; padding:16px 0;">
+    <div class="nav-bar"
+        style="border:none; justify-content: space-between; align-items: center; margin-bottom: 0; padding:16px 0;">
         <div style="font-size: 24px; font-weight: bold; display:flex; align-items:center;">
-            <span style="color:#f91880; margin-right:10px;">☾</span> <%= oauth ? t("admin_title") : t("title") %>
-            <% if (lang === 'ja') { %>
-                <span class="lang-switch" onclick="setLang('en')">English</span>
-            <% } else { %>
-                <span class="lang-switch" onclick="setLang('ja')">日本語</span>
-            <% } %>
+            <span style="color:#f91880; margin-right:10px;">☾</span>
+            <%= oauth ? t("admin_title") : t("title") %>
+                <% if (lang==='ja' ) { %>
+                    <span class="lang-switch" onclick="setLang('en')">English</span>
+                    <% } else { %>
+                        <span class="lang-switch" onclick="setLang('ja')">日本語</span>
+                        <% } %>
         </div>
         <div>
             <% if (oauth && user) { %>
-                <span class="muted" style="margin-right:15px;"><%= user.username %></span>
-                <a href="/logout" class="btn" style="padding:4px 12px; font-size:12px;"><%= t("logout") %></a>
-            <% } else { %>
-                <a href="/login" class="btn"><%= t("login") %></a>
-            <% } %>
+                <span class="muted" style="margin-right:15px;">
+                    <%= user.username %>
+                </span>
+                <a href="/logout" class="btn" style="padding:4px 12px; font-size:12px;">
+                    <%= t("logout") %>
+                </a>
+                <% } else { %>
+                    <a href="/login" class="btn">
+                        <%= t("login") %>
+                    </a>
+                    <% } %>
         </div>
     </div>
 
     <% if (oauth && user) { %>
-    <div class="nav-bar">
-        <a href="/admin/dashboard" class="nav-item <%= activeTab === 'dashboard' ? 'active' : '' %>"><%= t("dashboard") %></a>
-        <a href="/admin/settings" class="nav-item <%= activeTab === 'settings' ? 'active' : '' %>"><%= t("settings") %></a>
-        <a href="/admin/activity" class="nav-item <%= activeTab === 'activity' ? 'active' : '' %>"><%= t("activity") %></a>
-    </div>
-    <% } %>
-    
-    <div id="main-content">
-        <%- content %>
-    </div>
+        <div class="nav-bar">
+            <a href="/admin/dashboard" class="nav-item <%= activeTab === 'dashboard' ? 'active' : '' %>">
+                <%= t("dashboard") %>
+            </a>
+            <a href="/admin/settings" class="nav-item <%= activeTab === 'settings' ? 'active' : '' %>">
+                <%= t("settings") %>
+            </a>
+            <a href="/admin/activity" class="nav-item <%= activeTab === 'activity' ? 'active' : '' %>">
+                <%= t("activity") %>
+            </a>
+        </div>
+        <% } %>
 
-    <div style="text-align:center; padding: 20px; color: #8899a6; font-size:0.8em; margin-top:40px;">&copy; <%= new Date().getFullYear() %> Akatsuki Bot</div>
+            <div id="main-content">
+                <%- content %>
+            </div>
 
-    <script>
-        const $ = (id) => document.getElementById(id);
-        const escapeHTML = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-        function setLang(l) { document.cookie = "lang="+l+";path=/;max-age=31536000;SameSite=Lax"; location.reload(); }
-        
-        window.lang = "<%= lang %>";
-        window.DICTIONARY = <%- dictionary %>;
-        window.t = (key, params = {}) => {
-            const dict = window.DICTIONARY[window.lang] || window.DICTIONARY['ja'];
-            let text = dict[key] || key;
-            Object.keys(params).forEach(p => { text = text.replace('{'+p+'}', params[p]); });
-            return text;
-        };
-    </script>
-    <%- scripts %>
+            <div style="text-align:center; padding: 20px; color: #8899a6; font-size:0.8em; margin-top:40px;">&copy; <%=
+                    new Date().getFullYear() %> Akatsuki Bot</div>
+
+            <%- scripts %>
 </body>
+
 </html>

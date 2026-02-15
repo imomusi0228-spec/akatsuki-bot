@@ -29,7 +29,7 @@ async function loadGuilds() {
     if (_guildsLoaded) return true;
     const sel = $("guild");
     if (!sel) return false;
-    sel.innerHTML = "<option>Loading...</option>"; sel.disabled = true;
+    sel.innerHTML = `<option>${t("loading")}...</option>`; sel.disabled = true;
 
     const d = await api("/api/guilds");
     sel.innerHTML = "";
@@ -50,7 +50,7 @@ async function loadGuilds() {
         return true;
     }
 
-    const o = document.createElement("option"); o.textContent = "(No Guilds)"; sel.appendChild(o);
+    const o = document.createElement("option"); o.textContent = `(${t("no_guilds")})`; sel.appendChild(o);
     const errMsg = (d && d.error) ? d.error : "Check Bot Permissions/Invite";
     $("guildStatus").innerHTML = '<span style="color:var(--danger-color)">' + escapeHTML(errMsg) + '</span>';
     return false;
@@ -91,7 +91,7 @@ async function updateCharts(gid, tier) {
         renderChart("heatmapChart", "bar",
             Array.from({ length: 24 }, (_, i) => i + "h"),
             [{
-                label: "参加 (VC)",
+                label: t("vc_joins"),
                 data: heatmapRes.heatmap,
                 backgroundColor: "rgba(29, 161, 242, 0.5)",
                 borderColor: "rgb(29, 161, 242)",
@@ -108,8 +108,8 @@ async function updateCharts(gid, tier) {
         const leaveData = labels.map(d => growthRes.events.find(e => e.date.split("T")[0] === d && e.event_type === 'leave')?.count || 0);
 
         renderChart("growthChart", "line", labels, [
-            { label: "参加", data: joinData, borderColor: "#1da1f2", tension: 0.3 },
-            { label: "退出", data: leaveData, borderColor: "#f4212e", tension: 0.3 }
+            { label: t("vc_joins"), data: joinData, borderColor: "#1da1f2", tension: 0.3 },
+            { label: t("leaves"), data: leaveData, borderColor: "#f4212e", tension: 0.3 }
         ]);
     }
 }
@@ -127,7 +127,7 @@ async function initDashboard() {
                 const mon = $("month").value;
                 if (!gid) return;
 
-                $("summary").innerHTML = "Loading...";
+                $("summary").innerHTML = t("dashboard_loading");
                 const res = await api(`/api/stats?guild=${gid}&month=${mon}`);
                 if (res.ok) {
                     const s = res.stats.summary;
@@ -144,7 +144,7 @@ async function initDashboard() {
                         const releaseBtn = u.is_timed_out ? '<button onclick="releaseNgTimeout(\'' + u.user_id + '\', \'' + $("guild").value + '\')" class="btn" style="padding:2px 8px; font-size:10px; background:var(--danger-color); color:white; border:none; margin-left:8px;">' + t("btn_release") + '</button>' : '';
                         rows += `<tr><td>${av}${escapeHTML(u.display_name || 'Unknown')}</td><td style="text-align:right">${u.cnt}</td><td style="text-align:right">${releaseBtn}</td></tr>`;
                     });
-                    $("topNg").innerHTML = rows || '<tr><td colspan="3" class="muted" style="text-align:center; padding:10px;">None</td></tr>';
+                    $("topNg").innerHTML = rows || `<tr><td colspan="3" class="muted" style="text-align:center; padding:10px;">${t("ng_none")}</td></tr>`;
 
                     // Update Charts
                     await updateCharts(gid, sub.tier);
