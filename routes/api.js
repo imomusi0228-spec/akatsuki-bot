@@ -24,12 +24,16 @@ export async function handleApiRoute(req, res, pathname, url) {
     const adminToken = ENV.ADMIN_TOKEN;
     let isAdminApi = false;
 
-    if (pathname === "/api/license/update" && adminToken && (authHeader === `Bearer ${adminToken}` || authHeader === adminToken)) {
-        isAdminApi = true;
+    const session = await getSession(req);
+
+    // POST /api/updates/receive support (checking both header and body later, but mark as potential admin for now)
+    if (pathname === "/api/updates/receive" || pathname === "/api/license/update") {
+        if (adminToken && (authHeader === `Bearer ${adminToken}` || authHeader === adminToken)) {
+            isAdminApi = true;
+        }
     }
 
-    const session = await getSession(req);
-    if (!session && !isAdminApi) {
+    if (!session && !isAdminApi && pathname !== "/api/updates/receive") {
         res.writeHead(401, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
         return;
@@ -797,6 +801,18 @@ export async function handleApiRoute(req, res, pathname, url) {
             console.error("Timeout Release Error:", e);
             return resJson({ ok: false, error: "Internal Error" }, 500);
         }
+    }
+
+    // POST /api/updates/receive
+    if (pathname === "/api/updates/receive" && method === "POST") {
+        const body = await getBody();
+        if (body.token !== ENV.ADMIN_TOKEN) {
+            return resJson({ ok: false, error: "Unauthorized" }, 401);
+        }
+
+        console.log(`[UPDATE RECEIVE] Received: ${body.title}`);
+        // Optionally save to DB or just acknowledge
+        return resJson({ ok: true, message: "Update received successfully" });
     }
 
     res.writeHead(404, { "Content-Type": "application/json" });
