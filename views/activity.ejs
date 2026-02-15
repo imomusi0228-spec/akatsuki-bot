@@ -1,0 +1,55 @@
+<div class="card" style="max-width: 1000px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h3 style="margin:0;">
+            <%= t("activity") %>
+        </h3>
+        <select id="guild" style="min-width:200px;"></select>
+    </div>
+
+    <div style="display:flex; gap:10px; margin-bottom:20px; align-items:flex-end;">
+        <div>
+            <label class="muted" style="font-size:12px;">
+                <%= t("header_role") %>
+            </label><br />
+            <select id="auditRole" style="width:150px;"></select>
+        </div>
+        <div>
+            <label class="muted" style="font-size:12px;">
+                <%= t("intro_channel") %>
+            </label><br />
+            <select id="introCh" style="width:150px;"></select>
+        </div>
+        <div>
+            <label class="muted" style="font-size:12px;">VC Weeks</label><br />
+            <input id="vcWeeks" type="number" value="2" min="1" max="100" style="width:60px;">
+        </div>
+        <button id="scan" class="btn btn-primary">Scan Activity</button>
+    </div>
+
+    <div id="act-loading" style="display:none; text-align:center; padding:40px;">
+        <div class="muted">Scanning server data... This may take a moment.</div>
+    </div>
+
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th onclick="sortActivity('joined_at')" style="cursor:pointer;">
+                    <%= t("header_joined") %> ↕
+                </th>
+                <th onclick="sortActivity('display_name')" style="cursor:pointer;">
+                    <%= t("header_user") %> ↕
+                </th>
+                <th style="text-align:center;">
+                    <%= t("header_role") %>
+                </th>
+                <th style="text-align:center;">Intro</th>
+                <th style="text-align:center;">Last VC</th>
+                <th style="text-align:center;">Status</th>
+            </tr>
+        </thead>
+        <tbody id="act-rows"></tbody>
+    </table>
+</div>
+
+<script src="/js/dashboard.js"></script>
+<script>initActivity();</script>

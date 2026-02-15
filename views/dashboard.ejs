@@ -1,0 +1,59 @@
+<div class="card" style="padding: 10px; margin-bottom: 15px; max-width: 1000px;">
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:nowrap; font-size:12px;">
+        <select id="guild" style="padding:4px 8px; font-size:12px; min-width:140px;"></select>
+        <input id="month" type="month" style="padding:4px; font-size:12px; width:115px;" />
+
+        <div id="summary"
+            style="display:flex; gap:12px; background:rgba(255,255,255,0.03); padding:4px 12px; border-radius:6px; border:1px solid var(--border-color); flex:1; justify-content:center; white-space:nowrap; color:var(--text-secondary);">
+            <%= t("dashboard_loading") %>
+        </div>
+
+        <div style="white-space:nowrap; font-size:11px;">
+            <span class="muted">
+                <%= t("plan_label") %>:
+            </span> <span id="plan-info" style="color:var(--accent-color); font-weight:bold;">...</span>
+        </div>
+
+        <button id="reload" class="btn btn-primary"
+            style="padding:4px 12px; font-size:12px; min-width:70px;">Reload</button>
+    </div>
+</div>
+
+<div
+    style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:15px; margin-bottom:15px; max-width: 1000px; margin-left: auto; margin-right: auto;">
+    <div class="card" style="padding:10px; margin-bottom:0; min-height:230px;">
+        <h4 style="margin:0 0 8px 0; font-size:13px; font-weight:bold; color:var(--accent-color);">📈 <%=
+                t("growth_trend") %>
+        </h4>
+        <div style="height:190px;"><canvas id="growthChart"></canvas></div>
+    </div>
+    <div class="card" style="padding:10px; margin-bottom:0; min-height:230px;">
+        <h4 style="margin:0 0 8px 0; font-size:13px; font-weight:bold; color:var(--accent-color);">🔥 <%= t("heatmap")
+                %>
+        </h4>
+        <div style="height:190px;"><canvas id="heatmapChart"></canvas></div>
+    </div>
+</div>
+
+<div id="card-raid" class="card" style="padding:12px; max-width: 1000px;">
+    <h4 style="margin:0 0 10px 0; font-size:13px; display:flex; align-items:center; gap:6px;">🛡️ Anti-Raid & Security
+    </h4>
+    <table class="data-table" style="font-size:12px;">
+        <thead>
+            <tr>
+                <th style="text-align:left">
+                    <%= t("header_user") %>
+                </th>
+                <th style="text-align:right">
+                    <%= t("header_count") %>
+                </th>
+                <th style="text-align:right">Action</th>
+            </tr>
+        </thead>
+        <tbody id="topNg"></tbody>
+    </table>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/js/dashboard.js"></script>
+<script>initDashboard();</script>

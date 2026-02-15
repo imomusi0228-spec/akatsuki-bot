@@ -1,0 +1,64 @@
+<div class="card" style="max-width: 1000px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h3 style="margin:0;">
+            <%= t("settings") %>
+        </h3>
+        <span id="saveStatus" style="font-size:14px; font-weight:bold;"></span>
+    </div>
+
+    <div class="setting-section">
+        <label class="setting-title">Select Server</label>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <select id="guild" style="flex:1;"></select>
+            <button id="reload" class="btn">Reload</button>
+        </div>
+        <div id="guildStatus" style="font-size:12px; margin-top:4px;"></div>
+    </div>
+
+    <div class="setting-section">
+        <div class="setting-title">🛡️ <%= t("anti_raid_settings") %>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+            <div>
+                <label class="muted">
+                    <%= t("ng_threshold") %>
+                </label><br />
+                <input id="threshold" type="number" min="1" max="10" style="width:100%; margin-top:5px;">
+            </div>
+            <div>
+                <label class="muted">
+                    <%= t("timeout_minutes") %>
+                </label><br />
+                <input id="timeout" type="number" min="1" max="1440" style="width:100%; margin-top:5px;">
+            </div>
+        </div>
+    </div>
+
+    <div class="setting-section">
+        <div class="setting-title">📢 <%= t("log_settings") %>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+            <div>
+                <label class="muted">
+                    <%= t("vc_log_ch") %>
+                </label><br />
+                <select id="logCh" style="width:100%; margin-top:5px;"></select>
+            </div>
+            <div>
+                <label class="muted">
+                    <%= t("ng_log_ch") %>
+                </label><br />
+                <select id="ngLogCh" style="width:100%; margin-top:5px;"></select>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-top:30px; display:flex; gap:15px;">
+        <button id="save" class="btn btn-primary" style="flex:1; padding:12px;">
+            <%= t("save_settings") %>
+        </button>
+    </div>
+</div>
+
+<script src="/js/dashboard.js"></script>
+<script>initSettings();</script>
