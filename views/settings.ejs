@@ -92,7 +92,8 @@
         <!-- 2. NG Words -->
         <div class="accordion-item active" id="sec-ng">
             <div class="accordion-header" onclick="toggleAccordion('sec-ng')">
-                <span>🚫 <%= t("feature_ng_limit") %> <span id="ngCount" class="muted"
+                <span>🚫 <%= t("feature_ng_limit") %><span class="help-tip"
+                            data-tip="<%= t('help_ng_limit') %>">?</span> <span id="ngCount" class="muted"
                             style="margin-left:10px; font-weight: normal;">0 <%= t("words") %></span></span>
                 <span>▼</span>
             </div>
@@ -110,7 +111,8 @@
         <!-- 3. Anti-Raid & Timeouts -->
         <div class="accordion-item" id="sec-raid">
             <div class="accordion-header" onclick="toggleAccordion('sec-raid')">
-                <span>🛡️ <%= t("anti_raid_settings") %></span>
+                <span>🛡️ <%= t("anti_raid_settings") %><span class="help-tip"
+                            data-tip="<%= t('help_antiraid') %>">?</span></span>
                 <span>▼</span>
             </div>
             <div class="accordion-content">
@@ -129,7 +131,8 @@
                     </div>
                     <div>
                         <label class="muted">
-                            <%= t("timeout_minutes") %>
+                            <%= t("timeout_minutes") %><span class="help-tip"
+                                    data-tip="<%= t('help_timeout') %>">?</span>
                         </label><br />
                         <input id="timeout" type="number" min="1" max="1440" style="width:100%; margin-top:5px;">
                     </div>
@@ -140,7 +143,8 @@
         <!-- 4. Self Introduction Gate -->
         <div class="accordion-item" id="sec-intro">
             <div class="accordion-header" onclick="toggleAccordion('sec-intro')">
-                <span>📝 <%= t("roadmap_introgate") %></span>
+                <span>📝 <%= t("roadmap_introgate") %><span class="help-tip"
+                            data-tip="<%= t('help_introgate') %>">?</span></span>
                 <span>▼</span>
             </div>
             <div class="accordion-content">
@@ -197,7 +201,8 @@
             <div class="accordion-content">
                 <!-- Role Rules -->
                 <div style="margin-bottom:24px;">
-                    <label class="muted" style="display:block; margin-bottom:10px;">VC活動時間に応じたロール自動付与</label>
+                    <label class="muted" style="display:block; margin-bottom:10px;">VC活動時間に応じたロール自動付与<span
+                            class="help-tip" data-tip="<%= t('help_vc_role') %>">?</span></label>
                     <div id="roleRulesList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;">
                     </div>
                     <button type="button" onclick="addRoleRule()" class="btn" style="font-size:12px; width:100%;">+
@@ -208,7 +213,8 @@
                 <div style="border-top:1px solid var(--border-color); padding-top:20px;">
                     <label style="display:flex; align-items:center; cursor:pointer; margin-bottom:15px;">
                         <input type="checkbox" id="vcReportEnabled" style="width:18px; height:18px; margin-right:10px;">
-                        <span>VCアクティビティ週報を有効化</span>
+                        <span>VCアクティビティ週報を有効化<span class="help-tip"
+                                data-tip="<%= t('help_vc_report') %>">?</span></span>
                     </label>
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
                         <div>

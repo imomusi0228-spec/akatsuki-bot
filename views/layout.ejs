@@ -156,6 +156,77 @@
         .lang-switch:hover {
             color: #fff;
         }
+
+        /* Tooltip style */
+        .help-tip {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            line-height: 16px;
+            text-align: center;
+            background-color: var(--border-color);
+            color: var(--text-secondary);
+            border-radius: 50%;
+            font-size: 11px;
+            cursor: help;
+            margin-left: 6px;
+            position: relative;
+            transition: all 0.2s;
+            vertical-align: middle;
+        }
+
+        .help-tip:hover {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .help-tip::before {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            background: #192734;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: normal;
+            width: 200px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            line-height: 1.4;
+            text-align: left;
+            border: 1px solid var(--border-color);
+        }
+
+        .help-tip:hover::before {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .help-tip::after {
+            content: '';
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: #192734;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s;
+            z-index: 1001;
+        }
+
+        .help-tip:hover::after {
+            opacity: 1;
+            visibility: visible;
+        }
     </style>
     <script>
         // Essential Utilities (Defined early to be resilient)
@@ -174,7 +245,7 @@
     <script>
         // Data Loading Block
         window.lang = "<%= lang %>";
-        window.DICTIONARY = <%- dictionary %>;
+        window.DICTIONARY = <% - dictionary %>;
     </script>
 </head>
 

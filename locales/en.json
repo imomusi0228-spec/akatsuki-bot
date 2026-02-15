@@ -49,5 +49,14 @@
     "roadmap_introgate": "Auto Self-Introduction Gate",
     "roadmap_introgate_desc": "Restricts access until a proper introduction is posted.",
     "roadmap_tag": "Soon",
-    "status_soon": "Coming Soon"
+    "status_soon": "Coming Soon",
+    "help_growth_trend": "A graph showing the trend of server joins and leaves aggregated by day.",
+    "help_heatmap": "Aggregates voice channel activity by hour of day to identify active periods.",
+    "help_ng_limit": "Define specific keywords to be detected and restricted in messages.",
+    "help_antiraid": "Automatically detects and restricts suspicious mass joins to protect the server.",
+    "help_timeout": "The duration to automatically timeout users when an NG word is detected.",
+    "help_introgate": "Restricts server access until a self-introduction is posted in the specified channel.",
+    "help_vc_role": "Automatically assigns roles based on cumulative voice channel activity time.",
+    "help_vc_report": "Periodically sends server activity reports to the designated channel.",
+    "loading": "Loading"
 }
