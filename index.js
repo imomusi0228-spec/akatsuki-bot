@@ -69,8 +69,10 @@ process.on("unhandledRejection", (reason, promise) => {
         // 6. Start Background Tasks
         runEngagementCheck();
         runAnnouncerCheck();
+        runDataPruning(); // 初回実行
         setInterval(runEngagementCheck, 60 * 60 * 1000); // Every 1 hour
         setInterval(runAnnouncerCheck, 24 * 60 * 60 * 1000); // Every 24 hours for broadcasts/unlocks
+        setInterval(runDataPruning, 24 * 60 * 60 * 1000); // Every 24 hours for cleanup
     } catch (e) {
         console.error("❌ Discord login FAILED:", e);
         // Do not exit process, let web server run so we can see logs
