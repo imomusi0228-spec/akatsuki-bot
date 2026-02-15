@@ -82,10 +82,15 @@ function renderChart(id, type, labels, datasets, options = {}) {
     });
 }
 
-async function updateCharts(gid, tier) {
+async function updateCharts(gid, tier, mon) {
     // 1. Heatmap (Pro)
-    const heatmapRes = await api(`/api/stats/heatmap?guild=${gid}`);
+    const heatmapRes = await api(`/api/stats/heatmap?guild=${gid}&month=${mon}`);
     if (heatmapRes.ok) {
+        const hasData = heatmapRes.heatmap.some(v => v > 0);
+        if (!hasData) {
+            // If no data, we could show a message or just a flat chart. 
+            // Let's show a flat chart but maybe adjust label
+        }
         renderChart("heatmapChart", "bar",
             Array.from({ length: 24 }, (_, i) => i + "h"),
             [{
@@ -99,7 +104,7 @@ async function updateCharts(gid, tier) {
     }
 
     // 2. Growth (Pro+)
-    const growthRes = await api(`/api/stats/growth?guild=${gid}`);
+    const growthRes = await api(`/api/stats/growth?guild=${gid}&month=${mon}`);
     if (growthRes.ok) {
         const labels = [...new Set(growthRes.events.map(e => e.date.split("T")[0]))];
         const joinData = labels.map(d => growthRes.events.find(e => e.date.split("T")[0] === d && e.event_type === 'join')?.count || 0);
@@ -145,7 +150,7 @@ async function initDashboard() {
                     $("topNg").innerHTML = rows || `<tr><td colspan="3" class="muted" style="text-align:center; padding:10px;">${t("ng_none")}</td></tr>`;
 
                     // Update Charts
-                    await updateCharts(gid, sub.tier);
+                    await updateCharts(gid, sub.tier, mon);
                 } else {
                     $("summary").innerText = "Error: " + res.error;
                 }

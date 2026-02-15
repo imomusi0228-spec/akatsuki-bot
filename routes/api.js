@@ -109,6 +109,7 @@ export async function handleApiRoute(req, res, pathname, url) {
     };
 
     const guildId = url.searchParams.get("guild");
+    const monthParam = url.searchParams.get("month"); // YYYY-MM
 
     // GET /api/stats
     if (pathname === "/api/stats") {
@@ -116,7 +117,7 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
 
         try {
-            // Fetch necessary data
+            // Stats summary logic (Last 30 days is fine for general summary)
             const [vcRes, tier, subRes, ngCountRes, ngTopRes, leaveRes, timeoutRes] = await Promise.all([
                 dbQuery("SELECT COUNT(*) as cnt FROM vc_sessions WHERE guild_id = $1 AND join_time > NOW() - INTERVAL '30 days'", [guildId]),
                 getTier(guildId),
@@ -187,31 +188,22 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
 
         try {
-            // Aggregate total VC minutes per hour of day over last 30 days
+            // Month Logic: Default to current month if not specified
+            const date = monthParam ? new Date(monthParam + "-01") : new Date();
+            const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+            const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
+
+            // Aggregate total VC minutes per hour of day
             const heatmapRes = await dbQuery(`
-                WITH hour_series AS (
-                    SELECT generate_series(
-                        date_trunc('hour', NOW() - INTERVAL '30 days'),
-                        date_trunc('hour', NOW()),
-                        '1 hour'::interval
-                    ) as hr_start
-                ),
-                overlaps AS (
-                    SELECT 
-                        EXTRACT(HOUR FROM s.hr_start) as hour_of_day,
-                        LEAST(s.hr_start + '1 hour'::interval, COALESCE(v.leave_time, NOW())) - GREATEST(s.hr_start, v.join_time) as overlap_duration
-                    FROM hour_series s
-                    JOIN vc_sessions v ON v.guild_id = $1
-                    WHERE v.join_time < s.hr_start + '1 hour'::interval
-                      AND COALESCE(v.leave_time, NOW()) > s.hr_start
-                )
                 SELECT 
-                    hour_of_day,
-                    SUM(EXTRACT(EPOCH FROM overlap_duration)) / 60 as total_minutes
-                FROM overlaps
+                    EXTRACT(HOUR FROM join_time) as hour_of_day,
+                    SUM(COALESCE(duration_seconds, EXTRACT(EPOCH FROM (NOW() - join_time)))) / 60 as total_minutes
+                FROM vc_sessions
+                WHERE guild_id = $1 
+                  AND join_time >= $2 AND join_time <= $3
                 GROUP BY hour_of_day
                 ORDER BY hour_of_day
-            `, [guildId]);
+            `, [guildId, startOfMonth, endOfMonth]);
 
             const heatmap = Array(24).fill(0);
             heatmapRes.rows.forEach(r => {
@@ -220,6 +212,7 @@ export async function handleApiRoute(req, res, pathname, url) {
 
             resJson({ ok: true, heatmap });
         } catch (e) {
+            console.error("Heatmap Error:", e);
             resJson({ ok: false, error: e.message }, 500);
         }
         return;
@@ -232,15 +225,15 @@ export async function handleApiRoute(req, res, pathname, url) {
 
         const tier = await getTier(guildId);
         const features = getFeatures(tier);
-        if (!features.activity) {
+        if (!features.dashboard) {
             return resJson({ ok: false, error: "Pro tier required" }, 403);
         }
 
-        // Pro+ gets 14 days, Pro gets 7 days
-        const isProPlus = (tier >= TIERS.PRO_PLUS_MONTHLY && tier <= TIERS.PRO_PLUS_YEARLY) || tier === TIERS.TRIAL_PRO_PLUS;
-        const days = isProPlus ? 14 : 7;
-
         try {
+            const date = monthParam ? new Date(monthParam + "-01") : new Date();
+            const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+            const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
+
             // Member join/leave trends per day
             const growthRes = await dbQuery(`
                 SELECT 
@@ -248,13 +241,15 @@ export async function handleApiRoute(req, res, pathname, url) {
                     event_type,
                     COUNT(*) as count
                 FROM member_events
-                WHERE guild_id = $1 AND created_at > NOW() - INTERVAL '${days} days'
+                WHERE guild_id = $1 
+                  AND created_at >= $2 AND created_at <= $3
                 GROUP BY date, event_type
                 ORDER BY date
-            `, [guildId]);
+            `, [guildId, startOfMonth, endOfMonth]);
 
-            resJson({ ok: true, events: growthRes.rows, limit_days: days });
+            resJson({ ok: true, events: growthRes.rows });
         } catch (e) {
+            console.error("Growth Stats Error:", e);
             resJson({ ok: false, error: e.message }, 500);
         }
         return;
