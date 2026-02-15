@@ -1,6 +1,6 @@
 import { ENV } from "./config/env.js";
 import { initDb } from "./core/db.js";
-import { client, loadCommands } from "./core/client.js";
+import { loadCommands, startBot } from "./core/client.js";
 import { loadEvents } from "./core/eventLoader.js";
 import { startServer } from "./core/server.js";
 import { registerCommands } from "./register-commands.js";
@@ -8,74 +8,50 @@ import { runEngagementCheck } from "./services/engagement.js";
 import { runAnnouncerCheck } from "./services/announcer.js";
 import { runDataPruning } from "./services/pruning.js";
 
-// Global Error Handlers
+// Global Error Handlers for Production Stability
 process.on("uncaughtException", (err) => {
-    console.error("🔥 Uncaught Exception:", err);
+    console.error("🔥 [FATAL] Uncaught Exception:", err);
 });
-process.on("unhandledRejection", (reason, promise) => {
-    console.error("🔥 Unhandled Rejection:", promise, "reason:", reason);
+process.on("unhandledRejection", (reason) => {
+    console.error("🔥 [FATAL] Unhandled Rejection:", reason);
 });
 
 (async () => {
-    console.log("🚀  Booting Akatsuki Bot...");
-    console.log("    Environment Token:", ENV.TOKEN ? `Present (${ENV.TOKEN.length} chars)` : "MISSING");
-
-    // 1. Initialize Database
-    await initDb();
-
-    // 2. Load Event Handlers
-    await loadCommands();
-    await loadEvents();
-
-    // 3. Register Commands
-    await registerCommands();
-
-    // 4. Start Web Server
-    await startServer();
-
-    // 5. Login
-    console.log("⏳ Logging into Discord...");
-
-    // Add Debug Logging
-
-
-    client.ws.on("error", (err) => console.error("❌ [WS] Error:", err));
-    client.ws.on("close", (code, reason) => console.warn(`⚠️ [WS] Closed: ${code} - ${reason}`));
-    client.ws.on("reconnecting", () => console.log("🔄 [WS] Reconnecting..."));
-
-    // Status Monitor Loop
-    const statusMap = {
-        0: "READY",
-        1: "CONNECTING",
-        2: "RECONNECTING",
-        3: "IDLE",
-        4: "NEARLY",
-        5: "DISCONNECTED",
-        6: "WAITING_FOR_GUILDS",
-        7: "IDENTIFYING",
-        8: "RESUMING"
-    };
-
-
+    console.log("🚀 Booting Akatsuki Bot (v1.4.0)...");
 
     try {
-        if (!ENV.TOKEN) throw new Error("DISCORD_TOKEN is missing");
+        // 1. Initialize Database
+        await initDb();
 
-        // Login direct await
-        console.log("⏳ Calling client.login()...");
-        await client.login(ENV.TOKEN);
+        // 2. Load and Register Commands/Events
+        await loadCommands();
+        await loadEvents();
+        await registerCommands();
 
-        console.log("✅ Discord login OK");
+        // 3. Start Web Server
+        await startServer();
 
-        // 6. Start Background Tasks
-        runEngagementCheck();
-        runAnnouncerCheck();
-        runDataPruning(); // 初回実行
-        setInterval(runEngagementCheck, 60 * 60 * 1000); // Every 1 hour
-        setInterval(runAnnouncerCheck, 24 * 60 * 60 * 1000); // Every 24 hours for broadcasts/unlocks
-        setInterval(runDataPruning, 24 * 60 * 60 * 1000); // Every 24 hours for cleanup
+        // 4. Connect to Discord
+        await startBot();
+
+        // 5. Start Background Tasks
+        console.log("⚙️  Initializing Background Tasks...");
+
+        const runTasks = () => {
+            runEngagementCheck();
+            runAnnouncerCheck();
+            runDataPruning();
+        };
+
+        runTasks(); // Initial run
+
+        setInterval(runEngagementCheck, 60 * 60 * 1000);    // 1 hour
+        setInterval(runAnnouncerCheck, 24 * 60 * 60 * 1000);  // 24 hours
+        setInterval(runDataPruning, 24 * 60 * 60 * 1000);    // 24 hours
+
+        console.log("✅ All systems initialized successfully.");
     } catch (e) {
-        console.error("❌ Discord login FAILED:", e);
-        // Do not exit process, let web server run so we can see logs
+        console.error("❌ Boot Failed:", e.message);
+        // We keep the server running if possible for log accessibility
     }
 })();

@@ -10,7 +10,9 @@
         "build": "echo 'No build step required'",
         "notify": "node scripts/notify-management.js",
         "lint": "eslint . --fix",
-        "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+        "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+        "maintenance": "node scripts/maintenance.js",
+        "manage-license": "node scripts/manage-license.js"
     },
     "dependencies": {
         "discord.js": "^14.16.0",

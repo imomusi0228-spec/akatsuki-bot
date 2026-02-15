@@ -36,7 +36,6 @@ export default {
                     const isRateSpam = rateCheck.isSpam && !spamCheck.isSpam && !mentionCheck.isSpam;
                     const count = isMentionSpam ? mentionCheck.count : (isRateSpam ? rateCheck.count : spamCheck.count);
 
-                    console.log(`[DEBUG] Spam detected for ${message.author.tag}: content=${spamCheck.isSpam}, mentions=${mentionCheck.isSpam}, rate=${rateCheck.isSpam}, count=${count}`);
 
                     // Delete the spam message
                     await message.delete().catch((e) => { console.error("[DEBUG] Spam Delete Failed:", e.message); });
@@ -112,9 +111,8 @@ export default {
             }
 
             if (caughtWords.length > 0) {
-                console.log(`[DEBUG] Caught NG words: ${caughtWords.join(", ")} in guild ${message.guild.id}`);
                 // Delete message
-                await message.delete().catch((e) => { console.error("[DEBUG] Delete Failed:", e.message); });
+                await message.delete().catch(() => { });
 
                 // Fetch Settings
                 let settings = cache.getSettings(message.guild.id);
@@ -152,16 +150,13 @@ export default {
                 const countRes = await dbQuery("SELECT COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 AND user_id = $2 AND created_at > NOW() - INTERVAL '1 hour'",
                     [message.guild.id, message.author.id]);
                 const count = parseInt(countRes.rows[0].cnt);
-                console.log(`[DEBUG] Violation count for ${message.author.tag}: ${count}/${threshold}`);
 
                 let actionTaken = "Msg Deleted";
 
                 // Timeout Execution
                 if (count >= threshold) {
-                    console.log(`[DEBUG] Threshold reached. Attempting timeout...`);
                     try {
                         const member = await message.guild.members.fetch(message.author.id);
-                        console.log(`[DEBUG] Member moderatable: ${member.moderatable}`);
                         if (member.moderatable) {
                             if (timeoutMin > 0) {
                                 await member.timeout(timeoutMin * 60 * 1000, "NG Word Threshold Exceeded");
@@ -171,15 +166,11 @@ export default {
                                     [message.guild.id, message.author.id]);
 
                                 actionTaken = `Timeout (${timeoutMin}m)`;
-                                console.log(`[DEBUG] Timeout Success!`);
-                            } else {
-                                console.log(`[DEBUG] Timeout minutes is 0, skipping.`);
                             }
                         } else {
-                            console.log(`[DEBUG] Bot lacks permission to timeout this member.`);
                             actionTaken = "Msg Deleted (No Perm for Timeout)";
                         }
-                    } catch (e) { console.error("[DEBUG] Timeout Failed:", e); }
+                    } catch (e) { }
                 }
 
                 // Log to Channel

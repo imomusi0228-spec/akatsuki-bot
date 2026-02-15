@@ -51,3 +51,25 @@ export async function loadCommands() {
         console.error("❌ Command load failed:", e);
     }
 }
+
+/**
+ * Initializes and logs into Discord.
+ */
+export async function startBot() {
+    console.log("⏳ Logging into Discord...");
+
+    client.ws.on("error", (err) => console.error("❌ [WS] Error:", err));
+    client.ws.on("close", (code, reason) => console.warn(`⚠️ [WS] Closed: ${code} - ${reason}`));
+    client.ws.on("reconnecting", () => console.log("🔄 [WS] Reconnecting..."));
+
+    try {
+        const { ENV } = await import("../config/env.js");
+        if (!ENV.TOKEN) throw new Error("DISCORD_TOKEN is missing");
+
+        await client.login(ENV.TOKEN);
+        console.log("✅ Discord login OK");
+    } catch (e) {
+        console.error("❌ Discord login FAILED:", e);
+        throw e;
+    }
+}
