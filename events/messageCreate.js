@@ -27,11 +27,16 @@ export default {
                 const mentionCount = message.mentions.users.size + message.mentions.roles.size;
                 const mentionCheck = checkMentionSpam(message.guild.id, message.author.id, mentionCount);
 
-                if (spamCheck.isSpam || mentionCheck.isSpam) {
-                    const isMentionSpam = mentionCheck.isSpam;
-                    const count = isMentionSpam ? mentionCheck.count : spamCheck.count;
+                // 3. Rate Limit (Frequency)
+                const { checkRateLimit } = await import("../core/protection.js");
+                const rateCheck = checkRateLimit(message.guild.id, message.author.id);
 
-                    console.log(`[DEBUG] Spam detected for ${message.author.tag}: content=${spamCheck.isSpam}, mentions=${mentionCheck.isSpam}, count=${count}`);
+                if (spamCheck.isSpam || mentionCheck.isSpam || rateCheck.isSpam) {
+                    const isMentionSpam = mentionCheck.isSpam;
+                    const isRateSpam = rateCheck.isSpam && !spamCheck.isSpam && !mentionCheck.isSpam;
+                    const count = isMentionSpam ? mentionCheck.count : (isRateSpam ? rateCheck.count : spamCheck.count);
+
+                    console.log(`[DEBUG] Spam detected for ${message.author.tag}: content=${spamCheck.isSpam}, mentions=${mentionCheck.isSpam}, rate=${rateCheck.isSpam}, count=${count}`);
 
                     // Delete the spam message
                     await message.delete().catch((e) => { console.error("[DEBUG] Spam Delete Failed:", e.message); });
@@ -41,7 +46,10 @@ export default {
                         // Kick the user
                         const member = await message.guild.members.fetch(message.author.id);
                         if (member.kickable) {
-                            const reason = isMentionSpam ? "Mention Spam detector" : "Content Spam detector";
+                            let reason = "Content Spam detector";
+                            if (isMentionSpam) reason = "Mention Spam detector";
+                            if (isRateSpam) reason = "Rate Limit detector (High frequency)";
+
                             await member.kick(reason).catch(e => console.error("[DEBUG] Kick failed:", e));
 
                             // Log Kick to member_events
@@ -50,11 +58,15 @@ export default {
 
                             // Log Kick to UI Channel
                             if (features.ngLog) {
+                                let typeLabel = 'Content';
+                                if (isMentionSpam) typeLabel = 'Mentions';
+                                if (isRateSpam) typeLabel = 'Frequency';
+
                                 const embed = new EmbedBuilder()
                                     .setAuthor({ name: message.member?.displayName || message.author.tag, iconURL: message.author.displayAvatarURL() })
                                     .setColor(0xFF0000)
-                                    .setTitle(`🔨 Anti-Spam: User Kicked (${isMentionSpam ? 'Mentions' : 'Content'})`)
-                                    .setDescription(`**対象ユーザー**: <@${message.author.id}>\n**理由**: ${isMentionSpam ? 'メンションの大量送信' : '類似メッセージの連投'}`)
+                                    .setTitle(`🔨 Anti-Spam: User Kicked (${typeLabel})`)
+                                    .setDescription(`**対象ユーザー**: <@${message.author.id}>\n**理由**: ${isMentionSpam ? 'メンションの大量送信' : (isRateSpam ? 'メッセージの過度な連投' : '類似メッセージの連投')}`)
                                     .setTimestamp();
                                 await sendLog(message.guild, 'ng', embed);
                             }
@@ -64,7 +76,7 @@ export default {
                         try {
                             const warningMsg = `⚠️ **スパムを検知しました / Spam detected**\n\n` +
                                 `サーバー: **${message.guild.name}**\n` +
-                                `${isMentionSpam ? 'メンションを一度に大量に送信しないでください。' : '似たような内容を繰り返し送信しないでください。'}\n` +
+                                `${isMentionSpam ? 'メンションを一度に大量に送信しないでください。' : (isRateSpam ? 'メッセージを短時間に連続して送信しないでください。' : '似たような内容を繰り返し送信しないでください。')}\n` +
                                 `このまま続けるとサーバーから退出させられる可能性があります。`;
                             await message.author.send(warningMsg);
                         } catch (e) { }

@@ -114,3 +114,29 @@ export function checkMentionSpam(guildId, userId, mentionCount) {
         return { isSpam: false, count: mentionCount };
     }
 }
+
+const rateLimitCache = new Map();
+
+/**
+ * Checks if a user is sending messages too fast (Rate Limit).
+ * Threshold: 5 messages in 5 seconds.
+ */
+export function checkRateLimit(guildId, userId) {
+    if (!rateLimitCache.has(guildId)) rateLimitCache.set(guildId, new Map());
+    const guildMap = rateLimitCache.get(guildId);
+
+    const now = Date.now();
+    const entry = guildMap.get(userId) || { count: 0, timestamp: now };
+
+    if (now - entry.timestamp > 5000) {
+        // Reset every 5 seconds
+        guildMap.set(userId, { count: 1, timestamp: now });
+        return { isSpam: false, count: 1 };
+    }
+
+    entry.count += 1;
+    guildMap.set(userId, entry);
+
+    // 5 messages in 5 seconds is a bit fast for a normal human
+    return { isSpam: entry.count >= 5, count: entry.count };
+}
