@@ -91,5 +91,20 @@
     "help_raid_join": "Detects mass joins (raids) when the number of joins per minute exceeds the threshold, and automatically locks the server (raises verification level).",
     "help_newcomer": "Restricts messages from new users based on their account age or the time elapsed since they joined the server.",
     "help_advanced_filter": "Automatically deletes messages containing Discord invites, suspicious short URLs, or blacklisted domains.",
-    "help_quarantine": "When a security violation is detected, instead of kicking, it assigns a special quarantine role and directs the user to a specific log channel to mitigate damage."
+    "help_quarantine": "When a security violation is detected, instead of kicking, it assigns a special quarantine role and directs the user to a specific log channel to mitigate damage.",
+    "growth_trend": "Member Growth Trend",
+    "heatmap": "Activity Heatmap",
+    "dashboard_loading": "Loading stats...",
+    "plan_label": "Current Plan",
+    "vc_joins": "VC Joins",
+    "vc_activity_mins": "VC (Mins)",
+    "leaves": "Leaves",
+    "timeouts": "Timeouts",
+    "ng_detect": "NG Detected",
+    "btn_release": "Release",
+    "ng_none": "No records",
+    "status_ok": "OK",
+    "status_no_role": "Missing Role",
+    "status_no_intro": "No Intro",
+    "status_no_vc": "No VC Activity"
 }
