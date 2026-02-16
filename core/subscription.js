@@ -32,6 +32,13 @@ export async function getTier(guildId) {
 
     tier = parseInt(sub.tier, 10) || TIERS.FREE;
 
+    // Check if subscription has expired
+    if (sub.valid_until && new Date(sub.valid_until) < new Date()) {
+        tier = TIERS.FREE;
+        cache.setTier(guildId, tier);
+        return tier;
+    }
+
     // Normalize tier to number
     sub.tier = parseInt(sub.tier, 10);
 
