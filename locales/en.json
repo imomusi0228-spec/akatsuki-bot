@@ -87,5 +87,9 @@
     "intro": "Intro",
     "status": "Status",
     "nav_antiraid": "Anti-Raid",
-    "loading": "Loading"
+    "loading": "Loading",
+    "help_raid_join": "Detects mass joins (raids) when the number of joins per minute exceeds the threshold, and automatically locks the server (raises verification level).",
+    "help_newcomer": "Restricts messages from new users based on their account age or the time elapsed since they joined the server.",
+    "help_advanced_filter": "Automatically deletes messages containing Discord invites, suspicious short URLs, or blacklisted domains.",
+    "help_quarantine": "When a security violation is detected, instead of kicking, it assigns a special quarantine role and directs the user to a specific log channel to mitigate damage."
 }

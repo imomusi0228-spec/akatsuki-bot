@@ -65,19 +65,41 @@
         --status-shadow: rgba(244, 33, 46, 0.2);
     }
 
-    .antiraid-section {
-        background: rgba(0, 0, 0, 0.2);
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 20px;
+    .accordion-item {
         border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin-bottom: 12px;
+        background: rgba(255, 255, 255, 0.02);
     }
 
-    .antiraid-section h4 {
-        margin: 0 0 15px 0;
+    .accordion-header {
+        padding: 14px 20px;
+        background: rgba(255, 255, 255, 0.03);
+        cursor: pointer;
         display: flex;
+        justify-content: space-between;
         align-items: center;
-        gap: 10px;
+        font-weight: 600;
+        transition: background 0.2s;
+    }
+
+    .accordion-header:hover {
+        background: rgba(255, 255, 255, 0.07);
+    }
+
+    .accordion-content {
+        padding: 20px;
+        display: none;
+        border-top: 1px solid var(--border-color);
+        background: var(--card-bg);
+    }
+
+    .accordion-item.active .accordion-content {
+        display: block;
+    }
+
+    .accordion-item.active .accordion-header {
+        background: rgba(29, 155, 240, 0.1);
         color: var(--accent-color);
     }
 </style>
@@ -96,6 +118,7 @@
             <select id="guild" style="flex:1;"></select>
             <button id="reload" class="btn">Reload</button>
         </div>
+        <div id="guildStatus" style="font-size:12px; margin-top:4px;"></div>
     </div>
 
     <!-- 2. Guard Mode Selector -->
@@ -119,71 +142,94 @@
 
     <div id="antiraid-settings" style="display: none;">
         <!-- 3. Rapid Join Detection -->
-        <div class="antiraid-section">
-            <h4>🚀 急増参加検知 (Rapid Join)</h4>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-                <div>
-                    <label class="muted">検知しきい値 (分間参加数)</label>
-                    <input id="raidThreshold" type="number" value="10" min="1" style="width:100%; margin-top:5px;">
-                </div>
-                <div>
-                    <label class="muted">超過時のアクション</label>
-                    <select id="raidAction" style="width:100%; margin-top:5px;">
-                        <option value="none">警告のみ</option>
-                        <option value="caution">警戒モードへ移行</option>
-                        <option value="lockdown">防衛モード(ロック)へ実行</option>
-                    </select>
+        <div class="accordion-item active" id="sec-rapid-join">
+            <div class="accordion-header" onclick="toggleAccordion('sec-rapid-join')">
+                <span>🚀 急増参加検知 (Rapid Join)<span class="help-tip" data-tip="<%= t('help_raid_join') %>">?</span></span>
+                <span>▼</span>
+            </div>
+            <div class="accordion-content">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                    <div>
+                        <label class="muted">検知しきい値 (分間参加数)</label>
+                        <input id="raidThreshold" type="number" value="10" min="1" style="width:100%; margin-top:5px;">
+                    </div>
+                    <div>
+                        <label class="muted">超過時のアクション</label>
+                        <select id="raidAction" style="width:100%; margin-top:5px;">
+                            <option value="none">警告のみ</option>
+                            <option value="caution">警戒モードへ移行</option>
+                            <option value="lockdown">防衛モード(ロック)へ実行</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- 4. Newcomer Restrictions -->
-        <div class="antiraid-section">
-            <h4>👶 新規メンバー制限 (Newcomer)</h4>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-                <div>
-                    <label class="muted">発言禁止時間 (分)</label>
-                    <input id="newcomerRestrictMins" type="number" value="10" min="0"
-                        style="width:100%; margin-top:5px;">
-                </div>
-                <div>
-                    <label class="muted">制限対象アカ作成日 (日前)</label>
-                    <input id="newcomerAccountAge" type="number" value="1" min="0" style="width:100%; margin-top:5px;">
-                </div>
+        <div class="accordion-item" id="sec-newcomer">
+            <div class="accordion-header" onclick="toggleAccordion('sec-newcomer')">
+                <span>👶 新規メンバー制限 (Newcomer)<span class="help-tip" data-tip="<%= t('help_newcomer') %>">?</span></span>
+                <span>▼</span>
             </div>
-            <p class="muted" style="margin-top:10px; font-size:11px;">※「防衛」モード時は、ロールが付与されるまで自動的に制限されます。</p>
+            <div class="accordion-content">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                    <div>
+                        <label class="muted">発言禁止時間 (分)</label>
+                        <input id="newcomerRestrictMins" type="number" value="10" min="0"
+                            style="width:100%; margin-top:5px;">
+                    </div>
+                    <div>
+                        <label class="muted">制限対象アカ作成日 (日前)</label>
+                        <input id="newcomerAccountAge" type="number" value="1" min="0"
+                            style="width:100%; margin-top:5px;">
+                    </div>
+                </div>
+                <p class="muted" style="margin-top:10px; font-size:11px;">※「防衛」モード時は、ロールが付与されるまで自動的に制限されます。</p>
+            </div>
         </div>
 
         <!-- 5. Link & Content Filter -->
-        <div class="antiraid-section">
-            <h4>🔗 高度なコンテンツフィルター</h4>
-            <div style="margin-bottom:15px;">
-                <label style="display:flex; align-items:center; cursor:pointer;">
-                    <input type="checkbox" id="linkBlockEnabled" style="width:18px; height:18px; margin-right:10px;">
-                    <span>招待リンク・不審なリンクを自動削除</span>
-                </label>
+        <div class="accordion-item" id="sec-filter">
+            <div class="accordion-header" onclick="toggleAccordion('sec-filter')">
+                <span>🔗 高度なコンテンツフィルター<span class="help-tip" data-tip="<%= t('help_advanced_filter') %>">?</span></span>
+                <span>▼</span>
             </div>
-            <div>
-                <label class="muted">ドメイン・ブラックリスト (カンマ区切り)</label>
-                <textarea id="domainBlacklist"
-                    style="width:100%; min-height:60px; margin-top:5px; background:#000; color:#fff; border:1px solid var(--border-color); border-radius:6px; padding:10px;"></textarea>
+            <div class="accordion-content">
+                <div style="margin-bottom:15px;">
+                    <label style="display:flex; align-items:center; cursor:pointer;">
+                        <input type="checkbox" id="linkBlockEnabled"
+                            style="width:18px; height:18px; margin-right:10px;">
+                        <span>招待リンク・不審なリンクを自動削除</span>
+                    </label>
+                </div>
+                <div>
+                    <label class="muted">ドメイン・ブラックリスト (カンマ区切り)</label>
+                    <textarea id="domainBlacklist"
+                        style="width:100%; min-height:60px; margin-top:5px; background:#000; color:#fff; border:1px solid var(--border-color); border-radius:6px; padding:10px;"></textarea>
+                </div>
             </div>
         </div>
 
         <!-- 6. Quarantine (Silent Processing) -->
-        <div class="antiraid-section">
-            <h4>☣️ 隔離設定 (Silent Processing)</h4>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-                <div>
-                    <label class="muted">隔離用ロール (Quarantine Role)</label>
-                    <select id="quarantineRole" style="width:100%; margin-top:5px;"></select>
-                </div>
-                <div>
-                    <label class="muted">隔離ログチャンネル</label>
-                    <select id="quarantineChannel" style="width:100%; margin-top:5px;"></select>
-                </div>
+        <div class="accordion-item" id="sec-quarantine">
+            <div class="accordion-header" onclick="toggleAccordion('sec-quarantine')">
+                <span>☣️ 隔離設定 (Silent Processing)<span class="help-tip"
+                        data-tip="<%= t('help_quarantine') %>">?</span></span>
+                <span>▼</span>
             </div>
-            <p class="muted" style="margin-top:10px; font-size:11px;">※「防衛」モードでの検知時、キックの代わりにこのロールを付与し、ログへ誘導します。</p>
+            <div class="accordion-content">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                    <div>
+                        <label class="muted">隔離用ロール (Quarantine Role)</label>
+                        <select id="quarantineRole" style="width:100%; margin-top:5px;"></select>
+                    </div>
+                    <div>
+                        <label class="muted">隔離ログチャンネル</label>
+                        <select id="quarantineChannel" style="width:100%; margin-top:5px;"></select>
+                    </div>
+                </div>
+                <p class="muted" style="margin-top:10px; font-size:11px;">※「防衛」モードでの検知時、キックの代わりにこのロールを付与し、ログへ誘導します。</p>
+            </div>
         </div>
 
         <button id="save" class="btn btn-primary" style="width:100%; padding:15px; font-size:18px; margin-top:10px;">
