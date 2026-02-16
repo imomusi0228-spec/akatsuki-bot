@@ -178,7 +178,17 @@ export async function initDb() {
             `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS current_milestone INT DEFAULT 1;`,
             `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS auto_unlock_enabled BOOLEAN DEFAULT FALSE;`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS last_announced_version TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS alpha_features JSONB DEFAULT '[]';`
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS alpha_features JSONB DEFAULT '[]';`,
+
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS antiraid_guard_level INTEGER DEFAULT 0;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS raid_join_threshold INTEGER DEFAULT 10;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS newcomer_restrict_mins INTEGER DEFAULT 10;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS newcomer_min_account_age INTEGER DEFAULT 1;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS link_block_enabled BOOLEAN DEFAULT FALSE;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS domain_blacklist JSONB DEFAULT '[]';`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS quarantine_role_id TEXT;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS quarantine_channel_id TEXT;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS auto_slowmode_channels JSONB DEFAULT '[]';`
         ];
 
         for (const query of queries) {

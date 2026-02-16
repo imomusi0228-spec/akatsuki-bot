@@ -48,6 +48,11 @@ export async function handleAdminRoute(req, res, pathname, url) {
     } else if (pathname === "/admin/activity") {
         const html = await renderAdminActivityHTML({ user, req });
         res.end(html);
+    } else if (pathname === "/admin/antiraid") {
+        // Assuming a renderAdminAntiraidHTML function exists or similar pattern
+        // For now, using dashboard as a placeholder if no specific antiraid view is provided
+        const html = await renderAdminDashboardHTML({ user, req }); // Placeholder
+        res.end(html);
     } else {
         // Default: Dashboard if no other path matches
         const html = await renderAdminDashboardHTML({ user, req });

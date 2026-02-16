@@ -432,11 +432,15 @@ export async function handleApiRoute(req, res, pathname, url) {
             await dbQuery(`INSERT INTO settings 
                 (guild_id, log_channel_id, ng_log_channel_id, audit_role_id, intro_channel_id, ng_threshold, timeout_minutes, 
                  antiraid_enabled, antiraid_threshold, self_intro_enabled, self_intro_role_id, self_intro_min_length,
-                 vc_report_enabled, vc_report_channel_id, vc_report_interval, vc_role_rules) 
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+                 vc_report_enabled, vc_report_channel_id, vc_report_interval, vc_role_rules,
+                 antiraid_guard_level, raid_join_threshold, newcomer_restrict_mins, newcomer_min_account_age,
+                 link_block_enabled, domain_blacklist, quarantine_role_id, quarantine_channel_id) 
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)`,
                 [body.guild, body.log_channel_id, body.ng_log_channel_id, body.audit_role_id, body.intro_channel_id, body.ng_threshold, body.timeout_minutes,
                 body.antiraid_enabled, body.antiraid_threshold, body.self_intro_enabled, body.self_intro_role_id, body.self_intro_min_length,
-                body.vc_report_enabled, body.vc_report_channel_id, body.vc_report_interval, JSON.stringify(body.vc_role_rules)]);
+                body.vc_report_enabled, body.vc_report_channel_id, body.vc_report_interval, JSON.stringify(body.vc_role_rules),
+                body.antiraid_guard_level || 0, body.raid_join_threshold || 10, body.newcomer_restrict_mins || 10, body.newcomer_min_account_age || 1,
+                body.link_block_enabled || false, JSON.stringify(body.domain_blacklist || []), body.quarantine_role_id || null, body.quarantine_channel_id || null]);
         } else {
             await dbQuery(`UPDATE settings SET 
                 log_channel_id = $1, 
@@ -454,11 +458,22 @@ export async function handleApiRoute(req, res, pathname, url) {
                 vc_report_channel_id = $13,
                 vc_report_interval = $14,
                 vc_role_rules = $15,
+                antiraid_guard_level = $16,
+                raid_join_threshold = $17,
+                newcomer_restrict_mins = $18,
+                newcomer_min_account_age = $19,
+                link_block_enabled = $20,
+                domain_blacklist = $21,
+                quarantine_role_id = $22,
+                quarantine_channel_id = $23,
                 updated_at = NOW()
-                WHERE guild_id = $16`,
+                WHERE guild_id = $24`,
                 [body.log_channel_id, body.ng_log_channel_id, body.audit_role_id, body.intro_channel_id, body.ng_threshold, body.timeout_minutes,
                 body.antiraid_enabled, body.antiraid_threshold, body.self_intro_enabled, body.self_intro_role_id, body.self_intro_min_length,
-                body.vc_report_enabled, body.vc_report_channel_id, body.vc_report_interval, JSON.stringify(body.vc_role_rules), body.guild]);
+                body.vc_report_enabled, body.vc_report_channel_id, body.vc_report_interval, JSON.stringify(body.vc_role_rules),
+                body.antiraid_guard_level || 0, body.raid_join_threshold || 10, body.newcomer_restrict_mins || 10, body.newcomer_min_account_age || 1,
+                body.link_block_enabled || false, JSON.stringify(body.domain_blacklist || []), body.quarantine_role_id || null, body.quarantine_channel_id || null,
+                body.guild]);
         }
 
         res.writeHead(200, { "Content-Type": "application/json" });

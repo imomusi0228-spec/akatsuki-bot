@@ -117,5 +117,6 @@
     "ng_word_settings": "NGワード検知設定",
     "login_required": "ログインが必要です",
     "vc_weeks": "VC集計期間(週)",
-    "intro": "自己紹介"
+    "intro": "自己紹介",
+    "nav_antiraid": "アンチ・レイド"
 }

@@ -16,8 +16,18 @@ export default {
             const tier = await getTier(message.guild.id);
             const features = getFeatures(tier);
 
-            if (features.spamProtection) {
-                const { checkSpam, checkMentionSpam, checkRateLimit } = await import("../core/protection.js");
+            if (features.spamProtection || features.antiraid) {
+                const {
+                    checkSpam, checkMentionSpam, checkRateLimit,
+                    checkGlobalSpam, checkSuspiciousContent, isMemberRestricted
+                } = await import("../core/protection.js");
+
+                let settings = cache.getSettings(message.guild.id);
+                if (!settings) {
+                    const res = await dbQuery("SELECT * FROM settings WHERE guild_id = $1", [message.guild.id]);
+                    settings = res.rows[0] || {};
+                    cache.setSettings(message.guild.id, settings);
+                }
 
                 // 1. Content Similarity Spam
                 const spamCheck = checkSpam(message.guild.id, message.author.id, message.content);
@@ -29,55 +39,71 @@ export default {
                 // 3. Rate Limit (Frequency)
                 const rateCheck = checkRateLimit(message.guild.id, message.author.id);
 
-                if (spamCheck.isSpam || mentionCheck.isSpam || rateCheck.isSpam) {
+                // 4. Global Spam (Cross-user identical messages)
+                const globalCheck = checkGlobalSpam(message.guild.id, message.author.id, message.content);
+
+                // 5. Newcomer / Account Age Restriction
+                const isRestricted = isMemberRestricted(message.member, settings);
+
+                // 6. Suspicious Content (Invites/Links/Density)
+                const suspicious = checkSuspiciousContent(message.content, settings.domain_blacklist || []);
+
+                if (spamCheck.isSpam || mentionCheck.isSpam || rateCheck.isSpam || globalCheck.isSpam || (isRestricted && settings.antiraid_guard_level >= 1) || suspicious.isSuspicious) {
                     const { EmbedBuilder } = await import("discord.js");
                     const { sendLog } = await import("../core/logger.js");
-                    const isMentionSpam = mentionCheck.isSpam;
-                    const isRateSpam = rateCheck.isSpam && !spamCheck.isSpam && !mentionCheck.isSpam;
-                    const count = isMentionSpam ? mentionCheck.count : (isRateSpam ? rateCheck.count : spamCheck.count);
 
+                    let action = "Delete";
+                    let reason = "Spam/Security Violation";
+                    let isRaid = globalCheck.isSpam || (isRestricted && settings.antiraid_guard_level >= 2);
 
-                    // Delete the spam message
-                    await message.delete().catch((e) => { console.error("[DEBUG] Spam Delete Failed:", e.message); });
+                    if (spamCheck.isSpam) reason = "Similarity Spam";
+                    else if (mentionCheck.isSpam) reason = "Mention Spam";
+                    else if (rateCheck.isSpam) reason = "Rate Limit (Frequency)";
+                    else if (globalCheck.isSpam) reason = "Global Raid Spam (Multiple Users)";
+                    else if (isRestricted) reason = "Newcomer Restriction";
+                    else if (suspicious.isSuspicious) reason = `Suspicious Content (${suspicious.reason})`;
 
-                    // Actions based on count
-                    if (count >= 5 || (isMentionSpam && count >= 8)) {
-                        // Kick the user
-                        const member = await message.guild.members.fetch(message.author.id);
-                        if (member.kickable) {
-                            let reason = "Content Spam detector";
-                            if (isMentionSpam) reason = "Mention Spam detector";
-                            if (isRateSpam) reason = "Rate Limit detector (High frequency)";
+                    // Delete the message
+                    await message.delete().catch(() => { });
 
-                            await member.kick(reason).catch(e => console.error("[DEBUG] Kick failed:", e));
+                    // High Severity Action: BAN or Quarantine (Isolation)
+                    const count = Math.max(spamCheck.count || 0, mentionCheck.count || 0, rateCheck.count || 0, globalCheck.count || 0);
 
-                            // Log Kick to member_events (Batched)
-                            batcher.push('member_events', { guild_id: message.guild.id, user_id: message.author.id, event_type: 'kick' });
+                    if (count >= 5 || isRaid) {
+                        const member = message.member || await message.guild.members.fetch(message.author.id).catch(() => null);
+                        if (member) {
+                            // Silent Processing / Isolation Mode
+                            if (settings.quarantine_role_id) {
+                                try {
+                                    await member.roles.set([settings.quarantine_role_id], "Iron Fortress: Isolated for Security Violation");
+                                    action = "Isolated (Quarantine)";
 
-                            // Log Kick to UI Channel
-                            if (features.ngLog) {
-                                let typeLabel = 'Content';
-                                if (isMentionSpam) typeLabel = 'Mentions';
-                                if (isRateSpam) typeLabel = 'Frequency';
-
-                                const embed = new EmbedBuilder()
-                                    .setAuthor({ name: message.member?.displayName || message.author.tag, iconURL: message.author.displayAvatarURL() })
-                                    .setColor(0xFF0000)
-                                    .setTitle(`🔨 Anti-Spam: User Kicked (${typeLabel})`)
-                                    .setDescription(`**対象ユーザー**: <@${message.author.id}>\n**理由**: ${isMentionSpam ? 'メンションの大量送信' : (isRateSpam ? 'メッセージの過度な連投' : '類似メッセージの連投')}`)
-                                    .setTimestamp();
-                                await sendLog(message.guild, 'ng', embed);
+                                    // Send notification to quarantine log channel
+                                    if (settings.quarantine_channel_id) {
+                                        const qChan = message.guild.channels.cache.get(settings.quarantine_channel_id);
+                                        if (qChan) {
+                                            await qChan.send(`☣️ **隔離対象**: <@${message.author.id}>\n**理由**: ${reason}\n**内容**: ||${message.content.substring(0, 500)}||`);
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.error("[ANTI-RAID] Isolation failed:", e.message);
+                                }
+                            } else if (member.kickable && isRaid) {
+                                await member.kick("Iron Fortress: Raid/Security Violation").catch(() => { });
+                                action = "Kicked";
                             }
                         }
-                    } else if (count >= 3) {
-                        // Warn
-                        try {
-                            const warningMsg = `⚠️ **スパムを検知しました / Spam detected**\n\n` +
-                                `サーバー: **${message.guild.name}**\n` +
-                                `${isMentionSpam ? 'メンションを一度に大量に送信しないでください。' : (isRateSpam ? 'メッセージを短時間に連続して送信しないでください。' : '似たような内容を繰り返し送信しないでください。')}\n` +
-                                `このまま続けるとサーバーから退出させられる可能性があります。`;
-                            await message.author.send(warningMsg);
-                        } catch (e) { }
+                    }
+
+                    // Log to Admin Channel
+                    if (features.ngLog) {
+                        const embed = new EmbedBuilder()
+                            .setAuthor({ name: message.member?.displayName || message.author.tag, iconURL: message.author.displayAvatarURL() })
+                            .setColor(isRaid ? 0xFF0000 : 0xFFAA00)
+                            .setTitle(`🛡️ Iron Fortress: ${reason}`)
+                            .setDescription(`**ユーザー**: <@${message.author.id}>\n**コンテンツ**: ||${message.content.substring(0, 200)}||\n**アクション**: ${action}`)
+                            .setTimestamp();
+                        await sendLog(message.guild, 'ng', embed);
                     }
                     return;
                 }

@@ -132,3 +132,105 @@ export function checkRateLimit(guildId, userId) {
     // 5 messages in 5 seconds is a bit fast for a normal human
     return { isSpam: entry.count >= 5, count: entry.count };
 }
+
+// Global/Cross-user spam cache
+// Format: Map<guildId, Map<contentHash, { count: number, users: Set<userId>, timestamp: number }>>
+const globalSpamCache = new Map();
+
+/**
+ * Checks for "Multiple user identical content" spam (Raid style).
+ */
+export function checkGlobalSpam(guildId, userId, content) {
+    if (!content || content.length < 10) return { isSpam: false, count: 0 };
+
+    if (!globalSpamCache.has(guildId)) globalSpamCache.set(guildId, new Map());
+    const guildMap = globalSpamCache.get(guildId);
+
+    const now = Date.now();
+    // Use a simple hash or truncated content as key to catch slightly varied spam
+    const key = content.substring(0, 100).toLowerCase().trim();
+
+    const entry = guildMap.get(key) || { count: 0, users: new Set(), timestamp: now };
+
+    if (now - entry.timestamp > 60000) {
+        // Reset every 60 seconds
+        entry.count = 1;
+        entry.users = new Set([userId]);
+        entry.timestamp = now;
+    } else {
+        entry.count += 1;
+        entry.users.add(userId);
+        entry.timestamp = now;
+    }
+
+    guildMap.set(key, entry);
+
+    // If 3+ different users send the same long message in 60s -> Raid Spam
+    const isGlobalSpam = entry.users.size >= 3 && entry.count >= 5;
+    return { isSpam: isGlobalSpam, count: entry.count, userCount: entry.users.size };
+}
+
+/**
+ * Detects Discord Invites, Shortened URLs, and Blacklisted Domains.
+ */
+export function checkSuspiciousContent(content, domainBlacklist = []) {
+    if (!content) return { isSuspicious: false, reason: null };
+
+    // 1. Discord Invite Check
+    const inviteRegex = /(discord\.(gg|io|me|li)|discordapp\.com\/invite)\/[a-zA-Z0-9]+/i;
+    if (inviteRegex.test(content)) return { isSuspicious: true, reason: "Discord Invite" };
+
+    // 2. Shortened URL Check
+    const shortenerRegex = /(bit\.ly|t\.co|goo\.gl|tinyurl\.com|ow\.ly|is\.gd|buff\.ly|rebrand\.ly)/i;
+    if (shortenerRegex.test(content)) return { isSuspicious: true, reason: "Shortened URL" };
+
+    // 3. Blacklisted Domains
+    for (const domain of domainBlacklist) {
+        if (domain && content.toLowerCase().includes(domain.toLowerCase())) {
+            return { isSuspicious: true, reason: "Blacklisted Domain" };
+        }
+    }
+
+    // 4. Emoji/URL Density (Advanced)
+    const emojiCount = (content.match(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu) || []).length;
+    if (emojiCount >= 15) return { isSuspicious: true, reason: "Emoji Spam" };
+
+    const urlCount = (content.match(/https?:\/\/[^\s]+/g) || []).length;
+    if (urlCount >= 5) return { isSuspicious: true, reason: "URL Density" };
+
+    return { isSuspicious: false, reason: null };
+}
+
+/**
+ * Checks if a member is restricted based on account age or join time.
+ */
+export function isMemberRestricted(member, settings) {
+    if (!settings) return false;
+
+    const now = Date.now();
+    const joinTime = member.joinedTimestamp;
+    const accountTime = member.user.createdTimestamp;
+
+    // 1. Account Age Check (Days)
+    const minAccountAgeDays = settings.newcomer_min_account_age || 0;
+    if (minAccountAgeDays > 0) {
+        const ageInDays = (now - accountTime) / (1000 * 60 * 60 * 24);
+        if (ageInDays < minAccountAgeDays) return true;
+    }
+
+    // 2. Server Join Time Check (Minutes)
+    const restrictMins = settings.newcomer_restrict_mins || 0;
+    if (restrictMins > 0) {
+        const stayMins = (now - joinTime) / (1000 * 60);
+        if (stayMins < restrictMins) return true;
+    }
+
+    // 3. Guard Mode 'Lockdown' specific: Absolute restriction for anyone without specific roles
+    if (settings.antiraid_guard_level === 2) {
+        // If lockdown is on, anyone without a role (except specific ones maybe) is restricted?
+        // Let's stick to the user's "Verification Level" and "Newcomer" logic.
+        return true;
+    }
+
+    return false;
+}
