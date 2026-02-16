@@ -111,6 +111,51 @@
         font-weight: bold;
     }
 
+    .comparison-table {
+        width: 100%;
+        margin-top: 40px;
+        border-collapse: separate;
+        border-spacing: 0;
+        background: rgba(21, 32, 43, 0.5);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+        padding: 16px;
+        text-align: center;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .comparison-table th:first-child,
+    .comparison-table td:first-child {
+        text-align: left;
+        background: rgba(11, 22, 34, 0.4);
+        font-weight: 600;
+        padding-left: 24px;
+    }
+
+    .comparison-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .comparison-table tr:hover {
+        background: rgba(29, 161, 242, 0.05);
+    }
+
+    .active-check {
+        color: var(--success-color);
+        font-weight: bold;
+        font-size: 20px;
+    }
+
+    .dim-cross {
+        color: #444;
+        font-size: 18px;
+    }
+
     @keyframes fadeIn {
         from {
             opacity: 0;
@@ -146,65 +191,131 @@
     </button>
 </div>
 
-<div id="tab-free" class="tab-content active">
-    <div class="plan-card">
-        <span class="plan-badge">
-            <%= t("plan_badge_std") %>
-        </span>
-        <h2 style="font-size: 32px; margin-bottom: 5px;">
-            <%= t("plan_free") %>
-        </h2>
-        <div class="plan-price">¥0 <span style="font-size:14px; color:#8899a6; font-weight:normal;">
-                <%= t("period_forever") %>
-            </span></div>
-        <div class="feature-list">
-            <%- t("feat_list_free").split('<br />').map(f => `<div><i>✓</i> ${f.replace('・', '')}</div>`).join('') %>
-        </div>
-        <a href="/login" class="btn btn-primary" style="width: 80%; margin-top: 20px; padding: 12px;">
-            <%= t("get_started") %>
-        </a>
-    </div>
-</div>
+<div class="notice-container">
+    <h2
+        style="font-size: 32px; margin-bottom: 40px; border-bottom: 2px solid var(--accent-color); display: inline-block; padding-bottom: 10px;">
+        <%= t("compare_table_title") %>
+    </h2>
 
-<div id="tab-pro" class="tab-content">
-    <div class="plan-card" style="border-color: var(--primary-color); background: rgba(29, 161, 242, 0.05);">
-        <span class="plan-badge" style="background:var(--primary-color); color:white;">
-            <%= t("plan_badge_rec") %>
-        </span>
-        <h2 style="font-size: 32px; margin-bottom: 5px;">
-            <%= t("plan_pro") %>
-        </h2>
-        <div class="plan-price">¥680 <span style="font-size:14px; color:#8899a6; font-weight:normal;">
-                <%= t("period_month") %>
-            </span></div>
-        <div class="feature-list">
-            <%- t("feat_list_pro").split('<br />').map(f => `<div><i>✓</i> ${f.replace('・', '')}</div>`).join('') %>
-        </div>
-        <a href="/login" class="btn btn-primary" style="width: 80%; margin-top: 20px; padding: 12px;">
-            <%= t("get_started") %>
-        </a>
-    </div>
-</div>
-
-<div id="tab-pro-plus" class="tab-content">
-    <div class="plan-card" style="border-color: #ffd700; background: rgba(255, 215, 0, 0.05);">
-        <span class="plan-badge" style="background:#ffd700; color:#000;">
-            <%= t("plan_badge_prm") %>
-        </span>
-        <h2 style="font-size: 32px; margin-bottom: 5px;">
-            <%= t("plan_pro_plus") %>
-        </h2>
-        <div class="plan-price">¥1,800 <span style="font-size:14px; color:#8899a6; font-weight:normal;">
-                <%= t("period_month") %>
-            </span></div>
-        <div class="feature-list">
-            <%- t("feat_list_pro_plus").split('<br />').map(f => `<div><i>✓</i> ${f.replace('・', '')}</div>`).join('')
-            %>
-        </div>
-        <a href="/login" class="btn btn-primary"
-            style="width: 80%; margin-top: 20px; padding: 12px; background:#ffd700; border-color:#ffd700; color:#000;">
-            <%= t("get_started") %>
-        </a>
+    <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th style="min-width: 250px;">
+                        <%= t("activity") %>
+                    </th>
+                    <th>
+                        <%= t("plan_free") %>
+                    </th>
+                    <th>
+                        <%= t("plan_pro") %>
+                    </th>
+                    <th>
+                        <%= t("plan_pro_plus") %>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <%= t("comp_vc_thread") %>
+                    </td>
+                    <td class="active-check">✓</td>
+                    <td class="active-check">✓</td>
+                    <td class="active-check">✓</td>
+                </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_stats_7d") %>
+                    </td>
+                    <td class="active-check">✓</td>
+                    <td class="active-check">✓</td>
+                    <td class="active-check">✓</td>
+                </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_ng_detect") %>
+                    </td>
+                    <td class="active-check">✓</td>
+                    <td class="active-check">✓</td>
+                    <td class="active-check">✓</td>
+                </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_raid_alert") %>
+                    </td>
+                    <td class="active-check">✓</td>
+                    <td class="active-check">✓</td>
+                    <td class="active-check">✓</td>
+                </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_dashboard") %>
+                    </td>
+                    <td class="dim-cross">✕</td>
+                    <td class="active-check">✓</td>
+                    <td class="active-check">✓</td>
+                </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_spam_prot") %>
+                    </td>
+                    <td class="dim-cross">✕</td>
+                    <td class="active-check">✓</td>
+                    <td class="active-check">✓</td>
+                </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_ng_limit") %>
+                    </td>
+                    <td>10<%= t("words") %>
+                    </td>
+                    <td>20<%= t("words") %>
+                    </td>
+                    <td><strong>50<%= t("words") %></strong></td>
+                </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_max_guilds") %>
+                    </td>
+                    <td>1</td>
+                    <td>1</td>
+                    <td><strong>3</strong></td>
+                </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_stats_30d") %>
+                    </td>
+                    <td class="dim-cross">✕</td>
+                    <td class="dim-cross">✕</td>
+                    <td class="active-check">✓</td>
+                </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_audit") %>
+                    </td>
+                    <td class="dim-cross">✕</td>
+                    <td class="dim-cross">✕</td>
+                    <td class="active-check">✓</td>
+                </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_intro_gate") %>
+                    </td>
+                    <td class="dim-cross">✕</td>
+                    <td class="dim-cross">✕</td>
+                    <td class="active-check">✓</td>
+                </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_csv") %>
+                    </td>
+                    <td class="dim-cross">✕</td>
+                    <td class="dim-cross">✕</td>
+                    <td class="active-check">✓</td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 </div>
 

@@ -28,13 +28,14 @@ export const TIER_NAMES = {
 
 export const FEATURES = {
     [TIERS.FREE]: {
-        maxNgWords: 5,
+        maxNgWords: 10,
         maxGuilds: 1,
         ngLog: false,
         vcLog: true,
         dashboard: false,
-        activity: false,
+        activity: true, // Activity stats (basic)
         autoRelease: false,
+        antiraid: true, // Alerts only
         spamProtection: false
     },
     [TIERS.PRO_MONTHLY]: {
