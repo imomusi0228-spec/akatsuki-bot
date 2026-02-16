@@ -151,6 +151,12 @@
         font-size: 20px;
     }
 
+    .warning-mark {
+        color: #ffb100;
+        font-weight: bold;
+        font-size: 20px;
+    }
+
     .dim-cross {
         color: #444;
         font-size: 18px;
@@ -218,6 +224,24 @@
             <tbody>
                 <tr>
                     <td>
+                        <%= t("comp_max_guilds") %>
+                    </td>
+                    <td>1</td>
+                    <td>1</td>
+                    <td><strong>3</strong></td>
+                </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_ng_limit") %>
+                    </td>
+                    <td>10<%= t("words") %>
+                    </td>
+                    <td>20<%= t("words") %>
+                    </td>
+                    <td><strong>50<%= t("words") %></strong></td>
+                </tr>
+                <tr>
+                    <td>
                         <%= t("comp_vc_thread") %>
                     </td>
                     <td class="active-check">✓</td>
@@ -244,7 +268,7 @@
                     <td>
                         <%= t("comp_raid_alert") %>
                     </td>
-                    <td class="active-check">✓</td>
+                    <td class="warning-mark">△</td>
                     <td class="active-check">✓</td>
                     <td class="active-check">✓</td>
                 </tr>
@@ -263,24 +287,6 @@
                     <td class="dim-cross">✕</td>
                     <td class="active-check">✓</td>
                     <td class="active-check">✓</td>
-                </tr>
-                <tr>
-                    <td>
-                        <%= t("comp_ng_limit") %>
-                    </td>
-                    <td>10<%= t("words") %>
-                    </td>
-                    <td>20<%= t("words") %>
-                    </td>
-                    <td><strong>50<%= t("words") %></strong></td>
-                </tr>
-                <tr>
-                    <td>
-                        <%= t("comp_max_guilds") %>
-                    </td>
-                    <td>1</td>
-                    <td>1</td>
-                    <td><strong>3</strong></td>
                 </tr>
                 <tr>
                     <td>
