@@ -82,5 +82,6 @@
     "help_vc_report": "Periodically sends server activity reports to the designated channel.",
     "antiraid_threshold": "Anti-Raid Threshold (Joins/min)",
     "ng_word_settings": "NG Word Detection Settings",
+    "login_required": "Login Required",
     "loading": "Loading"
 }

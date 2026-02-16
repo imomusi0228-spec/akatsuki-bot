@@ -114,5 +114,6 @@
     "loading": "読み込み中",
     "no_guilds": "サーバーが見つかりません",
     "antiraid_threshold": "レイド検知しきい値 (参加数/分)",
-    "ng_word_settings": "NGワード検知設定"
+    "ng_word_settings": "NGワード検知設定",
+    "login_required": "ログインが必要です"
 }

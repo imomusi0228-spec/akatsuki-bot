@@ -8,7 +8,7 @@ function rand(n = 24) {
 
 export async function handleAuthRoute(req, res, pathname, url) {
     // Login
-    if (pathname === "/login") {
+    if (pathname === "/login" || pathname === "/auth/discord") {
         if (!ENV.CLIENT_ID || !ENV.CLIENT_SECRET) {
             res.writeHead(500, { "Content-Type": "text/plain" });
             res.end("OAuth config missing (CLIENT_ID/SECRET)");
