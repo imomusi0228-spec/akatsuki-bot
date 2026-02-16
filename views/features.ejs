@@ -199,21 +199,30 @@
         background: rgba(29, 161, 242, 0.05);
     }
 
-    .active-check {
-        color: var(--success-color);
-        font-weight: bold;
-        font-size: 20px;
+    .comparison-table .col-pro {
+        color: var(--primary-color);
     }
 
-    .warning-mark {
-        color: #ffb100;
-        font-weight: bold;
-        font-size: 20px;
+    .comparison-table .col-pro-plus {
+        color: #fbbf24;
     }
 
-    .dim-cross {
-        color: #444;
-        font-size: 18px;
+    .comparison-table th.col-pro {
+        background: rgba(29, 161, 242, 0.1);
+        border-bottom: 2px solid var(--primary-color);
+    }
+
+    .comparison-table th.col-pro-plus {
+        background: rgba(251, 191, 36, 0.1);
+        border-bottom: 2px solid #fbbf24;
+    }
+
+    .comparison-table td.col-pro .active-check {
+        color: var(--primary-color);
+    }
+
+    .comparison-table td.col-pro-plus .active-check {
+        color: #fbbf24;
     }
 
     @keyframes fadeIn {
@@ -308,10 +317,10 @@
                     <th>
                         <%= t("plan_free") %>
                     </th>
-                    <th>
+                    <th class="col-pro">
                         <%= t("plan_pro") %>
                     </th>
-                    <th>
+                    <th class="col-pro-plus">
                         <%= t("plan_pro_plus") %>
                     </th>
                 </tr>
@@ -322,8 +331,8 @@
                         <%= t("comp_max_guilds") %>
                     </td>
                     <td>1</td>
-                    <td>1</td>
-                    <td><strong>3</strong></td>
+                    <td class="col-pro">1</td>
+                    <td class="col-pro-plus"><strong>3</strong></td>
                 </tr>
                 <tr>
                     <td>
@@ -331,57 +340,57 @@
                     </td>
                     <td>10<%= t("words") %>
                     </td>
-                    <td>20<%= t("words") %>
+                    <td class="col-pro">20<%= t("words") %>
                     </td>
-                    <td><strong>50<%= t("words") %></strong></td>
+                    <td class="col-pro-plus"><strong>50<%= t("words") %></strong></td>
                 </tr>
                 <tr>
                     <td>
                         <%= t("comp_vc_thread") %>
                     </td>
                     <td class="active-check">✓</td>
-                    <td class="active-check">✓</td>
-                    <td class="active-check">✓</td>
+                    <td class="active-check col-pro">✓</td>
+                    <td class="active-check col-pro-plus">✓</td>
                 </tr>
                 <tr>
                     <td>
                         <%= t("comp_stats_7d") %>
                     </td>
                     <td class="active-check">✓</td>
-                    <td class="active-check">✓</td>
-                    <td class="active-check">✓</td>
+                    <td class="active-check col-pro">✓</td>
+                    <td class="active-check col-pro-plus">✓</td>
                 </tr>
                 <tr>
                     <td>
                         <%= t("comp_ng_detect") %>
                     </td>
                     <td class="active-check">✓</td>
-                    <td class="active-check">✓</td>
-                    <td class="active-check">✓</td>
+                    <td class="active-check col-pro">✓</td>
+                    <td class="active-check col-pro-plus">✓</td>
                 </tr>
                 <tr>
                     <td>
                         <%= t("comp_raid_alert") %>
                     </td>
                     <td class="warning-mark">△</td>
-                    <td class="active-check">✓</td>
-                    <td class="active-check">✓</td>
+                    <td class="active-check col-pro">✓</td>
+                    <td class="active-check col-pro-plus">✓</td>
                 </tr>
                 <tr>
                     <td>
                         <%= t("comp_dashboard") %>
                     </td>
                     <td class="dim-cross">✕</td>
-                    <td class="active-check">✓</td>
-                    <td class="active-check">✓</td>
+                    <td class="active-check col-pro">✓</td>
+                    <td class="active-check col-pro-plus">✓</td>
                 </tr>
                 <tr>
                     <td>
                         <%= t("comp_spam_prot") %>
                     </td>
                     <td class="dim-cross">✕</td>
-                    <td class="active-check">✓</td>
-                    <td class="active-check">✓</td>
+                    <td class="active-check col-pro">✓</td>
+                    <td class="active-check col-pro-plus">✓</td>
                 </tr>
                 <tr>
                     <td>
@@ -389,7 +398,7 @@
                     </td>
                     <td class="dim-cross">✕</td>
                     <td class="dim-cross">✕</td>
-                    <td class="active-check">✓</td>
+                    <td class="active-check col-pro-plus">✓</td>
                 </tr>
                 <tr>
                     <td>
@@ -397,7 +406,7 @@
                     </td>
                     <td class="dim-cross">✕</td>
                     <td class="dim-cross">✕</td>
-                    <td class="active-check">✓</td>
+                    <td class="active-check col-pro-plus">✓</td>
                 </tr>
                 <tr>
                     <td>
@@ -405,7 +414,7 @@
                     </td>
                     <td class="dim-cross">✕</td>
                     <td class="dim-cross">✕</td>
-                    <td class="active-check">✓</td>
+                    <td class="active-check col-pro-plus">✓</td>
                 </tr>
                 <tr>
                     <td>
@@ -413,7 +422,7 @@
                     </td>
                     <td class="dim-cross">✕</td>
                     <td class="dim-cross">✕</td>
-                    <td class="active-check">✓</td>
+                    <td class="active-check col-pro-plus">✓</td>
                 </tr>
             </tbody>
         </table>
