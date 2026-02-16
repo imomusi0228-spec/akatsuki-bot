@@ -77,7 +77,7 @@ export async function getSubscriptionInfo(guildId) {
     const tier = await getTier(guildId); // Re-run logic for limits/cache
     return {
         tier: tier,
-        milestone: sub.current_milestone ?? 1,
+        milestone: sub.current_milestone ?? 5,
         auto_unlock: sub.auto_unlock_enabled ?? false,
         trial_started_at: sub.trial_started_at
     };
