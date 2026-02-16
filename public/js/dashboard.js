@@ -438,38 +438,39 @@ async function initActivity() {
 
         currentData = res.data || [];
         renderRows(currentData);
-
-
-        reloadCriteria();
-    }
-
-    window.toggleAccordion = (id) => {
-        const item = document.getElementById(id);
-        if (!item) return;
-        const isActive = item.classList.contains("active");
-        // Option: Close others? (Ojou didn't specify, but often better)
-        // document.querySelectorAll(".accordion-item").forEach(el => el.classList.remove("active"));
-        if (isActive) item.classList.remove("active");
-        else item.classList.add("active");
     };
 
-    window.addRoleRule = (data = { role_id: "", hours: 1 }) => {
-        const list = document.getElementById("roleRulesList");
-        if (!list) return;
-        const item = document.createElement("div");
-        item.className = "role-rule-item";
-        item.style = "display:flex; gap:8px; align-items:center; background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; border:1px solid #38444d;";
 
-        let roleOptions = '<option value="">(Select Role)</option>';
-        (window._serverRoles || []).forEach(r => {
-            roleOptions += `<option value="${r.id}" ${r.id === data.role_id ? 'selected' : ''}>${escapeHTML(r.name)}</option>`;
-        });
+    reloadCriteria();
+}
 
-        item.innerHTML = `
+window.toggleAccordion = (id) => {
+    const item = document.getElementById(id);
+    if (!item) return;
+    const isActive = item.classList.contains("active");
+    // Option: Close others? (Ojou didn't specify, but often better)
+    // document.querySelectorAll(".accordion-item").forEach(el => el.classList.remove("active"));
+    if (isActive) item.classList.remove("active");
+    else item.classList.add("active");
+};
+
+window.addRoleRule = (data = { role_id: "", hours: 1 }) => {
+    const list = document.getElementById("roleRulesList");
+    if (!list) return;
+    const item = document.createElement("div");
+    item.className = "role-rule-item";
+    item.style = "display:flex; gap:8px; align-items:center; background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; border:1px solid #38444d;";
+
+    let roleOptions = '<option value="">(Select Role)</option>';
+    (window._serverRoles || []).forEach(r => {
+        roleOptions += `<option value="${r.id}" ${r.id === data.role_id ? 'selected' : ''}>${escapeHTML(r.name)}</option>`;
+    });
+
+    item.innerHTML = `
         <select class="rule-role" style="flex:1; font-size:12px;">${roleOptions}</select>
         <input type="number" class="rule-hours" value="${data.hours}" min="1" style="width:60px; font-size:12px;" />
         <span style="font-size:11px; color:#888;">時間</span>
         <button type="button" onclick="this.parentElement.remove()" class="btn" style="padding:4px 8px; color:var(--danger-color); border-color:transparent;">×</button>
     `;
-        list.appendChild(item);
-    };
+    list.appendChild(item);
+};
