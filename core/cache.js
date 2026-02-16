@@ -6,6 +6,9 @@ class CacheManager {
         this.tiers = new Map();      // guildId -> tier
         this.settings = new Map();   // guildId -> settings object
         this.ngWords = new Map();    // guildId -> array of ngWord objects
+        this.members = new Map();    // guildId -> { data: members, expires: number }
+        this.intros = new Map();     // intro_channel_id -> { data: userIdSet, expires: number }
+
         this.activeSessions = new Map(); // guildId:userId -> session object (VC)
         this.joinCounts = new Map();     // guildId -> [{ts: number}]
 
@@ -21,38 +24,31 @@ class CacheManager {
         }
     }
 
-    // Tiers
-    setTier(guildId, tier) {
-        this._checkSize(this.tiers);
-        this.tiers.set(guildId, { value: tier, expires: Date.now() + this.ttl });
-    }
-    getTier(guildId) {
-        const entry = this.tiers.get(guildId);
-        if (entry && entry.expires > Date.now()) return entry.value;
-        return null;
-    }
-    clearTier(guildId) {
-        this.tiers.delete(guildId);
+    // Generic set/get with TTL
+    _set(map, key, value, ttlOverride) {
+        this._checkSize(map);
+        map.set(key, { value, expires: Date.now() + (ttlOverride || this.ttl) });
     }
 
-    // Settings
-    setSettings(guildId, settings) {
-        this._checkSize(this.settings);
-        this.settings.set(guildId, { value: settings, expires: Date.now() + this.ttl });
-    }
-    getSettings(guildId) {
-        const entry = this.settings.get(guildId);
+    _get(map, key) {
+        const entry = map.get(key);
         if (entry && entry.expires > Date.now()) return entry.value;
+        if (entry) map.delete(key); // Cleanup expired on access
         return null;
     }
-    clearSettings(guildId) {
-        this.settings.delete(guildId);
-    }
+
+    // Tiers
+    setTier(guildId, tier) { this._set(this.tiers, guildId, tier); }
+    getTier(guildId) { return this._get(this.tiers, guildId); }
+    clearTier(guildId) { this.tiers.delete(guildId); }
+
+    // Settings
+    setSettings(guildId, settings) { this._set(this.settings, guildId, settings); }
+    getSettings(guildId) { return this._get(this.settings, guildId); }
+    clearSettings(guildId) { this.settings.delete(guildId); }
 
     // NG Words
     setNgWords(guildId, words) {
-        this._checkSize(this.ngWords);
-
         // Pre-compile regex objects once for extreme performance
         const processedWords = words.map(ng => {
             if (ng.kind === "regex") {
@@ -66,20 +62,26 @@ class CacheManager {
             }
             return ng;
         });
+        this._set(this.ngWords, guildId, processedWords);
+    }
+    getNgWords(guildId) { return this._get(this.ngWords, guildId); }
+    clearNgWords(guildId) { this.ngWords.delete(guildId); }
 
-        this.ngWords.set(guildId, { value: processedWords, expires: Date.now() + this.ttl });
+    // Members (Activity Audit)
+    setMembers(guildId, members) {
+        this._set(this.members, guildId, members, 15 * 60 * 1000); // 15 min TTL
     }
-    getNgWords(guildId) {
-        const entry = this.ngWords.get(guildId);
-        if (entry && entry.expires > Date.now()) return entry.value;
-        return null;
+    getMembers(guildId) { return this._get(this.members, guildId); }
+
+    // Intros (Activity Audit)
+    setIntros(channelId, userIds) {
+        this._set(this.intros, channelId, userIds, 30 * 60 * 1000); // 30 min TTL
     }
-    clearNgWords(guildId) {
-        this.ngWords.delete(guildId);
-    }
+    getIntros(channelId) { return this._get(this.intros, channelId); }
 
     // Active VC Sessions (No TTL, managed by events)
     setActiveSession(guildId, userId, session) {
+        this._checkSize(this.activeSessions);
         this.activeSessions.set(`${guildId}:${userId}`, session);
     }
     getActiveSession(guildId, userId) {
@@ -91,6 +93,7 @@ class CacheManager {
 
     // Join Counting for Anti-Raid (Fast memory check)
     recordJoin(guildId) {
+        this._checkSize(this.joinCounts);
         let joins = this.joinCounts.get(guildId) || [];
         const now = Date.now();
         joins.push(now);
@@ -110,6 +113,7 @@ class CacheManager {
         this.clearTier(guildId);
         this.clearSettings(guildId);
         this.clearNgWords(guildId);
+        this.members.delete(guildId);
     }
 }
 

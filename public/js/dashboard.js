@@ -4,10 +4,17 @@ function yyyymmNow() { const d = new Date(); return d.getFullYear() + "-" + Stri
 const api = async (path, body) => {
     const ctrl = new AbortController();
     const tid = setTimeout(() => ctrl.abort(), 15000);
+
+    // Get CSRF token from cookie
+    const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrf_token='))?.split('=')[1];
+
     try {
         const r = await fetch(path, {
             method: body ? "POST" : "GET",
-            headers: body ? { "Content-Type": "application/json" } : {},
+            headers: {
+                ...(body ? { "Content-Type": "application/json" } : {}),
+                ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {})
+            },
             body: body ? JSON.stringify(body) : null,
             signal: ctrl.signal
         });

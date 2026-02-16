@@ -38,8 +38,18 @@ export function calculateSimilarity(s1, s2) {
     return (longerLength - distance) / longerLength;
 }
 
-// In-memory cache for recent messages per user to detect spam
-// Format: Map<guildId, Map<userId, { content: string, count: number, timestamp: number }>>
+// Protection Caches with strict limits to prevent memory leaks
+const MAX_GUILD_ENTRIES = 500;
+const MAX_USER_ENTRIES = 1000;
+
+function enforceLimit(map, limit) {
+    if (map.size > limit) {
+        const firstKey = map.keys().next().value;
+        map.delete(firstKey);
+    }
+}
+
+// Map<guildId, Map<userId, { content: string, count: number, timestamp: number }>>
 const spamCache = new Map();
 
 /**
@@ -49,8 +59,12 @@ const spamCache = new Map();
 export function checkSpam(guildId, userId, content) {
     if (!content || content.length < 3) return { isSpam: false, count: 0 };
 
-    if (!spamCache.has(guildId)) spamCache.set(guildId, new Map());
+    if (!spamCache.has(guildId)) {
+        enforceLimit(spamCache, MAX_GUILD_ENTRIES);
+        spamCache.set(guildId, new Map());
+    }
     const guildMap = spamCache.get(guildId);
+    enforceLimit(guildMap, MAX_USER_ENTRIES);
 
     const now = Date.now();
     const entry = guildMap.get(userId);
@@ -91,8 +105,12 @@ export function checkMentionSpam(guildId, userId, mentionCount) {
     // One-message burst check
     if (mentionCount >= 5) return { isSpam: true, count: mentionCount };
 
-    if (!mentionCache.has(guildId)) mentionCache.set(guildId, new Map());
+    if (!mentionCache.has(guildId)) {
+        enforceLimit(mentionCache, MAX_GUILD_ENTRIES);
+        mentionCache.set(guildId, new Map());
+    }
     const guildMap = mentionCache.get(guildId);
+    enforceLimit(guildMap, MAX_USER_ENTRIES);
 
     const now = Date.now();
     const entry = guildMap.get(userId);
@@ -114,8 +132,12 @@ const rateLimitCache = new Map();
  * Threshold: 5 messages in 5 seconds.
  */
 export function checkRateLimit(guildId, userId) {
-    if (!rateLimitCache.has(guildId)) rateLimitCache.set(guildId, new Map());
+    if (!rateLimitCache.has(guildId)) {
+        enforceLimit(rateLimitCache, MAX_GUILD_ENTRIES);
+        rateLimitCache.set(guildId, new Map());
+    }
     const guildMap = rateLimitCache.get(guildId);
+    enforceLimit(guildMap, MAX_USER_ENTRIES);
 
     const now = Date.now();
     const entry = guildMap.get(userId) || { count: 0, timestamp: now };
@@ -143,8 +165,12 @@ const globalSpamCache = new Map();
 export function checkGlobalSpam(guildId, userId, content) {
     if (!content || content.length < 10) return { isSpam: false, count: 0 };
 
-    if (!globalSpamCache.has(guildId)) globalSpamCache.set(guildId, new Map());
+    if (!globalSpamCache.has(guildId)) {
+        enforceLimit(globalSpamCache, MAX_GUILD_ENTRIES);
+        globalSpamCache.set(guildId, new Map());
+    }
     const guildMap = globalSpamCache.get(guildId);
+    enforceLimit(guildMap, MAX_USER_ENTRIES);
 
     const now = Date.now();
     // Use a simple hash or truncated content as key to catch slightly varied spam

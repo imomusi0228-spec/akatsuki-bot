@@ -15,8 +15,8 @@ function hasManageGuild(permissions, owner = false) {
     return (p & MANAGE_GUILD) === MANAGE_GUILD || (p & ADMINISTRATOR) === ADMINISTRATOR;
 }
 
-const memberCache = new Map();
-const introCache = new Map();
+// Helper: Cache import and usage
+import { cache } from "../core/cache.js";
 
 export async function handleApiRoute(req, res, pathname, url) {
     // Check for API Key (Admin Token) for backend routes
@@ -40,6 +40,17 @@ export async function handleApiRoute(req, res, pathname, url) {
     }
 
     const method = req.method;
+
+    // Enforce CSRF Protection for state-changing requests (except Admin API)
+    if (method !== "GET" && session && !isAdminApi) {
+        const csrfHeader = req.headers["x-csrf-token"];
+        if (!csrfHeader || csrfHeader !== session.csrfSecret) {
+            console.warn(`[SECURITY] CSRF block: User=${session.user.username}, Path=${pathname}, Header=${csrfHeader}`);
+            res.writeHead(403, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ ok: false, error: "Invalid or missing CSRF Token. Please refresh the page." }));
+            return;
+        }
+    }
 
     // Response Helpers
     const resJson = (data, status = 200) => {
@@ -522,9 +533,10 @@ export async function handleApiRoute(req, res, pathname, url) {
         const introSet = new Set();
         // 3. Scan Intro Channel (Last 100 messages) to find who introduced
         const introCacheKey = `intro_${settings.intro_channel_id}`;
-        const cachedIntro = introCache.get(introCacheKey);
-        if (cachedIntro && Date.now() - cachedIntro.ts < 30 * 60 * 1000) { // 30 min cache
-            cachedIntro.data.forEach(id => introSet.add(id));
+        const cachedIntroIds = cache.getIntros(introCacheKey);
+
+        if (cachedIntroIds) {
+            cachedIntroIds.forEach(id => introSet.add(id));
         } else if (settings.intro_channel_id) {
             try {
                 const channel = client.channels.cache.get(settings.intro_channel_id) || await guild.channels.fetch(settings.intro_channel_id).catch(() => null);
@@ -540,7 +552,7 @@ export async function handleApiRoute(req, res, pathname, url) {
                         fetchCount += msgs.size;
                         if (msgs.size < 100) break;
                     }
-                    introCache.set(introCacheKey, { ts: Date.now(), data: Array.from(introSet) });
+                    cache.setIntros(introCacheKey, Array.from(introSet));
                 }
             } catch (e) { console.error("Intro Scan Error:", e); }
         }
@@ -548,20 +560,20 @@ export async function handleApiRoute(req, res, pathname, url) {
         try {
             let members;
             const cacheKey = `members_${guildId}`;
-            const cached = memberCache.get(cacheKey);
+            const cachedMembers = cache.getMembers(cacheKey);
             const refresh = url.searchParams.get("refresh") === "1";
 
-            if (!refresh && cached && Date.now() - cached.ts < 15 * 60 * 1000) { // Increased to 15 min
-                members = cached.data;
+            if (!refresh && cachedMembers) {
+                members = cachedMembers;
             } else {
                 try {
                     members = await guild.members.fetch();
-                    memberCache.set(cacheKey, { ts: Date.now(), data: members });
+                    cache.setMembers(cacheKey, members);
                 } catch (fetchErr) {
                     // Check if we have cached data even if it's old (Stale-while-error)
-                    if (cached && (fetchErr.name === 'GatewayRateLimitError' || fetchErr.code === 50035 || String(fetchErr).includes('rate limited'))) {
+                    if (cachedMembers && (fetchErr.name === 'GatewayRateLimitError' || fetchErr.code === 50035 || String(fetchErr).includes('rate limited'))) {
                         console.warn(`[Activity Scan] Rate limited, using stale cache for guild ${guildId}`);
-                        members = cached.data;
+                        members = cachedMembers;
                     } else if (fetchErr.name === 'GatewayRateLimitError' || fetchErr.code === 50035 || String(fetchErr).includes('rate limited')) {
                         const retryAfter = fetchErr.data?.retry_after || 5;
                         console.warn(`[Activity Scan] Rate limited! Retry after ${retryAfter}s. Guild: ${guildId}`);

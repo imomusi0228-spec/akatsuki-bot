@@ -100,15 +100,24 @@ export async function handleAuthRoute(req, res, pathname, url) {
 
             // Create session
             const sid = rand();
-            console.log(`[AUTH DEBUG] /callback: Creating session SID=${sid} for User=${user.username}`);
+            const csrfSecret = rand(32); // Strong CSRF secret
+
+            console.log(`[AUTH DEBUG] /callback: Creating session SID=${sid} for User=${user.username} (CSRF Secret: ${csrfSecret.substring(0, 8)}...)`);
+
             sessions.set(sid, {
                 accessToken: tokenData.access_token,
                 refreshToken: tokenData.refresh_token,
                 expiresAt: Date.now() + (tokenData.expires_in * 1000),
                 user,
+                csrfSecret,
             });
 
             setCookie(res, "sid", sid, { maxAge: tokenData.expires_in, httpOnly: true, secure: true });
+
+            // CSRF cookie is readable by JS so the client can send it in headers
+            // We set it to expire with the session
+            setCookie(res, "csrf_token", csrfSecret, { maxAge: tokenData.expires_in, secure: true, sameSite: 'Lax' });
+
             delCookie(res, "oauth_state");
 
             res.writeHead(302, { Location: "/admin/dashboard" });
