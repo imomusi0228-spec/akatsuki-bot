@@ -9,7 +9,7 @@
     <div style="display:flex; gap:10px; margin-bottom:20px; align-items:flex-end;">
         <div>
             <label class="muted" style="font-size:12px;">
-                <%= t("header_role") %>
+                <%= t("audit_role") %>
             </label><br />
             <select id="auditRole" style="width:150px;"></select>
         </div>
@@ -20,10 +20,14 @@
             <select id="introCh" style="width:150px;"></select>
         </div>
         <div>
-            <label class="muted" style="font-size:12px;">VC Weeks</label><br />
+            <label class="muted" style="font-size:12px;">
+                <%= t("vc_weeks") %>
+            </label><br />
             <input id="vcWeeks" type="number" value="2" min="1" max="100" style="width:60px;">
         </div>
-        <button id="scan" class="btn btn-primary">Scan Activity</button>
+        <button id="scan" class="btn btn-primary">
+            <%= t("scan_btn") %>
+        </button>
     </div>
 
     <div id="act-loading" style="display:none; text-align:center; padding:40px;">
@@ -34,17 +38,23 @@
         <thead>
             <tr>
                 <th onclick="sortActivity('joined_at')" style="cursor:pointer;">
-                    <%= t("header_joined") %> ↕
+                    <%= t("header_joined_at") %> ↕
                 </th>
                 <th onclick="sortActivity('display_name')" style="cursor:pointer;">
                     <%= t("header_user") %> ↕
                 </th>
                 <th style="text-align:center;">
-                    <%= t("header_role") %>
+                    <%= t("audit_role") %>
                 </th>
-                <th style="text-align:center;">Intro</th>
-                <th style="text-align:center;">Last VC</th>
-                <th style="text-align:center;">Status</th>
+                <th style="text-align:center;">
+                    <%= t("intro") %>
+                </th>
+                <th style="text-align:center;">
+                    <%= t("last_vc") %>
+                </th>
+                <th style="text-align:center;">
+                    <%= t("audit_status") %>
+                </th>
             </tr>
         </thead>
         <tbody id="act-rows"></tbody>

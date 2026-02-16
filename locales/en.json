@@ -83,5 +83,8 @@
     "antiraid_threshold": "Anti-Raid Threshold (Joins/min)",
     "ng_word_settings": "NG Word Detection Settings",
     "login_required": "Login Required",
+    "vc_weeks": "VC Weeks",
+    "intro": "Intro",
+    "status": "Status",
     "loading": "Loading"
 }

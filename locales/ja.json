@@ -115,5 +115,7 @@
     "no_guilds": "サーバーが見つかりません",
     "antiraid_threshold": "レイド検知しきい値 (参加数/分)",
     "ng_word_settings": "NGワード検知設定",
-    "login_required": "ログインが必要です"
+    "login_required": "ログインが必要です",
+    "vc_weeks": "VC集計期間(週)",
+    "intro": "自己紹介"
 }
