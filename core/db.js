@@ -211,6 +211,12 @@ export async function initDb() {
         return true;
     } catch (e) {
         console.error("❌ Database initialization failed:", e.message);
-        return false;
+
+        console.log(`[DB] Cleanup finished. Deleted logs: NG(${ngRes.rowCount}), Events(${memRes.rowCount}), VC(${vcRes.rowCount})`);
+    } catch (e) {
+        console.error("[DB ERROR] Maintenance failed:", e.message);
     }
 }
+
+// Run once every 24 hours
+setInterval(cleanupOldData, 24 * 60 * 60 * 1000);
