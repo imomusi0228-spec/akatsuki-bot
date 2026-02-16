@@ -33,12 +33,47 @@
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
     }
 
-    .plan-card.recommended {
+    .plan-card.pro {
         border-color: var(--primary-color);
-        background: rgba(29, 161, 242, 0.05);
+        background: rgba(29, 161, 242, 0.08);
+        box-shadow: 0 0 20px rgba(29, 161, 242, 0.15);
     }
 
-    .plan-card.recommended::after {
+    .plan-card.pro-plus {
+        border-color: #a855f7;
+        background: rgba(168, 85, 247, 0.08);
+        box-shadow: 0 0 20px rgba(168, 85, 247, 0.15);
+    }
+
+    .plan-card.pro-plus .plan-badge {
+        background: rgba(168, 85, 247, 0.2);
+        color: #d8b4fe;
+    }
+
+    .plan-card.pro-plus .plan-price {
+        color: #d8b4fe;
+    }
+
+    .plan-card.pro-plus .feature-summary li i {
+        color: #a855f7;
+    }
+
+    .plan-card.pro-plus::after {
+        content: 'PREMIUM';
+        position: absolute;
+        top: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #a855f7;
+        color: white;
+        font-size: 10px;
+        font-weight: 900;
+        padding: 4px 12px;
+        border-radius: 10px;
+        letter-spacing: 1px;
+    }
+
+    .plan-card.pro::after {
         content: 'RECOMMENDED';
         position: absolute;
         top: -12px;
@@ -51,74 +86,6 @@
         padding: 4px 12px;
         border-radius: 10px;
         letter-spacing: 1px;
-    }
-
-    .plan-price {
-        font-size: 32px;
-        font-weight: 900;
-        margin: 15px 0;
-        color: #fff;
-    }
-
-    .plan-price span {
-        font-size: 14px;
-        color: #8899a6;
-        font-weight: normal;
-    }
-
-    .plan-card h3 {
-        font-size: 24px;
-        margin: 10px 0;
-    }
-
-    .plan-card .feature-summary {
-        list-style: none;
-        padding: 0;
-        margin: 20px 0;
-        text-align: left;
-        font-size: 14px;
-        color: #8899a6;
-    }
-
-    .plan-card .feature-summary li {
-        margin-bottom: 12px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .plan-card .feature-summary li i {
-        color: var(--primary-color);
-        font-size: 12px;
-    }
-
-    .btn-plan {
-        display: block;
-        width: 100%;
-        padding: 12px;
-        border-radius: 10px;
-        background: var(--primary-color);
-        color: white;
-        text-decoration: none;
-        font-weight: bold;
-        transition: 0.3s;
-        margin-top: 20px;
-    }
-
-    .btn-plan:hover {
-        opacity: 0.9;
-        transform: scale(1.02);
-    }
-
-    .btn-plan.outline {
-        background: transparent;
-        border: 1px solid var(--border-color);
-        color: #fff;
-    }
-
-    .btn-plan.outline:hover {
-        border-color: var(--primary-color);
-        color: var(--primary-color);
     }
 
     .notice-container {
@@ -288,11 +255,10 @@
                 <li><i>✓</i> アンチ・レイド保護 (警告)</li>
             </ul>
         </div>
-        <a href="/login" class="btn-plan outline">Get Started</a>
     </div>
 
     <!-- Pro Tier -->
-    <div class="plan-card recommended">
+    <div class="plan-card pro">
         <div>
             <div class="plan-badge">Standard</div>
             <h3>
@@ -306,11 +272,10 @@
                 <li><i>✓</i> アンチ・レイド完全防衛</li>
             </ul>
         </div>
-        <a href="/login" class="btn-plan">Upgrade Now</a>
     </div>
 
     <!-- Pro+ Tier -->
-    <div class="plan-card">
+    <div class="plan-card pro-plus">
         <div>
             <div class="plan-badge">Premium</div>
             <h3>
@@ -324,7 +289,6 @@
                 <li><i>✓</i> CSVデータ出力サポート</li>
             </ul>
         </div>
-        <a href="/login" class="btn-plan outline">Get Premium</a>
     </div>
 </div>
 
