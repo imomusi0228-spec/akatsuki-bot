@@ -211,8 +211,21 @@ export async function initDb() {
         return true;
     } catch (e) {
         console.error("❌ Database initialization failed:", e.message);
+        return false;
+    }
+}
 
-        console.log(`[DB] Cleanup finished. Deleted logs: NG(${ngRes.rowCount}), Events(${memRes.rowCount}), VC(${vcRes.rowCount})`);
+/**
+ * Database maintenance: Clear old logs to keep indices fast
+ */
+export async function cleanupOldData() {
+    try {
+        console.log("[DB] Starting periodic cleanup...");
+        const ngRes = await dbQuery("DELETE FROM ng_logs WHERE created_at < NOW() - INTERVAL '30 days'");
+        const memRes = await dbQuery("DELETE FROM member_events WHERE created_at < NOW() - INTERVAL '30 days'");
+        const vcRes = await dbQuery("DELETE FROM vc_sessions WHERE join_time < NOW() - INTERVAL '60 days'");
+
+        console.log(`[DB] Cleanup finished. Deleted logs: NG(${ngRes.rowCount || 0}), Events(${memRes.rowCount || 0}), VC(${vcRes.rowCount || 0})`);
     } catch (e) {
         console.error("[DB ERROR] Maintenance failed:", e.message);
     }
