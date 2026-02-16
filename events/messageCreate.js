@@ -1,12 +1,9 @@
-import { Events, EmbedBuilder } from "discord.js";
+import { Events } from "discord.js";
 import { dbQuery } from "../core/db.js";
-import { ENV } from "../config/env.js";
-
 import { getTier } from "../core/subscription.js";
 import { getFeatures } from "../core/tiers.js";
-import { sendLog } from "../core/logger.js";
-import { checkSpam } from "../core/protection.js";
 import { cache } from "../core/cache.js";
+import { batcher } from "../core/batcher.js";
 
 export default {
     name: Events.MessageCreate,
@@ -20,6 +17,8 @@ export default {
             const features = getFeatures(tier);
 
             if (features.spamProtection) {
+                const { checkSpam, checkMentionSpam, checkRateLimit } = await import("../core/protection.js");
+
                 // 1. Content Similarity Spam
                 const spamCheck = checkSpam(message.guild.id, message.author.id, message.content);
 
@@ -28,10 +27,11 @@ export default {
                 const mentionCheck = checkMentionSpam(message.guild.id, message.author.id, mentionCount);
 
                 // 3. Rate Limit (Frequency)
-                const { checkRateLimit } = await import("../core/protection.js");
                 const rateCheck = checkRateLimit(message.guild.id, message.author.id);
 
                 if (spamCheck.isSpam || mentionCheck.isSpam || rateCheck.isSpam) {
+                    const { EmbedBuilder } = await import("discord.js");
+                    const { sendLog } = await import("../core/logger.js");
                     const isMentionSpam = mentionCheck.isSpam;
                     const isRateSpam = rateCheck.isSpam && !spamCheck.isSpam && !mentionCheck.isSpam;
                     const count = isMentionSpam ? mentionCheck.count : (isRateSpam ? rateCheck.count : spamCheck.count);
@@ -51,9 +51,8 @@ export default {
 
                             await member.kick(reason).catch(e => console.error("[DEBUG] Kick failed:", e));
 
-                            // Log Kick to member_events
-                            await dbQuery("INSERT INTO member_events (guild_id, user_id, event_type) VALUES ($1, $2, 'kick')",
-                                [message.guild.id, message.author.id]);
+                            // Log Kick to member_events (Batched)
+                            batcher.push('member_events', { guild_id: message.guild.id, user_id: message.author.id, event_type: 'kick' });
 
                             // Log Kick to UI Channel
                             if (features.ngLog) {
@@ -97,17 +96,10 @@ export default {
             let caughtWords = [];
             for (const ng of ngWords) {
                 if (ng.kind === "regex") {
-                    try {
-                        const match = ng.word.match(/^\/(.*?)\/([gimsuy]*)$/);
-                        const regex = match ? new RegExp(match[1], match[2]) : new RegExp(ng.word);
-                        if (regex.test(message.content)) caughtWords.push(ng.word);
-                    } catch (e) {
-                        console.error("Invalid Regex in DB:", ng.word);
-                    }
+                    if (ng.compiled && ng.compiled.test(message.content)) caughtWords.push(ng.word);
                 } else {
                     if (message.content.includes(ng.word)) caughtWords.push(ng.word);
                 }
-                // Do NOT break, keep checking other words to count multiple violations
             }
 
             if (caughtWords.length > 0) {
@@ -127,10 +119,9 @@ export default {
 
                 console.log(`[DEBUG] Settings: threshold=${threshold}, timeout=${timeoutMin}m`);
 
-                // Log EACH word to DB
+                // Log EACH word to DB (Batched)
                 for (const word of caughtWords) {
-                    await dbQuery("INSERT INTO ng_logs (guild_id, user_id, user_name, word) VALUES ($1, $2, $3, $4)",
-                        [message.guild.id, message.author.id, message.author.tag, word]);
+                    batcher.push('ng_logs', { guild_id: message.guild.id, user_id: message.author.id, user_name: message.author.tag, word });
                 }
 
                 const joinedWords = caughtWords.join(", ");
@@ -161,9 +152,8 @@ export default {
                             if (timeoutMin > 0) {
                                 await member.timeout(timeoutMin * 60 * 1000, "NG Word Threshold Exceeded");
 
-                                // Log Timeout to member_events
-                                await dbQuery("INSERT INTO member_events (guild_id, user_id, event_type) VALUES ($1, $2, 'timeout')",
-                                    [message.guild.id, message.author.id]);
+                                // Log Timeout to member_events (Batched)
+                                batcher.push('member_events', { guild_id: message.guild.id, user_id: message.author.id, event_type: 'timeout' });
 
                                 actionTaken = `Timeout (${timeoutMin}m)`;
                             }
@@ -179,6 +169,9 @@ export default {
 
                 // Log to Channel
                 if (features.ngLog) {
+                    const { EmbedBuilder } = await import("discord.js");
+                    const { sendLog } = await import("../core/logger.js");
+
                     const embed = new EmbedBuilder()
                         .setAuthor({ name: message.member?.displayName || message.author.tag, iconURL: message.author.displayAvatarURL() })
                         .setColor(0xFF0000)

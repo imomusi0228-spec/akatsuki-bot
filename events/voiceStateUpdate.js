@@ -1,8 +1,8 @@
-import { Events, EmbedBuilder } from "discord.js";
+import { Events } from "discord.js";
 import { dbQuery } from "../core/db.js";
-import { sendLog } from "../core/logger.js";
 import { getTier } from "../core/subscription.js";
 import { getFeatures } from "../core/tiers.js";
+import { cache } from "../core/cache.js";
 
 export default {
     name: Events.VoiceStateUpdate,
@@ -23,10 +23,18 @@ export default {
         try {
             // Join
             if (!oldState.channelId && newState.channelId) {
-                await dbQuery(`
+                const joinTime = new Date();
+                const sessionRes = await dbQuery(`
                     INSERT INTO vc_sessions (guild_id, user_id, channel_id, join_time) 
-                    VALUES ($1, $2, $3, NOW())
-                `, [guildId, userId, newState.channelId]);
+                    VALUES ($1, $2, $3, $4) RETURNING id
+                `, [guildId, userId, newState.channelId, joinTime]);
+
+                if (sessionRes.rows.length > 0) {
+                    cache.setActiveSession(guildId, userId, { id: sessionRes.rows[0].id, join_time: joinTime });
+                }
+
+                const { EmbedBuilder } = await import("discord.js");
+                const { sendLog } = await import("../core/logger.js");
 
                 const embed = new EmbedBuilder()
                     .setAuthor({ name: member.displayName, iconURL: member.user.displayAvatarURL() })
@@ -39,14 +47,20 @@ export default {
 
             // Leave (or Move)
             if (oldState.channelId) {
-                const res = await dbQuery(`
-                    SELECT id, join_time FROM vc_sessions 
-                    WHERE guild_id = $1 AND user_id = $2 AND leave_time IS NULL 
-                    ORDER BY join_time DESC LIMIT 1
-                `, [guildId, userId]);
+                // Try cache first
+                let session = cache.getActiveSession(guildId, userId);
 
-                if (res.rows.length > 0) {
-                    const session = res.rows[0];
+                if (!session) {
+                    // Fallback to DB (needed after restart or if cache evicted)
+                    const res = await dbQuery(`
+                        SELECT id, join_time FROM vc_sessions 
+                        WHERE guild_id = $1 AND user_id = $2 AND leave_time IS NULL 
+                        ORDER BY join_time DESC LIMIT 1
+                    `, [guildId, userId]);
+                    if (res.rows.length > 0) session = res.rows[0];
+                }
+
+                if (session) {
                     const endTime = new Date();
                     const durationSec = Math.floor((endTime - new Date(session.join_time)) / 1000);
 
@@ -56,11 +70,16 @@ export default {
                         WHERE id = $3
                     `, [endTime, durationSec, session.id]);
 
+                    cache.clearActiveSession(guildId, userId);
+
                     // Only log [OUT] if they actually left or moved
                     if (!newState.channelId || oldState.channelId !== newState.channelId) {
                         const minutes = Math.floor(durationSec / 60);
                         const seconds = durationSec % 60;
                         const durationStr = minutes > 0 ? `${minutes}分${seconds}秒` : `${seconds}秒`;
+
+                        const { EmbedBuilder } = await import("discord.js");
+                        const { sendLog } = await import("../core/logger.js");
 
                         const embed = new EmbedBuilder()
                             .setAuthor({ name: member.displayName, iconURL: member.user.displayAvatarURL() })
@@ -75,10 +94,18 @@ export default {
 
             // Move (Join part)
             if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
-                await dbQuery(`
+                const joinTime = new Date();
+                const sessionRes = await dbQuery(`
                     INSERT INTO vc_sessions (guild_id, user_id, channel_id, join_time) 
-                    VALUES ($1, $2, $3, NOW())
-                `, [guildId, userId, newState.channelId]);
+                    VALUES ($1, $2, $3, $4) RETURNING id
+                `, [guildId, userId, newState.channelId, joinTime]);
+
+                if (sessionRes.rows.length > 0) {
+                    cache.setActiveSession(guildId, userId, { id: sessionRes.rows[0].id, join_time: joinTime });
+                }
+
+                const { EmbedBuilder } = await import("discord.js");
+                const { sendLog } = await import("../core/logger.js");
 
                 const embed = new EmbedBuilder()
                     .setAuthor({ name: member.displayName, iconURL: member.user.displayAvatarURL() })

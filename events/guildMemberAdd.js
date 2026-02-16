@@ -1,9 +1,9 @@
-import { Events, EmbedBuilder } from "discord.js";
+import { Events } from "discord.js";
 import { dbQuery } from "../core/db.js";
 import { getTier } from "../core/subscription.js";
 import { getFeatures } from "../core/tiers.js";
-import { sendLog } from "../core/logger.js";
 import { cache } from "../core/cache.js";
+import { batcher } from "../core/batcher.js";
 
 export default {
     name: Events.GuildMemberAdd,
@@ -11,11 +11,8 @@ export default {
         if (member.user.bot) return;
 
         try {
-            // 1. Record Join Event
-            await dbQuery(
-                "INSERT INTO member_events (guild_id, user_id, event_type) VALUES ($1, $2, $3)",
-                [member.guild.id, member.user.id, 'join']
-            );
+            // 1. Record Join Event (Batched)
+            batcher.push('member_events', { guild_id: member.guild.id, user_id: member.user.id, event_type: 'join' });
             console.log(`[EVENT] Member Joined: ${member.user.tag} in ${member.guild.name}`);
 
             // 2. Anti-Raid Detection (Pro/Pro+)
@@ -32,14 +29,13 @@ export default {
 
                 if (settings.antiraid_enabled) {
                     const threshold = settings.antiraid_threshold || 10;
-                    const joinCountRes = await dbQuery(
-                        "SELECT COUNT(*) as cnt FROM member_events WHERE guild_id = $1 AND event_type = 'join' AND created_at > NOW() - INTERVAL '1 minute'",
-                        [member.guild.id]
-                    );
-                    const joinCount = parseInt(joinCountRes.rows[0].cnt);
+                    const joinCount = cache.recordJoin(member.guild.id);
 
                     if (joinCount >= threshold) {
                         console.warn(`[ANTI-RAID] Raid detected in ${member.guild.name}! (${joinCount} joins/min)`);
+
+                        const { EmbedBuilder } = await import("discord.js");
+                        const { sendLog } = await import("../core/logger.js");
 
                         const embed = new EmbedBuilder()
                             .setTitle("🚨 Anti-Raid Alert: Potential Raid Detected")

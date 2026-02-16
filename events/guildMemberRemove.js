@@ -1,5 +1,6 @@
 import { Events } from "discord.js";
 import { dbQuery } from "../core/db.js";
+import { batcher } from "../core/batcher.js";
 
 export default {
     name: Events.GuildMemberRemove,
@@ -7,10 +8,8 @@ export default {
         if (member.user.bot) return;
 
         try {
-            await dbQuery(
-                "INSERT INTO member_events (guild_id, user_id, event_type) VALUES ($1, $2, $3)",
-                [member.guild.id, member.user.id, 'leave']
-            );
+            // Batched Insert
+            batcher.push('member_events', { guild_id: member.guild.id, user_id: member.user.id, event_type: 'leave' });
             console.log(`[EVENT] Member Left: ${member.user.tag} from ${member.guild.name}`);
         } catch (e) {
             console.error("[EVENT ERROR] GuildMemberRemove:", e.message);

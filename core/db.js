@@ -179,10 +179,13 @@ export async function initDb() {
             // Performance Indices
             `CREATE INDEX IF NOT EXISTS idx_vc_sessions_guild_user ON vc_sessions(guild_id, user_id);`,
             `CREATE INDEX IF NOT EXISTS idx_vc_sessions_join ON vc_sessions(join_time);`,
+            `CREATE INDEX IF NOT EXISTS idx_vc_sessions_guild_jointime ON vc_sessions(guild_id, join_time);`,
             `CREATE INDEX IF NOT EXISTS idx_ng_words_guild ON ng_words(guild_id);`,
             `CREATE INDEX IF NOT EXISTS idx_ng_logs_guild_created ON ng_logs(guild_id, created_at);`,
             `CREATE INDEX IF NOT EXISTS idx_ng_logs_user_recent ON ng_logs(user_id, created_at);`,
             `CREATE INDEX IF NOT EXISTS idx_member_events_guild_type ON member_events(guild_id, event_type, created_at);`,
+            `CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);`,
+            `CREATE INDEX IF NOT EXISTS idx_subscriptions_guild_id ON subscriptions(guild_id);`,
 
             // New settings columns for v1.2.0
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS antiraid_enabled BOOLEAN DEFAULT FALSE;`,
