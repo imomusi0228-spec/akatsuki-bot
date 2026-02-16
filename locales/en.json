@@ -80,5 +80,7 @@
     "help_introgate": "Restricts server access until a self-introduction is posted in the specified channel.",
     "help_vc_role": "Automatically assigns roles based on cumulative voice channel activity time.",
     "help_vc_report": "Periodically sends server activity reports to the designated channel.",
+    "antiraid_threshold": "Anti-Raid Threshold (Joins/min)",
+    "ng_word_settings": "NG Word Detection Settings",
     "loading": "Loading"
 }

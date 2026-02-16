@@ -115,25 +115,43 @@
                 <span>▼</span>
             </div>
             <div class="accordion-content">
-                <div style="margin-bottom:15px;">
-                    <label style="display:flex; align-items:center; cursor:pointer;">
-                        <input type="checkbox" id="antiraidEnabled" style="width:18px; height:18px; margin-right:10px;">
-                        <span>アンチ・レイド防衛を有効化</span>
-                    </label>
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-                    <div>
-                        <label class="muted">
-                            <%= t("ng_threshold") %>
-                        </label><br />
-                        <input id="threshold" type="number" min="1" max="100" style="width:100%; margin-top:5px;">
+                <!-- Section 1: Anti-Raid -->
+                <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 20px; margin-bottom: 20px;">
+                    <div style="margin-bottom:15px;">
+                        <label style="display:flex; align-items:center; cursor:pointer;">
+                            <input type="checkbox" id="antiraidEnabled"
+                                style="width:18px; height:18px; margin-right:10px;">
+                            <span style="font-weight: bold;">アンチ・レイド保護を有効化</span>
+                        </label>
                     </div>
                     <div>
                         <label class="muted">
-                            <%= t("timeout_minutes") %><span class="help-tip"
-                                    data-tip="<%= t('help_timeout') %>">?</span>
+                            <%= t("antiraid_threshold") %>
                         </label><br />
-                        <input id="timeout" type="number" min="1" max="1440" style="width:100%; margin-top:5px;">
+                        <input id="antiraidThreshold" type="number" min="1" max="1000"
+                            style="width:100%; max-width: 300px; margin-top:5px;">
+                    </div>
+                </div>
+
+                <!-- Section 2: NG Word Actions -->
+                <div>
+                    <h4 style="margin: 0 0 15px 0; font-size: 14px; color: var(--accent-color);">
+                        <%= t("ng_word_settings") %>
+                    </h4>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                        <div>
+                            <label class="muted">
+                                <%= t("ng_threshold") %>
+                            </label><br />
+                            <input id="threshold" type="number" min="1" max="100" style="width:100%; margin-top:5px;">
+                        </div>
+                        <div>
+                            <label class="muted">
+                                <%= t("timeout_minutes") %><span class="help-tip"
+                                        data-tip="<%= t('help_timeout') %>">?</span>
+                            </label><br />
+                            <input id="timeout" type="number" min="1" max="1440" style="width:100%; margin-top:5px;">
+                        </div>
                     </div>
                 </div>
             </div>
