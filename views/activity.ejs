@@ -28,6 +28,19 @@
         <button id="scan" class="btn btn-primary">
             <%= t("scan_btn") %>
         </button>
+        <div id="csv-controls" style="display:none; gap:10px; align-items:center; margin-left:auto;">
+            <select id="csv-filter" style="padding:4px 8px; font-size:12px;">
+                <option value="all">
+                    <%= t("dash_export_all") %>
+                </option>
+                <option value="ng" selected>
+                    <%= t("dash_export_ng") %>
+                </option>
+            </select>
+            <button id="export-csv" class="btn" style="border-color:var(--accent-color); color:var(--accent-color);">
+                <%= t("dash_export_btn") %>
+            </button>
+        </div>
     </div>
 
     <div id="act-loading" style="display:none; text-align:center; padding:40px;">

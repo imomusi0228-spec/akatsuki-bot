@@ -438,12 +438,30 @@ async function initActivity() {
 
         currentData = res.data || [];
         renderRows(currentData);
+
+        // Show CSV controls for Pro+
+        const csvCtrls = document.getElementById("csv-controls");
+        if (csvCtrls) {
+            const sub = res.subscription || {};
+            const isProPlus = sub.tier === 3 || sub.tier === 4 || sub.tier === 5;
+            csvCtrls.style.display = isProPlus ? "flex" : "none";
+        }
     };
 
     selGuild.onchange = () => { reloadCriteria(); document.getElementById("act-rows").innerHTML = ""; };
     const btnReload = document.getElementById("reload");
     if (btnReload) btnReload.onclick = runScan;
     document.getElementById("scan").onclick = runScan;
+
+    const btnExport = document.getElementById("export-csv");
+    if (btnExport) {
+        btnExport.onclick = () => {
+            const gid = selGuild.value;
+            const filter = document.getElementById("csv-filter")?.value || "all";
+            if (!gid) return;
+            window.location.href = `/api/activity/export?guild=${gid}&filter=${filter}`;
+        };
+    }
 
     reloadCriteria();
 }
