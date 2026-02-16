@@ -706,6 +706,11 @@ export async function handleApiRoute(req, res, pathname, url) {
                 await dbQuery("UPDATE subscriptions SET tier = $1, user_id = $2, valid_until = $3, current_milestone = $4, auto_unlock_enabled = $5, updated_at = NOW() WHERE guild_id = $6",
                     [targetTier, body.user_id, validUntil, currentMilestone, autoUnlock, body.guild]);
             }
+
+            // Invalidate Cache to ensure immediate reflection
+            const { cache } = await import("../core/cache.js");
+            cache.clearAll(body.guild);
+
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ ok: true }));
         } catch (e) {
