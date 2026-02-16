@@ -192,7 +192,7 @@ export default {
             }
 
             // 3. Automated Self-Introduction Gate (Pro+ Only)
-            if (features.activity && settings.self_intro_enabled && settings.intro_channel_id === message.channel.id) {
+            if (features.introGate && settings.self_intro_enabled && settings.intro_channel_id === message.channel.id) {
                 const minLength = settings.self_intro_min_length || 10;
 
                 if (message.content.length >= minLength) {

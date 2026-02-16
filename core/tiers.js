@@ -36,7 +36,11 @@ export const FEATURES = {
         activity: true, // Activity stats (basic)
         autoRelease: false,
         antiraid: true, // Alerts only
-        spamProtection: false
+        spamProtection: false,
+        audit: false,
+        csv: false,
+        introGate: false,
+        longTermStats: false
     },
     [TIERS.PRO_MONTHLY]: {
         maxNgWords: 20,
@@ -46,8 +50,12 @@ export const FEATURES = {
         dashboard: true,
         activity: true, // Limited to 7 days
         autoRelease: true,
-        antiraid: true, // Alerts only
-        spamProtection: true
+        antiraid: true, // Full
+        spamProtection: true,
+        audit: false,
+        csv: false,
+        introGate: false,
+        longTermStats: false
     },
     [TIERS.PRO_YEARLY]: {
         maxNgWords: 20,
@@ -57,8 +65,12 @@ export const FEATURES = {
         dashboard: true,
         activity: true, // Limited to 7 days
         autoRelease: true,
-        antiraid: true, // Alerts only
-        spamProtection: true
+        antiraid: true, // Full
+        spamProtection: true,
+        audit: false,
+        csv: false,
+        introGate: false,
+        longTermStats: false
     },
     [TIERS.PRO_PLUS_MONTHLY]: {
         maxNgWords: 50,
@@ -68,7 +80,12 @@ export const FEATURES = {
         dashboard: true,
         activity: true,
         autoRelease: true,
-        spamProtection: true
+        antiraid: true,
+        spamProtection: true,
+        audit: true,
+        csv: true,
+        introGate: true,
+        longTermStats: true
     },
     [TIERS.PRO_PLUS_YEARLY]: {
         maxNgWords: 50,
@@ -78,7 +95,12 @@ export const FEATURES = {
         dashboard: true,
         activity: true,
         autoRelease: true,
-        spamProtection: true
+        antiraid: true,
+        spamProtection: true,
+        audit: true,
+        csv: true,
+        introGate: true,
+        longTermStats: true
     },
     [TIERS.TRIAL_PRO_PLUS]: {
         maxNgWords: 50,
@@ -88,7 +110,12 @@ export const FEATURES = {
         dashboard: true,
         activity: true,
         autoRelease: true,
-        spamProtection: true
+        antiraid: true,
+        spamProtection: true,
+        audit: true,
+        csv: true,
+        introGate: true,
+        longTermStats: true
     },
     [TIERS.TRIAL_PRO]: {
         maxNgWords: 20,
@@ -99,7 +126,11 @@ export const FEATURES = {
         activity: true,
         autoRelease: true,
         antiraid: true,
-        spamProtection: true
+        spamProtection: true,
+        audit: false,
+        csv: false,
+        introGate: false,
+        longTermStats: false
     }
 };
 

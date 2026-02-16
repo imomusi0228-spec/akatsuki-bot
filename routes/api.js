@@ -475,9 +475,9 @@ export async function handleApiRoute(req, res, pathname, url) {
         const tier = await getTier(guildId);
         const features = getFeatures(tier);
 
-        if (!features.activity) {
+        if (!features.audit) {
             res.writeHead(403, { "Content-Type": "application/json" });
-            return res.end(JSON.stringify({ ok: false, error: "Upgrade required for Activity Audit." }));
+            return res.end(JSON.stringify({ ok: false, error: "Upgrade to Pro+ required for Activity Audit." }));
         }
 
         // Inactivity Logic: Users who haven't joined VC or sent message (we don't track msg time in DB)
@@ -616,9 +616,9 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
         const tier = await getTier(guildId);
         const features = getFeatures(tier);
-        if (!features.activity) {
+        if (!features.csv) {
             res.writeHead(403, { "Content-Type": "application/json" });
-            return res.end(JSON.stringify({ ok: false, error: "Upgrade required" }));
+            return res.end(JSON.stringify({ ok: false, error: "Upgrade to Pro+ required for CSV Export." }));
         }
 
         const guild = client.guilds.cache.get(guildId);
