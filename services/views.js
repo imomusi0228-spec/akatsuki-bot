@@ -106,3 +106,14 @@ export async function renderFeaturesHTML(req) {
         scripts: ""
     }, lang);
 }
+
+export async function renderAdminAntiraidHTML({ user, req }) {
+    const lang = getLang(req);
+    return await renderView("antiraid", {
+        title: t("nav_antiraid", lang),
+        user,
+        oauth: true,
+        activeTab: "antiraid",
+        scripts: ""
+    }, lang);
+}

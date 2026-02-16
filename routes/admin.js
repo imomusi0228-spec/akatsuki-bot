@@ -1,6 +1,6 @@
 import { ENV } from "../config/env.js";
 import { getSession } from "../middleware/auth.js";
-import { renderLoginHTML, renderAdminDashboardHTML, renderAdminSettingsHTML, renderAdminActivityHTML } from "../services/views.js";
+import { renderLoginHTML, renderAdminDashboardHTML, renderAdminSettingsHTML, renderAdminActivityHTML, renderAdminAntiraidHTML } from "../services/views.js";
 
 export async function handleAdminRoute(req, res, pathname, url) {
     // Token Login (for debugging or admin bypass)
@@ -49,9 +49,7 @@ export async function handleAdminRoute(req, res, pathname, url) {
         const html = await renderAdminActivityHTML({ user, req });
         res.end(html);
     } else if (pathname === "/admin/antiraid") {
-        // Assuming a renderAdminAntiraidHTML function exists or similar pattern
-        // For now, using dashboard as a placeholder if no specific antiraid view is provided
-        const html = await renderAdminDashboardHTML({ user, req }); // Placeholder
+        const html = await renderAdminAntiraidHTML({ user, req });
         res.end(html);
     } else {
         // Default: Dashboard if no other path matches

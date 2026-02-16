@@ -50,7 +50,8 @@ async function loadGuilds() {
 
     const o = document.createElement("option"); o.textContent = `(${t("no_guilds")})`; sel.appendChild(o);
     const errMsg = (d && d.error) ? d.error : "Check Bot Permissions/Invite";
-    $("guildStatus").innerHTML = '<span style="color:var(--danger-color)">' + escapeHTML(errMsg) + '</span>';
+    const statusEl = $("guildStatus");
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--danger-color)">' + escapeHTML(errMsg) + '</span>';
     return false;
 }
 
