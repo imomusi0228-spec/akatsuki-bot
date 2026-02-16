@@ -139,12 +139,6 @@ async function initDashboard() {
                     const validUntil = sub.valid_until ? '(' + sub.valid_until.split('T')[0] + ')' : '';
                     $("plan-info").innerHTML = `${sub.name} ${validUntil}`;
 
-                    // Show CSV controls for Pro+
-                    const csvCtrls = $("csv-controls");
-                    if (csvCtrls) {
-                        const isProPlus = sub.tier === 3 || sub.tier === 4 || sub.tier === 5; // PRO_PLUS_MONTHLY, PRO_PLUS_YEARLY, TRIAL_PRO_PLUS
-                        csvCtrls.style.display = isProPlus ? "flex" : "none";
-                    }
 
                     const item = (l, v) => `<span style="font-weight:bold; color:var(--accent-color); font-size:14px;">${v}</span> <span style="font-size:12px; margin-right:8px;">${l}</span>`;
                     $("summary").innerHTML = `${item(t("vc_joins"), s.joins)} | ${item(t("leaves"), s.leaves)} | ${item(t("timeouts"), s.timeouts)} | ${item(t("ng_detect"), s.ngDetected)}`;
@@ -168,15 +162,6 @@ async function initDashboard() {
             }
         };
 
-        const exportBtn = $("export-csv");
-        if (exportBtn) {
-            exportBtn.onclick = () => {
-                const gid = $("guild").value;
-                const filter = $("csv-filter").value;
-                if (!gid) return;
-                window.location.href = `/api/activity/export?guild=${gid}&filter=${filter}`;
-            };
-        }
 
         $("guild").onchange = reload; $("month").onchange = reload; $("reload").onclick = reload; reload();
     } catch (e) {

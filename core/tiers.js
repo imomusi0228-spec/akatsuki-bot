@@ -38,7 +38,6 @@ export const FEATURES = {
         antiraid: true, // Alerts only
         spamProtection: false,
         audit: false,
-        csv: false,
         introGate: false,
         longTermStats: false
     },
@@ -53,7 +52,6 @@ export const FEATURES = {
         antiraid: true, // Full
         spamProtection: true,
         audit: false,
-        csv: false,
         introGate: false,
         longTermStats: false
     },
@@ -68,7 +66,6 @@ export const FEATURES = {
         antiraid: true, // Full
         spamProtection: true,
         audit: false,
-        csv: false,
         introGate: false,
         longTermStats: false
     },
@@ -83,7 +80,6 @@ export const FEATURES = {
         antiraid: true,
         spamProtection: true,
         audit: true,
-        csv: true,
         introGate: true,
         longTermStats: true
     },
@@ -98,7 +94,6 @@ export const FEATURES = {
         antiraid: true,
         spamProtection: true,
         audit: true,
-        csv: true,
         introGate: true,
         longTermStats: true
     },
@@ -113,7 +108,6 @@ export const FEATURES = {
         antiraid: true,
         spamProtection: true,
         audit: true,
-        csv: true,
         introGate: true,
         longTermStats: true
     },
@@ -128,7 +122,6 @@ export const FEATURES = {
         antiraid: true,
         spamProtection: true,
         audit: false,
-        csv: false,
         introGate: false,
         longTermStats: false
     }
@@ -156,10 +149,6 @@ export function getFeatures(tier, milestone = 5) {
         gated.vc_report = false;
         gated.vc_auto_roles = false;
         gated.vc_context_menu = false;
-    }
-    if (milestone < MILESTONES.M5_ULTIMATE) {
-        gated.csv_export = false;
-        gated.unlimited_history = false;
     }
 
     // Add metadata for UI
