@@ -617,9 +617,12 @@ export async function handleApiRoute(req, res, pathname, url) {
         } catch (e) { console.error("Activity Scan Error:", e); }
 
 
+        const sub = await getSubscriptionInfo(guildId);
+
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({
             ok: true,
+            subscription: sub,
             data: auditResults.sort((a, b) => (a.status === "NG" ? -1 : 1)) // NG first
         }));
         return;
