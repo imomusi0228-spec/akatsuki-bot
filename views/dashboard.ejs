@@ -26,21 +26,6 @@
             style="margin:0 0 8px 0; font-size:13px; font-weight:bold; color:var(--accent-color); display:flex; justify-content:space-between; align-items:center;">
             <span>📈 <%= t("growth_trend")%><span class="help-tip"
                         data-tip="<%= t('help_growth_trend') %>">?</span></span>
-            <div id="csv-controls" style="display:none; gap:5px; align-items:center;">
-                <select id="csv-filter"
-                    style="padding:2px; font-size:10px; background:rgba(0,0,0,0.2); color:#fff; border:1px solid #38444d; border-radius:4px;">
-                    <option value="all">
-                        <%= t("dash_export_all") %>
-                    </option>
-                    <option value="ng" selected>
-                        <%= t("dash_export_ng") %>
-                    </option>
-                </select>
-                <button id="export-csv" class="btn"
-                    style="padding:2px 8px; font-size:10px; border-color:var(--accent-color); color:var(--accent-color);">
-                    <%= t("dash_export_btn") %>
-                </button>
-            </div>
         </h4>
         <div style="height:190px;"><canvas id="growthChart"></canvas></div>
     </div>
@@ -53,7 +38,24 @@
 </div>
 
 <div id="card-raid" class="card" style="padding:12px; max-width: 1000px;">
-    <h4 style="margin:0 0 10px 0; font-size:13px; display:flex; align-items:center; gap:6px;">🛡️ Anti-Raid & Security
+    <h4
+        style="margin:0 0 10px 0; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:6px;">
+        <span>🛡️ Anti-Raid & Security</span>
+        <div id="csv-controls" style="display:none; gap:5px; align-items:center;">
+            <select id="csv-filter"
+                style="padding:2px; font-size:10px; background:rgba(0,0,0,0.2); color:#fff; border:1px solid #38444d; border-radius:4px;">
+                <option value="all">
+                    <%= t("dash_export_all") %>
+                </option>
+                <option value="ng" selected>
+                    <%= t("dash_export_ng") %>
+                </option>
+            </select>
+            <button id="export-csv" class="btn"
+                style="padding:2px 8px; font-size:10px; border-color:var(--accent-color); color:var(--accent-color);">
+                <%= t("dash_export_btn") %>
+            </button>
+        </div>
     </h4>
     <table class="data-table" style="font-size:12px;">
         <thead>
