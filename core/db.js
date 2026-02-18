@@ -198,7 +198,11 @@ export async function initDb() {
             );`,
             `CREATE INDEX IF NOT EXISTS idx_member_stats_last_act ON member_stats(last_activity_at);`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_advice_days INTEGER DEFAULT 14;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_advice_channel_id TEXT;`
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_advice_channel_id TEXT;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_insight_enabled BOOLEAN DEFAULT FALSE;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_insight_channel_id TEXT;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_insight_last_sent TIMESTAMPTZ;`
+
 
         ];
 

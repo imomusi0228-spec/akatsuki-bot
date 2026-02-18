@@ -223,10 +223,11 @@ async function initSettings() {
                 });
             }
 
-            // 3. Channels (VC Report & AI Advice)
+            // 3. Channels (VC Report, AI Advice & AI Insight)
             const selVcReport = $("vcReportCh");
             const selAiAdvice = $("aiAdviceCh");
-            [selVcReport, selAiAdvice].forEach(s => {
+            const selAiInsight = $("aiInsightCh");
+            [selVcReport, selAiAdvice, selAiInsight].forEach(s => {
                 if (s) {
                     s.innerHTML = '<option value="">(None)</option>';
                     channels.forEach(c => {
@@ -234,6 +235,7 @@ async function initSettings() {
                     });
                 }
             });
+
 
         } catch (e) {
             console.error("loadMasters Error:", e);
@@ -326,8 +328,11 @@ async function initSettings() {
             vc_report_channel_id: $("vcReportCh") ? $("vcReportCh").value : "",
             vc_report_interval: $("vcReportInterval") ? $("vcReportInterval").value : "weekly",
             ai_advice_days: parseInt($("aiAdviceDays")?.value || 14),
-            ai_advice_channel_id: $("aiAdviceCh")?.value || ""
+            ai_advice_channel_id: $("aiAdviceCh")?.value || "",
+            ai_insight_enabled: ($("aiInsightEnabled"))?.checked || false,
+            ai_insight_channel_id: $("aiInsightCh")?.value || ""
         };
+
 
         const res = await api("/api/settings/update", body);
         const stat = $("saveStatus");

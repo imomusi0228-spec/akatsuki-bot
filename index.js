@@ -7,6 +7,8 @@ import { registerCommands } from "./register-commands.js";
 import { runEngagementCheck } from "./services/engagement.js";
 import { runAnnouncerCheck } from "./services/announcer.js";
 import { runDataPruning } from "./services/pruning.js";
+import { runInsightCheck } from "./services/insight.js";
+
 
 // Global Error Handlers for Production Stability
 process.on("uncaughtException", (err) => {
@@ -41,13 +43,17 @@ process.on("unhandledRejection", (reason) => {
             runEngagementCheck();
             runAnnouncerCheck();
             runDataPruning();
+            runInsightCheck();
         };
+
 
         runTasks(); // Initial run
 
         setInterval(runEngagementCheck, 60 * 60 * 1000);    // 1 hour
         setInterval(runAnnouncerCheck, 24 * 60 * 60 * 1000);  // 24 hours
         setInterval(runDataPruning, 24 * 60 * 60 * 1000);    // 24 hours
+        setInterval(runInsightCheck, 2 * 60 * 60 * 1000);    // 2 hours check
+
 
         console.log("✅ All systems initialized successfully.");
     } catch (e) {
