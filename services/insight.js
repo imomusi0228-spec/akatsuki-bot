@@ -70,8 +70,9 @@ async function generateAndSendInsight(guild, settings) {
     }
 
     const embed = new EmbedBuilder()
-        .setTitle("🏯 サーバー運営・戦略レポート")
-        .setDescription(`お嬢、今週の運営状況を分析しました。今後の参考にしていただければ幸いです。\n\n${advice}`)
+        .setTitle("📊 サーバー運営レポート")
+        .setDescription(`今週の運営状況を分析しました。今後の運営の参考にしてください。\n\n${advice}`)
+
         .addFields(
             { name: "直近7日の参加/離脱", value: `${joins}名 / ${leaves}名`, inline: true },
             { name: "アクティブ(VC)", value: `${activeUsers}名`, inline: true },
