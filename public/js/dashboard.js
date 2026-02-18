@@ -5,8 +5,9 @@ const api = async (path, body) => {
     const ctrl = new AbortController();
     const tid = setTimeout(() => ctrl.abort(), 15000);
 
-    // Get CSRF token from cookie
-    const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrf_token='))?.split('=')[1];
+    // Get CSRF token from cookie (more robust parsing)
+    const csrfToken = document.cookie.split(';').map(c => c.trim()).find(row => row.startsWith('csrf_token='))?.split('=')[1];
+
 
     try {
         const r = await fetch(path, {

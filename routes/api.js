@@ -45,7 +45,8 @@ export async function handleApiRoute(req, res, pathname, url) {
     if (method !== "GET" && session && !isAdminApi) {
         const csrfHeader = req.headers["x-csrf-token"];
         if (!csrfHeader || csrfHeader !== session.csrfSecret) {
-            console.warn(`[SECURITY] CSRF block: User=${session.user.username}, Path=${pathname}, Header=${csrfHeader}`);
+            console.warn(`[SECURITY] CSRF block: Path=${pathname}, Header=${csrfHeader}, SessionSecret=${session.csrfSecret ? 'Exists' : 'Missing'}`);
+
             res.writeHead(403, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ ok: false, error: "Invalid or missing CSRF Token. Please refresh the page." }));
             return;
