@@ -188,7 +188,18 @@ export async function initDb() {
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS domain_blacklist JSONB DEFAULT '[]';`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS quarantine_role_id TEXT;`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS quarantine_channel_id TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS auto_slowmode_channels JSONB DEFAULT '[]';`
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS auto_slowmode_channels JSONB DEFAULT '[]';`,
+            `CREATE TABLE IF NOT EXISTS member_stats (
+                guild_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                total_vc_minutes INTEGER DEFAULT 0,
+                last_activity_at TIMESTAMPTZ DEFAULT NOW(),
+                PRIMARY KEY (guild_id, user_id)
+            );`,
+            `CREATE INDEX IF NOT EXISTS idx_member_stats_last_act ON member_stats(last_activity_at);`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_advice_days INTEGER DEFAULT 14;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_advice_channel_id TEXT;`
+
         ];
 
         for (const query of queries) {

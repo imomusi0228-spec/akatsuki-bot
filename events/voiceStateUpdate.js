@@ -72,6 +72,17 @@ export default {
 
                     cache.clearActiveSession(guildId, userId);
 
+                    // Update member_stats
+                    const minutesAdded = Math.floor(durationSec / 60);
+                    await dbQuery(`
+                        INSERT INTO member_stats (guild_id, user_id, total_vc_minutes, last_activity_at)
+                        VALUES ($1, $2, $3, NOW())
+                        ON CONFLICT (guild_id, user_id) DO UPDATE SET 
+                        total_vc_minutes = member_stats.total_vc_minutes + EXCLUDED.total_vc_minutes,
+                        last_activity_at = EXCLUDED.last_activity_at
+                    `, [guildId, userId, minutesAdded]).catch(() => { });
+
+
                     // Only log [OUT] if they actually left or moved
                     if (!newState.channelId || oldState.channelId !== newState.channelId) {
                         const minutes = Math.floor(durationSec / 60);

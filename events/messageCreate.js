@@ -12,8 +12,16 @@ export default {
         if (!message.guild) return;
 
         try {
+            // Track Activity
+            dbQuery(`
+                INSERT INTO member_stats (guild_id, user_id, last_activity_at)
+                VALUES ($1, $2, NOW())
+                ON CONFLICT (guild_id, user_id) DO UPDATE SET last_activity_at = NOW()
+            `, [message.guild.id, message.author.id]).catch(() => { });
+
             // Spam Protection (Similarity-based)
             const tier = await getTier(message.guild.id);
+
             const features = getFeatures(tier);
 
             if (features.spamProtection || features.antiraid) {

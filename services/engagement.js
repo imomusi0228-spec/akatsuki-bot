@@ -19,8 +19,11 @@ export async function runEngagementCheck() {
             // 1. レポート送信チェック
             await processVCReport(guild, settings);
 
-            // 2. ロール付与チェック
+            // 2. ロール付与チェック (Aura System)
             await processVCRoles(guild, settings);
+
+            // 3. AIアドバイスチェック (Community Health Radar)
+            await processAIAdvice(guild, settings);
 
         } catch (e) {
             console.error(`[ENGAGEMENT ERROR] Guild ${settings.guild_id}:`, e.message);
@@ -83,26 +86,19 @@ async function processVCReport(guild, settings) {
 }
 
 async function processVCRoles(guild, settings) {
-    const rules = settings.vc_role_rules; // Array of {hours, role_id}
+    const rules = settings.vc_role_rules; // Array of {hours, role_id, aura_name}
     if (!rules || !Array.isArray(rules) || rules.length === 0) return;
 
-    // Get everyone's stats for this month
+    // Get everyone's total life-time stats from member_stats
     const res = await dbQuery(`
-        SELECT user_id, SUM(duration_seconds) as total
-        FROM vc_sessions
-        WHERE guild_id = $1 AND join_time >= date_trunc('month', CURRENT_DATE)
-        GROUP BY user_id
+        SELECT user_id, total_vc_minutes
+        FROM member_stats
+        WHERE guild_id = $1
     `, [guild.id]);
 
     const stats = {};
-    res.rows.forEach(r => stats[r.user_id] = r.total / 3600);
+    res.rows.forEach(r => stats[r.user_id] = r.total_vc_minutes / 60);
 
-    // Fetch members (limited to those in stats for efficiency, or list all?)
-    // Actually we need to check people who MIGHT have lost the role too.
-    // So we check all members who have the roles mentioned in rules.
-    const roleIds = rules.map(r => r.role_id);
-
-    // Sort rules by hours DESC to find the highest applicable role
     const sortedRules = [...rules].sort((a, b) => b.hours - a.hours);
 
     const members = await guild.members.fetch();
@@ -110,11 +106,10 @@ async function processVCRoles(guild, settings) {
         if (member.user.bot) continue;
         const userHours = stats[memberId] || 0;
 
-        // Find best role
-        let targetRoleId = null;
+        let targetRule = null;
         for (const rule of sortedRules) {
             if (userHours >= rule.hours) {
-                targetRoleId = rule.role_id;
+                targetRule = rule;
                 break;
             }
         }
@@ -122,11 +117,64 @@ async function processVCRoles(guild, settings) {
         // Apply / Remove
         for (const rule of rules) {
             const hasRole = member.roles.cache.has(rule.role_id);
-            if (rule.role_id === targetRoleId) {
-                if (!hasRole) await member.roles.add(rule.role_id).catch(() => null);
+            if (targetRule && rule.role_id === targetRule.role_id) {
+                if (!hasRole) {
+                    await member.roles.add(rule.role_id).catch(() => null);
+                    // Optional: Welcome message for new Aura?
+                    console.log(`[AURA] ${member.user.tag} received aura: ${rule.aura_name}`);
+                }
             } else {
                 if (hasRole) await member.roles.remove(rule.role_id).catch(() => null);
             }
         }
     }
 }
+
+async function processAIAdvice(guild, settings) {
+    if (!settings.ai_advice_channel_id) return;
+    const adviceDays = settings.ai_advice_days || 14;
+
+    // Find members who haven't been active for 'adviceDays'
+    const res = await dbQuery(`
+        SELECT user_id, last_activity_at, total_vc_minutes
+        FROM member_stats
+        WHERE guild_id = $1 AND last_activity_at < NOW() - ($2 || ' days')::INTERVAL
+    `, [guild.id, adviceDays]);
+
+    if (res.rows.length === 0) return;
+
+    const channel = await guild.channels.fetch(settings.ai_advice_channel_id).catch(() => null);
+    if (!channel) return;
+
+    for (const row of res.rows) {
+        try {
+            const member = await guild.members.fetch(row.user_id).catch(() => null);
+            if (!member) continue;
+
+            const lastAct = new Date(row.last_activity_at).toLocaleDateString();
+
+            // Generate Advice (Local logic or LLM)
+            // For now, simpler template but in a "polite" tone as requested.
+            const advice = `【AIコミュニティ・ヘルス・レポート】
+${member.displayName}様は、${lastAct}以降活動が確認できておりません。
+累計VC時間は計${Math.floor(row.total_vc_minutes / 60)}時間となっております。
+もしよろしければ、最近の近況を伺うようなメッセージをお送りしてみてはいかがでしょうか。
+温かいお声掛けが、再会のきっかけになるかもしれません。`;
+
+            const embed = new EmbedBuilder()
+                .setTitle("🛡️ メンバーケア・アドバイス")
+                .setDescription(advice)
+                .setColor(0x00AE86)
+                .setThumbnail(member.user.displayAvatarURL())
+                .setTimestamp();
+
+            await channel.send({ embeds: [embed] });
+
+            // Update last_activity_at to avoid duplicate spam (bump it slightly)
+            await dbQuery("UPDATE member_stats SET last_activity_at = NOW() WHERE guild_id = $1 AND user_id = $2", [guild.id, row.user_id]);
+        } catch (e) {
+            console.error("[AI ADVICE ERROR]:", e.message);
+        }
+    }
+}
+

@@ -215,12 +215,13 @@
             <div class="accordion-content">
                 <!-- Role Rules -->
                 <div style="margin-bottom:24px;">
-                    <label class="muted" style="display:block; margin-bottom:10px;">VC活動時間に応じたロール自動付与<span
+                    <label class="muted" style="display:block; margin-bottom:10px;">VC活動時間に応じたオーラ付与（名称と時間）<span
                             class="help-tip" data-tip="<%= t('help_vc_role') %>">?</span></label>
                     <div id="roleRulesList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;">
                     </div>
                     <button type="button" onclick="addRoleRule()" class="btn" style="font-size:12px; width:100%;">+
-                        ルールを追加</button>
+                        オーラを追加</button>
+
                 </div>
 
                 <!-- Reports -->
@@ -248,8 +249,31 @@
             </div>
         </div>
 
+        <!-- 7. AI Community Health Radar -->
+        <div class="accordion-item" id="sec-ai">
+            <div class="accordion-header" onclick="toggleAccordion('sec-ai')">
+                <span>🤖 コミュニティ・ヘルス・レーダー (AIアドバイス)</span>
+                <span>▼</span>
+            </div>
+            <div class="accordion-content">
+                <p class="muted" style="font-size:12px; margin-bottom:15px;">
+                    一定期間活動のないメンバーに対し、AI（ボット）が丁寧な口調で「接し方」のアドバイスを送ります。</p>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                    <div>
+                        <label class="muted">アドバイスを行う放置日数</label><br />
+                        <input id="aiAdviceDays" type="number" min="1" value="14" style="width:100%; margin-top:5px;">
+                    </div>
+                    <div>
+                        <label class="muted">アドバイス通知先</label><br />
+                        <select id="aiAdviceCh" style="width:100%; margin-top:5px;"></select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
     <!-- ACCORDION END -->
+
 
     <div style="margin-top:30px; display:flex; gap:15px;">
         <button id="save" class="btn btn-primary" style="flex:1; padding:12px; font-size:16px;">

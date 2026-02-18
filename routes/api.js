@@ -445,14 +445,17 @@ export async function handleApiRoute(req, res, pathname, url) {
                  antiraid_enabled, antiraid_threshold, self_intro_enabled, self_intro_role_id, self_intro_min_length,
                  vc_report_enabled, vc_report_channel_id, vc_report_interval, vc_role_rules,
                  antiraid_guard_level, raid_join_threshold, newcomer_restrict_mins, newcomer_min_account_age,
-                 link_block_enabled, domain_blacklist, quarantine_role_id, quarantine_channel_id) 
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)`,
+                 link_block_enabled, domain_blacklist, quarantine_role_id, quarantine_channel_id,
+                 ai_advice_days, ai_advice_channel_id) 
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)`,
                 [body.guild, body.log_channel_id, body.ng_log_channel_id, body.audit_role_id, body.intro_channel_id, body.ng_threshold, body.timeout_minutes,
                 body.antiraid_enabled, body.antiraid_threshold, body.self_intro_enabled, body.self_intro_role_id, body.self_intro_min_length,
                 body.vc_report_enabled, body.vc_report_channel_id, body.vc_report_interval, JSON.stringify(body.vc_role_rules),
                 body.antiraid_guard_level || 0, body.raid_join_threshold || 10, body.newcomer_restrict_mins || 10, body.newcomer_min_account_age || 1,
-                body.link_block_enabled || false, JSON.stringify(body.domain_blacklist || []), body.quarantine_role_id || null, body.quarantine_channel_id || null]);
+                body.link_block_enabled || false, JSON.stringify(body.domain_blacklist || []), body.quarantine_role_id || null, body.quarantine_channel_id || null,
+                body.ai_advice_days || 14, body.ai_advice_channel_id || null]);
         } else {
+
             await dbQuery(`UPDATE settings SET 
                 log_channel_id = $1, 
                 ng_log_channel_id = $2,
@@ -477,14 +480,18 @@ export async function handleApiRoute(req, res, pathname, url) {
                 domain_blacklist = $21,
                 quarantine_role_id = $22,
                 quarantine_channel_id = $23,
+                ai_advice_days = $24,
+                ai_advice_channel_id = $25,
                 updated_at = NOW()
-                WHERE guild_id = $24`,
+                WHERE guild_id = $26`,
                 [body.log_channel_id, body.ng_log_channel_id, body.audit_role_id, body.intro_channel_id, body.ng_threshold, body.timeout_minutes,
                 body.antiraid_enabled, body.antiraid_threshold, body.self_intro_enabled, body.self_intro_role_id, body.self_intro_min_length,
                 body.vc_report_enabled, body.vc_report_channel_id, body.vc_report_interval, JSON.stringify(body.vc_role_rules),
                 body.antiraid_guard_level || 0, body.raid_join_threshold || 10, body.newcomer_restrict_mins || 10, body.newcomer_min_account_age || 1,
                 body.link_block_enabled || false, JSON.stringify(body.domain_blacklist || []), body.quarantine_role_id || null, body.quarantine_channel_id || null,
+                body.ai_advice_days || 14, body.ai_advice_channel_id || null,
                 body.guild]);
+
         }
 
         res.writeHead(200, { "Content-Type": "application/json" });
@@ -525,10 +532,16 @@ export async function handleApiRoute(req, res, pathname, url) {
 
         const vcWeeks = parseInt(url.searchParams.get("vc_weeks")) || 0;
 
-        // 2. Fetch VC Activity from DB for ALL members in one go
-        const vcActivityMap = {};
-        const vcRes = await dbQuery("SELECT user_id, MAX(COALESCE(leave_time, join_time)) as last_vc FROM vc_sessions WHERE guild_id = $1 GROUP BY user_id", [guildId]);
-        vcRes.rows.forEach(r => { vcActivityMap[r.user_id] = r.last_vc; });
+        // 2. Fetch Activity from member_stats for ALL members
+        const activityMap = {};
+        const statsRes = await dbQuery("SELECT user_id, last_activity_at, total_vc_minutes FROM member_stats WHERE guild_id = $1", [guildId]);
+        statsRes.rows.forEach(r => {
+            activityMap[r.user_id] = {
+                last_act: r.last_activity_at,
+                total_min: r.total_vc_minutes
+            };
+        });
+
 
         const introSet = new Set();
         // 3. Scan Intro Channel (Last 100 messages) to find who introduced
@@ -589,20 +602,21 @@ export async function handleApiRoute(req, res, pathname, url) {
                 if (m.user.bot) return;
 
                 const inVcNow = m.voice?.channelId;
-                let lastVcDate = vcActivityMap[m.id];
+                const userStats = activityMap[m.id] || { last_act: null, total_min: 0 };
+                let lastActDate = userStats.last_act;
 
                 // If currently in VC, treat as NOW (overrides DB null)
-                if (inVcNow) lastVcDate = new Date();
+                if (inVcNow) lastActDate = new Date();
 
                 const hasRole = settings.audit_role_id ? m.roles.cache.has(settings.audit_role_id) : true;
                 const hasIntro = settings.intro_channel_id ? introSet.has(m.user.id) : true;
 
-                // VC Threshold Check
-                let vcOk = !!(lastVcDate || inVcNow);
-                if (vcWeeks > 0 && lastVcDate) {
+                // VC Threshold Check (using last_activity_at as a proxy for 'active')
+                let vcOk = !!(lastActDate || inVcNow);
+                if (vcWeeks > 0 && lastActDate) {
                     const thresholdDate = new Date();
                     thresholdDate.setDate(thresholdDate.getDate() - (vcWeeks * 7));
-                    if (new Date(lastVcDate) < thresholdDate) vcOk = false;
+                    if (new Date(lastActDate) < thresholdDate) vcOk = false;
                 }
 
                 // Audit Status Logic:
@@ -621,10 +635,12 @@ export async function handleApiRoute(req, res, pathname, url) {
                     avatar_url: m.user.displayAvatarURL(),
                     has_role: hasRole,
                     has_intro: hasIntro,
-                    last_vc: fmtDate(lastVcDate),
+                    last_vc: fmtDate(lastActDate),
+                    total_vc_hours: (userStats.total_min / 60).toFixed(1),
                     joined_at: m.joinedAt ? m.joinedAt.toISOString().split("T")[0] : "Unknown",
                     status: status
                 });
+
             });
         } catch (e) { console.error("Activity Scan Error:", e); }
 

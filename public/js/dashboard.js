@@ -223,14 +223,18 @@ async function initSettings() {
                 });
             }
 
-            // 3. Channels (VC Report)
+            // 3. Channels (VC Report & AI Advice)
             const selVcReport = $("vcReportCh");
-            if (selVcReport) {
-                selVcReport.innerHTML = '<option value="">(None)</option>';
-                channels.forEach(c => {
-                    const o = document.createElement("option"); o.value = c.id; o.textContent = "#" + (c.name || "channel"); selVcReport.appendChild(o);
-                });
-            }
+            const selAiAdvice = $("aiAdviceCh");
+            [selVcReport, selAiAdvice].forEach(s => {
+                if (s) {
+                    s.innerHTML = '<option value="">(None)</option>';
+                    channels.forEach(c => {
+                        const o = document.createElement("option"); o.value = c.id; o.textContent = "#" + (c.name || "channel"); s.appendChild(o);
+                    });
+                }
+            });
+
         } catch (e) {
             console.error("loadMasters Error:", e);
         }
@@ -262,6 +266,9 @@ async function initSettings() {
             if ($("introGateEnabled")) $("introGateEnabled").checked = s.self_intro_enabled;
             if ($("introRole")) $("introRole").value = s.self_intro_role_id || "";
             if ($("introMinLen")) $("introMinLen").value = s.self_intro_min_length ?? 10;
+            if ($("aiAdviceDays")) $("aiAdviceDays").value = s.ai_advice_days ?? 14;
+            if ($("aiAdviceCh")) $("aiAdviceCh").value = s.ai_advice_channel_id || "";
+
 
             // Alpha Features Logic - Ojou says "Open everything!"
             const toggleAlphaSection = (id, enabled) => {
@@ -312,12 +319,16 @@ async function initSettings() {
             // VC Role Rules
             vc_role_rules: Array.from(document.querySelectorAll(".role-rule-item")).map(item => ({
                 role_id: item.querySelector(".rule-role").value,
-                hours: parseInt(item.querySelector(".rule-hours").value)
+                hours: parseInt(item.querySelector(".rule-hours").value),
+                aura_name: item.querySelector(".rule-name").value
             })),
             vc_report_enabled: $("vcReportEnabled")?.checked || false,
             vc_report_channel_id: $("vcReportCh") ? $("vcReportCh").value : "",
-            vc_report_interval: $("vcReportInterval") ? $("vcReportInterval").value : "weekly"
+            vc_report_interval: $("vcReportInterval") ? $("vcReportInterval").value : "weekly",
+            ai_advice_days: parseInt($("aiAdviceDays")?.value || 14),
+            ai_advice_channel_id: $("aiAdviceCh")?.value || ""
         };
+
         const res = await api("/api/settings/update", body);
         const stat = $("saveStatus");
         if (res.ok) {
@@ -459,10 +470,12 @@ window.addRoleRule = (data = { role_id: "", hours: 1 }) => {
     });
 
     item.innerHTML = `
+        <input type="text" class="rule-name" value="${escapeHTML(data.aura_name || '')}" placeholder="オーラ名..." style="flex:1; font-size:12px;" />
         <select class="rule-role" style="flex:1; font-size:12px;">${roleOptions}</select>
-        <input type="number" class="rule-hours" value="${data.hours}" min="1" style="width:60px; font-size:12px;" />
+        <input type="number" class="rule-hours" value="${data.hours}" min="1" style="width:50px; font-size:12px;" />
         <span style="font-size:11px; color:#888;">時間</span>
         <button type="button" onclick="this.parentElement.remove()" class="btn" style="padding:4px 8px; color:var(--danger-color); border-color:transparent;">×</button>
     `;
+
     list.appendChild(item);
 };
