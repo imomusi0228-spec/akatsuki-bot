@@ -116,7 +116,8 @@ export async function handleAuthRoute(req, res, pathname, url) {
 
             // CSRF cookie is readable by JS so the client can send it in headers
             // We set it to expire with the session
-            setCookie(res, "csrf_token", csrfSecret, { maxAge: tokenData.expires_in, secure: true, sameSite: 'Lax' });
+            setCookie(res, "csrf_token", csrfSecret, { maxAge: tokenData.expires_in, secure: true, httpOnly: false, sameSite: 'Lax' });
+
 
             delCookie(res, "oauth_state");
 

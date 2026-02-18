@@ -5,9 +5,12 @@ export const sessions = new Map();
 export const states = new Map(); // OAuth states
 
 export function setCookie(res, name, value, options = {}) {
-    let cookie = `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax`;
+    const isHttpOnly = options.httpOnly !== false;
+    let cookie = `${name}=${encodeURIComponent(value)}; Path=/; SameSite=Lax`;
+    if (isHttpOnly) cookie += "; HttpOnly";
     if (options.maxAge) cookie += `; Max-Age=${options.maxAge}`;
-    if (options.secure || ENV.PUBLIC_URL.includes("https")) cookie += `; Secure`;
+    if (options.secure || ENV.PUBLIC_URL?.includes("https")) cookie += `; Secure`;
+
 
     // console.log(`[AUTH DEBUG] setCookie: ${name}=${value} (Opts: ${JSON.stringify(options)}) -> ${cookie}`);
 
