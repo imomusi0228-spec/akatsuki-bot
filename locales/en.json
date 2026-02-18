@@ -101,5 +101,7 @@
     "status_ok": "OK",
     "status_no_role": "Missing Role",
     "status_no_intro": "No Intro",
-    "status_no_vc": "No VC Activity"
+    "status_no_vc": "No VC Activity",
+    "help_ai_advice": "Sends polite AI advice on how to interact with members who haven't been active for a set period.",
+    "help_ai_insight": "Analyzes weekly server metrics and provides strategic management advice to administrators."
 }
