@@ -39,7 +39,8 @@ export const FEATURES = {
         spamProtection: false,
         audit: false,
         introGate: false,
-        longTermStats: false
+        longTermStats: false,
+        aura: true
     },
     [TIERS.PRO_MONTHLY]: {
         maxNgWords: 20,
@@ -53,7 +54,8 @@ export const FEATURES = {
         spamProtection: true,
         audit: false,
         introGate: false,
-        longTermStats: false
+        longTermStats: false,
+        aura: true
     },
     [TIERS.PRO_YEARLY]: {
         maxNgWords: 20,
@@ -67,7 +69,8 @@ export const FEATURES = {
         spamProtection: true,
         audit: false,
         introGate: false,
-        longTermStats: false
+        longTermStats: false,
+        aura: true
     },
     [TIERS.PRO_PLUS_MONTHLY]: {
         maxNgWords: 50,
@@ -81,7 +84,8 @@ export const FEATURES = {
         spamProtection: true,
         audit: true,
         introGate: true,
-        longTermStats: true
+        longTermStats: true,
+        aura: true
     },
     [TIERS.PRO_PLUS_YEARLY]: {
         maxNgWords: 50,
@@ -95,7 +99,8 @@ export const FEATURES = {
         spamProtection: true,
         audit: true,
         introGate: true,
-        longTermStats: true
+        longTermStats: true,
+        aura: true
     },
     [TIERS.TRIAL_PRO_PLUS]: {
         maxNgWords: 50,
@@ -109,7 +114,8 @@ export const FEATURES = {
         spamProtection: true,
         audit: true,
         introGate: true,
-        longTermStats: true
+        longTermStats: true,
+        aura: true
     },
     [TIERS.TRIAL_PRO]: {
         maxNgWords: 20,
@@ -123,7 +129,8 @@ export const FEATURES = {
         spamProtection: true,
         audit: false,
         introGate: false,
-        longTermStats: false
+        longTermStats: false,
+        aura: true
     }
 };
 
