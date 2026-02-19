@@ -34,6 +34,11 @@ export async function registerCommands() {
 
         if (ENV.SUPPORT_GUILD_ID) {
             console.log(`[DEV] Registering commands to Guild: ${ENV.SUPPORT_GUILD_ID}`);
+
+            // Clear Global commands to avoid duplicates
+            await rest.put(Routes.applicationCommands(ENV.CLIENT_ID), { body: [] });
+            console.log(`[DEV] Cleared Global commands.`);
+
             const data = await rest.put(
                 Routes.applicationGuildCommands(ENV.CLIENT_ID, ENV.SUPPORT_GUILD_ID),
                 { body: commands },
