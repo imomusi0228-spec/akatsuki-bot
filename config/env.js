@@ -20,7 +20,7 @@ export const ENV = {
     TIMEZONE: "Asia/Tokyo",
 
     // Support Server (always gets Pro+)
-    SUPPORT_SERVER_ID: process.env.SUPPORT_SERVER_ID || "",
+    SUPPORT_GUILD_ID: process.env.SUPPORT_GUILD_ID || "",
 
     // Constants
     OAUTH_SCOPES: "identify guilds",
