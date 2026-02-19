@@ -27,6 +27,10 @@ export const data = new SlashCommandBuilder()
     .addSubcommand(sub =>
         sub.setName("list")
             .setDescription("現在のNGワード一覧を表示")
+    )
+    .addSubcommand(sub =>
+        sub.setName("clear")
+            .setDescription("NGワードを全て削除 (注意: 取り消せません)")
     );
 
 export async function execute(interaction) {
