@@ -12,14 +12,9 @@ export const data = new SlashCommandBuilder()
     .addSubcommand(sub =>
         sub.setName("add")
             .setDescription("新しいオーラ設定を追加します。")
-            // Full names
-            .addRoleOption(opt => opt.setName("role").setDescription("付与するロール"))
-            .addIntegerOption(opt => opt.setName("hours").setDescription("必要な累計VC時間（時間）"))
-            .addStringOption(opt => opt.setName("name").setDescription("オーラ名（表示用）"))
-            // Short names (Ojou's request)
-            .addRoleOption(opt => opt.setName("r").setDescription("付与するロール (短縮形)"))
-            .addIntegerOption(opt => opt.setName("h").setDescription("必要な累計VC時間 (短縮形)"))
-            .addStringOption(opt => opt.setName("n").setDescription("オーラ名 (短縮形)"))
+            .addRoleOption(opt => opt.setName("role").setDescription("付与するロール").setRequired(true))
+            .addIntegerOption(opt => opt.setName("hours").setDescription("必要な累計VC時間（時間）").setRequired(true))
+            .addStringOption(opt => opt.setName("name").setDescription("オーラ名（表示用）").setRequired(true))
     )
     .addSubcommand(sub =>
         sub.setName("remove")
@@ -52,12 +47,12 @@ export async function execute(interaction) {
     }
 
     if (sub === "add") {
-        const role = interaction.options.getRole("role") || interaction.options.getRole("r");
-        const hours = interaction.options.getInteger("hours") || interaction.options.getInteger("h");
-        const name = interaction.options.getString("name") || interaction.options.getString("n");
+        const role = interaction.options.getRole("role");
+        const hours = interaction.options.getInteger("hours");
+        const name = interaction.options.getString("name");
 
         if (!role || !hours || !name) {
-            await interaction.reply({ content: "❌ ロール、必要時間、オーラ名の全てを入力してください（短縮形 r, h, n も使用可能です）。", ephemeral: true });
+            await interaction.reply({ content: "❌ ロール、必要時間、オーラ名の全てを入力してください。", ephemeral: true });
             return;
         }
 
