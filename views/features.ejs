@@ -347,6 +347,7 @@
                 </tr>
             </thead>
             <tbody>
+                <!-- 基本・管理 -->
                 <tr>
                     <td>
                         <%= t("comp_max_guilds") %>
@@ -355,6 +356,24 @@
                     <td class="col-pro">1</td>
                     <td class="col-pro-plus"><strong>3</strong></td>
                 </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_dashboard") %>
+                    </td>
+                    <td class="dim-cross">✕</td>
+                    <td class="active-check col-pro">✓</td>
+                    <td class="active-check col-pro-plus">✓</td>
+                </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_vc_thread") %>
+                    </td>
+                    <td class="active-check">✓</td>
+                    <td class="active-check col-pro">✓</td>
+                    <td class="active-check col-pro-plus">✓</td>
+                </tr>
+
+                <!-- 秩序・防衛 (Iron Fortress) -->
                 <tr>
                     <td>
                         <%= t("comp_ng_limit") %>
@@ -367,25 +386,17 @@
                 </tr>
                 <tr>
                     <td>
-                        <%= t("comp_vc_thread") %>
-                    </td>
-                    <td class="active-check">✓</td>
-                    <td class="active-check col-pro">✓</td>
-                    <td class="active-check col-pro-plus">✓</td>
-                </tr>
-                <tr>
-                    <td>
-                        <%= t("comp_stats_7d") %>
-                    </td>
-                    <td class="active-check">✓</td>
-                    <td class="active-check col-pro">✓</td>
-                    <td class="active-check col-pro-plus">✓</td>
-                </tr>
-                <tr>
-                    <td>
                         <%= t("comp_ng_detect") %>
                     </td>
                     <td class="active-check">✓</td>
+                    <td class="active-check col-pro">✓</td>
+                    <td class="active-check col-pro-plus">✓</td>
+                </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_spam_prot") %>
+                    </td>
+                    <td class="dim-cross">✕</td>
                     <td class="active-check col-pro">✓</td>
                     <td class="active-check col-pro-plus">✓</td>
                 </tr>
@@ -399,7 +410,7 @@
                 </tr>
                 <tr>
                     <td>
-                        <%= t("comp_dashboard") %>
+                        <%= t("comp_iron_fortress") %>
                     </td>
                     <td class="dim-cross">✕</td>
                     <td class="active-check col-pro">✓</td>
@@ -407,9 +418,27 @@
                 </tr>
                 <tr>
                     <td>
-                        <%= t("comp_spam_prot") %>
+                        <%= t("comp_advanced_filter") %>
                     </td>
                     <td class="dim-cross">✕</td>
+                    <td class="active-check col-pro">✓</td>
+                    <td class="active-check col-pro-plus">✓</td>
+                </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_quarantine") %>
+                    </td>
+                    <td class="dim-cross">✕</td>
+                    <td class="dim-cross">✕</td>
+                    <td class="active-check col-pro-plus">✓</td>
+                </tr>
+
+                <!-- 分析・活性化 (AI & Strategic) -->
+                <tr>
+                    <td>
+                        <%= t("comp_stats_7d") %>
+                    </td>
+                    <td class="active-check">✓</td>
                     <td class="active-check col-pro">✓</td>
                     <td class="active-check col-pro-plus">✓</td>
                 </tr>
@@ -431,39 +460,7 @@
                 </tr>
                 <tr>
                     <td>
-                        <%= t("comp_iron_fortress") %>
-                    </td>
-                    <td class="dim-cross">✕</td>
-                    <td class="active-check col-pro">✓</td>
-                    <td class="active-check col-pro-plus">✓</td>
-                </tr>
-                <tr>
-                    <td>
-                        <%= t("comp_advanced_filter") %>
-                    </td>
-                    <td class="dim-cross">✕</td>
-                    <td class="active-check col-pro">✓</td>
-                    <td class="active-check col-pro-plus">✓</td>
-                </tr>
-                <tr>
-                    <td>
-                        <%= t("comp_ai_advice") %>
-                    </td>
-                    <td class="dim-cross">✕</td>
-                    <td class="active-check col-pro">✓</td>
-                    <td class="active-check col-pro-plus">✓</td>
-                </tr>
-                <tr>
-                    <td>
-                        <%= t("comp_quarantine") %>
-                    </td>
-                    <td class="dim-cross">✕</td>
-                    <td class="dim-cross">✕</td>
-                    <td class="active-check col-pro-plus">✓</td>
-                </tr>
-                <tr>
-                    <td>
-                        <%= t("comp_ai_insight") %>
+                        <%= t("comp_intro_gate") %>
                     </td>
                     <td class="dim-cross">✕</td>
                     <td class="dim-cross">✕</td>
@@ -479,7 +476,15 @@
                 </tr>
                 <tr>
                     <td>
-                        <%= t("comp_intro_gate") %>
+                        <%= t("comp_ai_advice") %>
+                    </td>
+                    <td class="dim-cross">✕</td>
+                    <td class="active-check col-pro">✓</td>
+                    <td class="active-check col-pro-plus">✓</td>
+                </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_ai_insight") %>
                     </td>
                     <td class="dim-cross">✕</td>
                     <td class="dim-cross">✕</td>
