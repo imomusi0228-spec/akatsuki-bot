@@ -347,7 +347,7 @@
                 </tr>
             </thead>
             <tbody>
-                <!-- 基本・管理 -->
+                <!-- スペック / Capacity -->
                 <tr>
                     <td>
                         <%= t("comp_max_guilds") %>
@@ -358,12 +358,14 @@
                 </tr>
                 <tr>
                     <td>
-                        <%= t("comp_dashboard") %>
+                        <%= t("comp_ng_limit") %>
                     </td>
-                    <td class="dim-cross">✕</td>
-                    <td class="active-check col-pro">✓</td>
-                    <td class="active-check col-pro-plus">✓</td>
+                    <td>10</td>
+                    <td class="col-pro">20</td>
+                    <td class="col-pro-plus"><strong>50</strong></td>
                 </tr>
+
+                <!-- 全プラン共通 / Universal (Staircase Level 1) -->
                 <tr>
                     <td>
                         <%= t("comp_vc_thread") %>
@@ -371,18 +373,6 @@
                     <td class="active-check">✓</td>
                     <td class="active-check col-pro">✓</td>
                     <td class="active-check col-pro-plus">✓</td>
-                </tr>
-
-                <!-- 秩序・防衛 (Iron Fortress) -->
-                <tr>
-                    <td>
-                        <%= t("comp_ng_limit") %>
-                    </td>
-                    <td>10<%= t("words") %>
-                    </td>
-                    <td class="col-pro">20<%= t("words") %>
-                    </td>
-                    <td class="col-pro-plus"><strong>50<%= t("words") %></strong></td>
                 </tr>
                 <tr>
                     <td>
@@ -394,7 +384,25 @@
                 </tr>
                 <tr>
                     <td>
-                        <%= t("comp_spam_prot") %>
+                        <%= t("comp_stats_7d") %>
+                    </td>
+                    <td class="active-check">✓</td>
+                    <td class="active-check col-pro">✓</td>
+                    <td class="active-check col-pro-plus">✓</td>
+                </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_aura_system") %>
+                    </td>
+                    <td class="active-check">✓</td>
+                    <td class="active-check col-pro">✓</td>
+                    <td class="active-check col-pro-plus">✓</td>
+                </tr>
+
+                <!-- Proプラン以上 / Standard (Staircase Level 2) -->
+                <tr>
+                    <td>
+                        <%= t("comp_dashboard") %>
                     </td>
                     <td class="dim-cross">✕</td>
                     <td class="active-check col-pro">✓</td>
@@ -418,6 +426,14 @@
                 </tr>
                 <tr>
                     <td>
+                        <%= t("comp_spam_prot") %>
+                    </td>
+                    <td class="dim-cross">✕</td>
+                    <td class="active-check col-pro">✓</td>
+                    <td class="active-check col-pro-plus">✓</td>
+                </tr>
+                <tr>
+                    <td>
                         <%= t("comp_advanced_filter") %>
                     </td>
                     <td class="dim-cross">✕</td>
@@ -426,22 +442,14 @@
                 </tr>
                 <tr>
                     <td>
-                        <%= t("comp_quarantine") %>
+                        <%= t("comp_ai_advice") %>
                     </td>
                     <td class="dim-cross">✕</td>
-                    <td class="dim-cross">✕</td>
-                    <td class="active-check col-pro-plus">✓</td>
-                </tr>
-
-                <!-- 分析・活性化 (AI & Strategic) -->
-                <tr>
-                    <td>
-                        <%= t("comp_stats_7d") %>
-                    </td>
-                    <td class="active-check">✓</td>
                     <td class="active-check col-pro">✓</td>
                     <td class="active-check col-pro-plus">✓</td>
                 </tr>
+
+                <!-- Pro+プラン専用 / Premium (Staircase Level 3) -->
                 <tr>
                     <td>
                         <%= t("comp_stats_30d") %>
@@ -468,18 +476,10 @@
                 </tr>
                 <tr>
                     <td>
-                        <%= t("comp_aura_system") %>
-                    </td>
-                    <td class="active-check">✓</td>
-                    <td class="active-check col-pro">✓</td>
-                    <td class="active-check col-pro-plus">✓</td>
-                </tr>
-                <tr>
-                    <td>
-                        <%= t("comp_ai_advice") %>
+                        <%= t("comp_quarantine") %>
                     </td>
                     <td class="dim-cross">✕</td>
-                    <td class="active-check col-pro">✓</td>
+                    <td class="dim-cross">✕</td>
                     <td class="active-check col-pro-plus">✓</td>
                 </tr>
                 <tr>
@@ -489,6 +489,11 @@
                     <td class="dim-cross">✕</td>
                     <td class="dim-cross">✕</td>
                     <td class="active-check col-pro-plus">✓</td>
+                </tr>
+                </td>
+                <td class="dim-cross">✕</td>
+                <td class="dim-cross">✕</td>
+                <td class="active-check col-pro-plus">✓</td>
                 </tr>
             </tbody>
         </table>
