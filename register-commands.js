@@ -53,7 +53,6 @@ export async function registerCommands() {
             console.log(`Successfully reloaded ${data.length} application (/) commands (GLOBAL).`);
         }
 
-        console.log(`Successfully reloaded ${data.length} application (/) commands.`);
     } catch (error) {
         console.error(error);
     }
