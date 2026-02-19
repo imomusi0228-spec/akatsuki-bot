@@ -1,5 +1,4 @@
 import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, version as djsVersion } from "discord.js";
-import { ENV } from "../config/env.js"; // Assuming ENV is needed, or we can just skip if not used directly
 import fs from "node:fs"; // To read package.json
 
 export const data = new SlashCommandBuilder()
