@@ -1,6 +1,8 @@
 import { ENV } from "../config/env.js";
 import { getSession } from "../middleware/auth.js";
 import { renderLoginHTML, renderAdminDashboardHTML, renderAdminSettingsHTML, renderAdminActivityHTML, renderAdminAntiraidHTML } from "../services/views.js";
+import { getTier } from "../core/subscription.js";
+import { getFeatures } from "../core/tiers.js";
 
 export async function handleAdminRoute(req, res, pathname, url) {
     // Token Login (for debugging or admin bypass)
@@ -36,6 +38,18 @@ export async function handleAdminRoute(req, res, pathname, url) {
     }
 
     const user = session.user;
+
+    const guildId = url.searchParams.get("guild");
+    if (guildId) {
+        const tier = await getTier(guildId);
+        const features = getFeatures(tier);
+        if (!features.dashboard) {
+            // Free Tier: Redirect or Show Upgrade
+            res.writeHead(302, { Location: "/?msg=upgrade_required" });
+            res.end();
+            return;
+        }
+    }
 
     // Router
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });

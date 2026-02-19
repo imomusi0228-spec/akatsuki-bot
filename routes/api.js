@@ -129,15 +129,18 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
 
         try {
-            // Stats summary logic (Last 30 days is fine for general summary)
+            const statsDays = features.longTermStats ? 30 : 7;
+            const periodInterval = `${statsDays} days`;
+
+            // Stats summary logic
             const [vcRes, tier, subRes, ngCountRes, ngTopRes, leaveRes, timeoutRes] = await Promise.all([
-                dbQuery("SELECT COUNT(*) as cnt FROM vc_sessions WHERE guild_id = $1 AND join_time > NOW() - INTERVAL '30 days'", [guildId]),
+                dbQuery("SELECT COUNT(*) as cnt FROM vc_sessions WHERE guild_id = $1 AND join_time > NOW() - $2::INTERVAL", [guildId, periodInterval]),
                 getTier(guildId),
                 dbQuery("SELECT valid_until FROM subscriptions WHERE guild_id = $1", [guildId]),
-                dbQuery("SELECT COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 AND created_at > NOW() - INTERVAL '30 days'", [guildId]),
-                dbQuery("SELECT user_id, COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 GROUP BY user_id ORDER BY cnt DESC LIMIT 5", [guildId]),
-                dbQuery("SELECT COUNT(*) as cnt FROM member_events WHERE guild_id = $1 AND event_type = 'leave' AND created_at > NOW() - INTERVAL '30 days'", [guildId]),
-                dbQuery("SELECT COUNT(*) as cnt FROM member_events WHERE guild_id = $1 AND event_type = 'timeout' AND created_at > NOW() - INTERVAL '30 days'", [guildId])
+                dbQuery("SELECT COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 AND created_at > NOW() - $2::INTERVAL", [guildId, periodInterval]),
+                dbQuery("SELECT user_id, COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 AND created_at > NOW() - $2::INTERVAL GROUP BY user_id ORDER BY cnt DESC LIMIT 5", [guildId, periodInterval]),
+                dbQuery("SELECT COUNT(*) as cnt FROM member_events WHERE guild_id = $1 AND event_type = 'leave' AND created_at > NOW() - $2::INTERVAL", [guildId, periodInterval]),
+                dbQuery("SELECT COUNT(*) as cnt FROM member_events WHERE guild_id = $1 AND event_type = 'timeout' AND created_at > NOW() - $2::INTERVAL", [guildId, periodInterval])
             ]);
 
             const subData = { tier, valid_until: subRes.rows[0]?.valid_until || null };
@@ -200,12 +203,20 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
 
         try {
-            // Month Logic: Default to current month if not specified
+            const tier = await getTier(guildId);
+            const features = getFeatures(tier);
+            const statsDays = features.longTermStats ? 30 : 7;
+            const periodInterval = `${statsDays} days`;
+
             const date = monthParam ? new Date(monthParam + "-01") : new Date();
-            const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+            const startOfMonthRaw = new Date(date.getFullYear(), date.getMonth(), 1);
+
+            const limitDate = new Date();
+            limitDate.setDate(limitDate.getDate() - statsDays);
+
+            const startOfMonth = startOfMonthRaw < limitDate ? limitDate : startOfMonthRaw;
             const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
 
-            // Aggregate total VC minutes per hour of day
             const heatmapRes = await dbQuery(`
                 SELECT 
                     EXTRACT(HOUR FROM join_time) as hour_of_day,
@@ -242,8 +253,15 @@ export async function handleApiRoute(req, res, pathname, url) {
         }
 
         try {
+            const statsDays = features.longTermStats ? 30 : 7;
             const date = monthParam ? new Date(monthParam + "-01") : new Date();
-            const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+            const startOfMonthRaw = new Date(date.getFullYear(), date.getMonth(), 1);
+
+            // Apply strict limit
+            const limitDate = new Date();
+            limitDate.setDate(limitDate.getDate() - statsDays);
+            const startOfMonth = startOfMonthRaw < limitDate ? limitDate : startOfMonthRaw;
+
             const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
 
             // Member join/leave trends per day
