@@ -26,5 +26,5 @@ export async function execute(interaction) {
 **ℹ️ その他**
 \`/help\` : コマンド一覧を表示`;
 
-    await interaction.reply({ content: helpText, flags: [MessageFlags.Ephemeral] });
+    await interaction.reply({ content: helpText });
 }
