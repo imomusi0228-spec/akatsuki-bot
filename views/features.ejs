@@ -269,7 +269,8 @@
 
     .plan-btn {
         display: inline-block;
-        margin-top: 20px;
+        margin-top: auto;
+        /* ボタンを最下部に押し下げる */
         padding: 10px 24px;
         background: var(--primary-color);
         color: white;
@@ -313,53 +314,47 @@
 <div class="plan-grid">
     <!-- Free Tier -->
     <div class="plan-card">
-        <div>
-            <div class="plan-badge">Basic</div>
-            <h3>
-                <%= t("plan_free") %>
-            </h3>
-            <div class="plan-price">¥0 <span>/ month</span></div>
-            <ul class="feature-summary">
-                <li><%- t("feat_list_free") %></li>
-            </ul>
-            <a href="/login" class="plan-btn">
-                <%= t("get_started") %>
-            </a>
-        </div>
+        <div class="plan-badge">Basic</div>
+        <h3>
+            <%= t("plan_free") %>
+        </h3>
+        <div class="plan-price">¥0 <span>/ month</span></div>
+        <ul class="feature-summary">
+            <li><%- t("feat_list_free") %></li>
+        </ul>
+        <a href="/login" class="plan-btn">
+            <%= t("get_started") %>
+        </a>
     </div>
 
     <!-- Pro Tier -->
     <div class="plan-card pro">
-        <div>
-            <div class="plan-badge">Standard</div>
-            <h3>
-                <%= t("plan_pro") %>
-            </h3>
-            <div class="plan-price">¥680 <span>/ month</span></div>
-            <ul class="feature-summary">
-                <li><%- t("feat_list_pro") %></li>
-            </ul>
-            <a href="https://imomusi0213.booth.pm/items/7935721" target="_blank" class="plan-btn">
-                <%= t("purchase_btn") %>
-            </a>
-        </div>
+        <div class="plan-badge">Standard</div>
+        <h3>
+            <%= t("plan_pro") %>
+        </h3>
+        <div class="plan-price">¥680 <span>/ month</span></div>
+        <ul class="feature-summary">
+            <li><%- t("feat_list_pro") %></li>
+        </ul>
+        <a href="https://imomusi0213.booth.pm/items/7935721" target="_blank" class="plan-btn">
+            <%= t("purchase_btn") %>
+        </a>
     </div>
 
     <!-- Pro+ Tier -->
     <div class="plan-card pro-plus">
-        <div>
-            <div class="plan-badge">Premium</div>
-            <h3>
-                <%= t("plan_pro_plus") %>
-            </h3>
-            <div class="plan-price">¥1,800 <span>/ month</span></div>
-            <ul class="feature-summary">
-                <li><%- t("feat_list_pro_plus") %></li>
-            </ul>
-            <a href="https://imomusi0213.booth.pm/items/7935721" target="_blank" class="plan-btn">
-                <%= t("purchase_btn") %>
-            </a>
-        </div>
+        <div class="plan-badge">Premium</div>
+        <h3>
+            <%= t("plan_pro_plus") %>
+        </h3>
+        <div class="plan-price">¥1,800 <span>/ month</span></div>
+        <ul class="feature-summary">
+            <li><%- t("feat_list_pro_plus") %></li>
+        </ul>
+        <a href="https://imomusi0213.booth.pm/items/7935721" target="_blank" class="plan-btn">
+            <%= t("purchase_btn") %>
+        </a>
     </div>
 </div>
 
