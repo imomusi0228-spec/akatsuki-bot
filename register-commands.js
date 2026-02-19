@@ -9,12 +9,12 @@ const commandsPath = path.resolve("commands");
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(".js"));
 
 export async function registerCommands() {
-    console.log(`Debug: Found ${commandFiles.length} files in commands directory.`);
+    // console.log(`Debug: Found ${commandFiles.length} files in commands directory.`);
     for (const file of commandFiles) {
         const filePath = path.join(commandsPath, file);
-        console.log(`Debug: Loading ${file}...`);
+        // console.log(`Debug: Loading ${file}...`);
         const command = await import(pathToFileURL(filePath).href);
-        console.log(`Debug: Loaded ${file}. Data: ${!!command.data}, Execute: ${!!command.execute}`);
+        // console.log(`Debug: Loaded ${file}. Data: ${!!command.data}, Execute: ${!!command.execute}`);
 
         if (command.data && command.execute) {
             if (Array.isArray(command.data)) {
