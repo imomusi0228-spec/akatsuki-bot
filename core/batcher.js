@@ -55,15 +55,15 @@ class Batcher {
                 await dbQuery(`INSERT INTO ng_logs (guild_id, user_id, user_name, word) VALUES ${placeholders.join(', ')}`, values);
             }
             else if (table === 'member_events') {
-                // Table: member_events (guild_id, user_id, event_type)
+                // Table: member_events (guild_id, user_id, event_type, created_at)
                 const values = [];
                 const placeholders = [];
                 data.forEach((item, i) => {
-                    const base = i * 3;
-                    placeholders.push(`($${base + 1}, $${base + 2}, $${base + 3})`);
-                    values.push(item.guild_id, item.user_id, item.event_type);
+                    const base = i * 4;
+                    placeholders.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4})`);
+                    values.push(item.guild_id, item.user_id, item.event_type, item.created_at);
                 });
-                await dbQuery(`INSERT INTO member_events (guild_id, user_id, event_type) VALUES ${placeholders.join(', ')}`, values);
+                await dbQuery(`INSERT INTO member_events (guild_id, user_id, event_type, created_at) VALUES ${placeholders.join(', ')}`, values);
             }
             // Note: vc_sessions is tricky because join/leave need matching. 
             // We only batch "insert" of new sessions. Updates are tricky.
