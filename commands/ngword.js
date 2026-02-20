@@ -68,7 +68,20 @@ export async function execute(interaction) {
             await interaction.reply({ content: "NGワードは登録されていません。", flags: [MessageFlags.Ephemeral] });
             return;
         }
-        const list = res.rows.map(r => `・ID:${r.id} \`${r.word}\` (${r.kind})`).join("\n");
+        let list = res.rows.map(r => `・ID:${r.id} \`${r.word}\` (${r.kind})`).join("\n");
+
+        if (list.length > 1900) {
+            const lines = list.split("\n");
+            let temp = "";
+            let count = 0;
+            for (const line of lines) {
+                if ((temp + line).length > 1900) break;
+                temp += line + "\n";
+                count++;
+            }
+            list = temp + `\n...他 ${lines.length - count} 件 (表示上限)`;
+        }
+
         await interaction.reply({ content: `📋 **NGワード一覧**\n${list}`, flags: [MessageFlags.Ephemeral] });
     }
 
