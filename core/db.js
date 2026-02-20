@@ -137,8 +137,34 @@ export async function initDb() {
 
             `DO $$ 
             BEGIN 
+                -- 1. Check if 'id' column exists
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='ng_words' AND column_name='id') THEN
                     ALTER TABLE ng_words ADD COLUMN id SERIAL;
+                END IF;
+
+                -- 2. Check for existing Primary Key constraints (and drop if not on 'id')
+                IF EXISTS (
+                    SELECT 1 
+                    FROM information_schema.table_constraints tc 
+                    JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name 
+                    WHERE tc.table_name = 'ng_words' 
+                    AND tc.constraint_type = 'PRIMARY KEY' 
+                    AND kcu.column_name != 'id'
+                ) THEN
+                    -- Drop old PK (likely on guild_id or word composite)
+                    DECLARE r RECORD;
+                    BEGIN
+                        FOR r IN (SELECT constraint_name FROM information_schema.table_constraints WHERE table_name = 'ng_words' AND constraint_type = 'PRIMARY KEY') LOOP
+                            EXECUTE 'ALTER TABLE ng_words DROP CONSTRAINT ' || quote_ident(r.constraint_name);
+                        END LOOP;
+                    END;
+                END IF;
+
+                -- 3. Add Primary Key on 'id' if no PK exists
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.table_constraints 
+                    WHERE table_name = 'ng_words' AND constraint_type = 'PRIMARY KEY'
+                ) THEN
                     ALTER TABLE ng_words ADD PRIMARY KEY (id);
                 END IF;
             END $$;`,

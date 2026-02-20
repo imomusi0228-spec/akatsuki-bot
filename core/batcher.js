@@ -48,11 +48,11 @@ class Batcher {
                 const values = [];
                 const placeholders = [];
                 data.forEach((item, i) => {
-                    const base = i * 4;
-                    placeholders.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4})`);
-                    values.push(item.guild_id, item.user_id, item.user_name, item.word);
+                    const base = i * 5;
+                    placeholders.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5})`);
+                    values.push(item.guild_id, item.user_id, item.user_name, item.word, item.created_at);
                 });
-                await dbQuery(`INSERT INTO ng_logs (guild_id, user_id, user_name, word) VALUES ${placeholders.join(', ')}`, values);
+                await dbQuery(`INSERT INTO ng_logs (guild_id, user_id, user_name, word, created_at) VALUES ${placeholders.join(', ')}`, values);
             }
             else if (table === 'member_events') {
                 // Table: member_events (guild_id, user_id, event_type, created_at)
