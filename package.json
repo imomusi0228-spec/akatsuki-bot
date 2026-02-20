@@ -7,6 +7,7 @@
     "scripts": {
         "start": "node index.js",
         "register": "node register-commands.js",
+        "register:global": "node register-commands.js --global",
         "build": "echo 'No build step required'",
         "notify": "node scripts/notify-management.js",
         "lint": "eslint . --fix",

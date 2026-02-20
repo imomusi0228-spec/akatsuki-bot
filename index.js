@@ -3,7 +3,7 @@ import { initDb } from "./core/db.js";
 import { loadCommands, startBot } from "./core/client.js";
 import { loadEvents } from "./core/eventLoader.js";
 import { startServer } from "./core/server.js";
-import { registerCommands } from "./register-commands.js";
+
 import { runEngagementCheck } from "./services/engagement.js";
 import { runAnnouncerCheck } from "./services/announcer.js";
 import { runDataPruning } from "./services/pruning.js";
@@ -28,7 +28,7 @@ process.on("unhandledRejection", (reason) => {
         // 2. Load and Register Commands/Events
         await loadCommands();
         await loadEvents();
-        await registerCommands();
+
 
         // 3. Start Web Server
         await startServer();
