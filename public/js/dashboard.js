@@ -450,6 +450,7 @@ async function initActivity() {
     };
 
 
+    document.getElementById("scan").onclick = runScan;
     reloadCriteria();
 }
 
