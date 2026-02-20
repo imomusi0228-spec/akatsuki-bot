@@ -22,7 +22,7 @@ export const data = new SlashCommandBuilder()
     .addSubcommand(sub =>
         sub.setName("remove")
             .setDescription("NGワードを削除")
-            .addIntegerOption(opt => opt.setName("id").setDescription("削除するID (listで確認してください)").setRequired(true))
+            .addStringOption(opt => opt.setName("word").setDescription("削除する言葉 (完全一致)").setRequired(true))
     )
     .addSubcommand(sub =>
         sub.setName("list")
@@ -50,11 +50,11 @@ export async function execute(interaction) {
         await interaction.reply({ content: `✅ NGワード \`${word}\` (${kind}) を追加しました。`, flags: [MessageFlags.Ephemeral] });
 
     } else if (sub === "remove") {
-        const id = interaction.options.getInteger("id");
+        const word = interaction.options.getString("word");
 
-        const res = await dbQuery("DELETE FROM ng_words WHERE id = $1 AND guild_id = $2 RETURNING word", [id, guildId]);
+        const res = await dbQuery("DELETE FROM ng_words WHERE word = $1 AND guild_id = $2 RETURNING word", [word, guildId]);
         if (res.rowCount === 0) {
-            return interaction.reply({ content: "❌ 指定されたIDが見つからないか、権限がありません。", flags: [MessageFlags.Ephemeral] });
+            return interaction.reply({ content: "❌ 指定された言葉は見つかりませんでした。", flags: [MessageFlags.Ephemeral] });
         }
 
         // Invalidate Cache
@@ -63,12 +63,13 @@ export async function execute(interaction) {
         await interaction.reply({ content: `✅ NGワード \`${res.rows[0].word}\` を削除しました。`, flags: [MessageFlags.Ephemeral] });
 
     } else if (sub === "list") {
-        const res = await dbQuery("SELECT id, word, kind FROM ng_words WHERE guild_id = $1", [guildId]);
+        const res = await dbQuery("SELECT word, kind FROM ng_words WHERE guild_id = $1 ORDER BY created_at DESC", [guildId]);
         if (res.rows.length === 0) {
             await interaction.reply({ content: "NGワードは登録されていません。", flags: [MessageFlags.Ephemeral] });
             return;
         }
-        let list = res.rows.map(r => `・ID:${r.id} \`${r.word}\` (${r.kind})`).join("\n");
+
+        let list = res.rows.map(r => `・\`${r.word}\` (${r.kind})`).join("\n");
 
         if (list.length > 1900) {
             const lines = list.split("\n");
