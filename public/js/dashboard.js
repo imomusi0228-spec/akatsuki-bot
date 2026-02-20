@@ -485,3 +485,31 @@ window.addRoleRule = (data = { role_id: "", hours: 1 }) => {
 
     list.appendChild(item);
 };
+
+window.addNg = async () => {
+    const input = $("newWord");
+    const word = input.value;
+    const gid = $("guild").value;
+    if (!word || !gid) return;
+
+    const res = await api("/api/ngwords/add", { guild: gid, word });
+    if (res.ok) {
+        if (res.message) alert(res.message);
+        input.value = "";
+        // Reload list: Trigger guild change event which calls reload()
+        if ($("guild").onchange) $("guild").onchange();
+    } else {
+        alert("Error: " + res.error);
+    }
+};
+
+window.removeNg = async (word) => {
+    if (!confirm(t("confirm_delete") || "Delete?")) return;
+    const gid = $("guild").value;
+    const res = await api("/api/ngwords/remove", { guild: gid, word });
+    if (res.ok) {
+        if ($("guild").onchange) $("guild").onchange();
+    } else {
+        alert("Error: " + res.error);
+    }
+};
