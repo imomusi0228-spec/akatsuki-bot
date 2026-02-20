@@ -129,22 +129,28 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
 
         try {
+            // 1. Fetch Tier & Subscription first to determine stats range
+            const [tier, subRes] = await Promise.all([
+                getTier(guildId),
+                dbQuery("SELECT valid_until FROM subscriptions WHERE guild_id = $1", [guildId])
+            ]);
+
+            const features = getFeatures(tier);
             const statsDays = features.longTermStats ? 30 : 7;
             const periodInterval = `${statsDays} days`;
 
-            // Stats summary logic
-            const [vcRes, tier, subRes, ngCountRes, ngTopRes, leaveRes, timeoutRes] = await Promise.all([
+            // 2. Execute Stats Queries
+            const [vcRes, ngCountRes, ngTopRes, leaveRes, timeoutRes] = await Promise.all([
                 dbQuery("SELECT COUNT(*) as cnt FROM vc_sessions WHERE guild_id = $1 AND join_time > NOW() - $2::INTERVAL", [guildId, periodInterval]),
-                getTier(guildId),
-                dbQuery("SELECT valid_until FROM subscriptions WHERE guild_id = $1", [guildId]),
                 dbQuery("SELECT COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 AND created_at > NOW() - $2::INTERVAL", [guildId, periodInterval]),
                 dbQuery("SELECT user_id, COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 AND created_at > NOW() - $2::INTERVAL GROUP BY user_id ORDER BY cnt DESC LIMIT 5", [guildId, periodInterval]),
                 dbQuery("SELECT COUNT(*) as cnt FROM member_events WHERE guild_id = $1 AND event_type = 'leave' AND created_at > NOW() - $2::INTERVAL", [guildId, periodInterval]),
                 dbQuery("SELECT COUNT(*) as cnt FROM member_events WHERE guild_id = $1 AND event_type = 'timeout' AND created_at > NOW() - $2::INTERVAL", [guildId, periodInterval])
             ]);
 
+
+
             const subData = { tier, valid_until: subRes.rows[0]?.valid_until || null };
-            const features = getFeatures(subData.tier);
 
             // Get guild for member fetching
             const guild = client.guilds.cache.get(guildId);
