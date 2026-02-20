@@ -133,6 +133,7 @@ export async function initDb() {
             `ALTER TABLE ng_words ADD COLUMN IF NOT EXISTS guild_id TEXT;`,
             `ALTER TABLE ng_words ADD COLUMN IF NOT EXISTS created_by TEXT;`,
             `ALTER TABLE ng_words ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();`,
+            `ALTER TABLE ng_words ADD COLUMN IF NOT EXISTS kind TEXT DEFAULT 'exact';`,
 
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS intro_channel_id TEXT;`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS audit_role_id TEXT;`,
