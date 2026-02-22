@@ -291,6 +291,14 @@ async function initSettings() {
             if ($("introMinLen")) $("introMinLen").value = s.self_intro_min_length ?? 10;
             if ($("aiAdviceDays")) $("aiAdviceDays").value = s.ai_advice_days ?? 14;
             if ($("aiAdviceCh")) $("aiAdviceCh").value = s.ai_advice_channel_id || "";
+            if ($("aiInsightEnabled")) $("aiInsightEnabled").checked = s.ai_insight_enabled;
+            if ($("aiInsightCh")) $("aiInsightCh").value = s.ai_insight_channel_id || "";
+
+            // Insight Sections
+            const sections = Array.isArray(s.insight_sections) ? s.insight_sections : ["growth", "toxicity", "vc"];
+            if ($("insightGrowth")) $("insightGrowth").checked = sections.includes("growth");
+            if ($("insightToxicity")) $("insightToxicity").checked = sections.includes("toxicity");
+            if ($("insightVc")) $("insightVc").checked = sections.includes("vc");
 
 
             // Alpha Features Logic - Ojou says "Open everything!"
@@ -369,7 +377,12 @@ async function initSettings() {
             ai_advice_days: parseInt($("aiAdviceDays")?.value || 14),
             ai_advice_channel_id: $("aiAdviceCh")?.value || "",
             ai_insight_enabled: ($("aiInsightEnabled"))?.checked || false,
-            ai_insight_channel_id: $("aiInsightCh")?.value || ""
+            ai_insight_channel_id: $("aiInsightCh")?.value || "",
+            insight_sections: [
+                ...($("insightGrowth")?.checked ? ["growth"] : []),
+                ...($("insightToxicity")?.checked ? ["toxicity"] : []),
+                ...($("insightVc")?.checked ? ["vc"] : [])
+            ]
         };
 
 

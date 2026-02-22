@@ -234,7 +234,8 @@ export async function initDb() {
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_advice_channel_id TEXT;`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_insight_enabled BOOLEAN DEFAULT FALSE;`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_insight_channel_id TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_insight_last_sent TIMESTAMPTZ;`
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_insight_last_sent TIMESTAMPTZ;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS insight_sections JSONB DEFAULT '["growth","toxicity","vc"]';`
 
 
         ];

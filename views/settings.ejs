@@ -287,11 +287,31 @@
                         <span>運営アドバイス機能を有効化</span>
                     </label>
                 </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
                     <div>
                         <label class="muted">アドバイス配信先 (管理者推奨)</label><br />
                         <select id="aiInsightCh" style="width:100%; margin-top:5px;"></select>
                     </div>
+                </div>
+
+                <div style="border-top: 1px solid var(--border-color); padding-top:15px;">
+                    <label class="muted" style="margin-bottom:10px; display:block;">&#128203; 配信セクションの選択</label>
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <label style="display:flex; align-items:center; cursor:pointer; gap:10px;">
+                            <input type="checkbox" id="insightGrowth" style="width:16px; height:16px;">
+                            <span>📈 メンバー増減（成長分析）</span>
+                        </label>
+                        <label style="display:flex; align-items:center; cursor:pointer; gap:10px;">
+                            <input type="checkbox" id="insightToxicity" style="width:16px; height:16px;">
+                            <span>🚫 NGワード検知数（秩序分析）</span>
+                        </label>
+                        <label style="display:flex; align-items:center; cursor:pointer; gap:10px;">
+                            <input type="checkbox" id="insightVc" style="width:16px; height:16px;">
+                            <span>🎤 VC利用者数（活性化分析）</span>
+                        </label>
+                    </div>
+                    <p class="muted" style="margin-top:10px; font-size:11px;">
+                        ※チェックを外したセクションはレポートに含まれません。全て無効ではレポート自体が送信されません。</p>
                 </div>
             </div>
         </div>
