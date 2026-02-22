@@ -475,10 +475,10 @@ export async function handleApiRoute(req, res, pathname, url) {
                     ai_advice_days, ai_advice_channel_id,
                     ai_insight_enabled, ai_insight_channel_id, insight_sections,
                     phase2_threshold, phase2_action, phase3_threshold, phase3_action, phase4_threshold, phase4_action,
-                    intro_reminder_hours,
+                    intro_reminder_hours, report_channel_id,
                     updated_at
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, NOW()
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, NOW()
                 )
                 ON CONFLICT (guild_id) DO UPDATE SET
                     log_channel_id = EXCLUDED.log_channel_id,
@@ -514,6 +514,7 @@ export async function handleApiRoute(req, res, pathname, url) {
                     phase4_threshold = EXCLUDED.phase4_threshold,
                     phase4_action = EXCLUDED.phase4_action,
                     intro_reminder_hours = EXCLUDED.intro_reminder_hours,
+                    report_channel_id = EXCLUDED.report_channel_id,
                     updated_at = NOW();
             `, [
                 body.guild,
@@ -528,7 +529,8 @@ export async function handleApiRoute(req, res, pathname, url) {
                 body.phase2_threshold || 3, body.phase2_action || 'timeout',
                 body.phase3_threshold || 6, body.phase3_action || 'kick',
                 body.phase4_threshold || 10, body.phase4_action || 'ban',
-                body.intro_reminder_hours || 24
+                body.intro_reminder_hours || 24,
+                body.report_channel_id || null
             ]);
         } catch (e) {
             console.error("Settings Update Error:", e);

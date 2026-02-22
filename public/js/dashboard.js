@@ -281,6 +281,7 @@ async function initSettings() {
             const s = st.settings;
             if (selLog) selLog.value = s.log_channel_id || "";
             if (selNgLog) selNgLog.value = s.ng_log_channel_id || "";
+            if ($("reportCh")) $("reportCh").value = s.report_channel_id || "";
             if ($("threshold")) $("threshold").value = s.ng_threshold ?? 3;
             if ($("timeout")) $("timeout").value = s.timeout_minutes ?? 10;
 
@@ -367,6 +368,7 @@ async function initSettings() {
             guild: selGuild.value,
             log_channel_id: selLog ? selLog.value : "",
             ng_log_channel_id: selNgLog ? selNgLog.value : "",
+            report_channel_id: selReportCh ? selReportCh.value : "",
             ng_threshold: parseInt($("threshold")?.value || 3),
             timeout_minutes: parseInt($("timeout")?.value || 10),
 
@@ -427,6 +429,9 @@ async function initActivity() {
     const selGuild = document.getElementById("guild");
     const selRole = document.getElementById("auditRole");
     const selIntro = document.getElementById("introCh");
+    const selLog = document.getElementById("logCh");
+    const selNgLog = document.getElementById("ngLogCh");
+    const selReportCh = document.getElementById("reportCh");
 
     const reloadCriteria = async () => {
         const gid = selGuild.value;
@@ -439,7 +444,11 @@ async function initActivity() {
         ]);
 
         if (chRes.ok) {
-            selIntro.innerHTML = '<option value="">None</option>' + chRes.channels.map(c => '<option value="' + c.id + '">#' + c.name + '</option>').join('');
+            const chOpts = '<option value="">' + t("none") + '</option>' + chRes.channels.map(c => '<option value="' + c.id + '">#' + c.name + '</option>').join('');
+            if (selLog) selLog.innerHTML = chOpts;
+            if (selNgLog) selNgLog.innerHTML = chOpts;
+            if (selReportCh) selReportCh.innerHTML = chOpts;
+            selIntro.innerHTML = chOpts; // Original selIntro population
         }
         if (roleRes.ok) {
             selRole.innerHTML = '<option value="">None</option>' + roleRes.roles.map(r => '<option value="' + r.id + '">' + r.name + '</option>').join('');
@@ -447,6 +456,9 @@ async function initActivity() {
         if (setRes.ok && setRes.settings) {
             selRole.value = setRes.settings.audit_role_id || "";
             selIntro.value = setRes.settings.intro_channel_id || "";
+            if (selLog) selLog.value = setRes.settings.log_channel_id || "";
+            if (selNgLog) selNgLog.value = setRes.settings.ng_log_channel_id || "";
+            if (selReportCh) selReportCh.value = setRes.settings.report_channel_id || "";
         }
     };
 

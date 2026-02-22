@@ -249,6 +249,9 @@ export async function initDb() {
             // Self-intro reminder
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS intro_reminder_hours INTEGER DEFAULT 24;`,
 
+            // Report channel
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS report_channel_id TEXT;`,
+
             // Message count for Aura system
             `ALTER TABLE member_stats ADD COLUMN IF NOT EXISTS message_count INTEGER DEFAULT 0;`,
 

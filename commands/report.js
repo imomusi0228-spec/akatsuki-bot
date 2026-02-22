@@ -1,4 +1,5 @@
 import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import { dbQuery } from "../core/db.js";
 import { sendLog } from "../core/logger.js";
 
 export const data = new SlashCommandBuilder()
@@ -36,7 +37,22 @@ export async function execute(interaction) {
         .setTimestamp()
         .setFooter({ text: "この報告はモデレーターのみに表示されます。" });
 
-    const sent = await sendLog(interaction.guild, 'ng', embed);
+    // 専用レポートチャンネルがあればそちら、なければngログchへ
+    const settingsRes = await dbQuery("SELECT report_channel_id, ng_log_channel_id FROM settings WHERE guild_id = $1", [interaction.guild.id]);
+    const settings = settingsRes.rows[0] || {};
+    const reportChannelId = settings.report_channel_id || settings.ng_log_channel_id;
+
+    let sent = false;
+    if (reportChannelId) {
+        const ch = await interaction.guild.channels.fetch(reportChannelId).catch(() => null);
+        if (ch && ch.isTextBased()) {
+            await ch.send({ embeds: [embed] });
+            sent = true;
+        }
+    }
+    if (!sent) {
+        sent = await sendLog(interaction.guild, 'ng', embed);
+    }
 
     if (sent) {
         await interaction.editReply("✅ 報告をモデレーターに送信しました。ご協力ありがとうございます。");
