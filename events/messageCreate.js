@@ -74,29 +74,13 @@ export default {
                     // Delete the message
                     await message.delete().catch(() => { });
 
-                    // High Severity Action: BAN or Quarantine (Isolation)
+                    // High Severity Action: Kick
                     const count = Math.max(spamCheck.count || 0, mentionCheck.count || 0, rateCheck.count || 0, globalCheck.count || 0);
 
                     if (count >= 5 || isRaid) {
                         const member = message.member || await message.guild.members.fetch(message.author.id).catch(() => null);
                         if (member) {
-                            // Silent Processing / Isolation Mode
-                            if (settings.quarantine_role_id) {
-                                try {
-                                    await member.roles.set([settings.quarantine_role_id], "Iron Fortress: Isolated for Security Violation");
-                                    action = "Isolated (Quarantine)";
-
-                                    // Send notification to quarantine log channel
-                                    if (settings.quarantine_channel_id) {
-                                        const qChan = message.guild.channels.cache.get(settings.quarantine_channel_id);
-                                        if (qChan) {
-                                            await qChan.send(`☣️ **隔離対象**: <@${message.author.id}>\n**理由**: ${reason}\n**内容**: ||${message.content.substring(0, 500)}||`);
-                                        }
-                                    }
-                                } catch (e) {
-                                    console.error("[ANTI-RAID] Isolation failed:", e.message);
-                                }
-                            } else if (member.kickable && isRaid) {
+                            if (member.kickable && isRaid) {
                                 await member.kick("Iron Fortress: Raid/Security Violation").catch(() => { });
                                 action = "Kicked";
                             }

@@ -136,7 +136,7 @@
         <div class="guard-card guard-red" id="guard-2" onclick="setGuard(2)">
             <span class="guard-icon">🔴</span>
             <span class="guard-name">防衛 (Lockdown)</span>
-            <span class="guard-desc">自動ロックを実行し、隔離モードを有効にします。</span>
+            <span class="guard-desc">自動ロックを実行し、新規参加者を制限します。</span>
         </div>
     </div>
 
@@ -210,28 +210,6 @@
             </div>
         </div>
 
-        <!-- 6. Quarantine (Silent Processing) -->
-        <div class="accordion-item" id="sec-quarantine">
-            <div class="accordion-header" onclick="toggleAccordion('sec-quarantine')">
-                <span>☣️ 隔離設定 (Silent Processing)<span class="help-tip"
-                        data-tip="<%= t('help_quarantine') %>">?</span></span>
-                <span>▼</span>
-            </div>
-            <div class="accordion-content">
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-                    <div>
-                        <label class="muted">隔離用ロール (Quarantine Role)</label>
-                        <select id="quarantineRole" style="width:100%; margin-top:5px;"></select>
-                    </div>
-                    <div>
-                        <label class="muted">隔離ログチャンネル</label>
-                        <select id="quarantineChannel" style="width:100%; margin-top:5px;"></select>
-                    </div>
-                </div>
-                <p class="muted" style="margin-top:10px; font-size:11px;">※「防衛」モードでの検知時、キックの代わりにこのロールを付与し、ログへ誘導します。</p>
-            </div>
-        </div>
-
         <button id="save" class="btn btn-primary" style="width:100%; padding:15px; font-size:18px; margin-top:10px;">
             要塞設定を保存
         </button>
@@ -268,20 +246,6 @@
             const roles = rl.ok ? rl.roles : [];
             const channels = ch.ok ? ch.channels : [];
 
-            // Populate Dropdowns
-            const qRole = document.getElementById('quarantineRole');
-            const qChan = document.getElementById('quarantineChannel');
-
-            qRole.innerHTML = '<option value="">(None)</option>';
-            roles.forEach(r => {
-                const o = document.createElement('option'); o.value = r.id; o.textContent = r.name; qRole.appendChild(o);
-            });
-
-            qChan.innerHTML = '<option value="">(None)</option>';
-            channels.forEach(c => {
-                const o = document.createElement('option'); o.value = c.id; o.textContent = '#' + c.name; qChan.appendChild(o);
-            });
-
             // Load Settings
             if (st.ok && st.settings) {
                 const s = st.settings;
@@ -291,8 +255,6 @@
                 document.getElementById('newcomerAccountAge').value = s.newcomer_min_account_age || 1;
                 document.getElementById('linkBlockEnabled').checked = s.link_block_enabled;
                 document.getElementById('domainBlacklist').value = (s.domain_blacklist || []).join(', ');
-                document.getElementById('quarantineRole').value = s.quarantine_role_id || "";
-                document.getElementById('quarantineChannel').value = s.quarantine_channel_id || "";
             }
         };
 
@@ -304,9 +266,7 @@
                 newcomer_restrict_mins: parseInt(document.getElementById('newcomerRestrictMins').value),
                 newcomer_min_account_age: parseInt(document.getElementById('newcomerAccountAge').value),
                 link_block_enabled: document.getElementById('linkBlockEnabled').checked,
-                domain_blacklist: document.getElementById('domainBlacklist').value.split(',').map(s => s.trim()).filter(s => s),
-                quarantine_role_id: document.getElementById('quarantineRole').value,
-                quarantine_channel_id: document.getElementById('quarantineChannel').value
+                domain_blacklist: document.getElementById('domainBlacklist').value.split(',').map(s => s.trim()).filter(s => s)
             };
 
             const res = await api("/api/settings/update", body);

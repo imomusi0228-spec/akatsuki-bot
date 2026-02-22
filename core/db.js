@@ -221,8 +221,6 @@ export async function initDb() {
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS newcomer_min_account_age INTEGER DEFAULT 1;`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS link_block_enabled BOOLEAN DEFAULT FALSE;`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS domain_blacklist JSONB DEFAULT '[]';`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS quarantine_role_id TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS quarantine_channel_id TEXT;`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS auto_slowmode_channels JSONB DEFAULT '[]';`,
             `CREATE TABLE IF NOT EXISTS member_stats (
                 guild_id TEXT NOT NULL,

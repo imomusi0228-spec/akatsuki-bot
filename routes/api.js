@@ -463,67 +463,62 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (!await verifyGuild(body.guild)) return resJson({ ok: false, error: "Forbidden" }, 403);
 
         // Upsert
-        const check = await dbQuery("SELECT guild_id FROM settings WHERE guild_id = $1", [body.guild]);
-        if (check.rows.length === 0) {
-            await dbQuery(`INSERT INTO settings 
-                (guild_id, log_channel_id, ng_log_channel_id, audit_role_id, intro_channel_id, ng_threshold, timeout_minutes, 
-                 antiraid_enabled, antiraid_threshold, self_intro_enabled, self_intro_role_id, self_intro_min_length,
-                 vc_report_enabled, vc_report_channel_id, vc_report_interval, vc_role_rules,
-                 antiraid_guard_level, raid_join_threshold, newcomer_restrict_mins, newcomer_min_account_age,
-                 link_block_enabled, domain_blacklist, quarantine_role_id, quarantine_channel_id,
-                 ai_advice_days, ai_advice_channel_id,
-                 ai_insight_enabled, ai_insight_channel_id) 
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)`,
-                [body.guild, body.log_channel_id, body.ng_log_channel_id, body.audit_role_id, body.intro_channel_id, body.ng_threshold, body.timeout_minutes,
+        // Atomic Upsert using ON CONFLICT
+        try {
+            await dbQuery(`
+                INSERT INTO settings (
+                    guild_id, log_channel_id, ng_log_channel_id, audit_role_id, intro_channel_id, ng_threshold, timeout_minutes, 
+                    antiraid_enabled, antiraid_threshold, self_intro_enabled, self_intro_role_id, self_intro_min_length,
+                    vc_report_enabled, vc_report_channel_id, vc_report_interval, vc_role_rules,
+                    antiraid_guard_level, raid_join_threshold, newcomer_restrict_mins, newcomer_min_account_age,
+                    link_block_enabled, domain_blacklist,
+                    ai_advice_days, ai_advice_channel_id,
+                    ai_insight_enabled, ai_insight_channel_id,
+                    updated_at
+                ) VALUES (
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, NOW()
+                )
+                ON CONFLICT (guild_id) DO UPDATE SET
+                    log_channel_id = EXCLUDED.log_channel_id,
+                    ng_log_channel_id = EXCLUDED.ng_log_channel_id,
+                    audit_role_id = EXCLUDED.audit_role_id,
+                    intro_channel_id = EXCLUDED.intro_channel_id,
+                    ng_threshold = EXCLUDED.ng_threshold,
+                    timeout_minutes = EXCLUDED.timeout_minutes,
+                    antiraid_enabled = EXCLUDED.antiraid_enabled,
+                    antiraid_threshold = EXCLUDED.antiraid_threshold,
+                    self_intro_enabled = EXCLUDED.self_intro_enabled,
+                    self_intro_role_id = EXCLUDED.self_intro_role_id,
+                    self_intro_min_length = EXCLUDED.self_intro_min_length,
+                    vc_report_enabled = EXCLUDED.vc_report_enabled,
+                    vc_report_channel_id = EXCLUDED.vc_report_channel_id,
+                    vc_report_interval = EXCLUDED.vc_report_interval,
+                    vc_role_rules = EXCLUDED.vc_role_rules,
+                    antiraid_guard_level = EXCLUDED.antiraid_guard_level,
+                    raid_join_threshold = EXCLUDED.raid_join_threshold,
+                    newcomer_restrict_mins = EXCLUDED.newcomer_restrict_mins,
+                    newcomer_min_account_age = EXCLUDED.newcomer_min_account_age,
+                    link_block_enabled = EXCLUDED.link_block_enabled,
+                    domain_blacklist = EXCLUDED.domain_blacklist,
+                    ai_advice_days = EXCLUDED.ai_advice_days,
+                    ai_advice_channel_id = EXCLUDED.ai_advice_channel_id,
+                    ai_insight_enabled = EXCLUDED.ai_insight_enabled,
+                    ai_insight_channel_id = EXCLUDED.ai_insight_channel_id,
+                    updated_at = NOW();
+            `, [
+                body.guild,
+                body.log_channel_id, body.ng_log_channel_id, body.audit_role_id, body.intro_channel_id, body.ng_threshold, body.timeout_minutes,
                 body.antiraid_enabled, body.antiraid_threshold, body.self_intro_enabled, body.self_intro_role_id, body.self_intro_min_length,
                 body.vc_report_enabled, body.vc_report_channel_id, body.vc_report_interval, JSON.stringify(body.vc_role_rules),
                 body.antiraid_guard_level || 0, body.raid_join_threshold || 10, body.newcomer_restrict_mins || 10, body.newcomer_min_account_age || 1,
-                body.link_block_enabled || false, JSON.stringify(body.domain_blacklist || []), body.quarantine_role_id || null, body.quarantine_channel_id || null,
+                body.link_block_enabled || false, JSON.stringify(body.domain_blacklist || []),
                 body.ai_advice_days || 14, body.ai_advice_channel_id || null,
-                body.ai_insight_enabled || false, body.ai_insight_channel_id || null]);
-
-        } else {
-
-            await dbQuery(`UPDATE settings SET 
-                log_channel_id = $1, 
-                ng_log_channel_id = $2,
-                audit_role_id = $3, 
-                intro_channel_id = $4, 
-                ng_threshold = $5, 
-                timeout_minutes = $6,
-                antiraid_enabled = $7,
-                antiraid_threshold = $8,
-                self_intro_enabled = $9,
-                self_intro_role_id = $10,
-                self_intro_min_length = $11,
-                vc_report_enabled = $12,
-                vc_report_channel_id = $13,
-                vc_report_interval = $14,
-                vc_role_rules = $15,
-                antiraid_guard_level = $16,
-                raid_join_threshold = $17,
-                newcomer_restrict_mins = $18,
-                newcomer_min_account_age = $19,
-                link_block_enabled = $20,
-                domain_blacklist = $21,
-                quarantine_role_id = $22,
-                quarantine_channel_id = $23,
-                ai_advice_days = $24,
-                ai_advice_channel_id = $25,
-                ai_insight_enabled = $26,
-                ai_insight_channel_id = $27,
-                updated_at = NOW()
-                WHERE guild_id = $28`,
-                [body.log_channel_id, body.ng_log_channel_id, body.audit_role_id, body.intro_channel_id, body.ng_threshold, body.timeout_minutes,
-                body.antiraid_enabled, body.antiraid_threshold, body.self_intro_enabled, body.self_intro_role_id, body.self_intro_min_length,
-                body.vc_report_enabled, body.vc_report_channel_id, body.vc_report_interval, JSON.stringify(body.vc_role_rules),
-                body.antiraid_guard_level || 0, body.raid_join_threshold || 10, body.newcomer_restrict_mins || 10, body.newcomer_min_account_age || 1,
-                body.link_block_enabled || false, JSON.stringify(body.domain_blacklist || []), body.quarantine_role_id || null, body.quarantine_channel_id || null,
-                body.ai_advice_days || 14, body.ai_advice_channel_id || null,
-                body.ai_insight_enabled || false, body.ai_insight_channel_id || null,
-                body.guild]);
-
-
+                body.ai_insight_enabled || false, body.ai_insight_channel_id || null
+            ]);
+        } catch (e) {
+            console.error("Settings Update Error:", e);
+            res.writeHead(500, { "Content-Type": "application/json" });
+            return res.end(JSON.stringify({ ok: false, error: "Database Error" }));
         }
 
         res.writeHead(200, { "Content-Type": "application/json" });

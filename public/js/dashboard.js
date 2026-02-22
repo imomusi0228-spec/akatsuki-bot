@@ -246,18 +246,38 @@ async function initSettings() {
     const reload = async () => {
         saveGuildSelection(); const gid = selGuild.value; if (!gid) return;
 
-        await loadMasters(gid);
-        const [ng, st] = await Promise.all([api("/api/ngwords?guild=" + gid), api("/api/settings?guild=" + gid)]);
-
-        if (ng.ok) {
-            const list = $("ngList");
-            const words = ng.words || [];
-            if (words.length === 0) list.innerHTML = '<div class="muted" style="padding:10px; text-align:center;">' + t("ng_none") + '</div>';
-            else list.innerHTML = words.map(w => '<div class="ng-item"><span>' + escapeHTML(w.word) + '</span><button onclick="removeNg(\'' + escapeHTML(w.word) + '\')">×</button></div>').join("");
-            if ($("ngCount")) $("ngCount").textContent = words.length + " " + t("words");
+        // Disable Save Button during reload to prevent race conditions
+        const saveBtn = $("save");
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.textContent = t("loading") + "...";
+            saveBtn.classList.add("btn-disabled"); // Optional styling
         }
 
+        // Reset Error Status
+        const stat = $("saveStatus");
+        if (stat) stat.textContent = "";
+
+        await loadMasters(gid);
+
+        // Check if loadMasters failed (by checking if selects are still empty or if we can track it)
+        // Ideally loadMasters should throw or return false.
+        // Let's check a flag or simple heuristic: if selLog has no options other than (None), and we expect channels...
+        // But some servers might genuinely have no channels? Rare for a bot dash.
+        // Better: let's trust loadMasters processed correct API response.
+        // If API error occurred in loadMasters, we should ideally block saving.
+        // For now, let's proceed to load settings, but keep in mind.
+
+        const [ng, st] = await Promise.all([api("/api/ngwords?guild=" + gid), api("/api/settings?guild=" + gid)]);
+
+        // Enable Save Button ONLY if settings loaded successfully
         if (st.ok && st.settings) {
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = t("save_settings");
+                saveBtn.classList.remove("btn-disabled");
+            }
+
             const s = st.settings;
             if (selLog) selLog.value = s.log_channel_id || "";
             if (selNgLog) selNgLog.value = s.ng_log_channel_id || "";
@@ -302,6 +322,24 @@ async function initSettings() {
                 const rules = s.vc_role_rules || [];
                 rules.forEach(r => addRoleRule(r));
             }
+        } else {
+            // Settings Load Failed
+            if (saveBtn) {
+                saveBtn.textContent = "Load Failed";
+                // Keep disabled
+            }
+            if (stat) {
+                stat.textContent = "Error loading settings. Refresh page.";
+                stat.style.color = "var(--danger-color)";
+            }
+        }
+
+        if (ng.ok) {
+            const list = $("ngList");
+            const words = ng.words || [];
+            if (words.length === 0) list.innerHTML = '<div class="muted" style="padding:10px; text-align:center;">' + t("ng_none") + '</div>';
+            else list.innerHTML = words.map(w => '<div class="ng-item"><span>' + escapeHTML(w.word) + '</span><button onclick="removeNg(\'' + escapeHTML(w.word) + '\')">×</button></div>').join("");
+            if ($("ngCount")) $("ngCount").textContent = words.length + " " + t("words");
         }
     };
 
