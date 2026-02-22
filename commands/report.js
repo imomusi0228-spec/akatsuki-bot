@@ -6,7 +6,17 @@ export const data = new SlashCommandBuilder()
     .setName("report")
     .setDescription("問題のあるメンバーをモデレーターに報告します。")
     .addUserOption(opt => opt.setName("user").setDescription("報告するメンバー").setRequired(true))
-    .addStringOption(opt => opt.setName("reason").setDescription("報告理由").setRequired(true))
+    .addStringOption(opt => opt
+        .setName("reason")
+        .setDescription("報告理由")
+        .setRequired(true)
+        .addChoices(
+            { name: "迷惑行為・ハラスメント", value: "迷惑行為・ハラスメント" },
+            { name: "スパム・宣伝", value: "スパム・宣伝" },
+            { name: "不適切な発言・コンテンツ", value: "不適切な発言・コンテンツ" },
+            { name: "荒らし行為", value: "荒らし行為" },
+            { name: "その他", value: "その他" }
+        ))
     .addStringOption(opt => opt.setName("message_id").setDescription("問題のメッセージID（任意）").setRequired(false));
 
 export async function execute(interaction) {

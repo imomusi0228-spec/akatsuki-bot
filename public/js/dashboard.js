@@ -224,11 +224,12 @@ async function initSettings() {
                 });
             }
 
-            // 3. Channels (VC Report, AI Advice & AI Insight)
+            // 3. Channels (VC Report, AI Advice, AI Insight & Report Channel)
             const selVcReport = $("vcReportCh");
             const selAiAdvice = $("aiAdviceCh");
             const selAiInsight = $("aiInsightCh");
-            [selVcReport, selAiAdvice, selAiInsight].forEach(s => {
+            const selReportChInner = $("reportCh");
+            [selVcReport, selAiAdvice, selAiInsight, selReportChInner].forEach(s => {
                 if (s) {
                     s.innerHTML = '<option value="">(None)</option>';
                     channels.forEach(c => {
@@ -368,7 +369,7 @@ async function initSettings() {
             guild: selGuild.value,
             log_channel_id: selLog ? selLog.value : "",
             ng_log_channel_id: selNgLog ? selNgLog.value : "",
-            report_channel_id: selReportCh ? selReportCh.value : "",
+            report_channel_id: $("reportCh") ? $("reportCh").value : "",
             ng_threshold: parseInt($("threshold")?.value || 3),
             timeout_minutes: parseInt($("timeout")?.value || 10),
 
