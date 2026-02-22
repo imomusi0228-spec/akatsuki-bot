@@ -1,20 +1,15 @@
-import fs from "node:fs/promises";
-import path from "node:path";
 import { dbQuery } from "../core/db.js";
 import { client } from "../core/client.js";
 import { EmbedBuilder } from "discord.js";
 
 /**
- * Run weekly checks for auto-unlock and broadcasts
- * Called from index.js intervals
+ * アナウンサー定期チェック（予約済み）
+ * 現在はコミュニティ告知を手動管理Botに移行済み
  */
 export async function runAnnouncerCheck() {
-    console.log("[ANNOUNCER] Running background check...");
-
-    // processUpdateBroadcast() は全サーバーに送信されるため、
-    // ユーザーの要望により管理Botからの手動告知システムに移行しました。
-    // await processUpdateBroadcast();
+    // 現在はアクションなし（将来の拡張用プレースホルダー）
 }
+
 
 /**
  * Read UPDATE_LOG.md and broadcast new versions

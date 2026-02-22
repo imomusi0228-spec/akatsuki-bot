@@ -214,21 +214,28 @@ export default {
             }
 
             // 3. Automated Self-Introduction Gate (Pro+ Only)
-            if (features.introGate && settings.self_intro_enabled && settings.intro_channel_id === message.channel.id) {
-                const minLength = settings.self_intro_min_length || 10;
+            if (features.introGate) {
+                // settings がまだ取得されていない場合はここで取得する
+                if (!settings) {
+                    const sr = await dbQuery("SELECT * FROM settings WHERE guild_id = $1", [message.guild.id]);
+                    settings = sr.rows[0] || {};
+                    cache.setSettings(message.guild.id, settings);
+                }
+                if (settings.self_intro_enabled && settings.intro_channel_id === message.channel.id) {
+                    const minLength = settings.self_intro_min_length || 10;
 
-                if (message.content.length >= minLength) {
-                    const roleId = settings.self_intro_role_id;
-                    if (roleId) {
-                        try {
-                            const member = await message.guild.members.fetch(message.author.id);
-                            if (!member.roles.cache.has(roleId)) {
-                                await member.roles.add(roleId, "Automated Self-Intro Gate");
-                                console.log(`[INTRO-GATE] Role assigned to ${message.author.tag}`);
-                                await message.react("✅").catch(() => { });
+                    if (message.content.length >= minLength) {
+                        const roleId = settings.self_intro_role_id;
+                        if (roleId) {
+                            try {
+                                const member = await message.guild.members.fetch(message.author.id);
+                                if (!member.roles.cache.has(roleId)) {
+                                    await member.roles.add(roleId, "Automated Self-Intro Gate");
+                                    await message.react("✅").catch(() => { });
+                                }
+                            } catch (e) {
+                                console.error("[INTRO-GATE ERROR] Failed to assign role:", e.message);
                             }
-                        } catch (e) {
-                            console.error("[INTRO-GATE ERROR] Failed to assign role:", e.message);
                         }
                     }
                 }

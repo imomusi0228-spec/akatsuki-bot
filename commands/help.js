@@ -20,7 +20,7 @@ export async function execute(interaction) {
 **🚫 モデレーション (Moderation)**
 \`/ngword add/list\` : NGワードの追加・確認
 \`/ngword remove/clear\` : NGワードの削除・全削除
-\`/scan [type]\` : 過去ログのスキャン・復元 (Pro+)
+\`/scan [type]\` : 過去ログのスキャン・復元 (Pro+ 限定)
 
 **ℹ️ その他**
 \`/help\` : コマンド一覧を表示`;

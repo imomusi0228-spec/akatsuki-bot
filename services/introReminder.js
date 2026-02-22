@@ -49,7 +49,7 @@ export async function runIntroReminder() {
                 try {
                     await member.user.send(
                         `👋 **${guild.name}** へようこそ！\n\n` +
-                        `서버에 참가하신 지 ${reminderHours}時間以上が経ちましたが、まだ自己紹介が確認できていません。\n` +
+                        `サーバーに参加されてから${reminderHours}時間以上が経ちましたが、まだ自己紹介が確認できていません。\n` +
                         `<#${settings.intro_channel_id}> チャンネルにて自己紹介を投稿していただけると、サーバーの全機能をご利用いただけます。\n\n` +
                         `*このメッセージはシステムから自動送信されました。*`
                     );

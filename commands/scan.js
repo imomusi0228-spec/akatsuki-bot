@@ -1,6 +1,8 @@
 import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags } from "discord.js";
 import { dbQuery } from "../core/db.js";
 import { sendLog } from "../core/logger.js";
+import { getTier } from "../core/subscription.js";
+import { getFeatures } from "../core/tiers.js";
 
 export const data = new SlashCommandBuilder()
     .setName("scan")
@@ -21,6 +23,16 @@ export async function execute(interaction) {
     const type = interaction.options.getString("type");
     const limit = interaction.options.getInteger("limit") || (type === 'vc' ? 3 : 50);
     const guildId = interaction.guild.id;
+
+    // Pro+ のみ利用可能
+    const tier = await getTier(guildId);
+    const features = getFeatures(tier);
+    if (!features.audit) {
+        return interaction.reply({
+            content: "❌ `/scan` コマンドは **Pro+** プランのみご利用いただけます。\n詳細は `/activity` または Web管理画面からご確認ください。",
+            flags: [MessageFlags.Ephemeral]
+        });
+    }
 
     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
@@ -46,11 +58,8 @@ export async function execute(interaction) {
         await interaction.editReply(`⏳ 過去${days}日間のVCログを復元中... (${res.rows.length}件)`);
 
         // Optimization: Batch fetch members to warm the cache and avoid rate limits in loop
-        // We extract unique user IDs first
         const userIds = [...new Set(res.rows.map(r => r.user_id))];
-        console.log(`[DEBUG] Warming member cache for ${userIds.length} users...`);
-        // Batch fetch (Discord.js will handle splitting if too many, but here we just ensure they are in cache)
-        await interaction.guild.members.fetch({ user: userIds }).catch(e => console.error("[DEBUG] Batch fetch failed:", e));
+        await interaction.guild.members.fetch({ user: userIds }).catch(() => { });
 
         for (const session of res.rows) {
             // Use cache first (it should be warmed now)
