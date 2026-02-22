@@ -215,7 +215,7 @@ export default {
 
             // 3. Automated Self-Introduction Gate (Pro+ Only)
             if (features.introGate) {
-                // settings がまだ取得されていない場合はここで取得する
+                let settings = cache.getSettings(message.guild.id);
                 if (!settings) {
                     const sr = await dbQuery("SELECT * FROM settings WHERE guild_id = $1", [message.guild.id]);
                     settings = sr.rows[0] || {};
