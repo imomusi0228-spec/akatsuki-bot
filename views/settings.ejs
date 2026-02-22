@@ -151,6 +151,43 @@
                     <input id="antiraidThreshold" type="number" min="1" max="1000"
                         style="width:100%; max-width: 300px; margin-top:5px;">
                 </div>
+                <div style="border-top:1px solid var(--border-color); padding-top:15px; margin-top:18px;">
+                    <label class="muted" style="display:block; margin-bottom:10px;">⚠️ 段階制裁設定（NGワード自動エスカレーション）</label>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:15px;">
+                        <div>
+                            <label class="muted" style="font-size:12px;">フェーズ2：違反N回以上</label><br />
+                            <input id="phase2Threshold" type="number" min="1" value="3"
+                                style="width:100%; margin-top:5px;">
+                            <select id="phase2Action" style="width:100%; margin-top:5px;">
+                                <option value="timeout">タイムアウト</option>
+                                <option value="kick">キック</option>
+                                <option value="ban">BAN</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="muted" style="font-size:12px;">フェーズ3：違反N回以上</label><br />
+                            <input id="phase3Threshold" type="number" min="1" value="6"
+                                style="width:100%; margin-top:5px;">
+                            <select id="phase3Action" style="width:100%; margin-top:5px;">
+                                <option value="timeout">タイムアウト</option>
+                                <option value="kick">キック</option>
+                                <option value="ban">BAN</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="muted" style="font-size:12px;">フェーズ4：違反N回以上</label><br />
+                            <input id="phase4Threshold" type="number" min="1" value="10"
+                                style="width:100%; margin-top:5px;">
+                            <select id="phase4Action" style="width:100%; margin-top:5px;">
+                                <option value="timeout">タイムアウト</option>
+                                <option value="kick">キック</option>
+                                <option value="ban">BAN</option>
+                            </select>
+                        </div>
+                    </div>
+                    <p class="muted" style="font-size:11px; margin-top:8px;">※ 過去1時間のNG違反回数が各しきい値に達すると選択したアクションが実行されます。
+                    </p>
+                </div>
             </div>
         </div>
 
@@ -178,6 +215,13 @@
                         <label class="muted">必要最小文字数</label><br />
                         <input id="introMinLen" type="number" min="1" value="10" style="width:100%; margin-top:5px;">
                     </div>
+                </div>
+                <div style="margin-top:15px;">
+                    <label class="muted">📬 未投稿リマインダー (参加からN時間後にDM送信)</label><br />
+                    <input id="introReminderHours" type="number" min="1" max="720" value="24"
+                        style="width:100%; max-width:200px; margin-top:5px;">
+                    <p class="muted" style="font-size:11px; margin-top:5px;">※
+                        自己紹介チャンネルにまだ投稿していないメンバーへ自動でDMを送ります。0に設定すると無効になります。</p>
                 </div>
             </div>
         </div>

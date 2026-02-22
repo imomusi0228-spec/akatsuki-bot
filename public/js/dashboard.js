@@ -300,6 +300,17 @@ async function initSettings() {
             if ($("insightToxicity")) $("insightToxicity").checked = sections.includes("toxicity");
             if ($("insightVc")) $("insightVc").checked = sections.includes("vc");
 
+            // Phase Escalation
+            if ($("phase2Threshold")) $("phase2Threshold").value = s.phase2_threshold ?? 3;
+            if ($("phase2Action")) $("phase2Action").value = s.phase2_action || 'timeout';
+            if ($("phase3Threshold")) $("phase3Threshold").value = s.phase3_threshold ?? 6;
+            if ($("phase3Action")) $("phase3Action").value = s.phase3_action || 'kick';
+            if ($("phase4Threshold")) $("phase4Threshold").value = s.phase4_threshold ?? 10;
+            if ($("phase4Action")) $("phase4Action").value = s.phase4_action || 'ban';
+
+            // Intro Reminder
+            if ($("introReminderHours")) $("introReminderHours").value = s.intro_reminder_hours ?? 24;
+
 
             // Alpha Features Logic - Ojou says "Open everything!"
             const toggleAlphaSection = (id, enabled) => {
@@ -368,8 +379,10 @@ async function initSettings() {
             // VC Role Rules
             vc_role_rules: Array.from(document.querySelectorAll(".role-rule-item")).map(item => ({
                 role_id: item.querySelector(".rule-role").value,
-                hours: parseInt(item.querySelector(".rule-hours").value),
-                aura_name: item.querySelector(".rule-name").value
+                trigger: item.querySelector(".rule-trigger")?.value || 'vc_hours',
+                aura_name: item.querySelector(".rule-name").value,
+                hours: parseInt(item.querySelector(".rule-hours").value) || 0,
+                messages: parseInt(item.querySelector(".rule-messages")?.value) || 0
             })),
             vc_report_enabled: $("vcReportEnabled")?.checked || false,
             vc_report_channel_id: $("vcReportCh") ? $("vcReportCh").value : "",
@@ -382,7 +395,14 @@ async function initSettings() {
                 ...($("insightGrowth")?.checked ? ["growth"] : []),
                 ...($("insightToxicity")?.checked ? ["toxicity"] : []),
                 ...($("insightVc")?.checked ? ["vc"] : [])
-            ]
+            ],
+            phase2_threshold: parseInt($("phase2Threshold")?.value || 3),
+            phase2_action: $("phase2Action")?.value || 'timeout',
+            phase3_threshold: parseInt($("phase3Threshold")?.value || 6),
+            phase3_action: $("phase3Action")?.value || 'kick',
+            phase4_threshold: parseInt($("phase4Threshold")?.value || 10),
+            phase4_action: $("phase4Action")?.value || 'ban',
+            intro_reminder_hours: parseInt($("introReminderHours")?.value || 24)
         };
 
 
@@ -503,6 +523,24 @@ async function initActivity() {
 
     document.getElementById("scan").onclick = runScan;
     reloadCriteria();
+
+    // Auto-refresh: 60 seconds
+    let countdown = 60;
+    const countEl = document.createElement('div');
+    countEl.id = 'autoRefreshCountdown';
+    countEl.style = 'font-size:12px; color:#888; margin-top:8px; text-align:right;';
+    document.getElementById("scan")?.parentElement?.appendChild(countEl);
+
+    const tick = () => {
+        countEl.textContent = `自動更新: ${countdown}秒後`;
+        countdown--;
+        if (countdown < 0) {
+            countdown = 60;
+            runScan();
+        }
+    };
+    tick();
+    setInterval(tick, 1000);
 }
 
 window.toggleAccordion = (id) => {
@@ -515,27 +553,43 @@ window.toggleAccordion = (id) => {
     else item.classList.add("active");
 };
 
-window.addRoleRule = (data = { role_id: "", hours: 1 }) => {
+window.addRoleRule = (data = { role_id: "", hours: 1, trigger: 'vc_hours', messages: 0 }) => {
     const list = document.getElementById("roleRulesList");
     if (!list) return;
     const item = document.createElement("div");
     item.className = "role-rule-item";
-    item.style = "display:flex; gap:8px; align-items:center; background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; border:1px solid #38444d;";
+    item.style = "display:flex; gap:8px; align-items:center; background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; border:1px solid #38444d; flex-wrap:wrap;";
 
     let roleOptions = '<option value="">(Select Role)</option>';
     (window._serverRoles || []).forEach(r => {
         roleOptions += `<option value="${r.id}" ${r.id === data.role_id ? 'selected' : ''}>${escapeHTML(r.name)}</option>`;
     });
 
+    const trigger = data.trigger || 'vc_hours';
     item.innerHTML = `
         <input type="text" class="rule-name" value="${escapeHTML(data.aura_name || '')}" placeholder="オーラ名..." style="flex:1; font-size:12px;" />
         <select class="rule-role" style="flex:1; font-size:12px;">${roleOptions}</select>
-        <input type="number" class="rule-hours" value="${data.hours}" min="1" style="width:50px; font-size:12px;" />
-        <span style="font-size:11px; color:#888;">時間</span>
+        <select class="rule-trigger" style="font-size:12px;" onchange="toggleRuleTrigger(this)">
+            <option value="vc_hours" ${trigger === 'vc_hours' ? 'selected' : ''}>VC時間</option>
+            <option value="messages" ${trigger === 'messages' ? 'selected' : ''}>メッセージ数</option>
+        </select>
+        <input type="number" class="rule-hours" value="${data.hours || 1}" min="1" style="width:50px; font-size:12px; ${trigger === 'messages' ? 'display:none;' : ''}" />
+        <span class="rule-hours-label" style="font-size:11px; color:#888; ${trigger === 'messages' ? 'display:none;' : ''}">h</span>
+        <input type="number" class="rule-messages" value="${data.messages || 0}" min="1" style="width:60px; font-size:12px; ${trigger !== 'messages' ? 'display:none;' : ''}" />
+        <span class="rule-messages-label" style="font-size:11px; color:#888; ${trigger !== 'messages' ? 'display:none;' : ''}">通</span>
         <button type="button" onclick="this.parentElement.remove()" class="btn" style="padding:4px 8px; color:var(--danger-color); border-color:transparent;">×</button>
     `;
 
     list.appendChild(item);
+};
+
+window.toggleRuleTrigger = (sel) => {
+    const item = sel.closest('.role-rule-item');
+    const isMsg = sel.value === 'messages';
+    item.querySelector('.rule-hours').style.display = isMsg ? 'none' : '';
+    item.querySelector('.rule-hours-label').style.display = isMsg ? 'none' : '';
+    item.querySelector('.rule-messages').style.display = isMsg ? '' : 'none';
+    item.querySelector('.rule-messages-label').style.display = isMsg ? '' : 'none';
 };
 
 window.addNg = async () => {

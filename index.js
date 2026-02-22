@@ -8,6 +8,7 @@ import { runEngagementCheck } from "./services/engagement.js";
 import { runAnnouncerCheck } from "./services/announcer.js";
 import { runDataPruning } from "./services/pruning.js";
 import { runInsightCheck } from "./services/insight.js";
+import { runIntroReminder } from "./services/introReminder.js";
 
 
 // Global Error Handlers for Production Stability
@@ -44,15 +45,17 @@ process.on("unhandledRejection", (reason) => {
             runAnnouncerCheck();
             runDataPruning();
             runInsightCheck();
+            runIntroReminder();
         };
 
 
         runTasks(); // Initial run
 
-        setInterval(runEngagementCheck, 60 * 60 * 1000);    // 1 hour
+        setInterval(runEngagementCheck, 60 * 60 * 1000);      // 1 hour
         setInterval(runAnnouncerCheck, 24 * 60 * 60 * 1000);  // 24 hours
-        setInterval(runDataPruning, 24 * 60 * 60 * 1000);    // 24 hours
-        setInterval(runInsightCheck, 2 * 60 * 60 * 1000);    // 2 hours check
+        setInterval(runDataPruning, 24 * 60 * 60 * 1000);     // 24 hours
+        setInterval(runInsightCheck, 2 * 60 * 60 * 1000);     // 2 hours
+        setInterval(runIntroReminder, 6 * 60 * 60 * 1000);    // 6 hours
 
 
         console.log("✅ All systems initialized successfully.");

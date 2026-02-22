@@ -132,10 +132,13 @@ export default {
                     cache.setSettings(message.guild.id, settings);
                 }
 
-                const threshold = settings.ng_threshold || 3;
+                const phase2Threshold = settings.phase2_threshold ?? 3;
+                const phase3Threshold = settings.phase3_threshold ?? 6;
+                const phase4Threshold = settings.phase4_threshold ?? 10;
+                const phase2Action = settings.phase2_action || 'timeout';
+                const phase3Action = settings.phase3_action || 'kick';
+                const phase4Action = settings.phase4_action || 'ban';
                 const timeoutMin = settings.timeout_minutes || 10;
-
-                console.log(`[DEBUG] Settings: threshold=${threshold}, timeout=${timeoutMin}m`);
 
                 // Log EACH word to DB (Batched)
                 for (const word of caughtWords) {
@@ -150,35 +153,43 @@ export default {
                         `サーバー: **${message.guild.name}**\n` +
                         `対象ワード: ||${joinedWords}||\n` +
                         `メッセージを削除しました。 / Your message was removed.\n\n` +
-                        `*繰り返し警告を無視すると、タイムアウトが適用される場合があります。*\n` +
-                        `*Repeated violations may lead to a timeout.*`;
+                        `*繰り返し警告を無視すると、タイムアウトが適用されます。*\n` +
+                        `*Repeated violations may lead to escalating penalties.*`;
                     await message.author.send(warningMsg);
                 } catch (e) { }
 
-                // Check violations in last 1 hour
-                const countRes = await dbQuery("SELECT COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 AND user_id = $2 AND created_at > NOW() - INTERVAL '1 hour'",
-                    [message.guild.id, message.author.id]);
+                // Count violations in last 1 hour
+                const countRes = await dbQuery(
+                    "SELECT COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 AND user_id = $2 AND created_at > NOW() - INTERVAL '1 hour'",
+                    [message.guild.id, message.author.id]
+                );
                 const count = parseInt(countRes.rows[0].cnt);
 
                 let actionTaken = "Msg Deleted";
 
-                // Timeout Execution
-                if (count >= threshold) {
-                    try {
-                        const member = await message.guild.members.fetch(message.author.id);
-                        if (member.moderatable) {
-                            if (timeoutMin > 0) {
-                                await member.timeout(timeoutMin * 60 * 1000, "NG Word Threshold Exceeded");
-
-                                // Log Timeout to member_events (Batched)
-                                batcher.push('member_events', { guild_id: message.guild.id, user_id: message.author.id, event_type: 'timeout' });
-
-                                actionTaken = `Timeout (${timeoutMin}m)`;
-                            }
-                        } else {
-                            actionTaken = "Msg Deleted (No Perm for Timeout)";
+                const member = await message.guild.members.fetch(message.author.id).catch(() => null);
+                if (member) {
+                    const applyAction = async (action) => {
+                        if (action === 'timeout' && member.moderatable) {
+                            await member.timeout(timeoutMin * 60 * 1000, "NG Word Threshold Exceeded");
+                            batcher.push('member_events', { guild_id: message.guild.id, user_id: message.author.id, event_type: 'timeout' });
+                            actionTaken = `Timeout (${timeoutMin}m)`;
+                        } else if (action === 'kick' && member.kickable) {
+                            await member.kick("NG Word Threshold Exceeded");
+                            actionTaken = "Kicked";
+                        } else if (action === 'ban' && member.bannable) {
+                            await member.ban({ reason: "NG Word Threshold Exceeded" });
+                            actionTaken = "Banned";
                         }
-                    } catch (e) { }
+                    };
+
+                    if (count >= phase4Threshold) {
+                        await applyAction(phase4Action);
+                    } else if (count >= phase3Threshold) {
+                        await applyAction(phase3Action);
+                    } else if (count >= phase2Threshold) {
+                        await applyAction(phase2Action);
+                    }
                 }
 
                 // Log to Channel
@@ -195,7 +206,7 @@ export default {
                         .setColor(0xFF0000)
                         .setTitle("🚨 NG Word Detected")
                         .setDescription(`**NGワード**: ||${joinedWords}||\n**本文**: ||${message.content}||`)
-                        .setFooter({ text: `状況: ${actionTaken} (${count}/${threshold})` })
+                        .setFooter({ text: `状況: ${actionTaken} | 違反数: ${count}回` })
                         .setTimestamp();
 
                     await sendLog(message.guild, 'ng', embed);
@@ -218,6 +229,35 @@ export default {
                             }
                         } catch (e) {
                             console.error("[INTRO-GATE ERROR] Failed to assign role:", e.message);
+                        }
+                    }
+                }
+            }
+
+            // 4. Message Count Aura (message trigger rules)
+            if (features.aura) {
+                let auraSettings = cache.getSettings(message.guild.id);
+                if (!auraSettings) {
+                    const sr = await dbQuery("SELECT * FROM settings WHERE guild_id = $1", [message.guild.id]);
+                    auraSettings = sr.rows[0] || {};
+                    cache.setSettings(message.guild.id, auraSettings);
+                }
+                const msgRules = (auraSettings.vc_role_rules || []).filter(r => r.trigger === 'messages');
+                if (msgRules.length > 0) {
+                    const statsRes = await dbQuery(
+                        "UPDATE member_stats SET message_count = COALESCE(message_count, 0) + 1 WHERE guild_id = $1 AND user_id = $2 RETURNING message_count",
+                        [message.guild.id, message.author.id]
+                    );
+                    if (statsRes.rows.length > 0) {
+                        const msgCount = statsRes.rows[0].message_count;
+                        const guildMember = message.member || await message.guild.members.fetch(message.author.id).catch(() => null);
+                        if (guildMember) {
+                            for (const rule of msgRules) {
+                                if (msgCount >= rule.messages && !guildMember.roles.cache.has(rule.role_id)) {
+                                    await guildMember.roles.add(rule.role_id).catch(() => null);
+                                    console.log(`[MSG-AURA] ${message.author.tag} received aura: ${rule.aura_name} (${msgCount} msgs)`);
+                                }
+                            }
                         }
                     }
                 }

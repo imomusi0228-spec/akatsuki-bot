@@ -89,6 +89,10 @@ async function processVCRoles(guild, settings) {
     const rules = settings.vc_role_rules; // Array of {hours, role_id, aura_name}
     if (!rules || !Array.isArray(rules) || rules.length === 0) return;
 
+    // VC時間トリガーのルールのみ処理（messagesトリガーはmessageCreate側で処理）
+    const vcRules = rules.filter(r => !r.trigger || r.trigger === 'vc_hours');
+    if (vcRules.length === 0) return;
+
     // Get everyone's total life-time stats from member_stats
     const res = await dbQuery(`
         SELECT user_id, total_vc_minutes
@@ -99,7 +103,7 @@ async function processVCRoles(guild, settings) {
     const stats = {};
     res.rows.forEach(r => stats[r.user_id] = r.total_vc_minutes / 60);
 
-    const sortedRules = [...rules].sort((a, b) => b.hours - a.hours);
+    const sortedRules = [...vcRules].sort((a, b) => b.hours - a.hours);
 
     const members = await guild.members.fetch();
     for (const [memberId, member] of members) {
@@ -114,14 +118,13 @@ async function processVCRoles(guild, settings) {
             }
         }
 
-        // Apply / Remove
-        for (const rule of rules) {
+        // Apply / Remove (VC rules only)
+        for (const rule of vcRules) {
             const hasRole = member.roles.cache.has(rule.role_id);
             if (targetRule && rule.role_id === targetRule.role_id) {
                 if (!hasRole) {
                     await member.roles.add(rule.role_id).catch(() => null);
-                    // Optional: Welcome message for new Aura?
-                    console.log(`[AURA] ${member.user.tag} received aura: ${rule.aura_name}`);
+                    console.log(`[AURA-VC] ${member.user.tag} received aura: ${rule.aura_name}`);
                 }
             } else {
                 if (hasRole) await member.roles.remove(rule.role_id).catch(() => null);

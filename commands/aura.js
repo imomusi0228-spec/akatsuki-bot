@@ -12,9 +12,19 @@ export const data = new SlashCommandBuilder()
     .addSubcommand(sub =>
         sub.setName("add")
             .setDescription("新しいオーラ設定を追加します。")
+            .addStringOption(opt =>
+                opt.setName("type")
+                    .setDescription("トリガーの種類")
+                    .setRequired(true)
+                    .addChoices(
+                        { name: "VC活動時間", value: "vc_hours" },
+                        { name: "累計メッセージ数", value: "messages" }
+                    )
+            )
             .addRoleOption(opt => opt.setName("role").setDescription("付与するロール").setRequired(true))
-            .addIntegerOption(opt => opt.setName("hours").setDescription("必要な累計VC時間（時間）").setRequired(true))
             .addStringOption(opt => opt.setName("name").setDescription("オーラ名（表示用）").setRequired(true))
+            .addIntegerOption(opt => opt.setName("hours").setDescription("必要な累計VC時間（時間）— VC時間トリガーの場合").setRequired(false))
+            .addIntegerOption(opt => opt.setName("messages").setDescription("必要な累計メッセージ数 — メッセージ数トリガーの場合").setRequired(false))
     )
     .addSubcommand(sub =>
         sub.setName("remove")
@@ -40,26 +50,43 @@ export async function execute(interaction) {
         const embed = new EmbedBuilder()
             .setTitle("✨ 現在のオーラ設定一覧")
             .setColor(0x1DA1F2)
-            .setDescription(rules.map((r, i) => `**${i + 1}. ${r.aura_name}**\n└ ロール: <@&${r.role_id}>\n└ 必要時間: ${r.hours}時間`).join("\n\n"))
+            .setDescription(rules.map((r, i) => {
+                const triggerLabel = r.trigger === 'messages'
+                    ? `メッセージ数: ${r.messages}通`
+                    : `必要時間: ${r.hours}時間`;
+                return `**${i + 1}. ${r.aura_name}**\n└ ロール: <@&${r.role_id}>\n└ ${triggerLabel}`;
+            }).join("\n\n"))
             .setFooter({ text: "Akatsuki Aura System" });
 
         await interaction.reply({ embeds: [embed] });
     }
 
     if (sub === "add") {
+        const type = interaction.options.getString("type");
         const role = interaction.options.getRole("role");
-        const hours = interaction.options.getInteger("hours");
         const name = interaction.options.getString("name");
+        const hours = interaction.options.getInteger("hours");
+        const messages = interaction.options.getInteger("messages");
 
-        if (!role || !hours || !name) {
-            await interaction.reply({ content: "❌ ロール、必要時間、オーラ名の全てを入力してください。", ephemeral: true });
+        if (!role || !name) {
+            await interaction.reply({ content: "❌ ロールとオーラ名を入力してください。", ephemeral: true });
+            return;
+        }
+        if (type === 'vc_hours' && !hours) {
+            await interaction.reply({ content: "❌ VC時間トリガーの場合、hours を指定してください。", ephemeral: true });
+            return;
+        }
+        if (type === 'messages' && !messages) {
+            await interaction.reply({ content: "❌ メッセージ数トリガーの場合、messages を指定してください。", ephemeral: true });
             return;
         }
 
         const newRule = {
             role_id: role.id,
-            hours: hours,
-            aura_name: name
+            trigger: type,
+            aura_name: name,
+            hours: hours || 0,
+            messages: messages || 0
         };
 
         rules.push(newRule);
@@ -72,7 +99,8 @@ export async function execute(interaction) {
             await dbQuery("UPDATE settings SET vc_role_rules = $1 WHERE guild_id = $2", [JSON.stringify(rules), guildId]);
         }
 
-        await interaction.reply(`✅ 新しいオーラ **${name}** を追加しました（<@&${role.id}> / ${hours}時間）。`);
+        const label = type === 'messages' ? `${messages}通` : `${hours}時間`;
+        await interaction.reply(`✅ 新しいオーラ **${name}** を追加しました（<@&${role.id}> / ${label}）。`);
     }
 
     if (sub === "remove") {

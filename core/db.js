@@ -227,6 +227,7 @@ export async function initDb() {
                 user_id TEXT NOT NULL,
                 total_vc_minutes INTEGER DEFAULT 0,
                 last_activity_at TIMESTAMPTZ DEFAULT NOW(),
+                intro_reminded BOOLEAN DEFAULT FALSE,
                 PRIMARY KEY (guild_id, user_id)
             );`,
             `CREATE INDEX IF NOT EXISTS idx_member_stats_last_act ON member_stats(last_activity_at);`,
@@ -235,7 +236,32 @@ export async function initDb() {
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_insight_enabled BOOLEAN DEFAULT FALSE;`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_insight_channel_id TEXT;`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_insight_last_sent TIMESTAMPTZ;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS insight_sections JSONB DEFAULT '["growth","toxicity","vc"]';`
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS insight_sections JSONB DEFAULT '["growth","toxicity","vc"]';`,
+
+            // Phase escalation for NG word violations
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS phase2_threshold INTEGER DEFAULT 3;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS phase3_threshold INTEGER DEFAULT 6;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS phase4_threshold INTEGER DEFAULT 10;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS phase2_action TEXT DEFAULT 'timeout';`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS phase3_action TEXT DEFAULT 'kick';`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS phase4_action TEXT DEFAULT 'ban';`,
+
+            // Self-intro reminder
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS intro_reminder_hours INTEGER DEFAULT 24;`,
+
+            // Message count for Aura system
+            `ALTER TABLE member_stats ADD COLUMN IF NOT EXISTS message_count INTEGER DEFAULT 0;`,
+
+            // Warnings table for manual /warn command
+            `CREATE TABLE IF NOT EXISTS warnings (
+                id SERIAL PRIMARY KEY,
+                guild_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                reason TEXT NOT NULL,
+                issued_by TEXT NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );`,
+            `CREATE INDEX IF NOT EXISTS idx_warnings_guild_user ON warnings(guild_id, user_id);`
 
 
         ];
