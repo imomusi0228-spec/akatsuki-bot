@@ -14,7 +14,7 @@ export async function getTier(guildId) {
     let tier = TIERS.FREE;
 
     // 2. Check if this is the support server
-    if (ENV.SUPPORT_SERVER_ID && guildId === ENV.SUPPORT_SERVER_ID) {
+    if (ENV.SUPPORT_GUILD_ID && guildId === ENV.SUPPORT_GUILD_ID) {
         tier = TIERS.PRO_PLUS_YEARLY;
         cache.setTier(guildId, tier);
         return tier;
@@ -54,7 +54,7 @@ export async function getTier(guildId) {
 
         // Get all guilds for this user with the same or higher tier
         const listRes = await dbQuery(
-            "SELECT guild_id FROM subscriptions WHERE user_id = $1 AND tier >= $2 ORDER BY updated_at ASC",
+            "SELECT guild_id FROM subscriptions WHERE user_id = $1 AND tier::INTEGER >= $2 ORDER BY updated_at ASC",
             [sub.user_id, sub.tier]
         );
 
