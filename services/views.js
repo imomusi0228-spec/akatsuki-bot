@@ -119,12 +119,19 @@ export async function renderAdminAntiraidHTML({ user, req }) {
 }
 
 export async function renderAdminTicketsHTML({ user, req }) {
-    const lang = getLang(req);
-    return await renderView("tickets", {
-        title: "チケット管理",
+    return renderDashboardLayout({
         user,
-        oauth: true,
-        activeTab: "tickets",
-        scripts: ""
-    }, lang);
+        req,
+        title: "チケット管理", // Assuming this is a direct string, not a translation key
+        view: "tickets"
+    });
+}
+
+export async function renderAdminEmbedHTML({ user, req }) {
+    return renderDashboardLayout({
+        user,
+        req,
+        title: "Embed Builder", // Assuming this is a direct string, not a translation key
+        view: "embed"
+    });
 }

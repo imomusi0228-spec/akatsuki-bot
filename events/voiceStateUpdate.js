@@ -1,4 +1,4 @@
-import { Events } from "discord.js";
+import { Events, ChannelType, PermissionFlagsBits } from "discord.js";
 import { dbQuery } from "../core/db.js";
 import { getTier } from "../core/subscription.js";
 import { getFeatures } from "../core/tiers.js";
@@ -17,10 +17,58 @@ export default {
         const tier = await getTier(guildId);
         const features = getFeatures(tier);
 
-        // VC Log restriction
-        if (!features.vcLog) return;
-
         try {
+            // --- Auto-VC Logic ---
+            const settingsRes = await dbQuery("SELECT auto_vc_creator_id FROM settings WHERE guild_id = $1", [guildId]);
+            const creatorId = settingsRes.rows[0]?.auto_vc_creator_id;
+
+            // 1. Create VC when joining creator channel
+            if (newState.channelId === creatorId && oldState.channelId !== creatorId) {
+                const category = newState.channel.parent;
+                const newChannel = await guild.channels.create({
+                    name: `🔊 ${member.displayName}の部屋`,
+                    type: ChannelType.GuildVoice,
+                    parent: category || null,
+                    permissionOverwrites: [
+                        { id: guild.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect] }
+                    ]
+                });
+
+                await dbQuery("INSERT INTO auto_vc_channels (channel_id, guild_id, owner_id) VALUES ($1, $2, $3)", [newChannel.id, guildId, userId]);
+                await member.voice.setChannel(newChannel).catch(() => { });
+                console.log(`[AUTO-VC] Created room for ${member.user.tag}: ${newChannel.name}`);
+            }
+
+            // 2. Cleanup / Transfer when leaving
+            if (oldState.channelId && oldState.channelId !== newState.channelId) {
+                const autoVcRes = await dbQuery("SELECT * FROM auto_vc_channels WHERE channel_id = $1", [oldState.channelId]);
+                if (autoVcRes.rows.length > 0) {
+                    const room = autoVcRes.rows[0];
+                    const oldChannel = oldState.channel;
+
+                    if (oldChannel) {
+                        if (oldChannel.members.size === 0) {
+                            // Empty: Delete
+                            await oldChannel.delete().catch(() => { });
+                            await dbQuery("DELETE FROM auto_vc_channels WHERE channel_id = $1", [oldState.channelId]);
+                            console.log(`[AUTO-VC] Deleted empty room: ${oldChannel.name}`);
+                        } else if (room.owner_id === userId) {
+                            // Owner left: Transfer to oldest member
+                            const nextOwner = oldChannel.members.first(); // Discord.js Collection ordered by join order (cached)
+                            if (nextOwner) {
+                                await dbQuery("UPDATE auto_vc_channels SET owner_id = $1 WHERE channel_id = $2", [nextOwner.id, oldState.channelId]);
+                                await oldChannel.setName(`🔊 ${nextOwner.displayName}の部屋`).catch(() => { });
+                                await oldChannel.send(`👑 オーナーが退出したため、新しく <@${nextOwner.id}> さんがこの部屋の主（オーナー）となりました。`).catch(() => { });
+                                console.log(`[AUTO-VC] Transferred owner in ${oldChannel.name} to ${nextOwner.user.tag}`);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // --- VC Logging & Stats (Existing) ---
+            if (!features.vcLog) return;
+
             // Join
             if (!oldState.channelId && newState.channelId) {
                 const joinTime = new Date();
@@ -51,7 +99,6 @@ export default {
                 let session = cache.getActiveSession(guildId, userId);
 
                 if (!session) {
-                    // Fallback to DB (needed after restart or if cache evicted)
                     const res = await dbQuery(`
                         SELECT id, join_time FROM vc_sessions 
                         WHERE guild_id = $1 AND user_id = $2 AND leave_time IS NULL 
@@ -72,9 +119,8 @@ export default {
 
                     cache.clearActiveSession(guildId, userId);
 
-                    // Update member_stats (Minutes & XP)
                     const minutesAdded = Math.floor(durationSec / 60);
-                    const xpFromVc = minutesAdded * (Math.floor(Math.random() * 5) + 8); // 8-12 XP per minute
+                    const xpFromVc = minutesAdded * (Math.floor(Math.random() * 5) + 8);
 
                     const currentStats = await dbQuery("SELECT xp, level FROM member_stats WHERE guild_id = $1 AND user_id = $2", [guildId, userId]);
                     const currentXp = (currentStats.rows[0]?.xp || 0) + xpFromVc;
@@ -106,8 +152,6 @@ export default {
                         } catch (e) { }
                     }
 
-
-                    // Only log [OUT] if they actually left or moved
                     if (!newState.channelId || oldState.channelId !== newState.channelId) {
                         const minutes = Math.floor(durationSec / 60);
                         const seconds = durationSec % 60;
@@ -128,7 +172,10 @@ export default {
             }
 
             // Move (Join part)
-            if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
+            if (newState.channelId && oldState.channelId !== newState.channelId) {
+                // Check if it's the creator channel (redundant but safe)
+                if (newState.channelId === creatorId) return; // Handled by create logic
+
                 const joinTime = new Date();
                 const sessionRes = await dbQuery(`
                     INSERT INTO vc_sessions (guild_id, user_id, channel_id, join_time) 

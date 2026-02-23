@@ -1,95 +1,67 @@
-import { SlashCommandBuilder, ContextMenuCommandBuilder, ApplicationCommandType, EmbedBuilder } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { dbQuery } from "../core/db.js";
 
 export const data = [
     new SlashCommandBuilder()
-        .setName("vc")
-        .setDescription("VC滞在時間の統計を表示・管理します。")
-        .addSubcommand(sub =>
-            sub.setName("top")
-                .setDescription("今月の滞在時間ランキングを表示します。")
-        )
-        .addSubcommand(sub =>
-            sub.setName("user")
-                .setDescription("特定ユーザーの滞在時間を表示します。")
-                .addUserOption(opt => opt.setName("target").setDescription("対象ユーザー").setRequired(true))
-        ),
-    new ContextMenuCommandBuilder()
-        .setName("VC滞在統計を表示")
-        .setType(ApplicationCommandType.User)
+        .setName("vc-name")
+        .setDescription("【オーナー限定】自分のVCの名前を変更します")
+        .addStringOption(opt => opt.setName("名前").setDescription("新しいチャンネル名").setRequired(true)),
+    new SlashCommandBuilder()
+        .setName("vc-limit")
+        .setDescription("【オーナー限定】自分のVCの人数制限を変更します")
+        .addIntegerOption(opt => opt.setName("上限").setDescription("最大人数（0で無制限）").setRequired(true).setMinValue(0).setMaxValue(99)),
+    new SlashCommandBuilder()
+        .setName("vc-owner")
+        .setDescription("【オーナー限定】自分のVCのオーナー権限を譲渡します")
+        .addUserOption(opt => opt.setName("ユーザー").setDescription("新しいオーナー").setRequired(true))
 ];
 
 export async function execute(interaction) {
-    const guildId = interaction.guild.id;
+    const { commandName, guildId, user, member, options } = interaction;
+    const channelId = member.voice.channelId;
 
-    // Handle Context Menu
-    if (interaction.isUserContextMenuCommand()) {
-        const target = interaction.targetUser;
-        const stats = await getUserVCStats(guildId, target.id);
-
-        const embed = new EmbedBuilder()
-            .setTitle(`📊 VC Activity: ${target.username}`)
-            .setThumbnail(target.displayAvatarURL())
-            .setColor(0x1DA1F2)
-            .addFields(
-                { name: "今月の滞在時間", value: `**${stats.currentMonth}** 時間`, inline: true },
-                { name: "先月の滞在時間", value: `**${stats.lastMonth}** 時間`, inline: true },
-                { name: "累計滞在時間", value: `**${stats.total}** 時間`, inline: false }
-            )
-            .setTimestamp();
-
-        await interaction.reply({ embeds: [embed], ephemeral: true });
-        return;
+    if (!channelId) {
+        return interaction.reply({ content: "❌ VCに入室した状態で実行してくださいわ。", ephemeral: true });
     }
 
-    const sub = interaction.options.getSubcommand();
+    // Check if the channel is an Auto-VC and the user is the owner
+    const res = await dbQuery("SELECT * FROM auto_vc_channels WHERE channel_id = $1", [channelId]);
+    if (res.rows.length === 0) {
+        return interaction.reply({ content: "❌ このVCは自動生成されたものではないため、操作できませんわ。", ephemeral: true });
+    }
 
-    if (sub === "top") {
-        const res = await dbQuery(`
-            SELECT user_id, SUM(duration_seconds) as total
-            FROM vc_sessions
-            WHERE guild_id = $1 
-            AND join_time >= date_trunc('month', CURRENT_DATE)
-            GROUP BY user_id
-            ORDER BY total DESC
-            LIMIT 10
-        `, [guildId]);
+    const room = res.rows[0];
+    const isStaff = member.permissions.has(PermissionFlagsBits.ManageChannels);
 
-        if (res.rows.length === 0) {
-            await interaction.reply("今月のデータはありません。");
-            return;
+    if (room.owner_id !== user.id && !isStaff) {
+        return interaction.reply({ content: "❌ お嬢様の許可なく、他人の部屋を弄ろうとするなんて……あなたはここの「主（オーナー）」ではありませんわ。", ephemeral: true });
+    }
+
+    const channel = member.voice.channel;
+
+    try {
+        if (commandName === "vc-name") {
+            const newName = options.getString("名前");
+            await channel.setName(`🔊 ${newName}`);
+            return interaction.reply({ content: `✅ チャンネル名を **${newName}** に変更しましたわ。`, ephemeral: true });
         }
 
-        let msg = "📊 **今月のVC滞在時間ランキング**\n";
-        for (let i = 0; i < res.rows.length; i++) {
-            const row = res.rows[i];
-            const hours = (row.total / 3600).toFixed(1);
-            msg += `${i + 1}. <@${row.user_id}>: ${hours}時間\n`;
+        if (commandName === "vc-limit") {
+            const limit = options.getInteger("上限");
+            await channel.setUserLimit(limit);
+            return interaction.reply({ content: `✅ 人数制限を **${limit === 0 ? "無制限" : limit + "人"}** に変更しましたわ。`, ephemeral: true });
         }
-        await interaction.reply({ content: msg, allowedMentions: { parse: [] } });
+
+        if (commandName === "vc-owner") {
+            const targetUser = options.getUser("ユーザー");
+            if (targetUser.bot) return interaction.reply({ content: "❌ ロボットに主の座を譲るなんて、正気ですか？", ephemeral: true });
+
+            await dbQuery("UPDATE auto_vc_channels SET owner_id = $1 WHERE channel_id = $2", [targetUser.id, channelId]);
+            await channel.setName(`🔊 ${targetUser.username}の部屋`).catch(() => { });
+            return interaction.reply({ content: `👑 <@${targetUser.id}> さんにこの部屋の主（オーナー）権限を譲渡しましたわ。` });
+        }
+    } catch (e) {
+        console.error(`[VC CMD ERROR] ${commandName}:`, e);
+        return interaction.reply({ content: "❌ 申し訳ありません。技術的な問題で操作に失敗しましたわ。", ephemeral: true });
     }
-
-    if (sub === "user") {
-        const target = interaction.options.getUser("target");
-        const stats = await getUserVCStats(guildId, target.id);
-        await interaction.reply({ content: `👤 **${target.tag}** の今月のVC時間: **${stats.currentMonth}時間** (累計: ${stats.total}時間)` });
-    }
-}
-
-async function getUserVCStats(guildId, userId) {
-    const res = await dbQuery(`
-        SELECT 
-            SUM(CASE WHEN join_time >= date_trunc('month', CURRENT_DATE) THEN duration_seconds ELSE 0 END) as current_month,
-            SUM(CASE WHEN join_time >= date_trunc('month', CURRENT_DATE - INTERVAL '1 month') AND join_time < date_trunc('month', CURRENT_DATE) THEN duration_seconds ELSE 0 END) as last_month,
-            SUM(duration_seconds) as total
-        FROM vc_sessions
-        WHERE guild_id = $1 AND user_id = $2
-    `, [guildId, userId]);
-
-    const row = res.rows[0] || {};
-    return {
-        currentMonth: ((row.current_month || 0) / 3600).toFixed(1),
-        lastMonth: ((row.last_month || 0) / 3600).toFixed(1),
-        total: ((row.total || 0) / 3600).toFixed(1)
-    };
 }

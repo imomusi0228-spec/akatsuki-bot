@@ -312,6 +312,15 @@ export async function initDb() {
             `CREATE INDEX IF NOT EXISTS idx_tickets_guild_user_status ON tickets(guild_id, user_id, status);`,
             `CREATE INDEX IF NOT EXISTS idx_member_events_recent_msg ON member_events(guild_id, event_type, created_at DESC);`,
 
+            // Tier 2.4.0: Dynamic VC (Auto-VC)
+            `CREATE TABLE IF NOT EXISTS auto_vc_channels (
+                channel_id TEXT PRIMARY KEY,
+                guild_id TEXT NOT NULL,
+                owner_id TEXT NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS auto_vc_creator_id TEXT;`,
+
             // Tickets assignment
             `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS assigned_to TEXT;`
 

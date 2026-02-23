@@ -283,148 +283,156 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- 7. AI Community Health Radar -->
-    <div class="accordion-item" id="sec-ai">
-        <div class="accordion-header" onclick="toggleAccordion('sec-ai')">
-            <span>🤖 コミュニティ・ヘルス・レーダー (AIアドバイス)<span class="help-tip"
-                    data-tip="<%= t('help_ai_advice') %>">?</span></span>
-            <span>▼</span>
-        </div>
-        <div class="accordion-content">
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-                <div>
-                    <label class="muted">アドバイスを行う放置日数</label><br />
-                    <input id="aiAdviceDays" type="number" min="1" value="14" style="width:100%; margin-top:5px;">
-                </div>
-                <div>
-                    <label class="muted">アドバイス通知先</label><br />
-                    <select id="aiAdviceCh" style="width:100%; margin-top:5px;"></select>
-                </div>
+            <!-- Dynamic VC (Auto-VC) -->
+            <div style="border-top:1px solid var(--border-color); padding-top:20px; margin-top:20px;">
+                <label class="muted">📂 Auto-VC 作成用チャンネル<span class="help-tip"
+                        data-tip="このチャンネルに入室すると自分専用のVCが自動生成されます。">?</span></label><br />
+                <select id="autoVcCreatorCh" style="width:100%; max-width:400px; margin-top:5px;"></select>
+                <p class="muted" style="font-size:11px; margin-top:5px;">※ 入室時に自動作成・退出時に自動削除（0人時）される起点となるチャンネルを指定します。
+                </p>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- 8. AI Server Strategy Insight -->
-    <div class="accordion-item" id="sec-insight">
-
-        <div class="accordion-header" onclick="toggleAccordion('sec-insight')">
-            <span>🏯 サーバー・インサイト (運営アドバイス)<span class="help-tip" data-tip="<%= t('help_ai_insight') %>">?</span></span>
-            <span>▼</span>
+<!-- 7. AI Community Health Radar -->
+<div class="accordion-item" id="sec-ai">
+    <div class="accordion-header" onclick="toggleAccordion('sec-ai')">
+        <span>🤖 コミュニティ・ヘルス・レーダー (AIアドバイス)<span class="help-tip" data-tip="<%= t('help_ai_advice') %>">?</span></span>
+        <span>▼</span>
+    </div>
+    <div class="accordion-content">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+            <div>
+                <label class="muted">アドバイスを行う放置日数</label><br />
+                <input id="aiAdviceDays" type="number" min="1" value="14" style="width:100%; margin-top:5px;">
+            </div>
+            <div>
+                <label class="muted">アドバイス通知先</label><br />
+                <select id="aiAdviceCh" style="width:100%; margin-top:5px;"></select>
+            </div>
         </div>
-        <div class="accordion-content">
+    </div>
+</div>
 
-            <div style="margin-bottom:15px;">
-                <label style="display:flex; align-items:center; cursor:pointer;">
-                    <input type="checkbox" id="aiInsightEnabled" style="width:18px; height:18px; margin-right:10px;">
-                    <span>運営アドバイス機能を有効化</span>
+<!-- 8. AI Server Strategy Insight -->
+<div class="accordion-item" id="sec-insight">
+
+    <div class="accordion-header" onclick="toggleAccordion('sec-insight')">
+        <span>🏯 サーバー・インサイト (運営アドバイス)<span class="help-tip" data-tip="<%= t('help_ai_insight') %>">?</span></span>
+        <span>▼</span>
+    </div>
+    <div class="accordion-content">
+
+        <div style="margin-bottom:15px;">
+            <label style="display:flex; align-items:center; cursor:pointer;">
+                <input type="checkbox" id="aiInsightEnabled" style="width:18px; height:18px; margin-right:10px;">
+                <span>運営アドバイス機能を有効化</span>
+            </label>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
+            <div>
+                <label class="muted">アドバイス配信先 (管理者推奨)</label><br />
+                <select id="aiInsightCh" style="width:100%; margin-top:5px;"></select>
+            </div>
+        </div>
+
+        <div style="border-top: 1px solid var(--border-color); padding-top:15px;">
+            <label class="muted" style="margin-bottom:10px; display:block;">&#128203; 配信セクションの選択</label>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <label style="display:flex; align-items:center; cursor:pointer; gap:10px;">
+                    <input type="checkbox" id="insightGrowth" style="width:16px; height:16px;">
+                    <span>📈 メンバー増減（成長分析）</span>
+                </label>
+                <label style="display:flex; align-items:center; cursor:pointer; gap:10px;">
+                    <input type="checkbox" id="insightToxicity" style="width:16px; height:16px;">
+                    <span>🚫 NGワード検知数（秩序分析）</span>
+                </label>
+                <label style="display:flex; align-items:center; cursor:pointer; gap:10px;">
+                    <input type="checkbox" id="insightVc" style="width:16px; height:16px;">
+                    <span>🎤 VC利用者数（活性化分析）</span>
                 </label>
             </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
-                <div>
-                    <label class="muted">アドバイス配信先 (管理者推奨)</label><br />
-                    <select id="aiInsightCh" style="width:100%; margin-top:5px;"></select>
-                </div>
-            </div>
-
-            <div style="border-top: 1px solid var(--border-color); padding-top:15px;">
-                <label class="muted" style="margin-bottom:10px; display:block;">&#128203; 配信セクションの選択</label>
-                <div style="display:flex; flex-direction:column; gap:10px;">
-                    <label style="display:flex; align-items:center; cursor:pointer; gap:10px;">
-                        <input type="checkbox" id="insightGrowth" style="width:16px; height:16px;">
-                        <span>📈 メンバー増減（成長分析）</span>
-                    </label>
-                    <label style="display:flex; align-items:center; cursor:pointer; gap:10px;">
-                        <input type="checkbox" id="insightToxicity" style="width:16px; height:16px;">
-                        <span>🚫 NGワード検知数（秩序分析）</span>
-                    </label>
-                    <label style="display:flex; align-items:center; cursor:pointer; gap:10px;">
-                        <input type="checkbox" id="insightVc" style="width:16px; height:16px;">
-                        <span>🎤 VC利用者数（活性化分析）</span>
-                    </label>
-                </div>
-                <p class="muted" style="margin-top:10px; font-size:11px;">
-                    ※チェックを外したセクションはレポートに含まれません。全て無効ではレポート自体が送信されません。</p>
-            </div>
+            <p class="muted" style="margin-top:10px; font-size:11px;">
+                ※チェックを外したセクションはレポートに含まれません。全て無効ではレポート自体が送信されません。</p>
         </div>
+    </div>
 
-        <!-- 9. Ticket Management -->
-        <div class="accordion-item" id="sec-ticket">
-            <div class="accordion-header" onclick="toggleAccordion('sec-ticket')">
-                <span>🎫 チケット高度設定 (UX & Messages)</span>
-                <span>▼</span>
-            </div>
-            <div class="accordion-content">
-                <div style="margin-bottom:20px;">
-                    <label class="muted">📦 チケット作成時の初期メッセージ（お嬢の言葉）</label><br />
-                    <textarea id="ticketWelcomeMsg"
-                        style="width:100%; height:80px; margin-top:8px; padding:10px; border-radius:8px; border:1px solid var(--border-color); background:rgba(0,0,0,0.1); color:white;"
-                        placeholder="スタッフが対応するまで、相談内容を記入してお待ちください..."></textarea>
-                    <p class="muted" style="font-size:11px; margin-top:5px;">※ 空欄の場合はボット標準のメッセージが使用されます。</p>
-                </div>
-            </div>
+    <!-- 9. Ticket Management -->
+    <div class="accordion-item" id="sec-ticket">
+        <div class="accordion-header" onclick="toggleAccordion('sec-ticket')">
+            <span>🎫 チケット高度設定 (UX & Messages)</span>
+            <span>▼</span>
         </div>
-
-        <!-- 10. Server Branding -->
-        <div class="accordion-item" id="sec-branding">
-            <div class="accordion-header" onclick="toggleAccordion('sec-branding')">
-                <span>🎨 サーバー・ブランディング (Custom Styles)</span>
-                <span>▼</span>
-            </div>
-            <div class="accordion-content">
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
-                    <div>
-                        <label class="muted">📡 ログ Embed カラー</label><br />
-                        <input id="colorLog" type="color" value="#5865F2"
-                            style="width:100%; height:40px; border:none; border-radius:4px; cursor:pointer;">
-                    </div>
-                    <div>
-                        <label class="muted">🎊 レベル通知カラー</label><br />
-                        <input id="colorLevel" type="color" value="#FFD700"
-                            style="width:100%; height:40px; border:none; border-radius:4px; cursor:pointer;">
-                    </div>
-                    <div>
-                        <label class="muted">🎫 チケット Embed カラー</label><br />
-                        <input id="colorTicket" type="color" value="#2ECC71"
-                            style="width:100%; height:40px; border:none; border-radius:4px; cursor:pointer;">
-                    </div>
-                    <div>
-                        <label class="muted">🌐 ダッシュボード・アクセント</label><br />
-                        <input id="colorDashboard" type="color" value="#5865F2"
-                            style="width:100%; height:40px; border:none; border-radius:4px; cursor:pointer;">
-                    </div>
-                </div>
-                <div style="margin-bottom:15px;">
-                    <label class="muted">✒️ 埋め込みフッター・ブランディング名</label><br />
-                    <input id="brandingFooterText" type="text" placeholder="Server Name / Custom Branding..."
-                        style="width:100%; margin-top:5px;">
-                    <p class="muted" style="font-size:11px; margin-top:5px;">※ 埋め込みメッセージの最下部に表示されるテキストです。</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- 11. AI Atmosphere Analysis -->
-        <div class="accordion-item" id="sec-aipredict">
-            <div class="accordion-header" onclick="toggleAccordion('sec-aipredict')">
-                <span>🧠 AI 予兆検知 (Atmosphere Insight)</span>
-                <span>▼</span>
-            </div>
-            <div class="accordion-content">
-                <div style="margin-bottom:15px;">
-                    <label style="display:flex; align-items:center; cursor:pointer;">
-                        <input type="checkbox" id="aiPredictionEnabled"
-                            style="width:18px; height:18px; margin-right:10px;">
-                        <span style="font-weight: bold;">不穏な空気の予兆検知を有効化</span>
-                    </label>
-                    <p class="muted" style="font-size:12px; margin-top:8px;">
-                        メッセージの密度やNGワードの頻度をAIがリアルタイムに分析し、トラブルが起きそうな不穏な空気を察知すると、運営レポート用チャンネルにアラートを送信します。
-                    </p>
-                </div>
+        <div class="accordion-content">
+            <div style="margin-bottom:20px;">
+                <label class="muted">📦 チケット作成時の初期メッセージ（お嬢の言葉）</label><br />
+                <textarea id="ticketWelcomeMsg"
+                    style="width:100%; height:80px; margin-top:8px; padding:10px; border-radius:8px; border:1px solid var(--border-color); background:rgba(0,0,0,0.1); color:white;"
+                    placeholder="スタッフが対応するまで、相談内容を記入してお待ちください..."></textarea>
+                <p class="muted" style="font-size:11px; margin-top:5px;">※ 空欄の場合はボット標準のメッセージが使用されます。</p>
             </div>
         </div>
     </div>
+
+    <!-- 10. Server Branding -->
+    <div class="accordion-item" id="sec-branding">
+        <div class="accordion-header" onclick="toggleAccordion('sec-branding')">
+            <span>🎨 サーバー・ブランディング (Custom Styles)</span>
+            <span>▼</span>
+        </div>
+        <div class="accordion-content">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
+                <div>
+                    <label class="muted">📡 ログ Embed カラー</label><br />
+                    <input id="colorLog" type="color" value="#5865F2"
+                        style="width:100%; height:40px; border:none; border-radius:4px; cursor:pointer;">
+                </div>
+                <div>
+                    <label class="muted">🎊 レベル通知カラー</label><br />
+                    <input id="colorLevel" type="color" value="#FFD700"
+                        style="width:100%; height:40px; border:none; border-radius:4px; cursor:pointer;">
+                </div>
+                <div>
+                    <label class="muted">🎫 チケット Embed カラー</label><br />
+                    <input id="colorTicket" type="color" value="#2ECC71"
+                        style="width:100%; height:40px; border:none; border-radius:4px; cursor:pointer;">
+                </div>
+                <div>
+                    <label class="muted">🌐 ダッシュボード・アクセント</label><br />
+                    <input id="colorDashboard" type="color" value="#5865F2"
+                        style="width:100%; height:40px; border:none; border-radius:4px; cursor:pointer;">
+                </div>
+            </div>
+            <div style="margin-bottom:15px;">
+                <label class="muted">✒️ 埋め込みフッター・ブランディング名</label><br />
+                <input id="brandingFooterText" type="text" placeholder="Server Name / Custom Branding..."
+                    style="width:100%; margin-top:5px;">
+                <p class="muted" style="font-size:11px; margin-top:5px;">※ 埋め込みメッセージの最下部に表示されるテキストです。</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 11. AI Atmosphere Analysis -->
+    <div class="accordion-item" id="sec-aipredict">
+        <div class="accordion-header" onclick="toggleAccordion('sec-aipredict')">
+            <span>🧠 AI 予兆検知 (Atmosphere Insight)</span>
+            <span>▼</span>
+        </div>
+        <div class="accordion-content">
+            <div style="margin-bottom:15px;">
+                <label style="display:flex; align-items:center; cursor:pointer;">
+                    <input type="checkbox" id="aiPredictionEnabled" style="width:18px; height:18px; margin-right:10px;">
+                    <span style="font-weight: bold;">不穏な空気の予兆検知を有効化</span>
+                </label>
+                <p class="muted" style="font-size:12px; margin-top:8px;">
+                    メッセージの密度やNGワードの頻度をAIがリアルタイムに分析し、トラブルが起きそうな不穏な空気を察知すると、運営レポート用チャンネルにアラートを送信します。
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
 </div>
 
 <!-- ACCORDION END -->

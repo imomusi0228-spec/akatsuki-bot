@@ -242,9 +242,41 @@ export async function handleApiRoute(req, res, pathname, url) {
             resJson({ ok: true, heatmap });
         } catch (e) {
             console.error("Heatmap Error:", e);
-            resJson({ ok: false, error: e.message }, 500);
+            return resJson({ ok: false, error: e.message }, 500);
         }
         return;
+    }
+
+    // POST /api/embed/send (New feature for Embed Builder)
+    if (pathname === "/api/embed/send" && method === "POST") {
+        const body = await getBody();
+        const { guild: guildId, channel_id: channelId, title, description, color, footer, image } = body;
+
+        if (!guildId || !channelId) return resJson({ ok: false, error: "Missing guild or channel" }, 400);
+        if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
+
+        try {
+            const guild = client.guilds.cache.get(guildId);
+            if (!guild) return resJson({ ok: false, error: "Guild not found" }, 404);
+
+            const channel = guild.channels.cache.get(channelId);
+            if (!channel || !channel.isTextBased()) return resJson({ ok: false, error: "Text channel not found" }, 404);
+
+            const { EmbedBuilder } = await import("discord.js");
+            const embed = new EmbedBuilder()
+                .setTitle(title || null)
+                .setDescription(description || null)
+                .setColor(color || "#5865F2")
+                .setFooter(footer ? { text: footer } : null)
+                .setImage(image || null)
+                .setTimestamp();
+
+            await channel.send({ embeds: [embed] });
+            return resJson({ ok: true });
+        } catch (e) {
+            console.error("Embed Send Error:", e);
+            return resJson({ ok: false, error: e.message }, 500);
+        }
     }
 
     // GET /api/stats/growth (Pro/Pro+)
@@ -477,9 +509,10 @@ export async function handleApiRoute(req, res, pathname, url) {
                     phase2_threshold, phase2_action, phase3_threshold, phase3_action, phase4_threshold, phase4_action,
                     intro_reminder_hours, report_channel_id, ng_warning_enabled,
                     ticket_welcome_msg, color_log, color_level, color_ticket, dashboard_theme_color, branding_footer_text, ai_prediction_enabled,
+                    auto_vc_creator_id,
                     updated_at
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, NOW()
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, NOW()
                 )
                 ON CONFLICT (guild_id) DO UPDATE SET
                     log_channel_id = EXCLUDED.log_channel_id,
@@ -524,6 +557,7 @@ export async function handleApiRoute(req, res, pathname, url) {
                     dashboard_theme_color = EXCLUDED.dashboard_theme_color,
                     branding_footer_text = EXCLUDED.branding_footer_text,
                     ai_prediction_enabled = EXCLUDED.ai_prediction_enabled,
+                    auto_vc_creator_id = EXCLUDED.auto_vc_creator_id,
                     updated_at = NOW();
             `, [
                 body.guild,
@@ -547,7 +581,8 @@ export async function handleApiRoute(req, res, pathname, url) {
                 body.color_ticket || '#2ECC71',
                 body.dashboard_theme_color || '#5865F2',
                 body.branding_footer_text || null,
-                body.ai_prediction_enabled === true
+                body.ai_prediction_enabled === true,
+                body.auto_vc_creator_id || null
             ]);
         } catch (e) {
             console.error("Settings Update Error:", e);

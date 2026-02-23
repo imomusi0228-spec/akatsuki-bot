@@ -289,8 +289,13 @@
             <a href="/admin/settings" class="nav-item <%= activeTab === 'settings' ? 'active' : '' %>">
                 <%= t("settings") %>
             </a>
-            <a href="/admin/tickets" class="nav-item <%= activeTab === 'tickets' ? 'active' : '' %>">
-                チケット管理
+            <a href="/admin/tickets" class="nav-item <%= title === 'Ticket Management' ? 'active' : '' %>">
+                <span class="nav-icon">🎫</span>
+                <span>チケット管理</span>
+            </a>
+            <a href="/admin/embed" class="nav-item <%= title === 'Embed Builder' ? 'active' : '' %>">
+                <span class="nav-icon">🎨</span>
+                <span>Embed作成</span>
             </a>
             <a href="/admin/activity" class="nav-item <%= activeTab === 'activity' ? 'active' : '' %>">
                 <%= t("activity") %>

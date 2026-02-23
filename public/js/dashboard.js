@@ -205,8 +205,9 @@ async function initSettings() {
             window._serverRoles = roles; // Store for addRoleRule
             const errorMsg = !ch.ok ? (ch.error || "API Error") : (channels.length === 0 ? "No Text Channels" : null);
 
-            // 1. Log Channels
-            [selLog, selNgLog].forEach(s => {
+            // 1. Log Channels (Text-based)
+            const textSelects = [selLog, selNgLog, $("reportCh"), $("aiAdviceCh"), $("aiInsightCh")];
+            textSelects.forEach(s => {
                 if (s) {
                     s.innerHTML = '<option value="">(None)</option>';
                     channels.forEach(c => {
@@ -224,20 +225,18 @@ async function initSettings() {
                 });
             }
 
-            // 3. Channels (VC Report, AI Advice, AI Insight & Report Channel)
-            const selVcReport = $("vcReportCh");
-            const selAiAdvice = $("aiAdviceCh");
-            const selAiInsight = $("aiInsightCh");
-            const selReportChInner = $("reportCh");
-            [selVcReport, selAiAdvice, selAiInsight, selReportChInner].forEach(s => {
+            // 3. Voice Channels (Auto-VC & Reports)
+            const voiceSelects = [$("vcReportCh"), $("autoVcCreatorCh")];
+            voiceSelects.forEach(s => {
                 if (s) {
                     s.innerHTML = '<option value="">(None)</option>';
                     channels.forEach(c => {
-                        const o = document.createElement("option"); o.value = c.id; o.textContent = "#" + (c.name || "channel"); s.appendChild(o);
+                        // In a real scenario, we might want to filter by channel type, 
+                        // but here we list all to keep it simple or if Discord.js doesn't provide types in API
+                        const o = document.createElement("option"); o.value = c.id; o.textContent = "🔊 " + c.name; s.appendChild(o);
                     });
                 }
             });
-
 
         } catch (e) {
             console.error("loadMasters Error:", e);
@@ -336,6 +335,7 @@ async function initSettings() {
             if ($("vcReportEnabled")) $("vcReportEnabled").checked = s.vc_report_enabled;
             if ($("vcReportCh")) $("vcReportCh").value = s.vc_report_channel_id || "";
             if ($("vcReportInterval")) $("vcReportInterval").value = s.vc_report_interval || "weekly";
+            if ($("autoVcCreatorCh")) $("autoVcCreatorCh").value = s.auto_vc_creator_id || "";
 
             // Load VC Role Rules
             const rulesList = $("roleRulesList");
@@ -428,7 +428,8 @@ async function initSettings() {
             color_ticket: $("colorTicket")?.value || "#2ECC71",
             dashboard_theme_color: $("colorDashboard")?.value || "#1d9bf0",
             branding_footer_text: $("brandingFooterText")?.value || "",
-            ai_prediction_enabled: $("aiPredictionEnabled")?.checked || false
+            ai_prediction_enabled: $("aiPredictionEnabled")?.checked || false,
+            auto_vc_creator_id: $("autoVcCreatorCh")?.value || null
         };
 
 
@@ -723,11 +724,65 @@ function applyThemeColor(color) {
 }
 
 // Add event listener for real-time preview (ensure it's added once)
-if (window._themeInit === undefined) {
-    window._themeInit = true;
-    document.addEventListener('input', (e) => {
-        if (e.target.id === 'colorDashboard') {
-            applyThemeColor(e.target.value);
+
+window.initEmbedBuilder = async () => {
+    const selGuild = $("guild");
+    const selEmbedCh = $("embedTargetCh");
+    const sendBtn = $("sendEmbed");
+
+    const refreshChannels = async () => {
+        const gid = selGuild.value;
+        if (!gid) return;
+
+        const res = await api("/api/channels?guild=" + gid);
+        if (res.ok && res.channels) {
+            selEmbedCh.innerHTML = '<option value="">(送信先を選択...)</option>';
+            res.channels.forEach(c => {
+                const o = document.createElement("option");
+                o.value = c.id;
+                o.textContent = "#" + c.name;
+                selEmbedCh.appendChild(o);
+            });
         }
-    });
-}
+    };
+
+    if (selGuild) {
+        selGuild.addEventListener("change", refreshChannels);
+        refreshChannels();
+    }
+
+    if (sendBtn) {
+        sendBtn.onclick = async () => {
+            const gid = selGuild.value;
+            const chid = selEmbedCh.value;
+            if (!chid) return alert("❌ 送信先チャンネルを選択してくださいわ。");
+
+            const body = {
+                guild: gid,
+                channel_id: chid,
+                title: $("embedTitle").value,
+                description: $("embedDesc").value,
+                color: $("embedColor").value,
+                footer: $("embedFooter").value,
+                image: $("embedImage").value
+            };
+
+            if (!body.title && !body.description) {
+                return alert("❌ タイトルか説明文の少なくとも一方は入力してくださいわ。");
+            }
+
+            sendBtn.disabled = true;
+            sendBtn.textContent = "📢 布告中...";
+
+            const res = await api("/api/embed/send", body);
+            if (res.ok) {
+                alert("✅ 詔（みことのり）が正常に布告されましたわ。");
+            } else {
+                alert("❌ 布告に失敗しました: " + res.error);
+            }
+
+            sendBtn.disabled = false;
+            sendBtn.textContent = "📢 この内容で布告する";
+        };
+    }
+};
