@@ -284,7 +284,7 @@
     <script>
         // Data Loading Block
         window.lang = "<%= lang %>";
-        window.DICTIONARY = <% - dictionary %>;
+        window.DICTIONARY = <%- dictionary %>;
     </script>
 </head>
 
@@ -352,6 +352,7 @@
         </div>
     </div>
 
+    <% if (oauth && user) { %>
     <div class="nav-bar">
         <a href="/admin/dashboard" class="nav-item <%= activeTab === 'dashboard' ? 'active' : '' %>">
             <%= t("dashboard") %>
