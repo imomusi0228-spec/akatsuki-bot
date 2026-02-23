@@ -650,121 +650,119 @@ window.addNg = async () => {
         if (res.message) alert(res.message);
         input.value = "";
         // Reload list: Trigger guild change event which calls reload()
-        // Tickets Page Logic
-        window.initTicketsPage = async () => {
-            if (!await loadGuilds()) return;
-            const selGuild = $("guild");
-            const statusFilter = $("statusFilter");
-            const welcomeInput = $("ticketWelcomeMsg");
-            const saveBtn = $("saveTicketSettings");
-            const stat = $("saveStatus");
-
-            // Store original config to avoid partial overwrites if we use the generic update API
-            let _currentConfig = {};
-
-            const refresh = async () => {
-                const gid = selGuild.value;
-                const status = statusFilter.value;
-                if (!gid) return;
-
-                saveGuildSelection();
-
-                // 1. Load Ticket List
-                const list = $("ticketList");
-                list.innerHTML = `<tr><td colspan="6" class="muted" style="text-align:center; padding:30px;">${t("loading")}...</td></tr>`;
-
-                // 2. Load Settings for this guild
-                const [ticketsRes, settingsRes] = await Promise.all([
-                    api(`/api/tickets?guild=${gid}&status=${status}`),
-                    api(`/api/settings?guild=${gid}`)
-                ]);
-
-                if (settingsRes.ok && settingsRes.settings) {
-                    _currentConfig = settingsRes.settings;
-                    if (welcomeInput) welcomeInput.value = _currentConfig.ticket_welcome_msg || "";
-                }
-
-                if (ticketsRes.ok) {
-                    if (ticketsRes.tickets.length === 0) {
-                        list.innerHTML = `<tr><td colspan="6" class="muted" style="text-align:center; padding:30px;">チケットは見つかりませんでした。</td></tr>`;
-                    } else {
-                        list.innerHTML = ticketsRes.tickets.map(t => `
-                            <tr>
-                                <td>#${t.id}</td>
-                                <td>${escapeHTML(t.userName)}</td>
-                                <td><span class="${t.assigned_to ? 'staff-assign' : 'unassigned'}">${escapeHTML(t.staffName)}</span></td>
-                                <td><span class="status-badge status-${t.status}">${t.status === 'open' ? '進行中' : '解決済'}</span></td>
-                                <td><span class="muted">${new Date(t.created_at).toLocaleString('ja-JP')}</span></td>
-                                <td style="text-align:right;">
-                                    ${t.status === 'open' ? `<button class="btn" style="padding:2px 8px; font-size:11px; border-color:var(--danger-color); color:var(--danger-color);" onclick="closeWebTicket(${t.id})">解決</button>` : '-'}
-                                </td>
-                            </tr>
-                        `).join("");
-                    }
-                } else {
-                    list.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger-color); padding:30px;">Error: ${ticketsRes.error}</td></tr>`;
-                }
-            };
-
-            if (saveBtn) {
-                saveBtn.onclick = async () => {
-                    const gid = selGuild.value;
-                    if (!gid) return;
-
-                    saveBtn.disabled = true;
-                    saveBtn.textContent = "保存中...";
-
-                    // Construct body by merging current config with new ticket settings
-                    const body = {
-                        ..._currentConfig, // Keep other settings
-                        guild: gid,
-                        ticket_welcome_msg: welcomeInput.value,
-                        // Ensure required fields for API are present even if not displayed
-                        log_channel_id: _currentConfig.log_channel_id || "",
-                        ng_log_channel_id: _currentConfig.ng_log_channel_id || "",
-                        // ... they are already in ..._currentConfig
-                    };
-
-                    const res = await api("/api/settings/update", body);
-                    saveBtn.disabled = false;
-                    saveBtn.textContent = "設定を保存";
-
-                    if (res.ok) {
-                        stat.textContent = "✅ 保存完了";
-                        stat.style.color = "var(--success-color)";
-                        setTimeout(() => stat.textContent = "", 3000);
-                    } else {
-                        stat.textContent = "❌ エラー: " + res.error;
-                        stat.style.color = "var(--danger-color)";
-                    }
-                };
-            }
-
-            selGuild.onchange = refresh;
-            statusFilter.onchange = refresh;
-            if ($("refreshTickets")) $("refreshTickets").onclick = refresh;
-            if ($("reloadMasters")) $("reloadMasters").onclick = refresh;
-
-            refresh();
-        };
-
-        window.closeWebTicket = async (id) => {
-            if (!confirm("このチケットを解決済みとしてマークし、チャンネルを削除しますか？")) return;
-            const res = await api("/api/tickets/close", { guild: $("guild").value, ticket_id: id });
-            if (res.ok) {
-                alert("チケットを解決しました。");
-                const refreshBtn = $("refreshTickets");
-                if (refreshBtn) refreshBtn.click();
-            } else {
-                alert("Error: " + res.error);
-            }
-        };
-
         if ($("guild").onchange) $("guild").onchange();
     } else {
         alert("Error: " + res.error);
     }
 };
+
+// Tickets Page Logic
+window.initTicketsPage = async () => {
+    if (!await loadGuilds()) return;
+    const selGuild = $("guild");
+    const statusFilter = $("statusFilter");
+    const welcomeInput = $("ticketWelcomeMsg");
+    const saveBtn = $("saveTicketSettings");
+    const stat = $("saveStatus");
+
+    // Store original config to avoid partial overwrites if we use the generic update API
+    let _currentConfig = {};
+
+    const refresh = async () => {
+        const gid = selGuild.value;
+        const status = statusFilter.value;
+        if (!gid) return;
+
+        saveGuildSelection();
+
+        // 1. Load Ticket List
+        const list = $("ticketList");
+        list.innerHTML = `<tr><td colspan="6" class="muted" style="text-align:center; padding:30px;">${t("loading")}...</td></tr>`;
+
+        // 2. Load Settings for this guild
+        const [ticketsRes, settingsRes] = await Promise.all([
+            api(`/api/tickets?guild=${gid}&status=${status}`),
+            api(`/api/settings?guild=${gid}`)
+        ]);
+
+        if (settingsRes.ok && settingsRes.settings) {
+            _currentConfig = settingsRes.settings;
+            if (welcomeInput) welcomeInput.value = _currentConfig.ticket_welcome_msg || "";
+        }
+
+        if (ticketsRes.ok) {
+            if (ticketsRes.tickets.length === 0) {
+                list.innerHTML = `<tr><td colspan="6" class="muted" style="text-align:center; padding:30px;">チケットは見つかりませんでした。</td></tr>`;
+            } else {
+                list.innerHTML = ticketsRes.tickets.map(t => `
+                    <tr>
+                        <td>#${t.id}</td>
+                        <td>${escapeHTML(t.userName)}</td>
+                        <td><span class="${t.assigned_to ? 'staff-assign' : 'unassigned'}">${escapeHTML(t.staffName)}</span></td>
+                        <td><span class="status-badge status-${t.status}">${t.status === 'open' ? '進行中' : '解決済'}</span></td>
+                        <td><span class="muted">${new Date(t.created_at).toLocaleString('ja-JP')}</span></td>
+                        <td style="text-align:right;">
+                            ${t.status === 'open' ? `<button class="btn" style="padding:2px 8px; font-size:11px; border-color:var(--danger-color); color:var(--danger-color);" onclick="closeWebTicket(${t.id})">解決</button>` : '-'}
+                        </td>
+                    </tr>
+                `).join("");
+            }
+        } else {
+            list.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger-color); padding:30px;">Error: ${ticketsRes.error}</td></tr>`;
+        }
+    };
+
+    if (saveBtn) {
+        saveBtn.onclick = async () => {
+            const gid = selGuild.value;
+            if (!gid) return;
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = "保存中...";
+
+            const body = {
+                ..._currentConfig,
+                guild: gid,
+                ticket_welcome_msg: welcomeInput.value,
+                log_channel_id: _currentConfig.log_channel_id || "",
+                ng_log_channel_id: _currentConfig.ng_log_channel_id || "",
+            };
+
+            const res = await api("/api/settings/update", body);
+            saveBtn.disabled = false;
+            saveBtn.textContent = "設定を保存";
+
+            if (res.ok) {
+                stat.textContent = "✅ 保存完了";
+                stat.style.color = "var(--success-color)";
+                setTimeout(() => stat.textContent = "", 3000);
+            } else {
+                stat.textContent = "❌ エラー: " + res.error;
+                stat.style.color = "var(--danger-color)";
+            }
+        };
+    }
+
+    selGuild.onchange = refresh;
+    statusFilter.onchange = refresh;
+    if ($("refreshTickets")) $("refreshTickets").onclick = refresh;
+    if ($("reloadMasters")) $("reloadMasters").onclick = refresh;
+
+    refresh();
+};
+
+window.closeWebTicket = async (id) => {
+    if (!confirm("このチケットを解決済みとしてマークし、チャンネルを削除しますか？")) return;
+    const res = await api("/api/tickets/close", { guild: $("guild").value, ticket_id: id });
+    if (res.ok) {
+        alert("チケットを解決しました。");
+        const refreshBtn = $("refreshTickets");
+        if (refreshBtn) refreshBtn.click();
+    } else {
+        alert("Error: " + res.error);
+    }
+};
+
 
 window.removeNg = async (word) => {
     if (!confirm(t("confirm_delete") || "Delete?")) return;
@@ -779,6 +777,7 @@ window.removeNg = async (word) => {
 
 function applyThemeColor(color) {
     if (!color) return;
+
     document.documentElement.style.setProperty('--accent-color', color);
     document.documentElement.style.setProperty('--primary-color', color);
 
