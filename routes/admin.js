@@ -1,6 +1,6 @@
 import { ENV } from "../config/env.js";
 import { getSession } from "../middleware/auth.js";
-import { renderLoginHTML, renderAdminDashboardHTML, renderAdminSettingsHTML, renderAdminActivityHTML, renderAdminAntiraidHTML } from "../services/views.js";
+import { renderLoginHTML, renderAdminDashboardHTML, renderAdminSettingsHTML, renderAdminActivityHTML, renderAdminAntiraidHTML, renderAdminTicketsHTML } from "../services/views.js";
 import { getTier } from "../core/subscription.js";
 import { getFeatures } from "../core/tiers.js";
 
