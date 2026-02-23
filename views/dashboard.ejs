@@ -23,53 +23,54 @@
         </div>
     </div>
 
-    <!-- Stats Grid: Paired for better intuition -->
-    <div id="stats-grid" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
-        <!-- Row 1: VC Activity -->
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
-            <div class="card stat-card"
-                style="padding: 12px; display: flex; align-items: center; gap: 15px; background: linear-gradient(135deg, rgba(0, 186, 124, 0.1) 0%, rgba(0, 186, 124, 0.02) 100%); border-left: 4px solid #00BA7C; margin-bottom: 0;">
-                <div style="font-size: 24px; opacity: 0.8;">🔊</div>
-                <div>
-                    <div class="muted" style="font-size: 10px; font-weight: bold; text-transform: uppercase;">
-                        <%= t("vc_joins") %>
-                    </div>
-                    <div id="stat-joins" style="font-size: 24px; font-weight: 900; color: #00BA7C;">0</div>
-                </div>
-            </div>
-            <div class="card stat-card"
-                style="padding: 12px; display: flex; align-items: center; gap: 15px; background: linear-gradient(135deg, rgba(136, 153, 166, 0.1) 0%, rgba(136, 153, 166, 0.02) 100%); border-left: 4px solid #8899a6; margin-bottom: 0;">
-                <div style="font-size: 24px; opacity: 0.8;">🚪</div>
-                <div>
-                    <div class="muted" style="font-size: 10px; font-weight: bold; text-transform: uppercase;">
-                        <%= t("leaves") %>
-                    </div>
-                    <div id="stat-leaves" style="font-size: 24px; font-weight: 900; color: var(--text-secondary);">0
+    <!-- Stats Grid: Ultimate Minimalism (Single Card, 2 Columns) -->
+    <div id="stats-grid" style="margin-bottom: 20px;">
+        <div class="card" style="padding: 12px; margin-bottom: 0;">
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                <!-- VC Joins -->
+                <div
+                    style="display: flex; align-items: center; gap: 10px; padding: 10px; background: rgba(0, 186, 124, 0.05); border-radius: 8px;">
+                    <div style="font-size: 20px;">🔊</div>
+                    <div>
+                        <div class="muted" style="font-size: 9px; font-weight: bold; text-transform: uppercase;">
+                            <%= t("vc_joins") %>
+                        </div>
+                        <div id="stat-joins" style="font-size: 20px; font-weight: 900; color: #00BA7C;">0</div>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Row 2: Security & Moderation -->
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
-            <div class="card stat-card"
-                style="padding: 12px; display: flex; align-items: center; gap: 15px; background: linear-gradient(135deg, rgba(244, 33, 46, 0.1) 0%, rgba(244, 33, 46, 0.02) 100%); border-left: 4px solid #F4212E; margin-bottom: 0;">
-                <div style="font-size: 24px; opacity: 0.8;">⏳</div>
-                <div>
-                    <div class="muted" style="font-size: 10px; font-weight: bold; text-transform: uppercase;">
-                        <%= t("timeouts") %>
+                <!-- VC Leaves -->
+                <div
+                    style="display: flex; align-items: center; gap: 10px; padding: 10px; background: rgba(136, 153, 166, 0.05); border-radius: 8px;">
+                    <div style="font-size: 20px;">🚪</div>
+                    <div>
+                        <div class="muted" style="font-size: 9px; font-weight: bold; text-transform: uppercase;">
+                            <%= t("leaves") %>
+                        </div>
+                        <div id="stat-leaves" style="font-size: 20px; font-weight: 900; color: var(--text-secondary);">0
+                        </div>
                     </div>
-                    <div id="stat-timeouts" style="font-size: 24px; font-weight: 900; color: #F4212E;">0</div>
                 </div>
-            </div>
-            <div class="card stat-card"
-                style="padding: 12px; display: flex; align-items: center; gap: 15px; background: linear-gradient(135deg, rgba(255, 173, 31, 0.1) 0%, rgba(255, 173, 31, 0.02) 100%); border-left: 4px solid #FFAD1F; margin-bottom: 0;">
-                <div style="font-size: 24px; opacity: 0.8;">🚫</div>
-                <div>
-                    <div class="muted" style="font-size: 10px; font-weight: bold; text-transform: uppercase;">
-                        <%= t("ng_detect") %>
+                <!-- Timeouts -->
+                <div
+                    style="display: flex; align-items: center; gap: 10px; padding: 10px; background: rgba(244, 33, 46, 0.05); border-radius: 8px;">
+                    <div style="font-size: 20px;">⏳</div>
+                    <div>
+                        <div class="muted" style="font-size: 9px; font-weight: bold; text-transform: uppercase;">
+                            <%= t("timeouts") %>
+                        </div>
+                        <div id="stat-timeouts" style="font-size: 20px; font-weight: 900; color: #F4212E;">0</div>
                     </div>
-                    <div id="stat-ng" style="font-size: 24px; font-weight: 900; color: #FFAD1F;">0</div>
+                </div>
+                <!-- NG Detect -->
+                <div
+                    style="display: flex; align-items: center; gap: 10px; padding: 10px; background: rgba(255, 173, 31, 0.05); border-radius: 8px;">
+                    <div style="font-size: 20px;">🚫</div>
+                    <div>
+                        <div class="muted" style="font-size: 9px; font-weight: bold; text-transform: uppercase;">
+                            <%= t("ng_detect") %>
+                        </div>
+                        <div id="stat-ng" style="font-size: 20px; font-weight: 900; color: #FFAD1F;">0</div>
+                    </div>
                 </div>
             </div>
         </div>

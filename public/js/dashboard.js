@@ -54,6 +54,8 @@ async function loadGuilds() {
         sel.selectedIndex = selectedIndex;
         _guildsLoaded = true;
 
+        saveGuildSelection();
+
         // Global Selector Event
         sel.onchange = () => {
             saveGuildSelection();
