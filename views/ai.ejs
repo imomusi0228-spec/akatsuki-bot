@@ -1,0 +1,165 @@
+<style>
+    .accordion-item {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin-bottom: 12px;
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .accordion-header {
+        padding: 14px 20px;
+        background: rgba(255, 255, 255, 0.03);
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 600;
+        transition: background 0.2s;
+    }
+
+    .accordion-header:hover {
+        background: rgba(255, 255, 255, 0.07);
+    }
+
+    .accordion-content {
+        padding: 20px;
+        display: none;
+        border-top: 1px solid var(--border-color);
+        background: var(--card-bg);
+    }
+
+    .accordion-item.active .accordion-content {
+        display: block;
+    }
+
+    .accordion-item.active .accordion-header {
+        background: rgba(29, 155, 240, 0.1);
+        color: var(--accent-color);
+    }
+
+    .help-icon {
+        color: var(--text-secondary);
+        cursor: help;
+        font-size: 14px;
+        margin-left: 6px;
+    }
+</style>
+
+<div class="card" style="max-width: 1000px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h3 style="margin:0;">🤖 AI 分析 & インサイト</h3>
+        <span id="saveStatus" style="font-size:14px; font-weight:bold;"></span>
+    </div>
+
+    <!-- 1. Server Selector -->
+    <div class="setting-section" style="margin-bottom:24px;">
+        <label class="muted">Select Server</label>
+        <div style="display:flex; gap:10px; align-items:center; margin-top:8px;">
+            <select id="guild" style="flex:1;"></select>
+            <button id="reload" class="btn">Reload</button>
+        </div>
+    </div>
+
+    <!-- ACCORDION START -->
+    <div id="ai-accordion">
+
+        <!-- 1. コミュニティ・ヘルス・レーダー -->
+        <div class="accordion-item active" id="sec-ai">
+            <div class="accordion-header" onclick="toggleAccordion('sec-ai')">
+                <span>🤖 コミュニティ・ヘルス・レーダー (AIアドバイス) <span class="help-tip"
+                        data-tip="<%= t('help_ai_advice') %>">?</span></span>
+                <span>▼</span>
+            </div>
+            <div class="accordion-content">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                    <div>
+                        <label class="muted">アドバイスを行う放置日数</label><br />
+                        <input id="aiAdviceDays" type="number" min="1" value="14" style="width:100%; margin-top:5px;">
+                    </div>
+                    <div>
+                        <label class="muted">アドバイス通知先</label><br />
+                        <select id="aiAdviceCh" style="width:100%; margin-top:5px;"></select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. サーバー・インサイト -->
+        <div class="accordion-item" id="sec-insight">
+            <div class="accordion-header" onclick="toggleAccordion('sec-insight')">
+                <span>🏯 サーバー・インサイト (運営アドバイス) <span class="help-tip"
+                        data-tip="<%= t('help_ai_insight') %>">?</span></span>
+                <span>▼</span>
+            </div>
+            <div class="accordion-content">
+                <div style="margin-bottom:15px;">
+                    <label style="display:flex; align-items:center; cursor:pointer;">
+                        <input type="checkbox" id="aiInsightEnabled"
+                            style="width:18px; height:18px; margin-right:10px;">
+                        <span>運営アドバイス機能を有効化</span>
+                    </label>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
+                    <div>
+                        <label class="muted">アドバイス配信先 (管理者推奨)</label><br />
+                        <select id="aiInsightCh" style="width:100%; margin-top:5px;"></select>
+                    </div>
+                </div>
+
+                <div style="border-top: 1px solid var(--border-color); padding-top:15px;">
+                    <label class="muted" style="margin-bottom:10px; display:block;">&#128203; 配信セクションの選択</label>
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <label style="display:flex; align-items:center; cursor:pointer; gap:10px;">
+                            <input type="checkbox" id="insightGrowth" style="width:16px; height:16px;">
+                            <span>📈 メンバー増減（成長分析）</span>
+                        </label>
+                        <label style="display:flex; align-items:center; cursor:pointer; gap:10px;">
+                            <input type="checkbox" id="insightToxicity" style="width:16px; height:16px;">
+                            <span>🚫 NGワード検知数（秩序分析）</span>
+                        </label>
+                        <label style="display:flex; align-items:center; cursor:pointer; gap:10px;">
+                            <input type="checkbox" id="insightVc" style="width:16px; height:16px;">
+                            <span>🎤 VC利用者数（活性化分析）</span>
+                        </label>
+                    </div>
+                    <p class="muted" style="margin-top:10px; font-size:11px;">
+                        ※チェックを外したセクションはレポートに含まれません。全て無効ではレポート自体が送信されません。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. AI 予兆検知 -->
+        <div class="accordion-item" id="sec-aipredict">
+            <div class="accordion-header" onclick="toggleAccordion('sec-aipredict')">
+                <span>🧠 AI 予兆検知 (Atmosphere Insight)</span>
+                <span>▼</span>
+            </div>
+            <div class="accordion-content">
+                <div style="margin-bottom:15px;">
+                    <label style="display:flex; align-items:center; cursor:pointer;">
+                        <input type="checkbox" id="aiPredictionEnabled"
+                            style="width:18px; height:18px; margin-right:10px;">
+                        <span style="font-weight: bold;">不穏な空気の予兆検知を有効化</span>
+                    </label>
+                    <p class="muted" style="font-size:12px; margin-top:8px;">
+                        メッセージの密度やNGワードの頻度をAIがリアルタイムに分析し、トラブルが起きそうな不穏な空気を察知すると、運営レポート用チャンネルにアラートを送信します。
+                    </p>
+                </div>
+                <div style="margin-top:15px;">
+                    <label class="muted">アラート送信先チャンネル</label><br />
+                    <select id="aiPredictCh" style="width:100%; max-width:400px; margin-top:5px;"></select>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <!-- ACCORDION END -->
+
+    <div style="margin-top:30px; display:flex; gap:15px;">
+        <button id="saveAi" class="btn btn-primary" style="flex:1; padding:12px; font-size:16px;">
+            設定を保存する
+        </button>
+    </div>
+</div>
+
+<script>initAiPage();</script>

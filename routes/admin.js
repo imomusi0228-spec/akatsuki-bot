@@ -72,6 +72,10 @@ export async function handleAdminRoute(req, res, pathname, url) {
         const { renderAdminBrandingHTML } = await import("../services/views.js");
         const html = await renderAdminBrandingHTML({ user, req });
         res.end(html);
+    } else if (pathname === "/admin/ai") {
+        const { renderAdminAiHTML } = await import("../services/views.js");
+        const html = await renderAdminAiHTML({ user, req });
+        res.end(html);
     } else {
         // Default: Dashboard if no other path matches
         const html = await renderAdminDashboardHTML({ user, req });

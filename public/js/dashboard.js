@@ -893,6 +893,83 @@ window.initBrandingPage = async () => {
     refresh();
 };
 
+// AI Analysis & Insights Page
+window.initAiPage = async () => {
+    if (!await loadGuilds()) return;
+    const selGuild = $("guild");
+    const saveBtn = $("saveAi");
+    const stat = $("saveStatus");
+
+    let _currentConfig = {};
+
+    const refresh = async () => {
+        const gid = selGuild.value;
+        if (!gid) return;
+        saveGuildSelection();
+
+        const res = await api(`/api/settings?guild=${gid}`);
+        if (res.ok && res.settings) {
+            _currentConfig = res.settings;
+
+            // AI Health Radar
+            if ($("aiAdviceDays")) $("aiAdviceDays").value = _currentConfig.ai_advice_days || 14;
+            if ($("aiAdviceCh")) await loadChannels("aiAdviceCh", gid, _currentConfig.ai_advice_channel_id);
+
+            // Server Insight
+            if ($("aiInsightEnabled")) $("aiInsightEnabled").checked = !!_currentConfig.ai_insight_enabled;
+            if ($("aiInsightCh")) await loadChannels("aiInsightCh", gid, _currentConfig.ai_insight_channel_id);
+            if ($("insightGrowth")) $("insightGrowth").checked = !!_currentConfig.insight_growth;
+            if ($("insightToxicity")) $("insightToxicity").checked = !!_currentConfig.insight_toxicity;
+            if ($("insightVc")) $("insightVc").checked = !!_currentConfig.insight_vc;
+
+            // AI Prediction
+            if ($("aiPredictionEnabled")) $("aiPredictionEnabled").checked = !!_currentConfig.ai_prediction_enabled;
+            if ($("aiPredictCh")) await loadChannels("aiPredictCh", gid, _currentConfig.ai_predict_channel_id);
+        }
+    };
+
+    if (saveBtn) {
+        saveBtn.onclick = async () => {
+            const gid = selGuild.value;
+            if (!gid) return;
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = "保存中...";
+
+            const body = {
+                ..._currentConfig,
+                guild: gid,
+                ai_advice_days: $("aiAdviceDays") ? parseInt($("aiAdviceDays").value) : 14,
+                ai_advice_channel_id: $("aiAdviceCh") ? $("aiAdviceCh").value : "",
+                ai_insight_enabled: $("aiInsightEnabled") ? $("aiInsightEnabled").checked : false,
+                ai_insight_channel_id: $("aiInsightCh") ? $("aiInsightCh").value : "",
+                insight_growth: $("insightGrowth") ? $("insightGrowth").checked : false,
+                insight_toxicity: $("insightToxicity") ? $("insightToxicity").checked : false,
+                insight_vc: $("insightVc") ? $("insightVc").checked : false,
+                ai_prediction_enabled: $("aiPredictionEnabled") ? $("aiPredictionEnabled").checked : false,
+                ai_predict_channel_id: $("aiPredictCh") ? $("aiPredictCh").value : "",
+            };
+
+            const res = await api("/api/settings/update", body);
+            saveBtn.disabled = false;
+            saveBtn.textContent = "設定を保存する";
+
+            if (res.ok) {
+                stat.textContent = "✅ 保存完了";
+                stat.style.color = "var(--success-color)";
+                setTimeout(() => stat.textContent = "", 3000);
+            } else {
+                stat.textContent = "❌ エラー: " + res.error;
+                stat.style.color = "var(--danger-color)";
+            }
+        };
+    }
+
+    selGuild.onchange = refresh;
+    if ($("reload")) $("reload").onclick = refresh;
+    refresh();
+};
+
 // Global initializer to apply saved theme early
 (async function () {
     const savedGid = localStorage.getItem("selected_guild");

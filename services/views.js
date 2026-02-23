@@ -139,3 +139,14 @@ export async function renderAdminBrandingHTML({ user, req }) {
         scripts: ""
     }, lang);
 }
+
+export async function renderAdminAiHTML({ user, req }) {
+    const lang = getLang(req);
+    return await renderView("ai", {
+        title: "AI 分析 & インサイト",
+        user,
+        oauth: true,
+        activeTab: "ai",
+        scripts: ""
+    }, lang);
+}
