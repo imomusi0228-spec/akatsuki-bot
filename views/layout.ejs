@@ -308,41 +308,46 @@
     </script>
     <div class="nav-bar"
         style="border:none; justify-content: space-between; align-items: center; margin-bottom: 0; padding:16px 0;">
-        <div style="font-size: 24px; font-weight: bold; display:flex; align-items:center;">
-            <span style="color:#f91880; margin-right:10px;">&#9789;</span>
-            <%= oauth ? t("admin_title") : t("title") %>
-                <% if (lang==='ja' ) { %>
-                    <span class="lang-switch" onclick="setLang('en')">English</span>
-                    <% } else { %>
-                        <span class="lang-switch" onclick="setLang('ja')">&#26085;&#26412;&#35486;</span>
-                        <% } %>
-        </div>
-        <div>
-            <% if (oauth && user) { %>
-                <span class="muted" style="margin-right:15px;">
-                    <%= user.username %>
-                </span>
-                <a href="/logout" class="btn" style="padding:4px 12px; font-size:12px;">
-                    <%= t("logout") %>
-                </a>
-                <% } else { %>
-                    <a href="/login" class="btn">
-                        <%= t("login") %>
-                    </a>
-                    <% } %>
-        </div>
-    </div>
-
-    <% if (oauth && user) { %>
-        <div
-            style="max-width: 900px; margin: 0 auto 16px auto; display: flex; align-items: flex-end; gap: 12px; padding: 0 8px;">
-            <div style="flex: 1;">
-                <label class="muted" style="font-size: 11px; display: block; margin-bottom: 4px;">🌏 GLOBAL SERVER
-                    SELECT</label>
-                <select id="globalGuildSelect"
-                    style="width: 100%; padding: 10px; border-radius: 8px; font-weight: 600;"></select>
+        <div style="font-size: 24px; font-weight: bold; display:flex; align-items:center; gap: 15px; flex-wrap: wrap;">
+            <div style="display:flex; align-items:center;">
+                <span style="color:#f91880; margin-right:10px;">&#9789;</span>
+                <%= oauth ? t("admin_title") : t("title") %>
             </div>
-            <button id="globalReload" class="btn" style="padding: 10px 16px; border-radius: 8px;">🔄 Reload</button>
+
+            <% if (oauth && user) { %>
+                <div class="global-selector-container"
+                    style="display:flex; align-items:center; gap:8px; background: rgba(255,255,255,0.05); padding: 4px 12px; border-radius: 99px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(4px);">
+                    <span style="font-size:14px;" title="GLOBAL SERVER SELECT">🌏</span>
+                    <select id="globalGuildSelect"
+                        style="background:transparent; border:none; color:white; font-size:13px; font-weight:600; cursor:pointer; outline:none; max-width:200px;"></select>
+                    <button id="globalReload"
+                        style="background:transparent; border:none; color:var(--text-secondary); cursor:pointer; font-size:12px; display:flex; align-items:center; padding:0 4px;"
+                        title="Reload Data">🔄</button>
+                </div>
+                <% } %>
+
+                    <% if (lang==='ja' ) { %>
+                        <span class="lang-switch" onclick="setLang('en')" style="font-size:12px;">English</span>
+                        <% } else { %>
+                            <span class="lang-switch" onclick="setLang('ja')"
+                                style="font-size:12px;">&#26085;&#26412;&#35486;</span>
+                            <% } %>
+
+                                <div style="margin-left: auto; display:flex; align-items:center; gap:15px;">
+                                    <% if (oauth && user) { %>
+                                        <span class="muted" style="font-size:12px;">
+                                            <%= user.username %>
+                                        </span>
+                                        <a href="/logout" class="btn"
+                                            style="padding:4px 12px; font-size:11px; border-radius:6px; background:rgba(255,255,255,0.05);">
+                                            <%= t("logout") %>
+                                        </a>
+                                        <% } else { %>
+                                            <a href="/login" class="btn" style="padding:6px 16px;">
+                                                <%= t("login") %>
+                                            </a>
+                                            <% } %>
+                                </div>
         </div>
 
         <div class="nav-bar">

@@ -153,10 +153,12 @@ async function initDashboard() {
                 const sub = res.subscription;
                 const validUntil = sub.valid_until ? '(' + sub.valid_until.split('T')[0] + ')' : '';
                 const planInfo = $("plan-info");
-                if (planInfo) planInfo.innerHTML = `${sub.name} ${validUntil}`;
+                if (planInfo) planInfo.innerHTML = `${sub.name} <span class="muted" style="font-size:10px; font-weight:normal;">${validUntil}</span>`;
 
-                const item = (l, v) => `<span style="font-weight:bold; color:var(--text-primary); font-size:14px; border-bottom: 2px solid var(--accent-color); padding: 0 4px;">${v}</span> <span style="font-size:12px; margin-right:8px;">${l}</span>`;
-                if (summaryEl) summaryEl.innerHTML = `${item(t("vc_joins"), s.joins)} | ${item(t("leaves"), s.leaves)} | ${item(t("timeouts"), s.timeouts)} | ${item(t("ng_detect"), s.ngDetected)}`;
+                if ($("stat-joins")) $("stat-joins").textContent = s.joins;
+                if ($("stat-leaves")) $("stat-leaves").textContent = s.leaves;
+                if ($("stat-timeouts")) $("stat-timeouts").textContent = s.timeouts;
+                if ($("stat-ng")) $("stat-ng").textContent = s.ngDetected;
 
                 const topNgEl = $("topNg");
                 if (topNgEl) {
