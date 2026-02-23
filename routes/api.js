@@ -464,7 +464,28 @@ export async function handleApiRoute(req, res, pathname, url) {
     if (pathname === "/api/settings") {
         if (!guildId) return res.end(JSON.stringify({ ok: false }));
         if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
-        const resDb = await dbQuery("SELECT * FROM settings WHERE guild_id = $1", [guildId]);
+        const resDb = await dbQuery(`
+            SELECT 
+                guild_id, log_channel_id, ng_log_channel_id, audit_role_id, intro_channel_id,
+                ng_threshold, timeout_minutes, autorole_id, autorole_enabled,
+                antiraid_enabled, antiraid_threshold, antiraid_guard_level,
+                self_intro_enabled, self_intro_role_id, self_intro_min_length,
+                vc_report_enabled, vc_report_channel_id, vc_report_interval,
+                vc_role_rules, last_announced_version, alpha_features,
+                raid_join_threshold, newcomer_restrict_mins, newcomer_min_account_age,
+                link_block_enabled, domain_blacklist, auto_slowmode_channels,
+                ai_advice_days, ai_advice_channel_id, ai_insight_enabled,
+                ai_insight_channel_id, insight_sections,
+                phase2_threshold, phase2_action, phase3_threshold, phase3_action,
+                phase4_threshold, phase4_action, intro_reminder_hours,
+                report_channel_id, ng_warning_enabled, ticket_welcome_msg,
+                color_log, color_ng, color_vc_join, color_vc_leave,
+                color_level, color_ticket, dashboard_theme_color,
+                dashboard_theme_mode, ai_prediction_enabled,
+                auto_vc_creator_id, ticket_staff_role_id
+            FROM settings 
+            WHERE guild_id = $1
+        `, [guildId]);
         const subInfo = await getSubscriptionInfo(guildId);
 
         const settings = resDb.rows[0] || {};
