@@ -11,11 +11,16 @@ import { dbQuery } from "./db.js";
  */
 export async function sendLog(guild, type, payload, date = new Date(), options = {}) {
     try {
-        const settingsRes = await dbQuery("SELECT log_channel_id, ng_log_channel_id, color_log, branding_footer_text FROM settings WHERE guild_id = $1", [guild.id]);
+        const settingsRes = await dbQuery("SELECT log_channel_id, ng_log_channel_id, color_log, color_ng, color_vc_join, color_vc_leave, branding_footer_text FROM settings WHERE guild_id = $1", [guild.id]);
         const settings = settingsRes.rows[0];
         if (!settings) return;
 
-        const customColor = settings.color_log ? parseInt(settings.color_log.replace('#', ''), 16) : null;
+        let selectedColor = settings.color_log;
+        if (type === 'ng') selectedColor = settings.color_ng;
+        if (type === 'vc_in') selectedColor = settings.color_vc_join;
+        if (type === 'vc_out') selectedColor = settings.color_vc_leave;
+
+        const customColor = selectedColor ? parseInt(selectedColor.replace('#', ''), 16) : null;
         const footerText = settings.branding_footer_text;
 
         // 種別に応じてログチャンネルを選択

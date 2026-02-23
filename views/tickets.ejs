@@ -1,6 +1,6 @@
 <div class="card" style="max-width: 1100px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <h3 style="margin:0;">🎫 チケット管理</h3>
+        <h3 style="margin:0;">🎫 チケット管理 ＆ 設定</h3>
         <div style="display:flex; gap:10px;">
             <select id="statusFilter" style="font-size:12px;">
                 <option value="all">すべて</option>
@@ -11,10 +11,31 @@
         </div>
     </div>
 
-    <div class="setting-section" style="margin-bottom:24px;">
-        <label class="muted">Select Server</label>
+    <!-- 1. Server Selector -->
+    <div class="setting-section"
+        style="margin-bottom:24px; background:rgba(255,255,255,0.02); padding:15px; border-radius:8px; border:1px solid var(--border-color);">
+        <label class="muted" style="font-size:12px;">Select Server</label>
         <div style="display:flex; gap:10px; align-items:center; margin-top:8px;">
             <select id="guild" style="flex:1;"></select>
+            <button id="reloadMasters" class="btn" style="padding:4px 12px; font-size:12px;">Reload</button>
+        </div>
+    </div>
+
+    <!-- 2. Ticket Settings (Consolidated from main settings) -->
+    <div class="setting-section"
+        style="margin-bottom:24px; background:rgba(255,255,255,0.02); padding:20px; border-radius:8px; border:1px solid var(--border-color);">
+        <h4 style="margin-top:0; margin-bottom:15px; font-size:14px; color:var(--accent-color);">⚙️ チケット基本設定</h4>
+        <div style="margin-bottom:20px;">
+            <label class="muted" style="font-size:12px;">📦 チケット作成時の初期メッセージ（お嬢の言葉）</label><br />
+            <textarea id="ticketWelcomeMsg"
+                style="width:100%; height:80px; margin-top:8px; padding:12px; border-radius:8px; border:1px solid var(--border-color); background:rgba(0,0,0,0.2); color:white; font-size:13px;"
+                placeholder="スタッフが対応するまで、相談内容を記入してお待ちください..."></textarea>
+            <p class="muted" style="font-size:11px; margin-top:8px;">※ 空欄の場合はボット標準のメッセージが使用されます。</p>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; align-items:center;">
+            <span id="saveStatus" style="font-size:12px;"></span>
+            <button id="saveTicketSettings" class="btn btn-primary"
+                style="padding:6px 20px; font-size:13px;">設定を保存</button>
         </div>
     </div>
 
@@ -75,7 +96,6 @@
     }
 </style>
 
-<script src="/js/dashboard.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         if (typeof initTicketsPage === 'function') {

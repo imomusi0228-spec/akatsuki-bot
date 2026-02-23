@@ -28,7 +28,17 @@ export default {
                     .filter(c => c.parentId === categoryId && c.type === ChannelType.GuildVoice)
                     .sort((a, b) => a.position - b.position);
 
-                const triggerChannel = categoryChannels.first();
+                let triggerChannel = categoryChannels.first();
+
+                // Proactive creation if NONE exist in category
+                if (!triggerChannel) {
+                    triggerChannel = await guild.channels.create({
+                        name: "➕ 部屋作成",
+                        type: ChannelType.GuildVoice,
+                        parent: categoryId
+                    });
+                    console.log(`[AUTO-VC] Restored missing trigger in category ${categoryId}`);
+                }
 
                 // 1. Create VC when joining the top-most (trigger) channel
                 if (triggerChannel && newState.channelId === triggerChannel.id && oldState.channelId !== triggerChannel.id) {

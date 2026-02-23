@@ -300,11 +300,15 @@ export async function initDb() {
             // Tier 2.2.0: AI Predictive & Branding
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ticket_welcome_msg TEXT;`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS color_log TEXT DEFAULT '#5865F2';`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS color_ng TEXT DEFAULT '#f4212e';`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS color_vc_join TEXT DEFAULT '#1da1f2';`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS color_vc_leave TEXT DEFAULT '#8b9bb4';`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS color_level TEXT DEFAULT '#FFD700';`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS color_ticket TEXT DEFAULT '#2ECC71';`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS dashboard_theme_color TEXT DEFAULT '#5865F2';`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS branding_footer_text TEXT;`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_prediction_enabled BOOLEAN DEFAULT FALSE;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS dashboard_theme_mode TEXT DEFAULT 'dark';`,
 
             // Tier 2.3.0: High Scalability Indexes
             `CREATE INDEX IF NOT EXISTS idx_member_stats_guild_xp ON member_stats(guild_id, xp DESC);`,

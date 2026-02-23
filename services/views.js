@@ -129,13 +129,13 @@ export async function renderAdminTicketsHTML({ user, req }) {
     }, lang);
 }
 
-export async function renderAdminEmbedHTML({ user, req }) {
+export async function renderAdminBrandingHTML({ user, req }) {
     const lang = getLang(req);
-    return await renderView("embed", {
-        title: "Embed Builder",
+    return await renderView("branding", {
+        title: "ブランディング ＆ テーマ",
         user,
         oauth: true,
-        activeTab: "embed",
+        activeTab: "branding",
         scripts: ""
     }, lang);
 }

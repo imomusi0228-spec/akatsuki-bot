@@ -1,6 +1,6 @@
 import { ENV } from "../config/env.js";
 import { getSession } from "../middleware/auth.js";
-import { renderLoginHTML, renderAdminDashboardHTML, renderAdminSettingsHTML, renderAdminActivityHTML, renderAdminAntiraidHTML, renderAdminTicketsHTML, renderAdminEmbedHTML } from "../services/views.js";
+import { renderLoginHTML, renderAdminDashboardHTML, renderAdminSettingsHTML, renderAdminActivityHTML, renderAdminAntiraidHTML, renderAdminTicketsHTML } from "../services/views.js";
 import { getTier } from "../core/subscription.js";
 import { getFeatures } from "../core/tiers.js";
 
@@ -62,14 +62,15 @@ export async function handleAdminRoute(req, res, pathname, url) {
     } else if (pathname === "/admin/tickets") {
         const html = await renderAdminTicketsHTML({ user, req });
         res.end(html);
-    } else if (pathname === "/admin/embed") {
-        const html = await renderAdminEmbedHTML({ user, req });
-        res.end(html);
     } else if (pathname === "/admin/activity") {
         const html = await renderAdminActivityHTML({ user, req });
         res.end(html);
     } else if (pathname === "/admin/antiraid") {
         const html = await renderAdminAntiraidHTML({ user, req });
+        res.end(html);
+    } else if (pathname === "/admin/branding") {
+        const { renderAdminBrandingHTML } = await import("../services/views.js");
+        const html = await renderAdminBrandingHTML({ user, req });
         res.end(html);
     } else {
         // Default: Dashboard if no other path matches

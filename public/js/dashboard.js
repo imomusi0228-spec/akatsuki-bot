@@ -353,7 +353,9 @@ async function initSettings() {
 
             // Extended Settings: Ticket, Branding, AI Prediction
             if ($("ticketWelcomeMsg")) $("ticketWelcomeMsg").value = s.ticket_welcome_msg || "";
-            if ($("colorLog")) $("colorLog").value = s.color_log || "#5865F2";
+            if ($("colorNg")) $("colorNg").value = s.color_ng || "#f4212e";
+            if ($("colorVcJoin")) $("colorVcJoin").value = s.color_vc_join || "#1da1f2";
+            if ($("colorVcLeave")) $("colorVcLeave").value = s.color_vc_leave || "#8b9bb4";
             if ($("colorLevel")) $("colorLevel").value = s.color_level || "#FFD700";
             if ($("colorTicket")) $("colorTicket").value = s.color_ticket || "#2ECC71";
             if ($("colorDashboard")) {
@@ -429,7 +431,9 @@ async function initSettings() {
 
             // Extended Fields
             ticket_welcome_msg: $("ticketWelcomeMsg")?.value || "",
-            color_log: $("colorLog")?.value || "#5865F2",
+            color_ng: $("colorNg")?.value || "#f4212e",
+            color_vc_join: $("colorVcJoin")?.value || "#1da1f2",
+            color_vc_leave: $("colorVcLeave")?.value || "#8b9bb4",
             color_level: $("colorLevel")?.value || "#FFD700",
             color_ticket: $("colorTicket")?.value || "#2ECC71",
             dashboard_theme_color: $("colorDashboard")?.value || "#1d9bf0",
@@ -651,42 +655,96 @@ window.addNg = async () => {
             if (!await loadGuilds()) return;
             const selGuild = $("guild");
             const statusFilter = $("statusFilter");
+            const welcomeInput = $("ticketWelcomeMsg");
+            const saveBtn = $("saveTicketSettings");
+            const stat = $("saveStatus");
+
+            // Store original config to avoid partial overwrites if we use the generic update API
+            let _currentConfig = {};
 
             const refresh = async () => {
                 const gid = selGuild.value;
                 const status = statusFilter.value;
                 if (!gid) return;
 
+                saveGuildSelection();
+
+                // 1. Load Ticket List
                 const list = $("ticketList");
                 list.innerHTML = `<tr><td colspan="6" class="muted" style="text-align:center; padding:30px;">${t("loading")}...</td></tr>`;
 
-                const res = await api(`/api/tickets?guild=${gid}&status=${status}`);
-                if (res.ok) {
-                    if (res.tickets.length === 0) {
-                        list.innerHTML = `<tr><td colspan="6" class="muted" style="text-align:center; padding:30px;">チケットは見つかりませんでした。</td></tr>`;
-                        return;
-                    }
+                // 2. Load Settings for this guild
+                const [ticketsRes, settingsRes] = await Promise.all([
+                    api(`/api/tickets?guild=${gid}&status=${status}`),
+                    api(`/api/settings?guild=${gid}`)
+                ]);
 
-                    list.innerHTML = res.tickets.map(t => `
-                <tr>
-                    <td>#${t.id}</td>
-                    <td>${escapeHTML(t.userName)}</td>
-                    <td><span class="${t.assigned_to ? 'staff-assign' : 'unassigned'}">${escapeHTML(t.staffName)}</span></td>
-                    <td><span class="status-badge status-${t.status}">${t.status === 'open' ? '進行中' : '解決済'}</span></td>
-                    <td><span class="muted">${new Date(t.created_at).toLocaleString('ja-JP')}</span></td>
-                    <td style="text-align:right;">
-                        ${t.status === 'open' ? `<button class="btn" style="padding:2px 8px; font-size:11px; border-color:var(--danger-color); color:var(--danger-color);" onclick="closeWebTicket(${t.id})">解決</button>` : '-'}
-                    </td>
-                </tr>
-            `).join("");
+                if (settingsRes.ok && settingsRes.settings) {
+                    _currentConfig = settingsRes.settings;
+                    if (welcomeInput) welcomeInput.value = _currentConfig.ticket_welcome_msg || "";
+                }
+
+                if (ticketsRes.ok) {
+                    if (ticketsRes.tickets.length === 0) {
+                        list.innerHTML = `<tr><td colspan="6" class="muted" style="text-align:center; padding:30px;">チケットは見つかりませんでした。</td></tr>`;
+                    } else {
+                        list.innerHTML = ticketsRes.tickets.map(t => `
+                            <tr>
+                                <td>#${t.id}</td>
+                                <td>${escapeHTML(t.userName)}</td>
+                                <td><span class="${t.assigned_to ? 'staff-assign' : 'unassigned'}">${escapeHTML(t.staffName)}</span></td>
+                                <td><span class="status-badge status-${t.status}">${t.status === 'open' ? '進行中' : '解決済'}</span></td>
+                                <td><span class="muted">${new Date(t.created_at).toLocaleString('ja-JP')}</span></td>
+                                <td style="text-align:right;">
+                                    ${t.status === 'open' ? `<button class="btn" style="padding:2px 8px; font-size:11px; border-color:var(--danger-color); color:var(--danger-color);" onclick="closeWebTicket(${t.id})">解決</button>` : '-'}
+                                </td>
+                            </tr>
+                        `).join("");
+                    }
                 } else {
-                    list.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger-color); padding:30px;">Error: ${res.error}</td></tr>`;
+                    list.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger-color); padding:30px;">Error: ${ticketsRes.error}</td></tr>`;
                 }
             };
 
+            if (saveBtn) {
+                saveBtn.onclick = async () => {
+                    const gid = selGuild.value;
+                    if (!gid) return;
+
+                    saveBtn.disabled = true;
+                    saveBtn.textContent = "保存中...";
+
+                    // Construct body by merging current config with new ticket settings
+                    const body = {
+                        ..._currentConfig, // Keep other settings
+                        guild: gid,
+                        ticket_welcome_msg: welcomeInput.value,
+                        // Ensure required fields for API are present even if not displayed
+                        log_channel_id: _currentConfig.log_channel_id || "",
+                        ng_log_channel_id: _currentConfig.ng_log_channel_id || "",
+                        // ... they are already in ..._currentConfig
+                    };
+
+                    const res = await api("/api/settings/update", body);
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = "設定を保存";
+
+                    if (res.ok) {
+                        stat.textContent = "✅ 保存完了";
+                        stat.style.color = "var(--success-color)";
+                        setTimeout(() => stat.textContent = "", 3000);
+                    } else {
+                        stat.textContent = "❌ エラー: " + res.error;
+                        stat.style.color = "var(--danger-color)";
+                    }
+                };
+            }
+
             selGuild.onchange = refresh;
             statusFilter.onchange = refresh;
-            $("refreshTickets").onclick = refresh;
+            if ($("refreshTickets")) $("refreshTickets").onclick = refresh;
+            if ($("reloadMasters")) $("reloadMasters").onclick = refresh;
+
             refresh();
         };
 
@@ -695,7 +753,8 @@ window.addNg = async () => {
             const res = await api("/api/tickets/close", { guild: $("guild").value, ticket_id: id });
             if (res.ok) {
                 alert("チケットを解決しました。");
-                $("refreshTickets").click();
+                const refreshBtn = $("refreshTickets");
+                if (refreshBtn) refreshBtn.click();
             } else {
                 alert("Error: " + res.error);
             }
@@ -722,73 +781,128 @@ function applyThemeColor(color) {
     if (!color) return;
     document.documentElement.style.setProperty('--accent-color', color);
     document.documentElement.style.setProperty('--primary-color', color);
-    // Dynamic shadowing if possible
-    const btn = document.querySelector('.btn-primary');
-    if (btn) {
-        btn.style.boxShadow = `0 0 15px ${color}66`; // 66 is alpha
+
+    // Hex to RGB for opacity control
+    let r = 0, g = 0, b = 0;
+    if (color.length === 7) {
+        r = parseInt(color.substring(1, 3), 16);
+        g = parseInt(color.substring(3, 5), 16);
+        b = parseInt(color.substring(5, 7), 16);
     }
+    document.documentElement.style.setProperty('--accent-rgb', `${r}, ${g}, ${b}`);
 }
 
-// Add event listener for real-time preview (ensure it's added once)
-
-window.initEmbedBuilder = async () => {
+window.initBrandingPage = async () => {
+    if (!await loadGuilds()) return;
     const selGuild = $("guild");
-    const selEmbedCh = $("embedTargetCh");
-    const sendBtn = $("sendEmbed");
+    const themeModeInput = $("dashboard_theme_mode");
+    const themeColorInput = $("dashboard_theme_color");
+    const footerInput = $("branding_footer_text");
+    const saveBtn = $("saveBranding");
+    const stat = $("saveStatus");
 
-    const refreshChannels = async () => {
+    // Color Inputs
+    const colorLog = $("color_log");
+    const colorNg = $("color_ng");
+    const colorVcJoin = $("color_vc_join");
+    const colorVcLeave = $("color_vc_leave");
+    const colorLevel = $("color_level");
+    const colorTicket = $("color_ticket");
+
+    let _currentConfig = {};
+
+    const refresh = async () => {
         const gid = selGuild.value;
         if (!gid) return;
+        saveGuildSelection();
 
-        const res = await api("/api/channels?guild=" + gid);
-        if (res.ok && res.channels) {
-            selEmbedCh.innerHTML = '<option value="">(送信先を選択...)</option>';
-            res.channels.forEach(c => {
-                const o = document.createElement("option");
-                o.value = c.id;
-                o.textContent = "#" + c.name;
-                selEmbedCh.appendChild(o);
-            });
+        const res = await api(`/api/settings?guild=${gid}`);
+        if (res.ok && res.settings) {
+            _currentConfig = res.settings;
+
+            // Apply loaded settings
+            const mode = _currentConfig.dashboard_theme_mode || 'midnight';
+            const color = _currentConfig.dashboard_theme_color || '#1d9bf0';
+
+            if (themeModeInput) themeModeInput.value = mode;
+            if (themeColorInput) themeColorInput.value = color;
+            if (footerInput) footerInput.value = _currentConfig.branding_footer_text || "";
+
+            // Detailed Colors
+            if (colorLog) colorLog.value = _currentConfig.color_log || '#5865F2';
+            if (colorNg) colorNg.value = _currentConfig.color_ng || '#f4212e';
+            if (colorVcJoin) colorVcJoin.value = _currentConfig.color_vc_join || '#1da1f2';
+            if (colorVcLeave) colorVcLeave.value = _currentConfig.color_vc_leave || '#8b9bb4';
+            if (colorLevel) colorLevel.value = _currentConfig.color_level || '#FFD700';
+            if (colorTicket) colorTicket.value = _currentConfig.color_ticket || '#2ECC71';
+
+            window.selectThemeMode(mode);
+            applyThemeColor(color);
+            if ($("currentColorHex")) $("currentColorHex").textContent = color;
         }
     };
 
-    if (selGuild) {
-        selGuild.addEventListener("change", refreshChannels);
-        refreshChannels();
-    }
-
-    if (sendBtn) {
-        sendBtn.onclick = async () => {
+    if (saveBtn) {
+        saveBtn.onclick = async () => {
             const gid = selGuild.value;
-            const chid = selEmbedCh.value;
-            if (!chid) return alert("❌ 送信先チャンネルを選択してくださいわ。");
+            if (!gid) return;
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = "魔力充填中...";
 
             const body = {
+                ..._currentConfig,
                 guild: gid,
-                channel_id: chid,
-                title: $("embedTitle").value,
-                description: $("embedDesc").value,
-                color: $("embedColor").value,
-                footer: $("embedFooter").value,
-                image: $("embedImage").value
+                dashboard_theme_mode: themeModeInput.value,
+                dashboard_theme_color: themeColorInput.value,
+                branding_footer_text: footerInput.value,
+                // Detailed Colors
+                color_log: colorLog.value,
+                color_ng: colorNg.value,
+                color_vc_join: colorVcJoin.value,
+                color_vc_leave: colorVcLeave.value,
+                color_level: colorLevel.value,
+                color_ticket: colorTicket.value
             };
 
-            if (!body.title && !body.description) {
-                return alert("❌ タイトルか説明文の少なくとも一方は入力してくださいわ。");
-            }
+            const res = await api("/api/settings/update", body);
+            saveBtn.disabled = false;
+            saveBtn.textContent = "変更を適用する";
 
-            sendBtn.disabled = true;
-            sendBtn.textContent = "📢 布告中...";
-
-            const res = await api("/api/embed/send", body);
             if (res.ok) {
-                alert("✅ 詔（みことのり）が正常に布告されましたわ。");
+                stat.textContent = "✅ 美学が反映されました";
+                stat.style.color = "var(--success-color)";
+                setTimeout(() => stat.textContent = "", 3000);
             } else {
-                alert("❌ 布告に失敗しました: " + res.error);
+                stat.textContent = "❌ 儀式失敗: " + res.error;
+                stat.style.color = "var(--danger-color)";
             }
-
-            sendBtn.disabled = false;
-            sendBtn.textContent = "📢 この内容で布告する";
         };
     }
+
+    selGuild.onchange = refresh;
+    if ($("reload")) $("reload").onclick = refresh;
+    refresh();
 };
+
+// Global initializer to apply saved theme early
+(async function () {
+    const savedGid = localStorage.getItem("selected_guild");
+    if (savedGid) {
+        // We might not have client-side api() ready if script order is weird, 
+        // but typically dashboard.js is at the bottom.
+        const res = await fetch(`/api/settings?guild=${savedGid}`).then(r => r.json()).catch(() => null);
+        if (res && res.ok && res.settings) {
+            document.body.className = 'theme-' + (res.settings.dashboard_theme_mode || 'midnight');
+            applyThemeColor(res.settings.dashboard_theme_color);
+
+            // Apply footer branding
+            const footerDisplay = document.getElementById("branding-footer-display");
+            if (footerDisplay && res.settings.branding_footer_text) {
+                footerDisplay.textContent = res.settings.branding_footer_text;
+            }
+        }
+    }
+})();
+
+

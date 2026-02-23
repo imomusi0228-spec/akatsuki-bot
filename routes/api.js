@@ -507,12 +507,12 @@ export async function handleApiRoute(req, res, pathname, url) {
                     ai_insight_enabled, ai_insight_channel_id, insight_sections,
                     phase2_threshold, phase2_action, phase3_threshold, phase3_action, phase4_threshold, phase4_action,
                     intro_reminder_hours, report_channel_id, ng_warning_enabled,
-                    ticket_welcome_msg, color_log, color_level, color_ticket, dashboard_theme_color, branding_footer_text, ai_prediction_enabled,
-                    auto_vc_creator_id,
-                    updated_at
-                ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, NOW()
-                )
+                        ticket_welcome_msg, color_log, color_ng, color_vc_join, color_vc_leave, color_level, color_ticket, dashboard_theme_color, dashboard_theme_mode, branding_footer_text, ai_prediction_enabled,
+                        auto_vc_creator_id,
+                        updated_at
+                    ) VALUES (
+                        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, NOW()
+                    )
                 ON CONFLICT (guild_id) DO UPDATE SET
                     log_channel_id = EXCLUDED.log_channel_id,
                     ng_log_channel_id = EXCLUDED.ng_log_channel_id,
@@ -551,6 +551,9 @@ export async function handleApiRoute(req, res, pathname, url) {
                     ng_warning_enabled = EXCLUDED.ng_warning_enabled,
                     ticket_welcome_msg = EXCLUDED.ticket_welcome_msg,
                     color_log = EXCLUDED.color_log,
+                    color_ng = EXCLUDED.color_ng,
+                    color_vc_join = EXCLUDED.color_vc_join,
+                    color_vc_leave = EXCLUDED.color_vc_leave,
                     color_level = EXCLUDED.color_level,
                     color_ticket = EXCLUDED.color_ticket,
                     dashboard_theme_color = EXCLUDED.dashboard_theme_color,
@@ -576,9 +579,13 @@ export async function handleApiRoute(req, res, pathname, url) {
                 body.ng_warning_enabled !== false,
                 body.ticket_welcome_msg || null,
                 body.color_log || '#5865F2',
+                body.color_ng || '#f4212e',
+                body.color_vc_join || '#1da1f2',
+                body.color_vc_leave || '#8b9bb4',
                 body.color_level || '#FFD700',
                 body.color_ticket || '#2ECC71',
                 body.dashboard_theme_color || '#5865F2',
+                body.dashboard_theme_mode || 'dark',
                 body.branding_footer_text || null,
                 body.ai_prediction_enabled === true,
                 body.auto_vc_creator_id || null
@@ -589,9 +596,30 @@ export async function handleApiRoute(req, res, pathname, url) {
             return res.end(JSON.stringify({ ok: false, error: "Database Error" }));
         }
 
+        // Proactively create Auto-VC trigger if missing
+        if (body.auto_vc_creator_id) {
+            try {
+                const { ChannelType } = await import("discord.js");
+                const guild = client.guilds.cache.get(body.guild);
+                if (guild) {
+                    const category = await guild.channels.fetch(body.auto_vc_creator_id).catch(() => null);
+                    if (category && category.type === ChannelType.GuildCategory) {
+                        const vcs = guild.channels.cache.filter(c => c.parentId === category.id && c.type === ChannelType.GuildVoice);
+                        if (vcs.size === 0) {
+                            await guild.channels.create({
+                                name: "➕ 部屋作成",
+                                type: ChannelType.GuildVoice,
+                                parent: category.id
+                            });
+                            console.log(`[AUTO-VC] Created missing trigger in category ${category.name} for guild ${guild.name}`);
+                        }
+                    }
+                }
+            } catch (err) { console.error("Auto-VC Trigger Creation Error:", err); }
+        }
+
         res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ ok: true }));
-        return;
+        return res.end(JSON.stringify({ ok: true }));
     }
 
     // GET /api/activity

@@ -1,0 +1,195 @@
+<div class="card" style="max-width: 1000px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h3 style="margin:0;">🎨 サーバー・ブランディング ＆ テーマ</h3>
+        <span id="saveStatus" style="font-size:14px; font-weight:bold;"></span>
+    </div>
+
+    <div class="setting-section"
+        style="margin-bottom:30px; background:rgba(255,255,255,0.02); padding:20px; border-radius:12px; border:1px solid var(--border-color);">
+        <label class="muted" style="font-size:12px; text-transform:uppercase; letter-spacing:1px;">Select Server</label>
+        <div style="display:flex; gap:10px; align-items:center; margin-top:10px;">
+            <select id="guild" style="flex:1;"></select>
+            <button id="reload" class="btn">Reload</button>
+        </div>
+    </div>
+
+    <!-- Theme Mode Selection -->
+    <div class="setting-section" style="margin-bottom:30px;">
+        <h4 style="margin-top:0; margin-bottom:15px; font-size:15px; color:var(--accent-color);">🌗 テーマモード</h4>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:15px;">
+            <div class="theme-option" onclick="selectThemeMode('light')" id="theme-light">
+                <div class="theme-preview" style="background:#f7f9f9; border:1px solid #ccc;">
+                    <div style="width:70%; height:8px; background:#e1e8ed; margin-bottom:5px; border-radius:4px;"></div>
+                    <div style="width:40%; height:6px; background:#e1e8ed; border-radius:4px;"></div>
+                </div>
+                <span>ライト</span>
+            </div>
+            <div class="theme-option" onclick="selectThemeMode('dark')" id="theme-dark">
+                <div class="theme-preview" style="background:#000; border:1px solid #333;">
+                    <div style="width:70%; height:8px; background:#2f3336; margin-bottom:5px; border-radius:4px;"></div>
+                    <div style="width:40%; height:6px; background:#2f3336; border-radius:4px;"></div>
+                </div>
+                <span>ダーク</span>
+            </div>
+            <div class="theme-option" onclick="selectThemeMode('midnight')" id="theme-midnight">
+                <div class="theme-preview" style="background:#0b1622; border:1px solid #253341;">
+                    <div style="width:70%; height:8px; background:#15202b; margin-bottom:5px; border-radius:4px;"></div>
+                    <div style="width:40%; height:6px; background:#15202b; border-radius:4px;"></div>
+                </div>
+                <span>ミッドナイト</span>
+            </div>
+        </div>
+        <input type="hidden" id="dashboard_theme_mode" value="dark">
+    </div>
+
+    <!-- Accent Color -->
+    <div class="setting-section" style="margin-bottom:30px;">
+        <h4 style="margin-top:0; margin-bottom:15px; font-size:15px; color:var(--accent-color);">✨ アクセントカラー (UIテーマ)</h4>
+        <div
+            style="display:flex; align-items:center; gap:20px; background:rgba(var(--accent-rgb), 0.05); padding:20px; border-radius:12px; border:1px solid rgba(var(--accent-rgb), 0.2);">
+            <input type="color" id="dashboard_theme_color"
+                style="width:60px; height:60px; padding:0; border:none; background:none; cursor:pointer;"
+                onchange="previewBranding()">
+            <div style="flex:1;">
+                <p style="margin:0; font-weight:600;">メインカラーを選択</p>
+                <p class="muted" style="margin:5px 0 0 0; font-size:12px;">ボタン、リンク、強調表示に反映されます。現在のカラー: <code
+                        id="currentColorHex">#1d9bf0</code></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Colors -->
+    <div class="setting-section" style="margin-bottom:30px;">
+        <h4 style="margin-top:0; margin-bottom:15px; font-size:15px; color:var(--accent-color);">🎨 詳細な色彩設定</h4>
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:20px;">
+            <div class="color-item">
+                <label class="muted">📦 汎用ログ (Normal Log)</label><br />
+                <input type="color" id="color_log" class="color-picker-small">
+            </div>
+            <div class="color-item">
+                <label class="muted">🚫 NGワードログ (NG Log)</label><br />
+                <input type="color" id="color_ng" class="color-picker-small">
+            </div>
+            <div class="color-item">
+                <label class="muted">📥 VC入室ログ (VC Join)</label><br />
+                <input type="color" id="color_vc_join" class="color-picker-small">
+            </div>
+            <div class="color-item">
+                <label class="muted">📤 VC退室ログ (VC Leave)</label><br />
+                <input type="color" id="color_vc_leave" class="color-picker-small">
+            </div>
+            <div class="color-item">
+                <label class="muted">🎊 レベルアップ通知 (Level)</label><br />
+                <input type="color" id="color_level" class="color-picker-small">
+            </div>
+            <div class="color-item">
+                <label class="muted">🎫 チケット通知 (Ticket)</label><br />
+                <input type="color" id="color_ticket" class="color-picker-small">
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Text -->
+    <div class="setting-section" style="margin-bottom:30px;">
+        <h4 style="margin-top:0; margin-bottom:15px; font-size:15px; color:var(--accent-color);">📝 サーバー・ブランディングフッター
+        </h4>
+        <p class="muted" style="margin-bottom:10px;">ダッシュボードの最下部に表示される、お嬢様のサーバーを象徴する言葉を綴ってください。</p>
+        <input type="text" id="branding_footer_text" placeholder="© 2026 Your Server Name"
+            style="width:100%; padding:12px;">
+    </div>
+
+    <div style="display:flex; justify-content:flex-end;">
+        <button id="saveBranding" class="btn btn-primary" style="padding:10px 40px; font-size:15px;">変更を適用する</button>
+    </div>
+</div>
+
+<style>
+    .theme-option {
+        cursor: pointer;
+        padding: 15px;
+        border: 2px solid var(--border-color);
+        border-radius: 12px;
+        text-align: center;
+        transition: all 0.2s;
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .theme-option:hover {
+        border-color: var(--accent-color);
+        background: rgba(var(--accent-rgb), 0.05);
+    }
+
+    .theme-option.selected {
+        border-color: var(--accent-color);
+        background: rgba(var(--accent-rgb), 0.1);
+        box-shadow: 0 0 15px rgba(var(--accent-rgb), 0.2);
+    }
+
+    .theme-preview {
+        height: 60px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .theme-option span {
+        font-weight: 600;
+        font-size: 13px;
+    }
+
+    .color-picker-small {
+        width: 100%;
+        height: 35px;
+        margin-top: 8px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        padding: 0;
+        background: none;
+    }
+
+    .color-item {
+        background: rgba(255, 255, 255, 0.02);
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+
+    .color-item label {
+        font-size: 11px;
+    }
+</style>
+
+<script src="/js/dashboard.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof initBrandingPage === 'function') {
+            initBrandingPage();
+        }
+    });
+
+    function selectThemeMode(mode) {
+        document.getElementById('dashboard_theme_mode').value = mode;
+        // Update UI Selection
+        document.querySelectorAll('.theme-option').forEach(el => el.classList.remove('selected'));
+        const el = document.getElementById('theme-' + mode);
+        if (el) el.classList.add('selected');
+
+        // Instant Preview
+        document.body.className = 'theme-' + mode;
+    }
+
+    function previewBranding() {
+        const color = document.getElementById('dashboard_theme_color').value;
+        const hexDisplay = document.getElementById('currentColorHex');
+        if (hexDisplay) hexDisplay.textContent = color;
+
+        if (typeof applyThemeColor === 'function') {
+            applyThemeColor(color);
+        }
+    }
+</script>
