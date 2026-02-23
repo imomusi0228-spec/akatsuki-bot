@@ -80,21 +80,24 @@ export async function handleApiRoute(req, res, pathname, url) {
             } else {
                 // Fetch from Discord with retry on 429
                 let attempt = 0;
-                while (attempt < 3) {
+                while (attempt < 5) {
                     const result = await discordApi(session.accessToken, "/users/@me/guilds");
                     if (Array.isArray(result)) {
                         userGuilds = result;
                         session.guilds = result; // Cache in session
                         break;
                     }
-                    // If 429, result is an object with retry_after
-                    const retryAfter = result?.retry_after;
-                    if (retryAfter) {
-                        await new Promise(r => setTimeout(r, Math.ceil(retryAfter * 1000) + 200));
+
+                    // Handle 429 Rate Limit
+                    if (result?.status === 429) {
+                        const retryAfter = result.retry_after || 1;
+                        console.warn(`[API WARN] Rate limited on /api/guilds, retrying after ${retryAfter}s... (Attempt ${attempt + 1})`);
+                        await new Promise(r => setTimeout(r, Math.ceil(retryAfter * 1000) + 500));
                         attempt++;
-                    } else {
-                        throw new Error("Failed to fetch guilds from Discord");
+                        continue;
                     }
+
+                    throw new Error(result?.message || "Failed to fetch guilds from Discord");
                 }
                 if (!userGuilds) throw new Error("Failed to fetch guilds after retries");
             }

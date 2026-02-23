@@ -39,6 +39,7 @@ async function loadGuilds() {
 
     const d = await api("/api/guilds");
     sel.innerHTML = "";
+    sel.disabled = false; // Always re-enable so user can try Reload
 
     if (d && d.ok && d.guilds && d.guilds.length) {
         const lastGid = localStorage.getItem("last_guild_id");
@@ -51,7 +52,6 @@ async function loadGuilds() {
             if (lastGid && g.id === lastGid) selectedIndex = i;
         });
         sel.selectedIndex = selectedIndex;
-        sel.disabled = false;
         _guildsLoaded = true;
         return true;
     }
@@ -59,7 +59,7 @@ async function loadGuilds() {
     const o = document.createElement("option"); o.textContent = `(${t("no_guilds")})`; sel.appendChild(o);
     const errMsg = (d && d.error) ? d.error : "Check Bot Permissions/Invite";
     const statusEl = $("guildStatus");
-    if (statusEl) statusEl.innerHTML = '<span style="color:var(--danger-color)">' + escapeHTML(errMsg) + '</span>';
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--danger-color)">⚠️ ' + escapeHTML(errMsg) + ' — Reloadを押して再試行してください</span>';
     return false;
 }
 
@@ -293,8 +293,6 @@ async function initSettings() {
             if ($("threshold")) $("threshold").value = s.ng_threshold ?? 3;
             if ($("timeout")) $("timeout").value = s.timeout_minutes ?? 10;
 
-            if ($("antiraidEnabled")) $("antiraidEnabled").checked = s.antiraid_enabled;
-            if ($("antiraidThreshold")) $("antiraidThreshold").value = s.antiraid_threshold ?? 10;
             if ($("introGateEnabled")) $("introGateEnabled").checked = s.self_intro_enabled;
             if ($("introRole")) $("introRole").value = s.self_intro_role_id || "";
             if ($("introMinLen")) $("introMinLen").value = s.self_intro_min_length ?? 10;
@@ -337,7 +335,7 @@ async function initSettings() {
             };
 
             // Force enable all sections based on the new accordion structure
-            ["antiraidEnabled", "introGateEnabled"].forEach(id => toggleAlphaSection(id, true));
+            ["introGateEnabled"].forEach(id => toggleAlphaSection(id, true));
 
             // VC Report Fields
             if ($("vcReportCh")) $("vcReportCh").value = s.vc_report_channel_id || "";
@@ -395,8 +393,6 @@ async function initSettings() {
             ng_threshold: parseInt($("threshold")?.value || 3),
             timeout_minutes: parseInt($("timeout")?.value || 10),
 
-            antiraid_enabled: $("antiraidEnabled")?.checked || false,
-            antiraid_threshold: parseInt($("antiraidThreshold")?.value || 10),
             self_intro_enabled: $("introGateEnabled")?.checked || false,
             self_intro_role_id: $("introRole")?.value || "",
             self_intro_min_length: parseInt($("introMinLen")?.value || 10),
