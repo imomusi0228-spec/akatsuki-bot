@@ -190,6 +190,7 @@ window.releaseNgTimeout = async (uid, gid) => {
 };
 
 async function initSettings() {
+    _guildsLoaded = false; // Reset so settings page always loads fresh guild list
     if (!await loadGuilds()) return;
 
     const selLog = $("logCh");
@@ -206,7 +207,7 @@ async function initSettings() {
             const errorMsg = !ch.ok ? (ch.error || "API Error") : (channels.length === 0 ? "No Text Channels" : null);
 
             // 1. Log Channels (Text-based)
-            const textSelects = [selLog, selNgLog, $("reportCh"), $("aiAdviceCh"), $("aiInsightCh")];
+            const textSelects = [selLog, selNgLog, $("reportCh")];
             textSelects.forEach(s => {
                 if (s) {
                     s.innerHTML = '<option value="">(None)</option>';
@@ -411,15 +412,6 @@ async function initSettings() {
             vc_report_enabled: $("vcReportEnabled")?.checked || false,
             vc_report_channel_id: $("vcReportCh") ? $("vcReportCh").value : "",
             vc_report_interval: $("vcReportInterval") ? $("vcReportInterval").value : "weekly",
-            ai_advice_days: parseInt($("aiAdviceDays")?.value || 14),
-            ai_advice_channel_id: $("aiAdviceCh")?.value || "",
-            ai_insight_enabled: ($("aiInsightEnabled"))?.checked || false,
-            ai_insight_channel_id: $("aiInsightCh")?.value || "",
-            insight_sections: [
-                ...($("insightGrowth")?.checked ? ["growth"] : []),
-                ...($("insightToxicity")?.checked ? ["toxicity"] : []),
-                ...($("insightVc")?.checked ? ["vc"] : [])
-            ],
             phase2_threshold: parseInt($("phase2Threshold")?.value || 3),
             phase2_action: $("phase2Action")?.value || 'timeout',
             phase3_threshold: parseInt($("phase3Threshold")?.value || 6),
@@ -438,7 +430,6 @@ async function initSettings() {
             color_ticket: $("colorTicket")?.value || "#2ECC71",
             dashboard_theme_color: $("colorDashboard")?.value || "#1d9bf0",
             branding_footer_text: $("brandingFooterText")?.value || "",
-            ai_prediction_enabled: $("aiPredictionEnabled")?.checked || false,
             auto_vc_creator_id: $("autoVcCategory")?.value || null
         };
 
@@ -878,6 +869,11 @@ window.initBrandingPage = async () => {
             saveBtn.textContent = "変更を適用する";
 
             if (res.ok) {
+                // Persist theme to localStorage for global page theme application
+                try {
+                    localStorage.setItem('dashboard_theme_mode', body.dashboard_theme_mode);
+                    localStorage.setItem('dashboard_theme_color', body.dashboard_theme_color);
+                } catch (e) { }
                 stat.textContent = "✅ 美学が反映されました";
                 stat.style.color = "var(--success-color)";
                 setTimeout(() => stat.textContent = "", 3000);
@@ -970,24 +966,30 @@ window.initAiPage = async () => {
     refresh();
 };
 
-// Global initializer to apply saved theme early
+// Global initializer: apply footer branding text
 (async function () {
-    const savedGid = localStorage.getItem("selected_guild");
-    if (savedGid) {
-        // We might not have client-side api() ready if script order is weird, 
-        // but typically dashboard.js is at the bottom.
-        const res = await fetch(`/api/settings?guild=${savedGid}`).then(r => r.json()).catch(() => null);
-        if (res && res.ok && res.settings) {
-            document.body.className = 'theme-' + (res.settings.dashboard_theme_mode || 'midnight');
-            applyThemeColor(res.settings.dashboard_theme_color);
-
-            // Apply footer branding
-            const footerDisplay = document.getElementById("branding-footer-display");
-            if (footerDisplay && res.settings.branding_footer_text) {
-                footerDisplay.textContent = res.settings.branding_footer_text;
+    try {
+        const savedGid = localStorage.getItem("last_guild_id") || localStorage.getItem("selected_guild");
+        if (savedGid) {
+            const res = await fetch(`/api/settings?guild=${savedGid}`).then(r => r.json()).catch(() => null);
+            if (res && res.ok && res.settings) {
+                // Apply footer branding text
+                const footerDisplay = document.getElementById("branding-footer-display");
+                if (footerDisplay && res.settings.branding_footer_text) {
+                    footerDisplay.textContent = res.settings.branding_footer_text;
+                }
+                // Also update localStorage theme if not set yet (first visit)
+                if (!localStorage.getItem('dashboard_theme_mode') && res.settings.dashboard_theme_mode) {
+                    localStorage.setItem('dashboard_theme_mode', res.settings.dashboard_theme_mode);
+                    document.body.className = 'theme-' + res.settings.dashboard_theme_mode;
+                }
+                if (!localStorage.getItem('dashboard_theme_color') && res.settings.dashboard_theme_color) {
+                    localStorage.setItem('dashboard_theme_color', res.settings.dashboard_theme_color);
+                    applyThemeColor(res.settings.dashboard_theme_color);
+                }
             }
         }
-    }
+    } catch (e) { }
 })();
 
 

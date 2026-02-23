@@ -172,7 +172,7 @@
         }
     });
 
-    function selectThemeMode(mode) {
+    window.selectThemeMode = function (mode) {
         document.getElementById('dashboard_theme_mode').value = mode;
         // Update UI Selection
         document.querySelectorAll('.theme-option').forEach(el => el.classList.remove('selected'));
@@ -181,7 +181,10 @@
 
         // Instant Preview
         document.body.className = 'theme-' + mode;
-    }
+
+        // Persist to localStorage so all pages apply the theme
+        try { localStorage.setItem('dashboard_theme_mode', mode); } catch (e) { }
+    };
 
     function previewBranding() {
         const color = document.getElementById('dashboard_theme_color').value;
