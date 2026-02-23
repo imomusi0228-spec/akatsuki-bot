@@ -103,9 +103,9 @@
             background: var(--card-bg);
             border: 1px solid var(--border-color);
             border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 16px;
-            max-width: 900px;
+            padding: 15px;
+            margin-bottom: 12px;
+            max-width: 1000px;
             margin-left: auto;
             margin-right: auto;
         }
@@ -284,7 +284,7 @@
     <script>
         // Data Loading Block
         window.lang = "<%= lang %>";
-        window.DICTIONARY = <%- dictionary %>;
+        window.DICTIONARY = <% - dictionary %>;
     </script>
 </head>
 
@@ -353,46 +353,47 @@
     </div>
 
     <% if (oauth && user) { %>
-    <div class="nav-bar">
-        <a href="/admin/dashboard" class="nav-item <%= activeTab === 'dashboard' ? 'active' : '' %>">
-            <%= t("dashboard") %>
-        </a>
-        <a href="/admin/settings" class="nav-item <%= activeTab === 'settings' ? 'active' : '' %>">
-            <%= t("settings") %>
-        </a>
-        <a href="/admin/branding" class="nav-item <%= activeTab === 'branding' ? 'active' : '' %>">
-            <span class="nav-icon">🎨</span>
-            <span>ブランディング</span>
-        </a>
-        <a href="/admin/tickets" class="nav-item <%= title === 'Ticket Management' ? 'active' : '' %>">
-            <span class="nav-icon">🎫</span>
-            <span>チケット管理</span>
-        </a>
-        <a href="/admin/activity" class="nav-item <%= activeTab === 'activity' ? 'active' : '' %>">
-            <%= t("activity") %>
-        </a>
-        <a href="/admin/antiraid" class="nav-item <%= activeTab === 'antiraid' ? 'active' : '' %>">
-            <%= t("nav_antiraid") %>
-        </a>
-        <a href="/admin/ai" class="nav-item <%= activeTab === 'ai' ? 'active' : '' %>">
-            <span class="nav-icon">🤖</span>
-            <span>AI 分析</span>
-        </a>
-    </div>
-    <% } %>
-
-        <div id="main-content">
-            <%- content %>
+        <div class="nav-bar">
+            <a href="/admin/dashboard" class="nav-item <%= activeTab === 'dashboard' ? 'active' : '' %>">
+                <%= t("dashboard") %>
+            </a>
+            <a href="/admin/settings" class="nav-item <%= activeTab === 'settings' ? 'active' : '' %>">
+                <%= t("settings") %>
+            </a>
+            <a href="/admin/branding" class="nav-item <%= activeTab === 'branding' ? 'active' : '' %>">
+                <span class="nav-icon">🎨</span>
+                <span>ブランディング</span>
+            </a>
+            <a href="/admin/tickets" class="nav-item <%= title === 'Ticket Management' ? 'active' : '' %>">
+                <span class="nav-icon">🎫</span>
+                <span>チケット管理</span>
+            </a>
+            <a href="/admin/activity" class="nav-item <%= activeTab === 'activity' ? 'active' : '' %>">
+                <%= t("activity") %>
+            </a>
+            <a href="/admin/antiraid" class="nav-item <%= activeTab === 'antiraid' ? 'active' : '' %>">
+                <%= t("nav_antiraid") %>
+            </a>
+            <a href="/admin/ai" class="nav-item <%= activeTab === 'ai' ? 'active' : '' %>">
+                <span class="nav-icon">🤖</span>
+                <span>AI 分析</span>
+            </a>
         </div>
+        <% } %>
 
-        <div style="text-align:center; padding: 20px; color: var(--text-secondary); font-size:0.8em; margin-top:40px;">
-            <div id="branding-footer-display">
-                &copy; <%= new Date().getFullYear() %> Akatsuki Bot
+            <div id="main-content">
+                <%- content %>
             </div>
-        </div>
 
-        <script src="/js/dashboard.js"></script>
-        <%- scripts %>
+            <div
+                style="text-align:center; padding: 20px; color: var(--text-secondary); font-size:0.8em; margin-top:40px;">
+                <div id="branding-footer-display">
+                    &copy; <%= new Date().getFullYear() %> Akatsuki Bot
+                </div>
+            </div>
+
+            <script src="/js/dashboard.js"></script>
+            <%- scripts %>
 </body>
 
 </html>

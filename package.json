@@ -1,6 +1,6 @@
 {
     "name": "akatsuki-bot",
-    "version": "2.4.2",
+    "version": "2.4.4",
     "description": "Discord server management bot (Railway ready)",
     "type": "module",
     "main": "index.js",
