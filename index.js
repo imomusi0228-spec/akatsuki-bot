@@ -5,7 +5,6 @@ import { loadEvents } from "./core/eventLoader.js";
 import { startServer } from "./core/server.js";
 
 import { runEngagementCheck } from "./services/engagement.js";
-import { runAnnouncerCheck } from "./services/announcer.js";
 import { runDataPruning } from "./services/pruning.js";
 import { runInsightCheck } from "./services/insight.js";
 import { runIntroReminder } from "./services/introReminder.js";
@@ -40,19 +39,20 @@ process.on("unhandledRejection", (reason) => {
         // 5. Start Background Tasks
         console.log("⚙️  Initializing Background Tasks...");
 
-        const runTasks = () => {
-            runEngagementCheck();
-            runAnnouncerCheck();
-            runDataPruning();
-            runInsightCheck();
-            runIntroReminder();
+        const runTasks = async () => {
+            await runEngagementCheck();
+            await new Promise(r => setTimeout(r, 5000)); // 5s delay
+            await runDataPruning();
+            await new Promise(r => setTimeout(r, 5000));
+            await runInsightCheck();
+            await new Promise(r => setTimeout(r, 5000));
+            await runIntroReminder();
         };
 
 
-        runTasks(); // Initial run
+        runTasks(); // Initial run (async)
 
         setInterval(runEngagementCheck, 60 * 60 * 1000);      // 1 hour
-        setInterval(runAnnouncerCheck, 24 * 60 * 60 * 1000);  // 24 hours
         setInterval(runDataPruning, 24 * 60 * 60 * 1000);     // 24 hours
         setInterval(runInsightCheck, 2 * 60 * 60 * 1000);     // 2 hours
         setInterval(runIntroReminder, 6 * 60 * 60 * 1000);    // 6 hours

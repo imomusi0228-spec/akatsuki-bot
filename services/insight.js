@@ -17,7 +17,7 @@ export async function runInsightCheck() {
             // 週に一度（7日間隔）
             if ((now - lastSent) < 7 * 24 * 60 * 60 * 1000) continue;
 
-            const guild = await client.guilds.fetch(settings.guild_id).catch(() => null);
+            const guild = client.guilds.cache.get(settings.guild_id) || await client.guilds.fetch(settings.guild_id).catch(() => null);
             if (!guild) continue;
 
             await generateAndSendInsight(guild, settings);

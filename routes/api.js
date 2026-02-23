@@ -639,7 +639,7 @@ export async function handleApiRoute(req, res, pathname, url) {
                 body.color_level || '#FFD700',
                 body.color_ticket || '#2ECC71',
                 body.dashboard_theme_color || '#5865F2',
-                body.dashboard_theme_mode || 'dark',
+                body.dashboard_theme_mode || 'midnight',
                 body.ai_prediction_enabled === true,
                 body.auto_vc_creator_id || null,
                 body.ticket_staff_role_id || null
