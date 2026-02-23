@@ -1,0 +1,28 @@
+{
+  "distribution": [
+    {
+      "status": "closed",
+      "cnt": "3"
+    }
+  ],
+  "last5": [
+    {
+      "id": 3,
+      "guild_id": "1467338822051430572",
+      "status": "closed",
+      "created_at": "2026-02-23T20:03:08.205Z"
+    },
+    {
+      "id": 2,
+      "guild_id": "1467338822051430572",
+      "status": "closed",
+      "created_at": "2026-02-23T19:47:46.775Z"
+    },
+    {
+      "id": 1,
+      "guild_id": "1467338822051430572",
+      "status": "closed",
+      "created_at": "2026-02-23T09:29:23.189Z"
+    }
+  ]
+}

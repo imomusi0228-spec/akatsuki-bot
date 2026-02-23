@@ -32,9 +32,19 @@ export default {
                 const raidThreshold = settings.raid_join_threshold || threshold;
                 const joinCount = cache.recordJoin(member.guild.id);
 
+                // 2.0 Avatar Scrutiny (v2.4.9)
+                let suspiciousBurst = false;
+                if (settings.antiraid_avatar_scrutiny_enabled && !member.user.avatar) {
+                    const { recordAvatarJoin } = await import("../core/protection.js");
+                    suspiciousBurst = recordAvatarJoin(member.guild.id);
+                }
+
                 // 2.1 Rapid Join Detection & Auto-Lockdown
-                if (joinCount >= raidThreshold) {
-                    console.warn(`[ANTI-RAID] Raid detected in ${member.guild.name}! (${joinCount} joins/min)`);
+                // If suspicious burst (avatar-less), lower threshold by 50%
+                const effectiveThreshold = suspiciousBurst ? Math.max(2, Math.floor(raidThreshold / 2)) : raidThreshold;
+
+                if (joinCount >= effectiveThreshold) {
+                    console.warn(`[ANTI-RAID] Raid detected in ${member.guild.name}! (${joinCount} joins/min, Audit: ${suspiciousBurst ? 'Avatar-less Burst' : 'Regular Rate'})`);
 
                     const { EmbedBuilder, VerificationLevel } = await import("discord.js");
                     const { sendLog } = await import("../core/logger.js");
@@ -50,9 +60,13 @@ export default {
 
                                 // Auto-upgrade mode to Red internally if it was lower
                                 if (guardLevel < 2) {
-                                    await dbQuery("UPDATE settings SET antiraid_guard_level = 2, updated_at = NOW() WHERE guild_id = $1", [member.guild.id]);
-                                    cache.setSettings(member.guild.id, { ...settings, antiraid_guard_level: 2 });
+                                    await dbQuery("UPDATE settings SET antiraid_guard_level = 2, updated_at = NOW(), last_raid_at = NOW() WHERE guild_id = $1", [member.guild.id]);
+                                    cache.setSettings(member.guild.id, { ...settings, antiraid_guard_level: 2, last_raid_at: new Date() });
+                                } else {
+                                    await dbQuery("UPDATE settings SET last_raid_at = NOW() WHERE guild_id = $1", [member.guild.id]);
                                 }
+                            } else {
+                                await dbQuery("UPDATE settings SET last_raid_at = NOW() WHERE guild_id = $1", [member.guild.id]);
                             }
                         } catch (e) {
                             console.error("[ANTI-RAID] Failed to set verification level:", e.message);

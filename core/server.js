@@ -42,6 +42,21 @@ export async function startServer() {
                 return;
             }
 
+            // Transcripts (v2.4.8)
+            if (pathname.startsWith("/transcripts/")) {
+                const transcriptId = pathname.replace("/transcripts/", "");
+                const safeId = transcriptId.replace(/[^a-zA-Z0-9-]/g, ""); // Security
+                const filePath = path.join(process.cwd(), "public", "transcripts", `${safeId}.html`);
+
+                if (fs.existsSync(filePath)) {
+                    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+                    fs.createReadStream(filePath).pipe(res);
+                } else {
+                    res.writeHead(404); res.end("Transcript Not Found");
+                }
+                return;
+            }
+
             // 5. Health Check (for Render/Deployment)
             if (pathname === "/health") {
                 res.writeHead(200, { "Content-Type": "text/plain" });

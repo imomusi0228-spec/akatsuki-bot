@@ -260,3 +260,60 @@ export function isMemberRestricted(member, settings) {
 
     return false;
 }
+
+// v2.4.9: Mass Mention Tracker
+const crossUserMentionCache = new Map();
+
+/**
+ * Checks for "Multiple users mentioning many unique users" (Mass Mention Raid).
+ */
+export function checkCrossUserMentionSpam(guildId, mentionedUserIds) {
+    if (!mentionedUserIds || mentionedUserIds.length === 0) return { isSpam: false, count: 0 };
+
+    if (!crossUserMentionCache.has(guildId)) {
+        enforceLimit(crossUserMentionCache, MAX_GUILD_ENTRIES);
+        crossUserMentionCache.set(guildId, { users: new Set(), timestamp: Date.now() });
+    }
+
+    const entry = crossUserMentionCache.get(guildId);
+    const now = Date.now();
+
+    // Reset every 5 minutes for aggressive detection
+    if (now - entry.timestamp > 300000) {
+        entry.users = new Set(mentionedUserIds);
+        entry.timestamp = now;
+    } else {
+        mentionedUserIds.forEach(id => entry.users.add(id));
+    }
+
+    // Threshold: 15 unique users mentioned across the server in 5 minutes by potentially many attackers
+    const isSpam = entry.users.size >= 15;
+    return { isSpam, count: entry.users.size };
+}
+
+// v2.4.9: Avatar Scrutiny Cache
+const avatarScrutinyCache = new Map();
+
+/**
+ * Records a join of a user without an avatar.
+ * Returns true if a suspicious burst is detected (3 joins in 3 mins).
+ */
+export function recordAvatarJoin(guildId) {
+    if (!avatarScrutinyCache.has(guildId)) {
+        enforceLimit(avatarScrutinyCache, MAX_GUILD_ENTRIES);
+        avatarScrutinyCache.set(guildId, { count: 0, timestamp: Date.now() });
+    }
+
+    const entry = avatarScrutinyCache.get(guildId);
+    const now = Date.now();
+
+    if (now - entry.timestamp > 180000) {
+        entry.count = 1;
+        entry.timestamp = now;
+    } else {
+        entry.count += 1;
+    }
+
+    return entry.count >= 3;
+}
+

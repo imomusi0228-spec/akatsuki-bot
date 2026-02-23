@@ -1,6 +1,12 @@
-import { Events, MessageFlags, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, AttachmentBuilder } from "discord.js";
+import { Events, MessageFlags, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, AttachmentBuilder, UserSelectMenuBuilder } from "discord.js";
 import { client } from "../core/client.js";
 import { dbQuery } from "../core/db.js";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export default {
     name: Events.InteractionCreate,
@@ -19,6 +25,24 @@ export default {
             return;
         }
 
+        if (interaction.isAnySelectMenu()) {
+            if (interaction.customId === 'ticket_assign_menu') {
+                await interaction.deferUpdate();
+                const userId = interaction.values[0];
+                await dbQuery("UPDATE tickets SET assigned_to = $1 WHERE channel_id = $2", [userId, interaction.channel.id]);
+
+                const embeds = interaction.message.embeds.map(e => EmbedBuilder.from(e));
+                if (embeds[1]) {
+                    embeds[1].setDescription(`✅ **担当者決定**: <@${userId}>`)
+                        .setColor(0x2ECC71);
+                }
+
+                await interaction.editReply({ embeds });
+                await interaction.channel.send(`👤 <@${interaction.user.id}> が <@${userId}> をこのチケットの担当に指名しました。`);
+            }
+            return;
+        }
+
         if (interaction.isButton()) {
             const guildId = interaction.guild.id;
 
@@ -26,7 +50,7 @@ export default {
             if (interaction.customId === 'ticket_create') {
                 await interaction.deferReply({ ephemeral: true });
 
-                const settingsRes = await dbQuery("SELECT ticket_welcome_msg, color_ticket FROM settings WHERE guild_id = $1", [guildId]);
+                const settingsRes = await dbQuery("SELECT ticket_welcome_msg, color_ticket, ticket_staff_role_id, ticket_log_channel_id FROM settings WHERE guild_id = $1", [guildId]);
                 const settings = settingsRes.rows[0];
 
                 const channel = await interaction.guild.channels.create({
@@ -38,7 +62,7 @@ export default {
                     ],
                 });
 
-                await dbQuery("INSERT INTO tickets (guild_id, channel_id, user_id) VALUES ($1, $2, $3)", [guildId, channel.id, interaction.user.id]);
+                await dbQuery("INSERT INTO tickets (guild_id, channel_id, user_id, status) VALUES ($1, $2, $3, 'open')", [guildId, channel.id, interaction.user.id]);
 
                 const welcomeMsg = settings?.ticket_welcome_msg || `こんにちは <@${interaction.user.id}> さん。\nスタッフが対応するまで、相談内容や証拠をここに記入してお待ちください。\n解決した場合は、下のボタンでチケットをクローズできます。`;
                 const embedColor = settings?.color_ticket ? parseInt(settings.color_ticket.replace('#', ''), 16) : 0x00FF00;
@@ -73,7 +97,18 @@ export default {
                         .setStyle(ButtonStyle.Secondary)
                 );
 
-                await channel.send({ content: `<@${interaction.user.id}> さんがチケットを作成しました。`, embeds: [userEmbed, staffEmbed], components: [userRow, staffRow] });
+                const assignMenuRow = new ActionRowBuilder().addComponents(
+                    new UserSelectMenuBuilder()
+                        .setCustomId("ticket_assign_menu")
+                        .setPlaceholder("担当を直接指定（モデレーター用）")
+                );
+
+                const mention = settings?.ticket_staff_role_id ? `<@&${settings.ticket_staff_role_id}>` : "";
+                await channel.send({
+                    content: `${mention} <@${interaction.user.id}> さんがチケットを作成しました。`,
+                    embeds: [userEmbed, staffEmbed],
+                    components: [userRow, staffRow, assignMenuRow]
+                });
                 await interaction.editReply(`✅ チケットを作成しました: <#${channel.id}>`);
             }
 
@@ -116,65 +151,52 @@ export default {
 
                 // Get Ticket Info from DB
                 const ticketRes = await dbQuery("SELECT user_id, created_at FROM tickets WHERE channel_id = $1", [interaction.channel.id]);
+                const settingsRes = await dbQuery("SELECT ticket_log_channel_id FROM settings WHERE guild_id = $1", [guildId]);
                 const ticketData = ticketRes.rows[0];
+                const settings = settingsRes.rows[0];
                 const creatorId = ticketData?.user_id;
+
                 const creator = creatorId ? await interaction.guild.members.fetch(creatorId).catch(() => null) : null;
                 const creatorTag = creator ? creator.user.tag : "不明なユーザー";
 
-                // Generate HTML Transcript (Ticket Tool Style)
+                // Generate HTML Transcript
                 const messages = await interaction.channel.messages.fetch({ limit: 100 });
                 const logs = Array.from(messages.values()).reverse();
 
-                let html = `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="utf-8">
-                    <title>Ticket Transcript - ${interaction.channel.name}</title>
-                    <style>
-                        body { background-color: #36393f; color: #dcddde; font-family: sans-serif; padding: 20px; }
-                        .msg { display: flex; margin-bottom: 20px; }
-                        .avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 15px; }
-                        .content { flex-grow: 1; }
-                        .author { font-weight: bold; color: #fff; margin-right: 5px; }
-                        .time { font-size: 0.75rem; color: #72767d; }
-                        .text { margin-top: 5px; line-height: 1.4; }
-                    </style>
-                </head>
-                <body>
-                    <h2>Transcript: ${interaction.channel.name}</h2>
-                    <p>Created by: ${creatorTag} | Closed by: ${interaction.user.tag}</p>
-                    <hr style="border-color: #4f545c;">
-                `;
+                let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Transcript - ${interaction.channel.name}</title><style>body { background-color: #36393f; color: #dcddde; font-family: sans-serif; padding: 20px; } .msg { display: flex; margin-bottom: 20px; } .avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 15px; } .content { flex-grow: 1; } .author { font-weight: bold; color: #fff; margin-right: 5px; } .time { font-size: 0.75rem; color: #72767d; } .text { margin-top: 5px; line-height: 1.4; }</style></head><body><h2>Transcript: ${interaction.channel.name}</h2><p>Created by: ${creatorTag} | Closed by: ${interaction.user.tag}</p><hr style="border-color: #4f545c;">`;
 
                 for (const m of logs) {
                     const time = m.createdAt.toLocaleString("ja-JP");
                     const content = m.content.replace(/\n/g, "<br>");
-                    html += `
-                    <div class="msg">
-                        <img class="avatar" src="${m.author.displayAvatarURL()}">
-                        <div class="content">
-                            <span class="author">${m.author.tag}</span>
-                            <span class="time">${time}</span>
-                            <div class="text">${content}</div>
-                        </div>
-                    </div>`;
+                    html += `<div class="msg"><img class="avatar" src="${m.author.displayAvatarURL()}"><div class="content"><span class="author">${m.author.tag}</span> <span class="time">${time}</span><div class="text">${content}</div></div></div>`;
                 }
                 html += "</body></html>";
+
+                // Save to file for Web View
+                const transcriptId = `${guildId}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+                const transcriptPath = path.join(ROOT_DIR, "public", "transcripts", `${transcriptId}.html`);
+                fs.writeFileSync(transcriptPath, html);
 
                 const buffer = Buffer.from(html, "utf-8");
                 const attachment = new AttachmentBuilder(buffer, { name: `transcript-${interaction.channel.name}.html` });
 
-                const { sendLog } = await import("../core/logger.js");
                 const logEmbed = new EmbedBuilder()
                     .setTitle("🎫 チケットクローズ")
                     .setDescription(`**チケット**: ${interaction.channel.name}\n**作成者**: <@${creatorId || interaction.user.id}>\n**クローズした人**: <@${interaction.user.id}>`)
-                    .setColor(0x00A2E8) // 青いバー
+                    .addFields({ name: "WebログURL", value: `[ログをブラウザで表示](${process.env.DASHBOARD_URL || ""}/transcripts/${transcriptId})` })
+                    .setColor(0x00A2E8)
                     .setTimestamp();
 
-                await sendLog(interaction.guild, 'ng', { embeds: [logEmbed], files: [attachment] });
+                // Send Log to configured channel or default
+                if (settings?.ticket_log_channel_id) {
+                    const logCh = interaction.guild.channels.cache.get(settings.ticket_log_channel_id);
+                    if (logCh) await logCh.send({ embeds: [logEmbed], files: [attachment] });
+                } else {
+                    const { sendLog } = await import("../core/logger.js");
+                    await sendLog(interaction.guild, 'ng', { embeds: [logEmbed], files: [attachment] });
+                }
 
-                await dbQuery("UPDATE tickets SET status = 'closed', closed_at = NOW() WHERE channel_id = $1", [interaction.channel.id]);
+                await dbQuery("UPDATE tickets SET status = 'closed', closed_at = NOW(), transcript_id = $1 WHERE channel_id = $2", [transcriptId, interaction.channel.id]);
                 await interaction.editReply("🔒 チケットをクローズし、ログを保存しました。5秒後にチャンネルを削除します。");
                 setTimeout(() => interaction.channel.delete().catch(() => { }), 5000);
             }

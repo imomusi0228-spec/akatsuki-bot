@@ -327,8 +327,17 @@ export async function initDb() {
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ticket_staff_role_id TEXT;`,
 
             // Tickets assignment
-            `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS assigned_to TEXT;`
+            `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS assigned_to TEXT;`,
 
+            // v2.4.8: Ticket Log & Transcripts
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ticket_log_channel_id TEXT;`,
+            `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS transcript_id TEXT;`,
+
+            // v2.4.9: Iron Fortress II (Advanced Anti-Raid)
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS antiraid_auto_recovery_enabled BOOLEAN DEFAULT FALSE;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS antiraid_honeypot_channel_id TEXT;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS antiraid_avatar_scrutiny_enabled BOOLEAN DEFAULT FALSE;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS last_raid_at TIMESTAMPTZ;`
 
         ];
 

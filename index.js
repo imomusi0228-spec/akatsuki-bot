@@ -8,6 +8,7 @@ import { runEngagementCheck } from "./services/engagement.js";
 import { runDataPruning } from "./services/pruning.js";
 import { runInsightCheck } from "./services/insight.js";
 import { runIntroReminder } from "./services/introReminder.js";
+import { runAutoRecoveryCheck } from "./services/antiraidRecovery.js";
 
 
 // Global Error Handlers for Production Stability
@@ -19,7 +20,7 @@ process.on("unhandledRejection", (reason) => {
 });
 
 (async () => {
-    console.log("🚀 Booting Akatsuki Bot (v2.4.7)...");
+    console.log("🚀 Booting Akatsuki Bot (v2.5.0)...");
 
     try {
         // 1. Initialize Database
@@ -47,6 +48,8 @@ process.on("unhandledRejection", (reason) => {
             await runInsightCheck();
             await new Promise(r => setTimeout(r, 5000));
             await runIntroReminder();
+            await new Promise(r => setTimeout(r, 5000));
+            await runAutoRecoveryCheck();
         };
 
 
@@ -56,6 +59,7 @@ process.on("unhandledRejection", (reason) => {
         setInterval(runDataPruning, 24 * 60 * 60 * 1000);     // 24 hours
         setInterval(runInsightCheck, 2 * 60 * 60 * 1000);     // 2 hours
         setInterval(runIntroReminder, 6 * 60 * 60 * 1000);    // 6 hours
+        setInterval(runAutoRecoveryCheck, 10 * 60 * 1000);   // 10 minutes
 
 
         console.log("✅ All systems initialized successfully.");

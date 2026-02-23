@@ -498,10 +498,11 @@ window.initTicketsPage = async () => {
         const list = $("ticketList");
         if (list) list.innerHTML = `<tr><td colspan="6" class="muted" style="text-align:center; padding:30px;">${t("loading")}...</td></tr>`;
 
-        const [ticketsRes, settingsRes, rolesRes] = await Promise.all([
+        const [ticketsRes, settingsRes, rolesRes, channelsRes] = await Promise.all([
             api(`/api/tickets?guild=${gid}&status=${status}`),
             api(`/api/settings?guild=${gid}`),
-            api(`/api/roles?guild=${gid}`)
+            api(`/api/roles?guild=${gid}`),
+            api(`/api/channels?guild=${gid}`)
         ]);
 
         // Populate Roles
@@ -511,6 +512,16 @@ window.initTicketsPage = async () => {
                 rolesRes.roles.map(r => `<option value="${r.id}">${escapeHTML(r.name)}</option>`).join("");
             if (settingsRes.ok && settingsRes.settings) {
                 roleSel.value = settingsRes.settings.ticket_staff_role_id || "";
+            }
+        }
+
+        // Populate Log Channels
+        const logChSel = $("ticketLogCh");
+        if (logChSel && channelsRes.ok) {
+            logChSel.innerHTML = '<option value="">--- チャンネルを選択してください ---</option>' +
+                channelsRes.channels.filter(c => c.type === 0).map(c => `<option value="${c.id}">#${escapeHTML(c.name)}</option>`).join("");
+            if (settingsRes.ok && settingsRes.settings) {
+                logChSel.value = settingsRes.settings.ticket_log_channel_id || "";
             }
         }
 
@@ -533,7 +544,10 @@ window.initTicketsPage = async () => {
                             ${t.status === 'open' ? `
                                 <button class="staff-assign-btn" onclick="openAssignModal('${t.id}')">担当依頼</button>
                                 <button class="btn" style="padding:2px 8px; font-size:11px; border-color:var(--danger-color); color:var(--danger-color);" onclick="closeWebTicket('${t.id}')">解決</button>
-                            ` : '-'}
+                            ` : `
+                                ${t.transcript_id ? `<a href="/transcripts/${t.transcript_id}.html" target="_blank" class="btn" style="padding:2px 8px; font-size:11px; text-decoration:none; margin-right:5px;">ログ</a>` : ''}
+                                <button class="btn btn-delete" onclick="deleteTicket('${t.id}')">破棄</button>
+                            `}
                         </td>
                     </tr>
                 `).join("");
@@ -543,6 +557,7 @@ window.initTicketsPage = async () => {
 
     if (!await loadGuilds()) return;
     if ($("statusFilter")) $("statusFilter").onchange = window.__pageReload;
+    if ($("refreshTickets")) $("refreshTickets").onclick = window.__pageReload;
     window.__pageReload();
 
     if ($("saveTicketSettings")) $("saveTicketSettings").onclick = async () => {
@@ -551,7 +566,8 @@ window.initTicketsPage = async () => {
         const body = {
             guild: gid,
             ticket_welcome_msg: $("ticketWelcomeMsg")?.value || "",
-            ticket_staff_role_id: $("ticketStaffRole")?.value || null
+            ticket_staff_role_id: $("ticketStaffRole")?.value || null,
+            ticket_log_channel_id: $("ticketLogCh")?.value || null
         };
         const res = await api("/api/settings/update", body);
         if (res.ok) alert(t("save_success")); else alert("Error: " + res.error);
@@ -608,6 +624,19 @@ window.closeWebTicket = async (id) => {
     const res = await api("/api/tickets/close", { guild: gid, ticket_id: id });
     if (res.ok) {
         alert("チケットを解決しました。");
+        if (window.__pageReload) window.__pageReload();
+    } else {
+        alert("Error: " + res.error);
+    }
+};
+
+window.deleteTicket = async (id) => {
+    if (!confirm("このチケットデータと保存されたログを完全に破棄しますか？\n(この操作は取り消せません)")) return;
+    const gid = $("globalGuildSelect")?.value;
+    if (!gid) return;
+    const res = await api("/api/tickets/delete", { guild: gid, ticket_id: id });
+    if (res.ok) {
+        alert("チケットを完全に削除しました。");
         if (window.__pageReload) window.__pageReload();
     } else {
         alert("Error: " + res.error);

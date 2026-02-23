@@ -210,6 +210,41 @@
             </div>
         </div>
 
+        <!-- 6. Iron Fortress II (v2.4.9) -->
+        <div class="accordion-item" id="sec-advanced">
+            <div class="accordion-header" onclick="toggleAccordion('sec-advanced')">
+                <span>🛡️ Iron Fortress II (要塞強化)<span class="help-tip"
+                        data-tip="高度な防衛機能（自動復旧、幽霊部員検知、ハニーポット）を設定します。">?</span></span>
+                <span>▼</span>
+            </div>
+            <div class="accordion-content">
+                <div style="margin-bottom:15px;">
+                    <label style="display:flex; align-items:center; cursor:pointer;">
+                        <input type="checkbox" id="antiraidAutoRecovery"
+                            style="width:18px; height:18px; margin-right:10px;">
+                        <span>自動復旧（自己治癒）を有効にする</span>
+                    </label>
+                    <p class="muted" style="font-size:11px; margin-left:28px;">ロックダウン後、30分間平穏が続くと自動的に通常モードへ戻ります。</p>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="display:flex; align-items:center; cursor:pointer;">
+                        <input type="checkbox" id="antiraidAvatarScrutiny"
+                            style="width:18px; height:18px; margin-right:10px;">
+                        <span>幽霊部員（アバター無し）スキャンを有効にする</span>
+                    </label>
+                    <p class="muted" style="font-size:11px; margin-left:28px;">
+                        アバター未設定のアカウントによるバースト参加を検知し、警戒レベルを自動で引き上げます。</p>
+                </div>
+                <div>
+                    <label class="muted">ハニーポット（禁じられた罠）チャンネル</label>
+                    <select id="antiraidHoneypotChannel" style="width:100%; margin-top:5px;">
+                        <option value="">無効 (None)</option>
+                    </select>
+                    <p class="muted" style="font-size:11px; margin-top:5px;">※このチャンネルで発言したロール無しユーザーを即座にBANします。</p>
+                </div>
+            </div>
+        </div>
+
         <button id="save" class="btn btn-primary" style="width:100%; padding:15px; font-size:18px; margin-top:10px;">
             要塞設定を保存
         </button>
@@ -246,6 +281,23 @@
                 document.getElementById('newcomerAccountAge').value = s.newcomer_min_account_age || 1;
                 document.getElementById('linkBlockEnabled').checked = !!s.link_block_enabled;
                 document.getElementById('domainBlacklist').value = (s.domain_blacklist || []).join(', ');
+
+                // v2.4.9 Iron Fortress II
+                document.getElementById('antiraidAutoRecovery').checked = !!s.antiraid_auto_recovery_enabled;
+                document.getElementById('antiraidAvatarScrutiny').checked = !!s.antiraid_avatar_scrutiny_enabled;
+
+                const chRes = await api("/api/channels?guild=" + gid);
+                if (chRes.ok) {
+                    const honeypotSelect = document.getElementById('antiraidHoneypotChannel');
+                    honeypotSelect.innerHTML = '<option value="">無効 (None)</option>';
+                    chRes.channels.filter(c => c.type === 0).forEach(c => {
+                        const opt = document.createElement('option');
+                        opt.value = c.id;
+                        opt.textContent = '#' + c.name;
+                        if (c.id === s.antiraid_honeypot_channel_id) opt.selected = true;
+                        honeypotSelect.appendChild(opt);
+                    });
+                }
             }
         };
 
@@ -262,7 +314,10 @@
                 newcomer_restrict_mins: parseInt(document.getElementById('newcomerRestrictMins').value),
                 newcomer_min_account_age: parseInt(document.getElementById('newcomerAccountAge').value),
                 link_block_enabled: document.getElementById('linkBlockEnabled').checked,
-                domain_blacklist: document.getElementById('domainBlacklist').value.split(',').map(s => s.trim()).filter(s => s)
+                domain_blacklist: document.getElementById('domainBlacklist').value.split(',').map(s => s.trim()).filter(s => s),
+                antiraid_auto_recovery_enabled: document.getElementById('antiraidAutoRecovery').checked,
+                antiraid_avatar_scrutiny_enabled: document.getElementById('antiraidAvatarScrutiny').checked,
+                antiraid_honeypot_channel_id: document.getElementById('antiraidHoneypotChannel').value || null
             };
 
             const res = await api("/api/settings/update", body);

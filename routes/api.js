@@ -1,5 +1,7 @@
 import { dbQuery } from "../core/db.js";
 import { getSession, discordApi } from "../middleware/auth.js";
+import fs from "fs";
+import path from "path";
 import { PermissionFlagsBits } from "discord.js";
 import { client } from "../core/client.js";
 import { TIERS, getFeatures, TIER_NAMES } from "../core/tiers.js";
@@ -545,8 +547,9 @@ export async function handleApiRoute(req, res, pathname, url) {
             const role = await guild.roles.fetch(roleId).catch(() => null);
             if (!role) return resJson({ ok: false, error: "Role not found" }, 404);
 
-            // Fetch members of the role
-            const members = role.members.map(m => ({
+            // Force fetch members of the role to avoid cache issues (v2.4.8)
+            const membersList = await guild.members.fetch({ role: roleId });
+            const members = membersList.map(m => ({
                 id: m.id,
                 name: m.user.globalName || m.user.username,
                 avatar: m.user.displayAvatarURL({ size: 64 })
@@ -581,10 +584,11 @@ export async function handleApiRoute(req, res, pathname, url) {
                     intro_reminder_hours, report_channel_id, ng_warning_enabled,
                     ticket_welcome_msg, color_log, color_ng, color_vc_join, color_vc_leave, color_level, color_ticket, 
                     dashboard_theme_color, dashboard_theme_mode, ai_prediction_enabled,
-                    auto_vc_creator_id, ticket_staff_role_id,
+                    auto_vc_creator_id, ticket_staff_role_id, ticket_log_channel_id,
+                    antiraid_auto_recovery_enabled, antiraid_honeypot_channel_id, antiraid_avatar_scrutiny_enabled,
                     updated_at
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, NOW()
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, NOW()
                 )
                 ON CONFLICT (guild_id) DO UPDATE SET
                     log_channel_id = EXCLUDED.log_channel_id,
@@ -634,6 +638,10 @@ export async function handleApiRoute(req, res, pathname, url) {
                     ai_prediction_enabled = EXCLUDED.ai_prediction_enabled,
                     auto_vc_creator_id = EXCLUDED.auto_vc_creator_id,
                     ticket_staff_role_id = EXCLUDED.ticket_staff_role_id,
+                    ticket_log_channel_id = EXCLUDED.ticket_log_channel_id,
+                    antiraid_auto_recovery_enabled = EXCLUDED.antiraid_auto_recovery_enabled,
+                    antiraid_honeypot_channel_id = EXCLUDED.antiraid_honeypot_channel_id,
+                    antiraid_avatar_scrutiny_enabled = EXCLUDED.antiraid_avatar_scrutiny_enabled,
                     updated_at = NOW();
             `, [
                 body.guild,
@@ -662,7 +670,11 @@ export async function handleApiRoute(req, res, pathname, url) {
                 body.dashboard_theme_mode || 'midnight',
                 body.ai_prediction_enabled === true,
                 body.auto_vc_creator_id || null,
-                body.ticket_staff_role_id || null
+                body.ticket_staff_role_id || null,
+                body.ticket_log_channel_id || null,
+                body.antiraid_auto_recovery_enabled === true,
+                body.antiraid_honeypot_channel_id || null,
+                body.antiraid_avatar_scrutiny_enabled === true
             ]);
         } catch (e) {
             console.error("Settings Update Error:", e);
@@ -1083,6 +1095,38 @@ export async function handleApiRoute(req, res, pathname, url) {
             return resJson({ ok: true });
         } catch (e) {
             console.error("Assign Ticket Error:", e);
+            return resJson({ ok: false, error: "Internal Error" }, 500);
+        }
+    }
+
+    // POST /api/tickets/delete (v2.5.0)
+    if (pathname === "/api/tickets/delete" && method === "POST") {
+        const body = await getBody();
+        if (!body.guild || !body.ticket_id) return resJson({ ok: false, error: "Missing fields" }, 400);
+        if (!await verifyGuild(body.guild)) return resJson({ ok: false, error: "Forbidden" }, 403);
+
+        try {
+            // 1. Get transcript ID for file deletion
+            const resData = await dbQuery("SELECT transcript_id FROM tickets WHERE id = $1 AND guild_id = $2", [body.ticket_id, body.guild]);
+            if (resData.rows.length === 0) return resJson({ ok: false, error: "Ticket not found" }, 404);
+
+            const transcriptId = resData.rows[0].transcript_id;
+
+            // 2. Delete Transcript File if exists
+            if (transcriptId) {
+                const transcriptPath = path.join(process.cwd(), "public", "transcripts", `${transcriptId}.html`);
+                if (fs.existsSync(transcriptPath)) {
+                    fs.unlinkSync(transcriptPath);
+                    console.log(`[TICKET] Deleted transcript file: ${transcriptPath}`);
+                }
+            }
+
+            // 3. Delete from DB
+            await dbQuery("DELETE FROM tickets WHERE id = $1 AND guild_id = $2", [body.ticket_id, body.guild]);
+
+            return resJson({ ok: true });
+        } catch (e) {
+            console.error("Delete Ticket Error:", e);
             return resJson({ ok: false, error: "Internal Error" }, 500);
         }
     }

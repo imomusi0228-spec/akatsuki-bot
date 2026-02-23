@@ -26,6 +26,13 @@
             <p class="muted" style="font-size:11px; margin-top:8px;">※ ここで設定したロールを持つメンバーを、チケットの担当者として割り当てることができます。</p>
         </div>
         <div style="margin-bottom:20px;">
+            <label class="muted" style="font-size:12px;">📜 チケットログ送信先チャンネル</label><br />
+            <select id="ticketLogCh" style="width:100%; margin-top:8px; padding:10px; border-radius:8px;">
+                <option value="">ロード中...</option>
+            </select>
+            <p class="muted" style="font-size:11px; margin-top:8px;">※ チケットがクローズされた際に、会話履歴（HTML）がこのチャンネルに送信されます。</p>
+        </div>
+        <div style="margin-bottom:20px;">
             <label class="muted" style="font-size:12px;">📦 チケット作成時の初期メッセージ（お嬢の言葉）</label><br />
             <textarea id="ticketWelcomeMsg"
                 style="width:100%; height:80px; margin-top:8px; padding:12px; border-radius:8px; border:1px solid var(--border-color); background:rgba(0,0,0,0.2); color:white; font-size:13px;"
@@ -139,6 +146,22 @@
         width: 32px;
         height: 32px;
         border-radius: 50%;
+    }
+
+    .btn-delete {
+        padding: 2px 8px;
+        font-size: 11px;
+        background: rgba(244, 33, 46, 0.1);
+        color: #f4212e;
+        border: 1px solid rgba(244, 33, 46, 0.3);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-delete:hover {
+        background: #f4212e;
+        color: white;
     }
 </style>
 

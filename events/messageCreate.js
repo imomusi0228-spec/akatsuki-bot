@@ -114,13 +114,28 @@ export default {
                 // 6. Suspicious Content (Invites/Links/Density)
                 const suspicious = checkSuspiciousContent(message.content, settings.domain_blacklist || []);
 
-                if (spamCheck.isSpam || mentionCheck.isSpam || rateCheck.isSpam || globalCheck.isSpam || (isRestricted && settings.antiraid_guard_level >= 1) || suspicious.isSuspicious) {
+                // 7. Mass Mention (Cross-user) (v2.4.9)
+                const { checkCrossUserMentionSpam } = await import("../core/protection.js");
+                const crossMention = checkCrossUserMentionSpam(message.guild.id, [...message.mentions.users.keys()]);
+
+                // 8. Honeypot Trap (v2.4.9)
+                let isHoneypotTriggered = false;
+                if (settings.antiraid_honeypot_channel_id === message.channel.id) {
+                    const moderatorRoleId = settings.ticket_staff_role_id;
+                    const member = message.member || await message.guild.members.fetch(message.author.id).catch(() => null);
+                    // Trigger if user is NOT a moderator/staff
+                    if (member && (!moderatorRoleId || !member.roles.cache.has(moderatorRoleId))) {
+                        isHoneypotTriggered = true;
+                    }
+                }
+
+                if (spamCheck.isSpam || mentionCheck.isSpam || rateCheck.isSpam || globalCheck.isSpam || (isRestricted && settings.antiraid_guard_level >= 1) || suspicious.isSuspicious || crossMention.isSpam || isHoneypotTriggered) {
                     const { EmbedBuilder } = await import("discord.js");
                     const { sendLog } = await import("../core/logger.js");
 
                     let action = "Delete";
                     let reason = "Spam/Security Violation";
-                    let isRaid = globalCheck.isSpam || (isRestricted && settings.antiraid_guard_level >= 2);
+                    let isRaid = globalCheck.isSpam || (isRestricted && settings.antiraid_guard_level >= 2) || crossMention.isSpam || isHoneypotTriggered;
 
                     if (spamCheck.isSpam) reason = "Similarity Spam";
                     else if (mentionCheck.isSpam) reason = "Mention Spam";
@@ -128,21 +143,31 @@ export default {
                     else if (globalCheck.isSpam) reason = "Global Raid Spam (Multiple Users)";
                     else if (isRestricted) reason = "Newcomer Restriction";
                     else if (suspicious.isSuspicious) reason = `Suspicious Content (${suspicious.reason})`;
+                    else if (crossMention.isSpam) reason = "Mass Mention Raid (Coordinated)";
+                    else if (isHoneypotTriggered) reason = "Honeypot Trap Triggered";
 
                     // Delete the message
                     await message.delete().catch(() => { });
 
-                    // High Severity Action: Kick
+                    // High Severity Action: Kick or BAN (for Raid/Honeypot)
                     const count = Math.max(spamCheck.count || 0, mentionCheck.count || 0, rateCheck.count || 0, globalCheck.count || 0);
 
                     if (count >= 5 || isRaid) {
                         const member = message.member || await message.guild.members.fetch(message.author.id).catch(() => null);
                         if (member) {
-                            if (member.kickable && isRaid) {
+                            if (isHoneypotTriggered && member.bannable) {
+                                await member.ban({ reason: "Iron Fortress: Honeypot Trap Triggered" }).catch(() => { });
+                                action = "Banned (Honeypot)";
+                            } else if (member.kickable && isRaid) {
                                 await member.kick("Iron Fortress: Raid/Security Violation").catch(() => { });
                                 action = "Kicked";
                             }
                         }
+                    }
+
+                    // Update Last Raid At (v2.4.9)
+                    if (isRaid) {
+                        await dbQuery("UPDATE settings SET last_raid_at = NOW() WHERE guild_id = $1", [message.guild.id]);
                     }
 
                     // Log to Admin Channel
