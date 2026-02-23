@@ -148,7 +148,7 @@ async function initDashboard() {
                     $("plan-info").innerHTML = `${sub.name} ${validUntil}`;
 
 
-                    const item = (l, v) => `<span style="font-weight:bold; color:var(--accent-color); font-size:14px;">${v}</span> <span style="font-size:12px; margin-right:8px;">${l}</span>`;
+                    const item = (l, v) => `<span style="font-weight:bold; color:var(--text-primary); font-size:14px; border-bottom: 2px solid var(--accent-color); padding: 0 4px;">${v}</span> <span style="font-size:12px; margin-right:8px;">${l}</span>`;
                     $("summary").innerHTML = `${item(t("vc_joins"), s.joins)} | ${item(t("leaves"), s.leaves)} | ${item(t("timeouts"), s.timeouts)} | ${item(t("ng_detect"), s.ngDetected)}`;
 
                     let rows = "";

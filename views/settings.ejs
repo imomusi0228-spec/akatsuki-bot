@@ -33,8 +33,9 @@
     }
 
     .accordion-item.active .accordion-header {
-        background: rgba(29, 155, 240, 0.1);
-        color: var(--accent-color);
+        background: rgba(var(--accent-rgb), 0.15);
+        color: var(--text-primary);
+        border-left: 4px solid var(--accent-color);
     }
 
     .ng-item {

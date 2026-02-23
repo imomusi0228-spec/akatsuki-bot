@@ -60,8 +60,9 @@
         }
 
         a {
-            color: var(--accent-color);
-            text-decoration: none;
+            color: var(--text-primary);
+            text-decoration: underline;
+            text-decoration-color: var(--accent-color);
         }
 
         a:hover {
@@ -140,7 +141,7 @@
         th {
             text-align: left;
             color: var(--text-secondary);
-            border-bottom: 1px solid var(--border-color);
+            border-bottom: 2px solid var(--accent-color);
             padding: 12px 8px;
         }
 
@@ -178,8 +179,10 @@
         }
 
         .nav-item.active {
-            color: var(--accent-color);
-            background: rgba(var(--accent-rgb), 0.1);
+            color: var(--text-primary);
+            background: rgba(var(--accent-rgb), 0.2);
+            border-bottom: 2px solid var(--accent-color);
+            border-radius: 6px 6px 0 0;
         }
 
         .lang-switch {
