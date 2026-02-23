@@ -32,9 +32,20 @@ function setLang(l) { document.cookie = "lang=" + l + ";path=/;max-age=31536000;
 
 let _guildsLoaded = false;
 async function loadGuilds() {
-    if (_guildsLoaded) return true;
     const sel = $("globalGuildSelect");
     if (!sel) return false;
+    if (_guildsLoaded) {
+        // Just re-bind the onchange and return
+        sel.onchange = () => {
+            saveGuildSelection();
+            if (window.__pageReload) window.__pageReload();
+        };
+        const reloadBtn = $("globalReload");
+        if (reloadBtn) reloadBtn.onclick = () => {
+            if (window.__pageReload) window.__pageReload();
+        };
+        return true;
+    }
 
     sel.innerHTML = `<option>${t("loading")}...</option>`;
     sel.disabled = true;
@@ -63,28 +74,29 @@ async function loadGuilds() {
             if (!lastGid || lastGid !== sel.value) {
                 saveGuildSelection();
             }
-
-            // Global Selector Event
-            sel.onchange = () => {
-                saveGuildSelection();
-                if (window.__pageReload) window.__pageReload();
-            };
-
-            const reloadBtn = $("globalReload");
-            if (reloadBtn) reloadBtn.onclick = () => {
-                if (window.__pageReload) window.__pageReload();
-            };
-
-            return true;
+        } else {
+            const o = document.createElement("option");
+            o.textContent = `(${t("no_guilds")})`;
+            sel.appendChild(o);
+            const errMsg = (d && d.error) ? d.error : "Server access denied or Bot missing permissions";
+            const statusEl = $("guildStatus");
+            if (statusEl) statusEl.innerHTML = '<span style="color:var(--danger-color)">⚠️ ' + escapeHTML(errMsg) + '</span>';
+            return false;
         }
 
-        const o = document.createElement("option");
-        o.textContent = `(${t("no_guilds")})`;
-        sel.appendChild(o);
-        const errMsg = (d && d.error) ? d.error : "Server access denied or Bot missing permissions";
-        const statusEl = $("guildStatus");
-        if (statusEl) statusEl.innerHTML = '<span style="color:var(--danger-color)">⚠️ ' + escapeHTML(errMsg) + '</span>';
-        return false;
+        // ALWAYS re-bind events even if _guildsLoaded was true
+        // This ensures that when we switch tabs, the selector calls the new page's __pageReload
+        sel.onchange = () => {
+            saveGuildSelection();
+            if (window.__pageReload) window.__pageReload();
+        };
+
+        const reloadBtn = $("globalReload");
+        if (reloadBtn) reloadBtn.onclick = () => {
+            if (window.__pageReload) window.__pageReload();
+        };
+
+        return true;
     } catch (e) {
         console.error("Guild Load Error:", e);
         sel.innerHTML = `<option>Error Loading</option>`;
@@ -519,8 +531,8 @@ window.initTicketsPage = async () => {
                         <td><span class="muted">${new Date(t.created_at).toLocaleString('ja-JP')}</span></td>
                         <td style="text-align:right;">
                             ${t.status === 'open' ? `
-                                <button class="staff-assign-btn" onclick="openAssignModal(${t.id})">担当依頼</button>
-                                <button class="btn" style="padding:2px 8px; font-size:11px; border-color:var(--danger-color); color:var(--danger-color);" onclick="closeWebTicket(${t.id})">解決</button>
+                                <button class="staff-assign-btn" onclick="openAssignModal('${t.id}')">担当依頼</button>
+                                <button class="btn" style="padding:2px 8px; font-size:11px; border-color:var(--danger-color); color:var(--danger-color);" onclick="closeWebTicket('${t.id}')">解決</button>
                             ` : '-'}
                         </td>
                     </tr>
@@ -562,7 +574,7 @@ window.openAssignModal = async (ticketId) => {
             mList.innerHTML = `<div class="muted" style="padding:20px; text-align:center;">このロールを持つメンバーは見つかりませんでした。</div>`;
         } else {
             mList.innerHTML = res.members.map(m => `
-                <div class="member-item" onclick="assignStaff(${ticketId}, '${m.id}')">
+                <div class="member-item" onclick="assignStaff('${ticketId}', '${m.id}')">
                     <img src="${m.avatar || 'https://cdn.discordapp.com/embed/avatars/0.png'}" />
                     <div>
                         <div style="font-weight:600; font-size:13px;">${escapeHTML(m.name)}</div>

@@ -221,29 +221,21 @@
     function setGuard(level) {
         currentGuardLevel = level;
         document.querySelectorAll('.guard-card').forEach(c => c.classList.remove('active'));
-        document.getElementById('guard-' + level).classList.add('active');
+        const el = document.getElementById('guard-' + level);
+        if (el) el.classList.add('active');
     }
 
-    // Overload dashboard init for this page
+    // Standard Page Initialization
     async function initAntiRaid() {
-        if (!await loadGuilds()) return;
-        document.getElementById('antiraid-settings').style.display = 'block';
-
-        const selGuild = document.getElementById('guild');
-
-        const reload = async () => {
-            const gid = selGuild.value;
+        window.__pageReload = async () => {
+            const gid = $("globalGuildSelect")?.value;
             if (!gid) return;
+            document.getElementById('antiraid-settings').style.display = 'block';
 
-            // Load Masters (Roles/Channels)
-            const [ch, rl, st] = await Promise.all([
-                api("/api/channels?guild=" + gid),
-                api("/api/roles?guild=" + gid),
+            // Load Master Data
+            const [st] = await Promise.all([
                 api("/api/settings?guild=" + gid)
             ]);
-
-            const roles = rl.ok ? rl.roles : [];
-            const channels = ch.ok ? ch.channels : [];
 
             // Load Settings
             if (st.ok && st.settings) {
@@ -252,14 +244,19 @@
                 document.getElementById('raidThreshold').value = s.raid_join_threshold || 10;
                 document.getElementById('newcomerRestrictMins').value = s.newcomer_restrict_mins || 10;
                 document.getElementById('newcomerAccountAge').value = s.newcomer_min_account_age || 1;
-                document.getElementById('linkBlockEnabled').checked = s.link_block_enabled;
+                document.getElementById('linkBlockEnabled').checked = !!s.link_block_enabled;
                 document.getElementById('domainBlacklist').value = (s.domain_blacklist || []).join(', ');
             }
         };
 
+        if (!await loadGuilds()) return;
+        window.__pageReload();
+
         document.getElementById('save').onclick = async () => {
+            const gid = $("globalGuildSelect")?.value;
+            if (!gid) return;
             const body = {
-                guild: selGuild.value,
+                guild: gid,
                 antiraid_guard_level: currentGuardLevel,
                 raid_join_threshold: parseInt(document.getElementById('raidThreshold').value),
                 newcomer_restrict_mins: parseInt(document.getElementById('newcomerRestrictMins').value),
@@ -271,15 +268,15 @@
             const res = await api("/api/settings/update", body);
             if (res.ok) {
                 alert("要塞の防衛設定を更新しました。");
-                document.getElementById('saveStatus').textContent = "Saved";
+                const statusEl = document.getElementById('saveStatus');
+                if (statusEl) statusEl.textContent = "Saved";
             } else {
                 alert("Error: " + res.error);
             }
         };
-
-        selGuild.onchange = reload;
-        document.getElementById('reload').onclick = reload;
-        reload();
     }
-    initAntiRaid();
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof initAntiRaid === 'function') initAntiRaid();
+    });
 </script>
