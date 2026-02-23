@@ -1,4 +1,5 @@
-import { Events, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, MessageFlags } from "discord.js";
+import pkg from "discord.js";
+const { Events, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, MessageFlags } = pkg;
 import { dbQuery } from "../core/db.js";
 
 export default {

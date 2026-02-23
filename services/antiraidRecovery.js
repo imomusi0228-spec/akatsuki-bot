@@ -1,7 +1,8 @@
 import { dbQuery } from "../core/db.js";
 import { client } from "../core/client.js";
 import { cache } from "../core/cache.js";
-import { VerificationLevel } from "discord.js";
+import pkg from "discord.js";
+const { VerificationLevel } = pkg;
 
 /**
  * Periodically checks for guilds in lockdown/caution mode and reverts them

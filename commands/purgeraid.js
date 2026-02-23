@@ -1,4 +1,5 @@
-import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js";
+import pkg from "discord.js";
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = pkg;
 import { dbQuery } from "../core/db.js";
 
 /**

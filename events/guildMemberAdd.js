@@ -1,4 +1,5 @@
-import { Events } from "discord.js";
+import pkg from "discord.js";
+const { Events, EmbedBuilder, VerificationLevel } = pkg;
 import { dbQuery } from "../core/db.js";
 import { getTier } from "../core/subscription.js";
 import { getFeatures } from "../core/tiers.js";
