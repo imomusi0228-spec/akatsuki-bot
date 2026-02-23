@@ -308,7 +308,7 @@ export async function initDb() {
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS dashboard_theme_color TEXT DEFAULT '#5865F2';`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS branding_footer_text TEXT;`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_prediction_enabled BOOLEAN DEFAULT FALSE;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS dashboard_theme_mode TEXT DEFAULT 'dark';`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS dashboard_theme_mode TEXT DEFAULT 'midnight';`,
 
             // Tier 2.3.0: High Scalability Indexes
             `CREATE INDEX IF NOT EXISTS idx_member_stats_guild_xp ON member_stats(guild_id, xp DESC);`,

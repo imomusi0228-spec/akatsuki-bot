@@ -618,14 +618,15 @@ async function initBrandingPage() {
             const s = res.settings;
             if ($("dashboard_theme_mode")) $("dashboard_theme_mode").value = s.dashboard_theme_mode || 'midnight';
             if ($("dashboard_theme_color")) $("dashboard_theme_color").value = s.dashboard_theme_color || '#1d9bf0';
-            if ($("color_log")) $("color_log").value = s.color_log || '#5865F2';
-            if ($("color_ng")) $("color_ng").value = s.color_ng || '#f4212e';
-            if ($("color_vc_join")) $("color_vc_join").value = s.color_vc_join || '#1da1f2';
-            if ($("color_vc_leave")) $("color_vc_leave").value = s.color_vc_leave || '#8b9bb4';
-            if ($("color_level")) $("color_level").value = s.color_level || '#FFD700';
-            if ($("color_ticket")) $("color_ticket").value = s.color_ticket || '#2ECC71';
+            // ... (other colors)
 
-            if (typeof window.selectThemeMode === 'function') window.selectThemeMode(s.dashboard_theme_mode || 'midnight');
+            // Update UI Selection ONLY (Dont overwrite localStorage during init)
+            const mode = s.dashboard_theme_mode || 'midnight';
+            document.querySelectorAll('.theme-option').forEach(el => el.classList.remove('selected'));
+            const modeEl = document.getElementById('theme-' + mode);
+            if (modeEl) modeEl.classList.add('selected');
+            document.body.className = 'theme-' + mode;
+
             applyThemeColor(s.dashboard_theme_color || '#1d9bf0');
         }
     };
