@@ -835,7 +835,16 @@ window.initBrandingPage = async () => {
             if (colorLevel) colorLevel.value = _currentConfig.color_level || '#FFD700';
             if (colorTicket) colorTicket.value = _currentConfig.color_ticket || '#2ECC71';
 
-            window.selectThemeMode(mode);
+            // Apply theme mode - selectThemeMode is defined in branding.ejs
+            if (typeof window.selectThemeMode === 'function') {
+                window.selectThemeMode(mode);
+            } else {
+                // Fallback: apply theme directly
+                document.body.className = 'theme-' + mode;
+                document.querySelectorAll('.theme-option').forEach(el => el.classList.remove('selected'));
+                const themePick = document.getElementById('theme-' + mode);
+                if (themePick) themePick.classList.add('selected');
+            }
             applyThemeColor(color);
             if ($("currentColorHex")) $("currentColorHex").textContent = color;
         }
