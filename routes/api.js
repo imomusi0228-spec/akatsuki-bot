@@ -4,7 +4,6 @@ import { PermissionFlagsBits } from "discord.js";
 import { client } from "../core/client.js";
 import { TIERS, getFeatures, TIER_NAMES } from "../core/tiers.js";
 import { getTier, getSubscriptionInfo } from "../core/subscription.js";
-import { runAnnouncerCheck } from "../services/announcer.js";
 import { ENV } from "../config/env.js";
 
 function hasManageGuild(permissions, owner = false) {
