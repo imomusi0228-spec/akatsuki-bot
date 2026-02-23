@@ -299,6 +299,17 @@
         background: #f59e0b;
         box-shadow: 0 5px 15px rgba(251, 191, 36, 0.3);
     }
+
+    .comparison-table .category-header {
+        background: rgba(29, 161, 242, 0.15) !important;
+        text-align: left !important;
+        font-weight: 900;
+        font-size: 14px;
+        letter-spacing: 1px;
+        color: var(--accent-color);
+        padding: 12px 24px;
+        border-bottom: 2px solid var(--border-color);
+    }
 </style>
 
 <div style="text-align:center; padding: 60px 20px 20px;">
@@ -383,7 +394,12 @@
                 </tr>
             </thead>
             <tbody>
-                <!-- スペック / Capacity -->
+                <!-- 1. Capacity -->
+                <tr class="category-row">
+                    <td colspan="4" class="category-header">
+                        <%= t("cat_capacity") %>
+                    </td>
+                </tr>
                 <tr>
                     <td>
                         <%= t("comp_max_guilds") %>
@@ -401,14 +417,11 @@
                     <td class="col-pro-plus"><strong>50</strong></td>
                 </tr>
 
-                <!-- 全プラン共通 / Universal (Staircase Level 1) -->
-                <tr>
-                    <td>
-                        <%= t("comp_vc_thread") %>
+                <!-- 2. Security & Logs -->
+                <tr class="category-row">
+                    <td colspan="4" class="category-header">
+                        <%= t("cat_security") %>
                     </td>
-                    <td class="active-check">✓</td>
-                    <td class="active-check col-pro">✓</td>
-                    <td class="active-check col-pro-plus">✓</td>
                 </tr>
                 <tr>
                     <td>
@@ -420,35 +433,9 @@
                 </tr>
                 <tr>
                     <td>
-                        <%= t("comp_aura_system") %>
-                    </td>
-                    <td class="active-check">✓</td>
-                    <td class="active-check col-pro">✓</td>
-                    <td class="active-check col-pro-plus">✓</td>
-                </tr>
-                <tr>
-                    <td>
-                        <%= t("comp_auto_vc_healing") %>
-                    </td>
-                    <td class="active-check">✓</td>
-                    <td class="active-check col-pro">✓</td>
-                    <td class="active-check col-pro-plus"><strong>✓✓</strong></td>
-                </tr>
-
-                <!-- Proプラン以上 / Standard (Staircase Level 2) -->
-                <tr>
-                    <td>
                         <%= t("comp_raid_alert") %>
                     </td>
                     <td class="warning-mark">△</td>
-                    <td class="active-check col-pro">✓</td>
-                    <td class="active-check col-pro-plus">✓</td>
-                </tr>
-                <tr>
-                    <td>
-                        <%= t("comp_dashboard") %>
-                    </td>
-                    <td class="dim-cross">✕</td>
                     <td class="active-check col-pro">✓</td>
                     <td class="active-check col-pro-plus">✓</td>
                 </tr>
@@ -462,7 +449,7 @@
                 </tr>
                 <tr>
                     <td>
-                        <%= t("comp_spam_prot") %>
+                        <%= t("comp_advanced_filter") %>
                     </td>
                     <td class="dim-cross">✕</td>
                     <td class="active-check col-pro">✓</td>
@@ -470,11 +457,26 @@
                 </tr>
                 <tr>
                     <td>
-                        <%= t("comp_advanced_filter") %>
+                        <%= t("comp_log_color") %>
                     </td>
                     <td class="dim-cross">✕</td>
                     <td class="active-check col-pro">✓</td>
                     <td class="active-check col-pro-plus">✓</td>
+                </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_vc_thread") %>
+                    </td>
+                    <td class="active-check">✓</td>
+                    <td class="active-check col-pro">✓</td>
+                    <td class="active-check col-pro-plus">✓</td>
+                </tr>
+
+                <!-- 3. Wisdom & Intelligence -->
+                <tr class="category-row">
+                    <td colspan="4" class="category-header">
+                        <%= t("cat_wisdom") %>
+                    </td>
                 </tr>
                 <tr>
                     <td>
@@ -494,36 +496,57 @@
                 </tr>
                 <tr>
                     <td>
-                        <%= t("comp_log_color") %>
+                        <%= t("comp_ai_insight") %>
                     </td>
                     <td class="dim-cross">✕</td>
-                    <td class="active-check col-pro">✓</td>
-                    <td class="active-check col-pro-plus">✓</td>
-                </tr>
-                <tr>
-                    <td>
-                        <%= t("comp_branding") %>
-                    </td>
                     <td class="dim-cross">✕</td>
-                    <td class="warning-mark col-pro">△</td>
                     <td class="active-check col-pro-plus">✓</td>
                 </tr>
-                <tr>
-                    <td>
-                        <%= t("comp_branding") %>
-                    </td>
-                    <td class="dim-cross">✕</td>
-                    <td class="warning-mark col-pro">△</td>
-                    <td class="active-check col-pro-plus">✓</td>
-                </tr>
-
-                <!-- Pro+プラン専用 / Premium (Staircase Level 3) -->
                 <tr>
                     <td>
                         <%= t("comp_audit") %>
                     </td>
                     <td class="dim-cross">✕</td>
                     <td class="dim-cross">✕</td>
+                    <td class="active-check col-pro-plus">✓</td>
+                </tr>
+
+                <!-- 4. Creative & Themes -->
+                <tr class="category-row">
+                    <td colspan="4" class="category-header">
+                        <%= t("cat_branding") %>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_branding") %>
+                    </td>
+                    <td class="dim-cross">✕</td>
+                    <td class="warning-mark col-pro">△</td>
+                    <td class="active-check col-pro-plus">✓</td>
+                </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_auto_vc_healing") %>
+                    </td>
+                    <td class="active-check">✓</td>
+                    <td class="active-check col-pro">✓</td>
+                    <td class="active-check col-pro-plus"><strong>✓✓</strong></td>
+                </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_aura_system") %>
+                    </td>
+                    <td class="active-check">✓</td>
+                    <td class="active-check col-pro">✓</td>
+                    <td class="active-check col-pro-plus">✓</td>
+                </tr>
+                <tr>
+                    <td>
+                        <%= t("comp_dashboard") %>
+                    </td>
+                    <td class="dim-cross">✕</td>
+                    <td class="active-check col-pro">✓</td>
                     <td class="active-check col-pro-plus">✓</td>
                 </tr>
                 <tr>
@@ -534,13 +557,9 @@
                     <td class="dim-cross">✕</td>
                     <td class="active-check col-pro-plus">✓</td>
                 </tr>
-                <tr>
-                    <td>
-                        <%= t("comp_ai_insight") %>
-                    </td>
-                    <td class="dim-cross">✕</td>
-                    <td class="dim-cross">✕</td>
-                    <td class="active-check col-pro-plus">✓</td>
+                <td class="dim-cross">✕</td>
+                <td class="dim-cross">✕</td>
+                <td class="active-check col-pro-plus">✓</td>
                 </tr>
                 <!-- Purchase Buttons -->
                 <tr>
