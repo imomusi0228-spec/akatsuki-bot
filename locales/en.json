@@ -98,6 +98,8 @@
     "vc_joins": "VC Joins",
     "vc_activity_mins": "VC (Mins)",
     "leaves": "Leaves",
+    "member_joins": "Server Joins",
+    "member_leaves": "Server Leaves",
     "timeouts": "Timeouts",
     "ng_detect": "NG Detected",
     "btn_release": "Release",

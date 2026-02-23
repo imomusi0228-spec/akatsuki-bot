@@ -120,8 +120,8 @@ async function updateCharts(gid, tier, mon) {
         const leaveData = labels.map(d => growthRes.events.find(e => e.date.split("T")[0] === d && e.event_type === 'leave')?.count || 0);
 
         renderChart("growthChart", "line", labels, [
-            { label: t("vc_joins"), data: joinData, borderColor: "#1da1f2", tension: 0.3 },
-            { label: t("leaves"), data: leaveData, borderColor: "#f4212e", tension: 0.3 }
+            { label: t("member_joins"), data: joinData, borderColor: "#1da1f2", tension: 0.3 },
+            { label: t("member_leaves"), data: leaveData, borderColor: "#f4212e", tension: 0.3 }
         ]);
     }
 }

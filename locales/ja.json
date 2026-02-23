@@ -88,6 +88,8 @@
     "vc_joins": "VC参加",
     "vc_activity_mins": "VC活動時間(分)",
     "leaves": "退出",
+    "member_joins": "サーバー参加",
+    "member_leaves": "サーバー脱退",
     "timeouts": "タイムアウト",
     "ng_detect": "NG検知",
     "btn_release": "解除",
