@@ -72,16 +72,37 @@ export async function handleApiRoute(req, res, pathname, url) {
     // GET /api/guilds
     if (pathname === "/api/guilds") {
         try {
-            const userGuilds = await discordApi(session.accessToken, "/users/@me/guilds");
-            if (!Array.isArray(userGuilds)) throw new Error("Failed to fetch guilds from Discord");
+            let userGuilds;
+
+            // Use session cache first to avoid hitting Discord rate limits
+            if (Array.isArray(session.guilds) && session.guilds.length > 0) {
+                userGuilds = session.guilds;
+            } else {
+                // Fetch from Discord with retry on 429
+                let attempt = 0;
+                while (attempt < 3) {
+                    const result = await discordApi(session.accessToken, "/users/@me/guilds");
+                    if (Array.isArray(result)) {
+                        userGuilds = result;
+                        session.guilds = result; // Cache in session
+                        break;
+                    }
+                    // If 429, result is an object with retry_after
+                    const retryAfter = result?.retry_after;
+                    if (retryAfter) {
+                        await new Promise(r => setTimeout(r, Math.ceil(retryAfter * 1000) + 200));
+                        attempt++;
+                    } else {
+                        throw new Error("Failed to fetch guilds from Discord");
+                    }
+                }
+                if (!userGuilds) throw new Error("Failed to fetch guilds after retries");
+            }
 
             const availableGuilds = userGuilds
                 .filter(g => hasManageGuild(g.permissions, g.owner))
                 .filter(g => client.guilds.cache.has(g.id))
                 .map(g => ({ id: g.id, name: g.name, icon: g.icon }));
-
-            // Save to session to speed up subsequent permission checks
-            session.guilds = userGuilds;
 
             resJson({ ok: true, guilds: availableGuilds });
         } catch (e) {
