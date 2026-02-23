@@ -117,3 +117,14 @@ export async function renderAdminAntiraidHTML({ user, req }) {
         scripts: ""
     }, lang);
 }
+
+export async function renderAdminTicketsHTML({ user, req }) {
+    const lang = getLang(req);
+    return await renderView("tickets", {
+        title: "チケット管理",
+        user,
+        oauth: true,
+        activeTab: "tickets",
+        scripts: ""
+    }, lang);
+}

@@ -59,6 +59,9 @@ export async function handleAdminRoute(req, res, pathname, url) {
     } else if (pathname === "/admin/settings") {
         const html = await renderAdminSettingsHTML({ user, req });
         res.end(html);
+    } else if (pathname === "/admin/tickets") {
+        const html = await renderAdminTicketsHTML({ user, req });
+        res.end(html);
     } else if (pathname === "/admin/activity") {
         const html = await renderAdminActivityHTML({ user, req });
         res.end(html);

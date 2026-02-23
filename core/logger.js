@@ -5,15 +5,18 @@ import { dbQuery } from "./db.js";
  * 共通ログ投稿関数
  * @param {import("discord.js").Guild} guild 
  * @param {'vc' | 'ng' | 'vc_in' | 'vc_out'} type ログの種類
- * @param {import("discord.js").EmbedBuilder} embed 投稿するEmbed
+ * @param {import("discord.js").EmbedBuilder | { embeds: any[], files: any[] }} payload 投稿するEmbedまたはメッセージペイロード
  * @param {Date | number} [date] ログの日付（指定がない場合は現在時刻）
  * @param {{ checkDuplicate?: boolean }} [options] オプション
  */
-export async function sendLog(guild, type, embed, date = new Date(), options = {}) {
+export async function sendLog(guild, type, payload, date = new Date(), options = {}) {
     try {
-        const settingsRes = await dbQuery("SELECT log_channel_id, ng_log_channel_id FROM settings WHERE guild_id = $1", [guild.id]);
+        const settingsRes = await dbQuery("SELECT log_channel_id, ng_log_channel_id, color_log, branding_footer_text FROM settings WHERE guild_id = $1", [guild.id]);
         const settings = settingsRes.rows[0];
         if (!settings) return;
+
+        const customColor = settings.color_log ? parseInt(settings.color_log.replace('#', ''), 16) : null;
+        const footerText = settings.branding_footer_text;
 
         // 種別に応じてログチャンネルを選択
         const channelId = type.startsWith('vc') ? settings.log_channel_id : (settings.ng_log_channel_id || settings.log_channel_id);
@@ -22,6 +25,18 @@ export async function sendLog(guild, type, embed, date = new Date(), options = {
         const channel = await guild.channels.fetch(channelId).catch(() => null);
         if (!channel || !channel.isTextBased()) return;
 
+        // ペイロード正規化
+        const finalPayload = payload.embeds ? payload : { embeds: [payload] };
+        const embed = finalPayload.embeds[0];
+
+        if (customColor && embed && typeof embed.setColor === 'function') {
+            embed.setColor(customColor);
+        }
+
+        if (footerText && embed && typeof embed.setFooter === 'function') {
+            embed.setFooter({ text: footerText });
+        }
+
         if (type.startsWith('vc')) {
             // VCログはスレッド化
             const isOut = type === 'vc_out';
@@ -29,7 +44,7 @@ export async function sendLog(guild, type, embed, date = new Date(), options = {
 
             // 日付処理
             const dateObj = new Date(date);
-            if (isNaN(dateObj.getTime())) return; // Invalid Date
+            if (isNaN(dateObj.getTime())) return;
 
             const dateStr = dateObj.toISOString().split("T")[0];
             const threadName = `${prefix}-${dateStr}`;
@@ -37,7 +52,6 @@ export async function sendLog(guild, type, embed, date = new Date(), options = {
             let thread = channel.threads.cache.find(t => t.name === threadName && !t.archived);
 
             if (!thread) {
-                // アーカイブされているスレッドも検索
                 try {
                     const fetchedThreads = await channel.threads.fetchActive();
                     thread = fetchedThreads.threads.find(t => t.name === threadName);
@@ -50,14 +64,12 @@ export async function sendLog(guild, type, embed, date = new Date(), options = {
                     }
 
                     if (!thread) {
-                        // 新規作成 (過去の日付でも、スキャン等のために作成)
                         thread = await channel.threads.create({
                             name: threadName,
                             autoArchiveDuration: 1440,
                             reason: `VC ${prefix} Log Thread for ${dateStr}`,
                         }).catch(() => null);
                     } else if (thread.archived) {
-                        // アーカイブされていたら復元
                         await thread.setArchived(false);
                     }
                 } catch (e) {
@@ -68,39 +80,29 @@ export async function sendLog(guild, type, embed, date = new Date(), options = {
             if (thread) {
                 // 重複チェック
                 if (options.checkDuplicate) {
-                    // Fetch more messages to ensure we don't duplicate older logs being scanned
                     const messages = await thread.messages.fetch({ limit: 100 }).catch(() => null);
-                    if (messages) {
+                    if (messages && embed) {
                         const isDuplicate = messages.some(msg => {
                             if (msg.embeds.length === 0) return false;
                             const e = msg.embeds[0];
-                            // 著者名, タイトル(なければ説明), タイムスタンプ, フッターが一致するか確認
-                            // フッターも含めることで通常ログと復元ログを区別
                             const sameAuthor = e.author?.name === embed.data.author?.name;
                             const sameDesc = e.description === embed.data.description;
                             const sameFooter = e.footer?.text === embed.data.footer?.text;
-
-                            // タイムスタンプ比較 (秒単位で比較、ミリ秒は無視)
                             const targetTime = embed.data.timestamp ? new Date(embed.data.timestamp).getTime() : null;
                             const msgTime = e.timestamp ? new Date(e.timestamp).getTime() : null;
                             const sameTime = targetTime && msgTime && Math.floor(targetTime / 1000) === Math.floor(msgTime / 1000);
-
                             return sameAuthor && sameDesc && sameTime && sameFooter;
                         });
-                        if (isDuplicate) {
-                            console.log(`[LOGGER] Duplicate ${type} log skipped for ${embed.data.author?.name}`);
-                            return;
-                        }
+                        if (isDuplicate) return;
                     }
                 }
-                await thread.send({ embeds: [embed] }).catch(() => null);
+                await thread.send(finalPayload).catch(() => null);
             } else {
-                // スレッド作成に失敗した場合は直接送る（フォールバック）
-                await channel.send({ embeds: [embed] }).catch(() => null);
+                await channel.send(finalPayload).catch(() => null);
             }
         } else {
             // NGワードログは直接投稿
-            if (options.checkDuplicate) {
+            if (options.checkDuplicate && embed) {
                 const messages = await channel.messages.fetch({ limit: 100 }).catch(() => null);
                 if (messages) {
                     const isDuplicate = messages.some(msg => {
@@ -108,21 +110,15 @@ export async function sendLog(guild, type, embed, date = new Date(), options = {
                         const e = msg.embeds[0];
                         const sameDesc = e.description === embed.data.description;
                         const sameFooter = e.footer?.text === embed.data.footer?.text;
-
-                        // タイムスタンプ比較 (秒単位)
                         const targetTime = embed.data.timestamp ? new Date(embed.data.timestamp).getTime() : null;
                         const msgTime = e.timestamp ? new Date(e.timestamp).getTime() : null;
                         const sameTime = targetTime && msgTime && Math.floor(targetTime / 1000) === Math.floor(msgTime / 1000);
-
                         return sameDesc && sameTime && sameFooter;
                     });
-                    if (isDuplicate) {
-                        console.log(`[LOGGER] Duplicate ${type} log skipped`);
-                        return;
-                    }
+                    if (isDuplicate) return;
                 }
             }
-            await channel.send({ embeds: [embed] }).catch(() => null);
+            await channel.send(finalPayload).catch(() => null);
         }
     } catch (e) {
         console.error(`[LOGGER ERROR] Failed to send ${type} log:`, e.message);

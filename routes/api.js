@@ -475,10 +475,11 @@ export async function handleApiRoute(req, res, pathname, url) {
                     ai_advice_days, ai_advice_channel_id,
                     ai_insight_enabled, ai_insight_channel_id, insight_sections,
                     phase2_threshold, phase2_action, phase3_threshold, phase3_action, phase4_threshold, phase4_action,
-                    intro_reminder_hours, report_channel_id,
+                    intro_reminder_hours, report_channel_id, ng_warning_enabled,
+                    ticket_welcome_msg, color_log, color_level, color_ticket, dashboard_theme_color, branding_footer_text, ai_prediction_enabled,
                     updated_at
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, NOW()
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, NOW()
                 )
                 ON CONFLICT (guild_id) DO UPDATE SET
                     log_channel_id = EXCLUDED.log_channel_id,
@@ -515,6 +516,14 @@ export async function handleApiRoute(req, res, pathname, url) {
                     phase4_action = EXCLUDED.phase4_action,
                     intro_reminder_hours = EXCLUDED.intro_reminder_hours,
                     report_channel_id = EXCLUDED.report_channel_id,
+                    ng_warning_enabled = EXCLUDED.ng_warning_enabled,
+                    ticket_welcome_msg = EXCLUDED.ticket_welcome_msg,
+                    color_log = EXCLUDED.color_log,
+                    color_level = EXCLUDED.color_level,
+                    color_ticket = EXCLUDED.color_ticket,
+                    dashboard_theme_color = EXCLUDED.dashboard_theme_color,
+                    branding_footer_text = EXCLUDED.branding_footer_text,
+                    ai_prediction_enabled = EXCLUDED.ai_prediction_enabled,
                     updated_at = NOW();
             `, [
                 body.guild,
@@ -530,7 +539,15 @@ export async function handleApiRoute(req, res, pathname, url) {
                 body.phase3_threshold || 6, body.phase3_action || 'kick',
                 body.phase4_threshold || 10, body.phase4_action || 'ban',
                 body.intro_reminder_hours || 24,
-                body.report_channel_id || null
+                body.report_channel_id || null,
+                body.ng_warning_enabled !== false,
+                body.ticket_welcome_msg || null,
+                body.color_log || '#5865F2',
+                body.color_level || '#FFD700',
+                body.color_ticket || '#2ECC71',
+                body.dashboard_theme_color || '#5865F2',
+                body.branding_footer_text || null,
+                body.ai_prediction_enabled === true
             ]);
         } catch (e) {
             console.error("Settings Update Error:", e);
@@ -828,6 +845,83 @@ export async function handleApiRoute(req, res, pathname, url) {
         console.log(`[UPDATE RECEIVE] Received: ${body.title}`);
         // Optionally save to DB or just acknowledge
         return resJson({ ok: true, message: "Update received successfully" });
+    }
+
+    // GET /api/tickets
+    if (pathname === "/api/tickets" && method === "GET") {
+        const guildId = url.searchParams.get("guild");
+        if (!guildId) return resJson({ ok: false, error: "Missing guild ID" }, 400);
+        if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
+
+        try {
+            const status = url.searchParams.get("status") || "all";
+            let query = "SELECT * FROM tickets WHERE guild_id = $1";
+            const params = [guildId];
+
+            if (status !== "all") {
+                query += " AND status = $2";
+                params.push(status);
+            }
+            query += " ORDER BY created_at DESC LIMIT 100";
+
+            const result = await dbQuery(query, params);
+
+            // 1. Collect all unique IDs for bulk fetching
+            const userIds = new Set(result.rows.map(t => t.user_id));
+            result.rows.forEach(t => { if (t.assigned_to) userIds.add(t.assigned_to); });
+
+            const guild = client.guilds.cache.get(guildId);
+            let membersMap = new Map();
+            if (guild && userIds.size > 0) {
+                // Bulk fetch members
+                membersMap = await guild.members.fetch({ user: Array.from(userIds) }).catch(() => new Map());
+            }
+
+            const tickets = result.rows.map(t => {
+                const member = membersMap.get(t.user_id);
+                const staff = t.assigned_to ? membersMap.get(t.assigned_to) : null;
+
+                const userName = member ? `${member.user.username}#${member.user.discriminator || '0000'}` : t.user_id;
+                const staffName = staff ? staff.user.username : (t.assigned_to || "未割り当て");
+
+                return { ...t, userName, staffName };
+            });
+
+            return resJson({ ok: true, tickets });
+        } catch (e) {
+            console.error("Fetch Tickets Error:", e);
+            return resJson({ ok: false, error: "Internal Error" }, 500);
+        }
+    }
+
+    // POST /api/tickets/close
+    if (pathname === "/api/tickets/close" && method === "POST") {
+        const body = await getBody();
+        if (!body.guild || !body.ticket_id) return resJson({ ok: false, error: "Missing fields" }, 400);
+        if (!await verifyGuild(body.guild)) return resJson({ ok: false, error: "Forbidden" }, 403);
+
+        try {
+            const resData = await dbQuery("SELECT channel_id FROM tickets WHERE id = $1 AND guild_id = $2", [body.ticket_id, body.guild]);
+            if (resData.rows.length === 0) return resJson({ ok: false, error: "Ticket not found" }, 404);
+
+            const channelId = resData.rows[0].channel_id;
+            const guild = client.guilds.cache.get(body.guild);
+            const channel = guild?.channels.cache.get(channelId);
+
+            // Update DB
+            await dbQuery("UPDATE tickets SET status = 'closed', closed_at = NOW() WHERE id = $1", [body.ticket_id]);
+
+            // Try to close/delete channel in Discord if it exists
+            if (channel) {
+                await channel.send("🔒 このチケットはウェブダッシュボードから解決済みとしてマークされました。チャンネルを削除します...");
+                setTimeout(() => channel.delete().catch(() => { }), 5000);
+            }
+
+            return resJson({ ok: true });
+        } catch (e) {
+            console.error("Close Ticket Error:", e);
+            return resJson({ ok: false, error: "Internal Error" }, 500);
+        }
     }
 
     res.writeHead(404, { "Content-Type": "application/json" });

@@ -29,8 +29,23 @@ export async function registerCommands() {
 
     const rest = new REST().setToken(ENV.TOKEN);
     const isGlobal = process.argv.includes('--global');
+    const isClear = process.argv.includes('--clear');
 
     try {
+        if (isClear) {
+            console.log(`[CLEAR] Clearing ALL application (/) commands...`);
+            // Clear Global
+            await rest.put(Routes.applicationCommands(ENV.CLIENT_ID), { body: [] });
+            console.log(`[CLEAR] Global commands cleared.`);
+            // Clear Guild
+            if (ENV.SUPPORT_GUILD_ID) {
+                await rest.put(Routes.applicationGuildCommands(ENV.CLIENT_ID, ENV.SUPPORT_GUILD_ID), { body: [] });
+                console.log(`[CLEAR] Guild commands cleared for ${ENV.SUPPORT_GUILD_ID}.`);
+            }
+            console.log(`[CLEAR] Successfully cleared all commands. Registration skipped.`);
+            return;
+        }
+
         console.log(`Started refreshing ${commands.length} application (/) commands.`);
 
         if (isGlobal) {

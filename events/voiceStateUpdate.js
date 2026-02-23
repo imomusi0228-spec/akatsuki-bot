@@ -72,15 +72,39 @@ export default {
 
                     cache.clearActiveSession(guildId, userId);
 
-                    // Update member_stats
+                    // Update member_stats (Minutes & XP)
                     const minutesAdded = Math.floor(durationSec / 60);
+                    const xpFromVc = minutesAdded * (Math.floor(Math.random() * 5) + 8); // 8-12 XP per minute
+
+                    const currentStats = await dbQuery("SELECT xp, level FROM member_stats WHERE guild_id = $1 AND user_id = $2", [guildId, userId]);
+                    const currentXp = (currentStats.rows[0]?.xp || 0) + xpFromVc;
+                    let currentLevel = currentStats.rows[0]?.level || 1;
+                    const nextLevelXp = currentLevel * currentLevel * 100;
+
+                    let levelUp = false;
+                    if (currentXp >= nextLevelXp) {
+                        currentLevel++;
+                        levelUp = true;
+                    }
+
                     await dbQuery(`
-                        INSERT INTO member_stats (guild_id, user_id, total_vc_minutes, last_activity_at)
-                        VALUES ($1, $2, $3, NOW())
+                        INSERT INTO member_stats (guild_id, user_id, total_vc_minutes, xp, level, last_activity_at)
+                        VALUES ($1, $2, $3, $4, $5, NOW())
                         ON CONFLICT (guild_id, user_id) DO UPDATE SET 
                         total_vc_minutes = member_stats.total_vc_minutes + EXCLUDED.total_vc_minutes,
+                        xp = EXCLUDED.xp,
+                        level = EXCLUDED.level,
                         last_activity_at = EXCLUDED.last_activity_at
-                    `, [guildId, userId, minutesAdded]).catch(() => { });
+                    `, [guildId, userId, minutesAdded, currentXp, currentLevel]).catch(() => { });
+
+                    if (levelUp) {
+                        try {
+                            const systemChannel = guild.systemChannel || (await guild.channels.fetch().then(cs => cs.find(c => c.type === ChannelType.GuildText)));
+                            if (systemChannel) {
+                                await systemChannel.send(`🎉 <@${userId}> さん、レベルアップ！ **Level ${currentLevel}** になりました！（VC滞在ボーナス）`);
+                            }
+                        } catch (e) { }
+                    }
 
 
                     // Only log [OUT] if they actually left or moved

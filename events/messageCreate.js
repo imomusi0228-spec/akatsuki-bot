@@ -12,12 +12,70 @@ export default {
         if (!message.guild) return;
 
         try {
-            // Track Activity
-            dbQuery(`
-                INSERT INTO member_stats (guild_id, user_id, last_activity_at)
-                VALUES ($1, $2, NOW())
-                ON CONFLICT (guild_id, user_id) DO UPDATE SET last_activity_at = NOW()
-            `, [message.guild.id, message.author.id]).catch(() => { });
+            // Track Activity, Count Messages & Grant XP
+            const stats = await dbQuery("SELECT xp, level, message_count, last_xp_gain_at FROM member_stats WHERE guild_id = $1 AND user_id = $2", [message.guild.id, message.author.id]);
+            const lastXpGain = stats.rows[0]?.last_xp_gain_at;
+            const now = new Date();
+
+            let xpToGain = 0;
+            if (!lastXpGain || (now - new Date(lastXpGain)) > 60000) {
+                xpToGain = Math.floor(Math.random() * 11) + 15; // 15-25 XP
+            }
+
+            const currentXp = (stats.rows[0]?.xp || 0) + xpToGain;
+            let currentLevel = stats.rows[0]?.level || 1;
+            const nextLevelXp = currentLevel * currentLevel * 100;
+
+            let levelUp = false;
+            if (currentXp >= nextLevelXp) {
+                currentLevel++;
+                levelUp = true;
+            }
+
+            const updateRes = await dbQuery(`
+                INSERT INTO member_stats (guild_id, user_id, xp, level, message_count, last_xp_gain_at, last_activity_at)
+                VALUES ($1, $2, $3, $4, 1, CASE WHEN $5 > 0 THEN NOW() ELSE NULL END, NOW())
+                ON CONFLICT (guild_id, user_id) DO UPDATE SET 
+                    xp = EXCLUDED.xp,
+                    level = EXCLUDED.level,
+                    message_count = member_stats.message_count + 1,
+                    last_xp_gain_at = CASE WHEN EXCLUDED.xp > member_stats.xp THEN NOW() ELSE member_stats.last_xp_gain_at END,
+                    last_activity_at = NOW()
+                RETURNING message_count
+            `, [message.guild.id, message.author.id, currentXp, currentLevel, xpToGain]).catch(() => { });
+
+            // AI予兆検知用のイベント記録
+            await dbQuery("INSERT INTO member_events (guild_id, user_id, event_type) VALUES ($1, $2, 'message')", [message.guild.id, message.author.id]).catch(() => { });
+
+            const msgCount = updateRes?.rows[0]?.message_count || (stats.rows[0]?.message_count || 0) + 1;
+
+            if (levelUp) {
+                const { EmbedBuilder, ChannelType } = await import("discord.js");
+                try {
+                    let settings = cache.getSettings(message.guild.id);
+                    if (!settings) {
+                        const res = await dbQuery("SELECT * FROM settings WHERE guild_id = $1", [message.guild.id]);
+                        settings = res.rows[0] || {};
+                        cache.setSettings(message.guild.id, settings);
+                    }
+
+                    const embedColor = settings.color_level ? parseInt(settings.color_level.replace('#', ''), 16) : 0xFFD700;
+                    const footerText = settings.branding_footer_text || "Akatsuki Leveling System";
+
+                    const embed = new EmbedBuilder()
+                        .setTitle("🎊 Level Up!")
+                        .setDescription(`おめでとうございます <@${message.author.id}> さん！\nレベルが **Level ${currentLevel}** に到達しました！`)
+                        .setColor(embedColor)
+                        .setThumbnail(message.author.displayAvatarURL())
+                        .setFooter({ text: footerText })
+                        .setTimestamp();
+
+                    const systemChannel = message.guild.systemChannel || (await message.guild.channels.fetch().then(cs => cs.find(c => c.type === ChannelType.GuildText)));
+                    if (systemChannel) {
+                        await systemChannel.send({ embeds: [embed] });
+                    }
+                } catch (e) { }
+            }
 
             // Spam Protection (Similarity-based)
             const tier = await getTier(message.guild.id);
@@ -148,15 +206,17 @@ export default {
                 const joinedWords = caughtWords.join(", ");
 
                 // DM Warning
-                try {
-                    const warningMsg = `⚠️ **禁止ワードを検知しました / Restricted word detected**\n\n` +
-                        `サーバー: **${message.guild.name}**\n` +
-                        `対象ワード: ||${joinedWords}||\n` +
-                        `メッセージを削除しました。 / Your message was removed.\n\n` +
-                        `*繰り返し警告を無視すると、タイムアウトが適用されます。*\n` +
-                        `*Repeated violations may lead to escalating penalties.*`;
-                    await message.author.send(warningMsg);
-                } catch (e) { }
+                if (settings.ng_warning_enabled !== false) {
+                    try {
+                        const warningMsg = `⚠️ **禁止ワードを検知しました / Restricted word detected**\n\n` +
+                            `サーバー: **${message.guild.name}**\n` +
+                            `対象ワード: ||${joinedWords}||\n` +
+                            `メッセージを削除しました。 / Your message was removed.\n\n` +
+                            `*繰り返し警告を無視すると、タイムアウトが適用されます。*\n` +
+                            `*Repeated violations may lead to escalating penalties.*`;
+                        await message.author.send(warningMsg);
+                    } catch (e) { }
+                }
 
                 // Count violations in last 1 hour
                 const countRes = await dbQuery(
@@ -251,19 +311,12 @@ export default {
                 }
                 const msgRules = (auraSettings.vc_role_rules || []).filter(r => r.trigger === 'messages');
                 if (msgRules.length > 0) {
-                    const statsRes = await dbQuery(
-                        "UPDATE member_stats SET message_count = COALESCE(message_count, 0) + 1 WHERE guild_id = $1 AND user_id = $2 RETURNING message_count",
-                        [message.guild.id, message.author.id]
-                    );
-                    if (statsRes.rows.length > 0) {
-                        const msgCount = statsRes.rows[0].message_count;
-                        const guildMember = message.member || await message.guild.members.fetch(message.author.id).catch(() => null);
-                        if (guildMember) {
-                            for (const rule of msgRules) {
-                                if (msgCount >= rule.messages && !guildMember.roles.cache.has(rule.role_id)) {
-                                    await guildMember.roles.add(rule.role_id).catch(() => null);
-                                    console.log(`[MSG-AURA] ${message.author.tag} received aura: ${rule.aura_name} (${msgCount} msgs)`);
-                                }
+                    const guildMember = message.member || await message.guild.members.fetch(message.author.id).catch(() => null);
+                    if (guildMember) {
+                        for (const rule of msgRules) {
+                            if (msgCount >= rule.messages && !guildMember.roles.cache.has(rule.role_id)) {
+                                await guildMember.roles.add(rule.role_id).catch(() => null);
+                                console.log(`[MSG-AURA] ${message.author.tag} received aura: ${rule.aura_name} (${msgCount} msgs)`);
                             }
                         }
                     }

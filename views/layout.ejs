@@ -249,7 +249,7 @@
     <script>
         // Data Loading Block
         window.lang = "<%= lang %>";
-        window.DICTIONARY = <%- dictionary %>;
+        window.DICTIONARY = <% - dictionary %>;
     </script>
 </head>
 
@@ -288,6 +288,9 @@
             </a>
             <a href="/admin/settings" class="nav-item <%= activeTab === 'settings' ? 'active' : '' %>">
                 <%= t("settings") %>
+            </a>
+            <a href="/admin/tickets" class="nav-item <%= activeTab === 'tickets' ? 'active' : '' %>">
+                チケット管理
             </a>
             <a href="/admin/activity" class="nav-item <%= activeTab === 'activity' ? 'active' : '' %>">
                 <%= t("activity") %>

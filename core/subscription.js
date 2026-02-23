@@ -45,20 +45,27 @@ export async function getTier(guildId) {
     // If it's a PRO_PLUS or TRIAL_PRO_PLUS tier, verify the server limit for the owner
     // We check if this guild is within the allowed limit for this user.
     if (sub.tier >= TIERS.PRO_PLUS_MONTHLY && sub.user_id) {
-        // Optimization: For Pro+, the limit check is expensive. 
-        // We assume the user's guild list doesn't change every second.
-        // The cache.getTier(guildId) already returns the tier, but here we decide if it's FREE or PRO_PLUS.
-
         const features = FEATURES[sub.tier];
         const limit = features.maxGuilds || 1;
 
-        // Get all guilds for this user with the same or higher tier
+        // Get all guilds for this user
         const listRes = await dbQuery(
-            "SELECT guild_id FROM subscriptions WHERE user_id = $1 AND tier::INTEGER >= $2 ORDER BY updated_at ASC",
-            [sub.user_id, sub.tier]
+            "SELECT guild_id, tier FROM subscriptions WHERE user_id = $1 ORDER BY updated_at ASC",
+            [sub.user_id]
         );
 
-        const activeIds = listRes.rows.map(r => r.guild_id);
+        // Filter in JS to safely handle mixed VARCHAR/INT tiers
+        const activeIds = listRes.rows.filter(r => {
+            let t = parseInt(r.tier, 10);
+            if (isNaN(t)) {
+                // Handle legacy string tiers
+                if (r.tier === "Trial Pro+") t = TIERS.TRIAL_PRO_PLUS;
+                else if (r.tier === "Trial Pro") t = TIERS.TRIAL_PRO;
+                else return false;
+            }
+            return t >= sub.tier;
+        }).map(r => r.guild_id);
+
         const allowedIds = activeIds.slice(0, limit);
 
         if (!allowedIds.includes(guildId)) {

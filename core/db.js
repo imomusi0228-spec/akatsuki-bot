@@ -252,6 +252,9 @@ export async function initDb() {
             // Report channel
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS report_channel_id TEXT;`,
 
+            // Toggle for automatic NG warnings (DM)
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ng_warning_enabled BOOLEAN DEFAULT TRUE;`,
+
             // Message count for Aura system
             `ALTER TABLE member_stats ADD COLUMN IF NOT EXISTS message_count INTEGER DEFAULT 0;`,
 
@@ -264,7 +267,53 @@ export async function initDb() {
                 issued_by TEXT NOT NULL,
                 created_at TIMESTAMPTZ DEFAULT NOW()
             );`,
-            `CREATE INDEX IF NOT EXISTS idx_warnings_guild_user ON warnings(guild_id, user_id);`
+            `CREATE INDEX IF NOT EXISTS idx_warnings_guild_user ON warnings(guild_id, user_id);`,
+
+            // Reaction Roles table
+            `CREATE TABLE IF NOT EXISTS reaction_roles (
+                id SERIAL PRIMARY KEY,
+                guild_id TEXT NOT NULL,
+                message_id TEXT NOT NULL,
+                emoji TEXT NOT NULL,
+                role_id TEXT NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );`,
+            `CREATE INDEX IF NOT EXISTS idx_rr_message ON reaction_roles(message_id);`,
+
+            // Tickets table
+            `CREATE TABLE IF NOT EXISTS tickets (
+                id SERIAL PRIMARY KEY,
+                guild_id TEXT NOT NULL,
+                channel_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                status TEXT DEFAULT 'open', -- 'open', 'closed'
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                closed_at TIMESTAMPTZ
+            );`,
+            `CREATE INDEX IF NOT EXISTS idx_tickets_guild_status ON tickets(guild_id, status);`,
+
+            // Leveling / XP system enhancements
+            `ALTER TABLE member_stats ADD COLUMN IF NOT EXISTS xp INTEGER DEFAULT 0;`,
+            `ALTER TABLE member_stats ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1;`,
+            `ALTER TABLE member_stats ADD COLUMN IF NOT EXISTS last_xp_gain_at TIMESTAMPTZ;`,
+
+            // Tier 2.2.0: AI Predictive & Branding
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ticket_welcome_msg TEXT;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS color_log TEXT DEFAULT '#5865F2';`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS color_level TEXT DEFAULT '#FFD700';`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS color_ticket TEXT DEFAULT '#2ECC71';`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS dashboard_theme_color TEXT DEFAULT '#5865F2';`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS branding_footer_text TEXT;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_prediction_enabled BOOLEAN DEFAULT FALSE;`,
+
+            // Tier 2.3.0: High Scalability Indexes
+            `CREATE INDEX IF NOT EXISTS idx_member_stats_guild_xp ON member_stats(guild_id, xp DESC);`,
+            `CREATE INDEX IF NOT EXISTS idx_member_stats_guild_vc ON member_stats(guild_id, total_vc_minutes DESC);`,
+            `CREATE INDEX IF NOT EXISTS idx_tickets_guild_user_status ON tickets(guild_id, user_id, status);`,
+            `CREATE INDEX IF NOT EXISTS idx_member_events_recent_msg ON member_events(guild_id, event_type, created_at DESC);`,
+
+            // Tickets assignment
+            `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS assigned_to TEXT;`
 
 
         ];

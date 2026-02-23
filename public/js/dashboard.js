@@ -309,6 +309,7 @@ async function initSettings() {
             if ($("phase3Action")) $("phase3Action").value = s.phase3_action || 'kick';
             if ($("phase4Threshold")) $("phase4Threshold").value = s.phase4_threshold ?? 10;
             if ($("phase4Action")) $("phase4Action").value = s.phase4_action || 'ban';
+            if ($("ngWarningEnabled")) $("ngWarningEnabled").checked = s.ng_warning_enabled !== false;
 
             // Intro Reminder
             if ($("introReminderHours")) $("introReminderHours").value = s.intro_reminder_hours ?? 24;
@@ -343,11 +344,23 @@ async function initSettings() {
                 const rules = s.vc_role_rules || [];
                 rules.forEach(r => addRoleRule(r));
             }
+
+            // Extended Settings: Ticket, Branding, AI Prediction
+            if ($("ticketWelcomeMsg")) $("ticketWelcomeMsg").value = s.ticket_welcome_msg || "";
+            if ($("colorLog")) $("colorLog").value = s.color_log || "#5865F2";
+            if ($("colorLevel")) $("colorLevel").value = s.color_level || "#FFD700";
+            if ($("colorTicket")) $("colorTicket").value = s.color_ticket || "#2ECC71";
+            if ($("colorDashboard")) {
+                const dashColor = s.dashboard_theme_color || "#1d9bf0";
+                $("colorDashboard").value = dashColor;
+                applyThemeColor(dashColor);
+            }
+            if ($("brandingFooterText")) $("brandingFooterText").value = s.branding_footer_text || "";
+            if ($("aiPredictionEnabled")) $("aiPredictionEnabled").checked = s.ai_prediction_enabled;
         } else {
             // Settings Load Failed
             if (saveBtn) {
                 saveBtn.textContent = "Load Failed";
-                // Keep disabled
             }
             if (stat) {
                 stat.textContent = "Error loading settings. Refresh page.";
@@ -405,7 +418,17 @@ async function initSettings() {
             phase3_action: $("phase3Action")?.value || 'kick',
             phase4_threshold: parseInt($("phase4Threshold")?.value || 10),
             phase4_action: $("phase4Action")?.value || 'ban',
-            intro_reminder_hours: parseInt($("introReminderHours")?.value || 24)
+            ng_warning_enabled: $("ngWarningEnabled")?.checked || false,
+            intro_reminder_hours: parseInt($("introReminderHours")?.value || 24),
+
+            // Extended Fields
+            ticket_welcome_msg: $("ticketWelcomeMsg")?.value || "",
+            color_log: $("colorLog")?.value || "#5865F2",
+            color_level: $("colorLevel")?.value || "#FFD700",
+            color_ticket: $("colorTicket")?.value || "#2ECC71",
+            dashboard_theme_color: $("colorDashboard")?.value || "#1d9bf0",
+            branding_footer_text: $("brandingFooterText")?.value || "",
+            ai_prediction_enabled: $("aiPredictionEnabled")?.checked || false
         };
 
 
@@ -616,6 +639,61 @@ window.addNg = async () => {
         if (res.message) alert(res.message);
         input.value = "";
         // Reload list: Trigger guild change event which calls reload()
+        // Tickets Page Logic
+        window.initTicketsPage = async () => {
+            if (!await loadGuilds()) return;
+            const selGuild = $("guild");
+            const statusFilter = $("statusFilter");
+
+            const refresh = async () => {
+                const gid = selGuild.value;
+                const status = statusFilter.value;
+                if (!gid) return;
+
+                const list = $("ticketList");
+                list.innerHTML = `<tr><td colspan="6" class="muted" style="text-align:center; padding:30px;">${t("loading")}...</td></tr>`;
+
+                const res = await api(`/api/tickets?guild=${gid}&status=${status}`);
+                if (res.ok) {
+                    if (res.tickets.length === 0) {
+                        list.innerHTML = `<tr><td colspan="6" class="muted" style="text-align:center; padding:30px;">チケットは見つかりませんでした。</td></tr>`;
+                        return;
+                    }
+
+                    list.innerHTML = res.tickets.map(t => `
+                <tr>
+                    <td>#${t.id}</td>
+                    <td>${escapeHTML(t.userName)}</td>
+                    <td><span class="${t.assigned_to ? 'staff-assign' : 'unassigned'}">${escapeHTML(t.staffName)}</span></td>
+                    <td><span class="status-badge status-${t.status}">${t.status === 'open' ? '進行中' : '解決済'}</span></td>
+                    <td><span class="muted">${new Date(t.created_at).toLocaleString('ja-JP')}</span></td>
+                    <td style="text-align:right;">
+                        ${t.status === 'open' ? `<button class="btn" style="padding:2px 8px; font-size:11px; border-color:var(--danger-color); color:var(--danger-color);" onclick="closeWebTicket(${t.id})">解決</button>` : '-'}
+                    </td>
+                </tr>
+            `).join("");
+                } else {
+                    list.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger-color); padding:30px;">Error: ${res.error}</td></tr>`;
+                }
+            };
+
+            selGuild.onchange = refresh;
+            statusFilter.onchange = refresh;
+            $("refreshTickets").onclick = refresh;
+            refresh();
+        };
+
+        window.closeWebTicket = async (id) => {
+            if (!confirm("このチケットを解決済みとしてマークし、チャンネルを削除しますか？")) return;
+            const res = await api("/api/tickets/close", { guild: $("guild").value, ticket_id: id });
+            if (res.ok) {
+                alert("チケットを解決しました。");
+                $("refreshTickets").click();
+            } else {
+                alert("Error: " + res.error);
+            }
+        };
+
         if ($("guild").onchange) $("guild").onchange();
     } else {
         alert("Error: " + res.error);
@@ -632,3 +710,24 @@ window.removeNg = async (word) => {
         alert("Error: " + res.error);
     }
 };
+
+function applyThemeColor(color) {
+    if (!color) return;
+    document.documentElement.style.setProperty('--accent-color', color);
+    document.documentElement.style.setProperty('--primary-color', color);
+    // Dynamic shadowing if possible
+    const btn = document.querySelector('.btn-primary');
+    if (btn) {
+        btn.style.boxShadow = `0 0 15px ${color}66`; // 66 is alpha
+    }
+}
+
+// Add event listener for real-time preview (ensure it's added once)
+if (window._themeInit === undefined) {
+    window._themeInit = true;
+    document.addEventListener('input', (e) => {
+        if (e.target.id === 'colorDashboard') {
+            applyThemeColor(e.target.value);
+        }
+    });
+}

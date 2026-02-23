@@ -1,0 +1,85 @@
+<div class="card" style="max-width: 1100px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h3 style="margin:0;">🎫 チケット管理</h3>
+        <div style="display:flex; gap:10px;">
+            <select id="statusFilter" style="font-size:12px;">
+                <option value="all">すべて</option>
+                <option value="open" selected>進行中</option>
+                <option value="closed">解決済</option>
+            </select>
+            <button id="refreshTickets" class="btn btn-primary" style="padding:4px 12px; font-size:12px;">更新</button>
+        </div>
+    </div>
+
+    <div class="setting-section" style="margin-bottom:24px;">
+        <label class="muted">Select Server</label>
+        <div style="display:flex; gap:10px; align-items:center; margin-top:8px;">
+            <select id="guild" style="flex:1;"></select>
+        </div>
+    </div>
+
+    <div style="overflow-x: auto;">
+        <table style="width:100%; min-width:800px;">
+            <thead>
+                <tr>
+                    <th style="width:80px;">ID</th>
+                    <th>起票者</th>
+                    <th>担当スタッフ</th>
+                    <th style="width:120px;">ステータス</th>
+                    <th style="width:180px;">作成日時</th>
+                    <th style="width:100px; text-align:right;">アクション</th>
+                </tr>
+            </thead>
+            <tbody id="ticketList">
+                <tr>
+                    <td colspan="6" class="muted" style="text-align:center; padding:30px;">
+                        <%= t("loading") %>...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .status-badge {
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+
+    .status-open {
+        background: rgba(0, 186, 124, 0.1);
+        color: #00ba7c;
+        border: 1px solid rgba(0, 186, 124, 0.2);
+    }
+
+    .status-closed {
+        background: rgba(139, 155, 180, 0.1);
+        color: #8b9bb4;
+        border: 1px solid rgba(139, 155, 180, 0.2);
+    }
+
+    .staff-assign {
+        font-size: 12px;
+        color: var(--accent-color);
+        font-weight: 500;
+    }
+
+    .unassigned {
+        color: var(--text-secondary);
+        font-style: italic;
+        font-size: 12px;
+    }
+</style>
+
+<script src="/js/dashboard.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof initTicketsPage === 'function') {
+            initTicketsPage();
+        }
+    });
+</script>
