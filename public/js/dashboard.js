@@ -35,48 +35,69 @@ async function loadGuilds() {
     if (_guildsLoaded) return true;
     const sel = $("globalGuildSelect");
     if (!sel) return false;
-    sel.innerHTML = `<option>${t("loading")}...</option>`; sel.disabled = true;
 
-    const d = await api("/api/guilds");
-    sel.innerHTML = "";
-    sel.disabled = false;
+    sel.innerHTML = `<option>${t("loading")}...</option>`;
+    sel.disabled = true;
 
-    if (d && d.ok && d.guilds && d.guilds.length) {
-        const lastGid = localStorage.getItem("last_guild_id");
-        let selectedIndex = 0;
-        d.guilds.forEach((g, i) => {
-            const o = document.createElement("option");
-            o.value = g.id;
-            o.textContent = g.name;
-            sel.appendChild(o);
-            if (lastGid && g.id === lastGid) selectedIndex = i;
-        });
-        sel.selectedIndex = selectedIndex;
-        _guildsLoaded = true;
+    try {
+        const d = await api("/api/guilds");
+        sel.innerHTML = "";
+        sel.disabled = false;
 
-        saveGuildSelection();
+        if (d && d.ok && d.guilds && d.guilds.length > 0) {
+            let lastGid = localStorage.getItem("last_guild_id");
+            let selectedIndex = 0;
 
-        // Global Selector Event
-        sel.onchange = () => {
-            saveGuildSelection();
-            if (window.__pageReload) window.__pageReload();
-        };
-        const reloadBtn = $("globalReload");
-        if (reloadBtn) reloadBtn.onclick = () => {
-            if (window.__pageReload) window.__pageReload();
-        };
+            d.guilds.forEach((g, i) => {
+                const o = document.createElement("option");
+                o.value = g.id;
+                o.textContent = g.name;
+                sel.appendChild(o);
+                if (lastGid && g.id === lastGid) selectedIndex = i;
+            });
 
-        return true;
+            sel.selectedIndex = selectedIndex;
+            _guildsLoaded = true;
+
+            // If it was the first time or selection changed, save it
+            if (!lastGid || lastGid !== sel.value) {
+                saveGuildSelection();
+            }
+
+            // Global Selector Event
+            sel.onchange = () => {
+                saveGuildSelection();
+                if (window.__pageReload) window.__pageReload();
+            };
+
+            const reloadBtn = $("globalReload");
+            if (reloadBtn) reloadBtn.onclick = () => {
+                if (window.__pageReload) window.__pageReload();
+            };
+
+            return true;
+        }
+
+        const o = document.createElement("option");
+        o.textContent = `(${t("no_guilds")})`;
+        sel.appendChild(o);
+        const errMsg = (d && d.error) ? d.error : "Server access denied or Bot missing permissions";
+        const statusEl = $("guildStatus");
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--danger-color)">⚠️ ' + escapeHTML(errMsg) + '</span>';
+        return false;
+    } catch (e) {
+        console.error("Guild Load Error:", e);
+        sel.innerHTML = `<option>Error Loading</option>`;
+        return false;
     }
-
-    const o = document.createElement("option"); o.textContent = `(${t("no_guilds")})`; sel.appendChild(o);
-    const errMsg = (d && d.error) ? d.error : "Check Bot Permissions/Invite";
-    const statusEl = $("guildStatus");
-    if (statusEl) statusEl.innerHTML = '<span style="color:var(--danger-color)">⚠️ ' + escapeHTML(errMsg) + '</span>';
-    return false;
 }
 
-function saveGuildSelection() { const sel = $("globalGuildSelect"); if (sel && sel.value) localStorage.setItem("last_guild_id", sel.value); }
+function saveGuildSelection() {
+    const sel = $("globalGuildSelect");
+    if (sel && sel.value && sel.value.length > 5) {
+        localStorage.setItem("last_guild_id", sel.value);
+    }
+}
 
 const charts = {};
 
