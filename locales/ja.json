@@ -128,8 +128,7 @@
     "help_advanced_filter": "Discordの招待リンクや、不審な短縮URL、ブラックリストに登録されたドメインを含むメッセージを自動的に削除します。",
     "help_ai_advice": "一定期間活動のないメンバーに対し、AIが丁寧な口調で「接し方」のアドバイスを送ります。",
     "help_ai_insight": "1週間のデータを分析し、サーバーの成長や活性化、秩序維持に関する「戦略的なアドバイス」を管理者に届けます。",
-    "cat_capacity": "📊 基本スペック (Capacity)",
-    "cat_security": "🛡️ 帝国の守護 (Security & Protection)",
-    "cat_wisdom": "🧠 暁の叡智 (AI & Insights)",
-    "cat_branding": "✨ 創造と装い (Creative & Themes)"
+    "cat_security": "🛡️ セキュリティ & サーバー管理 (Security & Management)",
+    "cat_wisdom": "🧠 AI & データ分析 (AI & Analysis)",
+    "cat_branding": "🎨 デザイン & カスタマイズ (Customization)"
 }

@@ -109,8 +109,7 @@
     "help_ai_advice": "Sends polite AI advice on how to interact with members who haven't been active for a set period.",
     "help_ai_insight": "Analyzes weekly server metrics and provides strategic management advice to administrators.",
     "save_settings": "Save Settings",
-    "cat_capacity": "📊 Capacity",
-    "cat_security": "🛡️ Security & Protection",
-    "cat_wisdom": "🧠 AI & Insights",
-    "cat_branding": "✨ Creative & Themes"
+    "cat_security": "🛡️ Security & Management",
+    "cat_wisdom": "🧠 AI & Analysis",
+    "cat_branding": "🎨 Design & Customization"
 }
