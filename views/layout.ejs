@@ -334,6 +334,17 @@
     </div>
 
     <% if (oauth && user) { %>
+        <div
+            style="max-width: 900px; margin: 0 auto 16px auto; display: flex; align-items: flex-end; gap: 12px; padding: 0 8px;">
+            <div style="flex: 1;">
+                <label class="muted" style="font-size: 11px; display: block; margin-bottom: 4px;">🌏 GLOBAL SERVER
+                    SELECT</label>
+                <select id="globalGuildSelect"
+                    style="width: 100%; padding: 10px; border-radius: 8px; font-weight: 600;"></select>
+            </div>
+            <button id="globalReload" class="btn" style="padding: 10px 16px; border-radius: 8px;">🔄 Reload</button>
+        </div>
+
         <div class="nav-bar">
             <a href="/admin/dashboard" class="nav-item <%= activeTab === 'dashboard' ? 'active' : '' %>">
                 <%= t("dashboard") %>

@@ -1,23 +1,22 @@
-<div class="card" style="padding: 10px; margin-bottom: 15px; max-width: 1000px;">
-    <div style="display:flex; gap:10px; align-items:center; flex-wrap:nowrap; font-size:12px;">
-        <select id="guild" style="padding:4px 8px; font-size:12px; min-width:140px;"></select>
-        <input id="month" type="month" style="padding:4px; font-size:12px; width:115px;" />
+<div style="display:flex; gap:12px; align-items:center; flex-wrap:nowrap; font-size:12px; width:100%;">
+    <input id="month" type="month"
+        style="padding:4px; font-size:12px; width:125px; border-radius:4px; border:1px solid var(--border-color); background:rgba(0,0,0,0.2); color:white;" />
 
-        <div id="summary"
-            style="display:flex; gap:12px; background:rgba(255,255,255,0.03); padding:4px 12px; border-radius:6px; border:1px solid var(--border-color); flex:1; justify-content:center; white-space:nowrap; color:var(--text-secondary);">
-            <%= t("dashboard_loading") %>
-        </div>
-
-        <div style="white-space:nowrap; font-size:11px;">
-            <span class="muted">
-                <%= t("plan_label") %>:
-            </span> <span id="plan-info"
-                style="color:var(--text-primary); font-weight:bold; background: rgba(var(--accent-rgb), 0.2); padding: 2px 8px; border-radius: 4px;">...</span>
-        </div>
-
-        <button id="reload" class="btn btn-primary"
-            style="padding:4px 12px; font-size:12px; min-width:70px;">Reload</button>
+    <div id="summary"
+        style="display:flex; gap:12px; background:rgba(255,255,255,0.03); padding:4px 12px; border-radius:6px; border:1px solid var(--border-color); flex:1; justify-content:center; white-space:nowrap; color:var(--text-secondary);">
+        <%= t("dashboard_loading") %>
     </div>
+
+    <div style="white-space:nowrap; font-size:11px;">
+        <span class="muted">
+            <%= t("plan_label") %>:
+        </span> <span id="plan-info"
+            style="color:var(--text-primary); font-weight:bold; background: rgba(var(--accent-rgb), 0.2); padding: 2px 8px; border-radius: 4px;">...</span>
+    </div>
+
+    <button id="reload" class="btn btn-primary"
+        style="padding:4px 12px; font-size:12px; min-width:70px;">Reload</button>
+</div>
 </div>
 
 <div

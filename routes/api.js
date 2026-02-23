@@ -511,6 +511,34 @@ export async function handleApiRoute(req, res, pathname, url) {
         return;
     }
 
+    // GET /api/roles/members
+    if (pathname === "/api/roles/members") {
+        const guildId = url.searchParams.get("guild");
+        const roleId = url.searchParams.get("role_id");
+        if (!guildId || !roleId) return resJson({ ok: false, error: "Missing fields" }, 400);
+        if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
+
+        try {
+            const guild = client.guilds.cache.get(guildId);
+            if (!guild) return resJson({ ok: false, error: "Guild not found" }, 404);
+
+            const role = await guild.roles.fetch(roleId).catch(() => null);
+            if (!role) return resJson({ ok: false, error: "Role not found" }, 404);
+
+            // Fetch members of the role
+            const members = role.members.map(m => ({
+                id: m.id,
+                name: m.user.globalName || m.user.username,
+                avatar: m.user.displayAvatarURL({ size: 64 })
+            }));
+
+            return resJson({ ok: true, members });
+        } catch (e) {
+            console.error("Fetch Role Members Error:", e);
+            return resJson({ ok: false, error: "Internal Error" }, 500);
+        }
+    }
+
     // POST /api/settings/update (Improved)
     if (pathname === "/api/settings/update" && method === "POST") {
         const body = await getBody();
@@ -531,12 +559,13 @@ export async function handleApiRoute(req, res, pathname, url) {
                     ai_insight_enabled, ai_insight_channel_id, insight_sections,
                     phase2_threshold, phase2_action, phase3_threshold, phase3_action, phase4_threshold, phase4_action,
                     intro_reminder_hours, report_channel_id, ng_warning_enabled,
-                        ticket_welcome_msg, color_log, color_ng, color_vc_join, color_vc_leave, color_level, color_ticket, dashboard_theme_color, dashboard_theme_mode, branding_footer_text, ai_prediction_enabled,
-                        auto_vc_creator_id,
-                        updated_at
-                    ) VALUES (
-                        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, NOW()
-                    )
+                    ticket_welcome_msg, color_log, color_ng, color_vc_join, color_vc_leave, color_level, color_ticket, 
+                    dashboard_theme_color, dashboard_theme_mode, ai_prediction_enabled,
+                    auto_vc_creator_id, ticket_staff_role_id,
+                    updated_at
+                ) VALUES (
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, NOW()
+                )
                 ON CONFLICT (guild_id) DO UPDATE SET
                     log_channel_id = EXCLUDED.log_channel_id,
                     ng_log_channel_id = EXCLUDED.ng_log_channel_id,
@@ -581,9 +610,10 @@ export async function handleApiRoute(req, res, pathname, url) {
                     color_level = EXCLUDED.color_level,
                     color_ticket = EXCLUDED.color_ticket,
                     dashboard_theme_color = EXCLUDED.dashboard_theme_color,
-                    branding_footer_text = EXCLUDED.branding_footer_text,
+                    dashboard_theme_mode = EXCLUDED.dashboard_theme_mode,
                     ai_prediction_enabled = EXCLUDED.ai_prediction_enabled,
                     auto_vc_creator_id = EXCLUDED.auto_vc_creator_id,
+                    ticket_staff_role_id = EXCLUDED.ticket_staff_role_id,
                     updated_at = NOW();
             `, [
                 body.guild,
@@ -610,9 +640,9 @@ export async function handleApiRoute(req, res, pathname, url) {
                 body.color_ticket || '#2ECC71',
                 body.dashboard_theme_color || '#5865F2',
                 body.dashboard_theme_mode || 'dark',
-                body.branding_footer_text || null,
                 body.ai_prediction_enabled === true,
-                body.auto_vc_creator_id || null
+                body.auto_vc_creator_id || null,
+                body.ticket_staff_role_id || null
             ]);
         } catch (e) {
             console.error("Settings Update Error:", e);
@@ -1006,6 +1036,33 @@ export async function handleApiRoute(req, res, pathname, url) {
             return resJson({ ok: true });
         } catch (e) {
             console.error("Close Ticket Error:", e);
+            return resJson({ ok: false, error: "Internal Error" }, 500);
+        }
+    }
+
+    // POST /api/tickets/assign
+    if (pathname === "/api/tickets/assign" && method === "POST") {
+        const body = await getBody();
+        if (!body.guild || !body.ticket_id || !body.user_id) return resJson({ ok: false, error: "Missing fields" }, 400);
+        if (!await verifyGuild(body.guild)) return resJson({ ok: false, error: "Forbidden" }, 403);
+
+        try {
+            // Update DB
+            await dbQuery("UPDATE tickets SET assigned_to = $1 WHERE id = $2 AND guild_id = $3", [body.user_id, body.ticket_id, body.guild]);
+
+            // Notify in Discord channel if possible
+            const resData = await dbQuery("SELECT channel_id FROM tickets WHERE id = $1 AND guild_id = $2", [body.ticket_id, body.guild]);
+            if (resData.rows.length > 0) {
+                const guild = client.guilds.cache.get(body.guild);
+                const channel = guild?.channels.cache.get(resData.rows[0].channel_id);
+                if (channel) {
+                    await channel.send(`👥 担当者が変更されました: <@${body.user_id}> がこのチケットを担当します。`);
+                }
+            }
+
+            return resJson({ ok: true });
+        } catch (e) {
+            console.error("Assign Ticket Error:", e);
             return resJson({ ok: false, error: "Internal Error" }, 500);
         }
     }

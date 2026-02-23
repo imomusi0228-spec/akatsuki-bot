@@ -11,15 +11,6 @@
         </div>
     </div>
 
-    <!-- 1. Server Selector -->
-    <div class="setting-section"
-        style="margin-bottom:24px; background:rgba(255,255,255,0.02); padding:15px; border-radius:8px; border:1px solid var(--border-color);">
-        <label class="muted" style="font-size:12px;">Select Server</label>
-        <div style="display:flex; gap:10px; align-items:center; margin-top:8px;">
-            <select id="guild" style="flex:1;"></select>
-            <button id="reloadMasters" class="btn" style="padding:4px 12px; font-size:12px;">Reload</button>
-        </div>
-    </div>
 
     <!-- 2. Ticket Settings (Consolidated from main settings) -->
     <div class="setting-section"
@@ -27,6 +18,13 @@
         <h4
             style="margin-top:0; margin-bottom:15px; font-size:14px; color:var(--text-primary); border-left: 4px solid var(--accent-color); padding-left: 10px;">
             ⚙️ チケット基本設定</h4>
+        <div style="margin-bottom:20px;">
+            <label class="muted" style="font-size:12px;">🛡️ モデレーターロール（対応可能なスタッフ）</label><br />
+            <select id="ticketStaffRole" style="width:100%; margin-top:8px; padding:10px; border-radius:8px;">
+                <option value="">ロード中...</option>
+            </select>
+            <p class="muted" style="font-size:11px; margin-top:8px;">※ ここで設定したロールを持つメンバーを、チケットの担当者として割り当てることができます。</p>
+        </div>
         <div style="margin-bottom:20px;">
             <label class="muted" style="font-size:12px;">📦 チケット作成時の初期メッセージ（お嬢の言葉）</label><br />
             <textarea id="ticketWelcomeMsg"
@@ -50,7 +48,7 @@
                     <th>担当スタッフ</th>
                     <th style="width:120px;">ステータス</th>
                     <th style="width:180px;">作成日時</th>
-                    <th style="width:100px; text-align:right;">アクション</th>
+                    <th style="width:160px; text-align:right;">アクション</th>
                 </tr>
             </thead>
             <tbody id="ticketList">
@@ -61,6 +59,24 @@
                 </tr>
             </tbody>
         </table>
+    </div>
+</div>
+
+<!-- Assign Member Modal -->
+<div id="assignModal"
+    style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; justify-content:center; align-items:center; padding:20px;">
+    <div class="card"
+        style="width:100%; max-width:400px; padding:20px; border:1px solid var(--accent-color); position:relative;">
+        <h4 style="margin-top:0; color:var(--accent-color);">👥 担当をアサイン</h4>
+        <p class="muted" style="font-size:12px; margin-bottom:15px;">このチケットを担当するモデレーターを選択してください。</p>
+        <div id="memberList"
+            style="max-height:300px; overflow-y:auto; margin-bottom:20px; display:flex; flex-direction:column; gap:8px;">
+            <!-- Members will be loaded here -->
+        </div>
+        <div style="display:flex; justify-content:flex-end;">
+            <button onclick="$('assignModal').style.display='none'" class="btn"
+                style="padding:4px 12px; font-size:12px;">キャンセル</button>
+        </div>
     </div>
 </div>
 
@@ -85,16 +101,44 @@
         border: 1px solid rgba(139, 155, 180, 0.2);
     }
 
-    .staff-assign {
-        font-size: 12px;
+    .staff-assign-btn {
+        background: rgba(var(--accent-rgb), 0.1);
         color: var(--accent-color);
-        font-weight: 500;
+        border: 1px solid var(--accent-color);
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-right: 5px;
     }
 
-    .unassigned {
-        color: var(--text-secondary);
-        font-style: italic;
-        font-size: 12px;
+    .staff-assign-btn:hover {
+        background: var(--accent-color);
+        color: white;
+    }
+
+    .member-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+    }
+
+    .member-item:hover {
+        background: rgba(var(--accent-rgb), 0.1);
+        border-color: var(--accent-color);
+    }
+
+    .member-item img {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
     }
 </style>
 

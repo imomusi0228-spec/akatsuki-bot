@@ -324,6 +324,7 @@ export async function initDb() {
                 created_at TIMESTAMPTZ DEFAULT NOW()
             );`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS auto_vc_creator_id TEXT;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ticket_staff_role_id TEXT;`,
 
             // Tickets assignment
             `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS assigned_to TEXT;`
