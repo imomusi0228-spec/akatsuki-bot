@@ -464,8 +464,7 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (!guild) return res.end(JSON.stringify({ ok: false, error: "Guild not found" }));
 
         const channels = guild.channels.cache
-            .filter(c => c.isTextBased())
-            .map(c => ({ id: c.id, name: c.name }));
+            .map(c => ({ id: c.id, name: c.name, type: c.type }));
 
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ ok: true, channels }));

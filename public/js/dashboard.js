@@ -210,7 +210,7 @@ async function initSettings() {
             textSelects.forEach(s => {
                 if (s) {
                     s.innerHTML = '<option value="">(None)</option>';
-                    channels.forEach(c => {
+                    channels.filter(c => c.type === 0 || c.type === 5).forEach(c => {
                         const o = document.createElement("option"); o.value = c.id; o.textContent = "#" + c.name; s.appendChild(o);
                     });
                 }
@@ -225,18 +225,25 @@ async function initSettings() {
                 });
             }
 
-            // 3. Voice Channels (Auto-VC & Reports)
-            const voiceSelects = [$("vcReportCh"), $("autoVcCreatorCh")];
+            // 3. Voice Channels (Reports)
+            const voiceSelects = [$("vcReportCh")];
             voiceSelects.forEach(s => {
                 if (s) {
                     s.innerHTML = '<option value="">(None)</option>';
-                    channels.forEach(c => {
-                        // In a real scenario, we might want to filter by channel type, 
-                        // but here we list all to keep it simple or if Discord.js doesn't provide types in API
+                    channels.filter(c => c.type === 2).forEach(c => {
                         const o = document.createElement("option"); o.value = c.id; o.textContent = "🔊 " + c.name; s.appendChild(o);
                     });
                 }
             });
+
+            // 4. Categories (Auto-VC Target)
+            const catSelect = $("autoVcCategory");
+            if (catSelect) {
+                catSelect.innerHTML = '<option value="">(None)</option>';
+                channels.filter(c => c.type === 4).forEach(c => {
+                    const o = document.createElement("option"); o.value = c.id; o.textContent = "📁 " + c.name; catSelect.appendChild(o);
+                });
+            }
 
         } catch (e) {
             console.error("loadMasters Error:", e);
@@ -332,10 +339,9 @@ async function initSettings() {
             ["antiraidEnabled", "introGateEnabled"].forEach(id => toggleAlphaSection(id, true));
 
             // VC Report Fields
-            if ($("vcReportEnabled")) $("vcReportEnabled").checked = s.vc_report_enabled;
             if ($("vcReportCh")) $("vcReportCh").value = s.vc_report_channel_id || "";
             if ($("vcReportInterval")) $("vcReportInterval").value = s.vc_report_interval || "weekly";
-            if ($("autoVcCreatorCh")) $("autoVcCreatorCh").value = s.auto_vc_creator_id || "";
+            if ($("autoVcCategory")) $("autoVcCategory").value = s.auto_vc_creator_id || "";
 
             // Load VC Role Rules
             const rulesList = $("roleRulesList");
@@ -429,7 +435,7 @@ async function initSettings() {
             dashboard_theme_color: $("colorDashboard")?.value || "#1d9bf0",
             branding_footer_text: $("brandingFooterText")?.value || "",
             ai_prediction_enabled: $("aiPredictionEnabled")?.checked || false,
-            auto_vc_creator_id: $("autoVcCreatorCh")?.value || null
+            auto_vc_creator_id: $("autoVcCategory")?.value || null
         };
 
 

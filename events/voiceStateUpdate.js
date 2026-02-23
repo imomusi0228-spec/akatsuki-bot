@@ -18,25 +18,33 @@ export default {
         const features = getFeatures(tier);
 
         try {
-            // --- Auto-VC Logic ---
+            // --- Auto-VC Logic (Category-based) ---
             const settingsRes = await dbQuery("SELECT auto_vc_creator_id FROM settings WHERE guild_id = $1", [guildId]);
-            const creatorId = settingsRes.rows[0]?.auto_vc_creator_id;
+            const categoryId = settingsRes.rows[0]?.auto_vc_creator_id;
 
-            // 1. Create VC when joining creator channel
-            if (newState.channelId === creatorId && oldState.channelId !== creatorId) {
-                const category = newState.channel.parent;
-                const newChannel = await guild.channels.create({
-                    name: `🔊 ${member.displayName}の部屋`,
-                    type: ChannelType.GuildVoice,
-                    parent: category || null,
-                    permissionOverwrites: [
-                        { id: guild.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect] }
-                    ]
-                });
+            if (categoryId && newState.channel && newState.channel.parentId === categoryId) {
+                // Find the top-most voice channel in this category
+                const categoryChannels = guild.channels.cache
+                    .filter(c => c.parentId === categoryId && c.type === ChannelType.GuildVoice)
+                    .sort((a, b) => a.position - b.position);
 
-                await dbQuery("INSERT INTO auto_vc_channels (channel_id, guild_id, owner_id) VALUES ($1, $2, $3)", [newChannel.id, guildId, userId]);
-                await member.voice.setChannel(newChannel).catch(() => { });
-                console.log(`[AUTO-VC] Created room for ${member.user.tag}: ${newChannel.name}`);
+                const triggerChannel = categoryChannels.first();
+
+                // 1. Create VC when joining the top-most (trigger) channel
+                if (triggerChannel && newState.channelId === triggerChannel.id && oldState.channelId !== triggerChannel.id) {
+                    const newChannel = await guild.channels.create({
+                        name: `🔊 ${member.displayName}の部屋`,
+                        type: ChannelType.GuildVoice,
+                        parent: categoryId,
+                        permissionOverwrites: [
+                            { id: guild.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect] }
+                        ]
+                    });
+
+                    await dbQuery("INSERT INTO auto_vc_channels (channel_id, guild_id, owner_id) VALUES ($1, $2, $3)", [newChannel.id, guildId, userId]);
+                    await member.voice.setChannel(newChannel).catch(() => { });
+                    console.log(`[AUTO-VC] Created room for ${member.user.tag} in category ${categoryId}: ${newChannel.name}`);
+                }
             }
 
             // 2. Cleanup / Transfer when leaving
