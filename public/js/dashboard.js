@@ -356,6 +356,9 @@ async function initActivity() {
             if ($("ngLogCh")) $("ngLogCh").value = s.ng_log_channel_id || "";
             if ($("reportCh")) $("reportCh").value = s.report_channel_id || "";
         }
+
+        // Auto-run scan on tab load
+        await runScan();
     };
 
     let currentData = [];
@@ -420,6 +423,9 @@ async function initActivity() {
         countEl.textContent = `自動更新: ${countdown}秒後`;
         if (countdown-- <= 0) { countdown = 60; runScan(); }
     }, 1000);
+
+    if (!await loadGuilds()) return;
+    window.__pageReload();
 }
 
 window.toggleAccordion = (id) => {

@@ -125,15 +125,29 @@ export async function handleApiRoute(req, res, pathname, url) {
             if (!client.guilds.cache.has(guildId)) return false;
 
             // Use session cache if available to avoid redundant API calls and potential rate limits
-            if (!session.guilds) {
-                const userGuilds = await discordApi(session.accessToken, "/users/@me/guilds");
-                if (Array.isArray(userGuilds)) {
-                    session.guilds = userGuilds;
-                } else {
-                    console.error(`[AUTH ERROR] Failed to fetch guilds for user ${session.user.id}`);
+            if (!Array.isArray(session.guilds) || session.guilds.length === 0) {
+                let attempt = 0;
+                while (attempt < 3) {
+                    const userGuilds = await discordApi(session.accessToken, "/users/@me/guilds");
+                    if (Array.isArray(userGuilds)) {
+                        session.guilds = userGuilds; // Cache in session
+                        break;
+                    }
+
+                    if (userGuilds?.status === 429) {
+                        const retryAfter = userGuilds.retry_after || 1;
+                        console.warn(`[API WARN] verifyGuild: Rate limited, retrying after ${retryAfter}s... (Attempt ${attempt + 1})`);
+                        await new Promise(r => setTimeout(r, Math.ceil(retryAfter * 1000) + 500));
+                        attempt++;
+                        continue;
+                    }
+
+                    console.error(`[AUTH ERROR] Failed to fetch guilds for user ${session.user.id}:`, userGuilds);
                     return false;
                 }
             }
+
+            if (!Array.isArray(session.guilds)) return false;
 
             const targetGuild = session.guilds.find(g => g.id === guildId);
             if (!targetGuild) return false;
