@@ -32,7 +32,7 @@ export const FEATURES = {
         maxGuilds: 1,
         ngLog: false,
         vcLog: true,
-        dashboard: false,
+        dashboard: true,
         activity: true, // Activity stats (basic)
         autoRelease: true,
         antiraid: true, // Alerts only
