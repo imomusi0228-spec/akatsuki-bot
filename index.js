@@ -40,6 +40,7 @@ process.on("unhandledRejection", (reason) => {
         // 5. Start Background Tasks
         console.log("⚙️  Initializing Background Tasks...");
 
+        const VERSION = "2.7.0";
         const runTasks = async () => {
             await runEngagementCheck();
             await new Promise(r => setTimeout(r, 5000)); // 5s delay
