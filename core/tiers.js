@@ -34,7 +34,7 @@ export const FEATURES = {
         vcLog: true,
         dashboard: false,
         activity: true, // Activity stats (basic)
-        autoRelease: false,
+        autoRelease: true,
         antiraid: true, // Alerts only
         spamProtection: false,
         audit: false,

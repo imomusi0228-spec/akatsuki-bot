@@ -1,10 +1,11 @@
 import { dbQuery } from "../core/db.js";
-import { getSession, discordApi } from "../middleware/auth.js";
+import { getSession } from "../middleware/auth.js";
+import { discordApi } from "../services/discord.js";
 import fs from "fs";
 import path from "path";
 import { PermissionFlagsBits } from "discord.js";
 import { client } from "../core/client.js";
-import { TIERS, getFeatures, TIER_NAMES } from "../core/tiers.js";
+import { TIERS, FEATURES, getFeatures, TIER_NAMES } from "../core/tiers.js";
 import { getTier, getSubscriptionInfo } from "../core/subscription.js";
 import { ENV } from "../config/env.js";
 
@@ -75,17 +76,23 @@ export async function handleApiRoute(req, res, pathname, url) {
         try {
             let userGuilds;
 
-            // Use session cache first to avoid hitting Discord rate limits
-            if (Array.isArray(session.guilds) && session.guilds.length > 0) {
+            // Use global cache or session cache first to avoid hitting Discord rate limits
+            const globalCache = cache.getUserGuilds(session.user.id);
+            if (globalCache) {
+                userGuilds = globalCache;
+                session.guilds = globalCache;
+            } else if (Array.isArray(session.guilds) && session.guilds.length > 0) {
                 userGuilds = session.guilds;
+                cache.setUserGuilds(session.user.id, userGuilds); // Sync back to global
             } else {
                 // Fetch from Discord with retry on 429
                 let attempt = 0;
-                while (attempt < 5) {
+                while (attempt < 7) {
                     const result = await discordApi(session.accessToken, "/users/@me/guilds");
                     if (Array.isArray(result)) {
                         userGuilds = result;
                         session.guilds = result; // Cache in session
+                        cache.setUserGuilds(session.user.id, result); // Cache globally
                         break;
                     }
 
@@ -124,13 +131,17 @@ export async function handleApiRoute(req, res, pathname, url) {
             // Check if bot is even in the guild
             if (!client.guilds.cache.has(guildId)) return false;
 
-            // Use session cache if available to avoid redundant API calls and potential rate limits
-            if (!Array.isArray(session.guilds) || session.guilds.length === 0) {
+            // Use global or session cache if available
+            const globalCache = cache.getUserGuilds(session.user.id);
+            if (globalCache) {
+                session.guilds = globalCache;
+            } else if (!Array.isArray(session.guilds) || session.guilds.length === 0) {
                 let attempt = 0;
-                while (attempt < 3) {
+                while (attempt < 7) {
                     const userGuilds = await discordApi(session.accessToken, "/users/@me/guilds");
                     if (Array.isArray(userGuilds)) {
                         session.guilds = userGuilds; // Cache in session
+                        cache.setUserGuilds(session.user.id, userGuilds); // Cache globally
                         break;
                     }
 

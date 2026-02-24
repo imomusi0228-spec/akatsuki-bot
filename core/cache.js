@@ -11,6 +11,7 @@ class CacheManager {
 
         this.activeSessions = new Map(); // guildId:userId -> session object (VC)
         this.joinCounts = new Map();     // guildId -> [{ts: number}]
+        this.userGuilds = new Map();     // userId -> { data: guilds, expires: number }
 
         this.ttl = 10 * 60 * 1000;    // Default 10 minutes TTL
         this.maxSize = 2000;          // Max guilds to keep in memory (LRU-ish)
@@ -107,6 +108,12 @@ class CacheManager {
         const now = Date.now();
         return joins.filter(ts => ts > now - 60000).length;
     }
+
+    // User Guilds (for API stability)
+    setUserGuilds(userId, guilds) {
+        this._set(this.userGuilds, userId, guilds, 5 * 60 * 1000); // 5 min global cache
+    }
+    getUserGuilds(userId) { return this._get(this.userGuilds, userId); }
 
     // Global clear for a guild
     clearAll(guildId) {
