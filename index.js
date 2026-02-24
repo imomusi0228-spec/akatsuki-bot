@@ -20,7 +20,7 @@ process.on("unhandledRejection", (reason) => {
 });
 
 (async () => {
-    console.log("🚀 Booting Akatsuki Bot (v2.5.5)...");
+    console.log("🚀 Booting Akatsuki Bot (v2.5.7)...");
 
     try {
         // 1. Initialize Database

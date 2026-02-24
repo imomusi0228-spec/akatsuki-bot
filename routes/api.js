@@ -1,6 +1,5 @@
 import { dbQuery } from "../core/db.js";
-import { getSession } from "../middleware/auth.js";
-import { discordApi } from "../services/discord.js";
+import { getSession, discordApi } from "../middleware/auth.js";
 import fs from "fs";
 import path from "path";
 import { PermissionFlagsBits } from "discord.js";
