@@ -1,17 +1,16 @@
 // Utility functions ($ and escapeHTML) are provided by layout.ejs
 function yyyymmNow() { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); }
 
-const api = async (path, body) => {
+const api = async (path, body, method = null) => {
     const ctrl = new AbortController();
     const tid = setTimeout(() => ctrl.abort(), 15000);
 
     // Get CSRF token from cookie (more robust parsing)
     const csrfToken = document.cookie.split(';').map(c => c.trim()).find(row => row.startsWith('csrf_token='))?.split('=')[1];
 
-
     try {
         const r = await fetch(path, {
-            method: body ? "POST" : "GET",
+            method: method || (body ? "POST" : "GET"),
             headers: {
                 ...(body ? { "Content-Type": "application/json" } : {}),
                 ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {})
@@ -291,6 +290,42 @@ async function initSettings() {
             }
             if ($("ngCount")) $("ngCount").textContent = words.length + " " + t("words");
         }
+
+        // v2.7.0 Reaction Roles
+        const rrList = $("rr-list");
+        const rrLoading = $("rr-loading");
+        if (rrList) {
+            rrList.innerHTML = "";
+            rrLoading.style.display = "block";
+            const rrRes = await api("/api/rr?guild=" + gid);
+            rrLoading.style.display = "none";
+            if (rrRes.ok && rrRes.reactionRoles) {
+                if (rrRes.reactionRoles.length === 0) {
+                    rrList.innerHTML = '<div class="muted" style="padding:10px; text-align:center;">設定されているリアクションロールはありません。</div>';
+                } else {
+                    rrList.innerHTML = rrRes.reactionRoles.map(r => `
+                        <div class="color-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <div>
+                                <div style="font-weight:600; font-size:13px;">Msg ID: ${r.message_id}</div>
+                                <div class="muted" style="font-size:11px;">Emoji: ${escapeHTML(r.emoji)} | Role ID: ${r.role_id}</div>
+                            </div>
+                            <button onclick="removeRR('${r.id}')" class="btn btn-delete" style="padding:4px 10px; font-size:11px;">削除</button>
+                        </div>
+                    `).join("");
+                }
+            }
+        }
+    };
+
+    window.removeRR = async (id) => {
+        if (!confirm("このリアクションロール設定を削除しますか？")) return;
+        const gid = $("globalGuildSelect")?.value;
+        const res = await api("/api/rr", { guild: gid, id }, "DELETE");
+        if (res.ok) {
+            if (window.__pageReload) window.__pageReload();
+        } else {
+            alert("Error: " + res.error);
+        }
     };
 
     if (!await loadGuilds()) return;
@@ -370,9 +405,61 @@ async function initActivity() {
             const introTxt = r.has_intro ? '<span style="color:#1da1f2;">OK</span>' : '<span style="color:var(--danger-color);">NG</span>';
             const statusStyle = r.status === "OK" ? 'color:#1da1f2; font-weight:bold;' : 'color:var(--danger-color); font-weight:bold;';
             const detailedStatus = r.status === "OK" ? t("status_ok") : (!r.has_role ? t("status_no_role") : (!r.has_intro ? t("status_no_intro") : t("status_no_vc")));
+            const actionBtn = `<button onclick="openWarnModal('${r.user_id}', '${escapeHTML(r.display_name)}')" class="btn" style="padding:4px 10px; font-size:11px; background:rgba(var(--accent-rgb), 0.1); color:var(--accent-color); border:1px solid var(--accent-color);">⚠️ 警告</button>`;
 
-            return `<tr><td>${r.joined_at || '-'}</td><td><div style="display:flex; align-items:center; gap:8px;"><img src="${av}" style="width:24px; height:24px; border-radius:50%;" /> <span>${escapeHTML(r.display_name)}</span></div></td><td style="text-align:center;">${roleTxt}</td><td style="text-align:center;">${introTxt}</td><td style="text-align:center;">${r.last_vc}</td><td style="text-align:center; ${statusStyle}">${detailedStatus}</td></tr>`;
-        }).join("") || `<tr><td colspan="6" class="muted" style="text-align:center;">${t("ng_none")}</td></tr>`;
+            return `<tr><td>${r.joined_at || '-'}</td><td><div style="display:flex; align-items:center; gap:8px;"><img src="${av}" style="width:24px; height:24px; border-radius:50%;" /> <span>${escapeHTML(r.display_name)}</span></div></td><td style="text-align:center;">${roleTxt}</td><td style="text-align:center;">${introTxt}</td><td style="text-align:center;">${r.last_vc}</td><td style="text-align:center; ${statusStyle}">${detailedStatus}</td><td style="text-align:center;">${actionBtn}</td></tr>`;
+        }).join("") || `<tr><td colspan="7" class="muted" style="text-align:center;">${t("ng_none")}</td></tr>`;
+    };
+
+    // v2.7.0 Warning management
+    window.openWarnModal = async (userId, displayName) => {
+        const gid = $("globalGuildSelect")?.value;
+        if (!gid) return;
+
+        $("warnUserTitle").textContent = `⚠️ ${escapeHTML(displayName)} の警告管理`;
+        $("warnHistory").innerHTML = '<div class="muted" style="text-align:center; padding:20px;">履歴を読み込み中...</div>';
+        $("warnReason").value = "";
+        $("warnModal").style.display = 'flex';
+
+        const res = await api(`/api/warnings?guild=${gid}&user=${userId}`);
+        if (res.ok) {
+            if (res.warnings.length === 0) {
+                $("warnHistory").innerHTML = '<div class="muted" style="text-align:center; padding:20px;">履歴はありません。</div>';
+            } else {
+                $("warnHistory").innerHTML = res.warnings.map(w => `
+                    <div style="margin-bottom:10px; padding:8px; background:rgba(255,255,255,0.03); border-radius:4px; border-left:3px solid #ffaa00;">
+                        <div style="font-weight:600; font-size:12px;">${escapeHTML(w.reason)}</div>
+                        <div class="muted" style="font-size:10px;">発行者: ${escapeHTML(w.issued_by)} | ${new Date(w.created_at).toLocaleString('ja-JP')}</div>
+                    </div>
+                `).join("");
+            }
+        }
+
+        $("submitWarnBtn").onclick = async () => {
+            const reason = $("warnReason").value;
+            if (!reason) return alert("理由を入力してください。");
+            const btn = $("submitWarnBtn");
+            btn.disabled = true;
+            const issueRes = await api("/api/warnings", { guild: gid, user_id: userId, reason });
+            btn.disabled = false;
+            if (issueRes.ok) {
+                alert(`警告を発行しました。（累計: ${issueRes.totalWarnings}回）`);
+                openWarnModal(userId, displayName); // Refresh
+            } else {
+                alert("Error: " + issueRes.error);
+            }
+        };
+
+        $("clearWarnBtn").onclick = async () => {
+            if (!confirm("このユーザーのすべての警告履歴をリセットしますか？")) return;
+            const clearRes = await api("/api/warnings", { guild: gid, user_id: userId }, "DELETE");
+            if (clearRes.ok) {
+                alert("警告履歴をリセットしました。");
+                openWarnModal(userId, displayName); // Refresh
+            } else {
+                alert("Error: " + clearRes.error);
+            }
+        };
     };
 
     window.sortActivity = (key) => {

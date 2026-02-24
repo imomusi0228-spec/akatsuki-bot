@@ -245,6 +245,30 @@
             </div>
         </div>
 
+        <!-- 7. Emergency Purge (v2.7.0) -->
+        <div class="accordion-item" id="sec-purge">
+            <div class="accordion-header" onclick="toggleAccordion('sec-purge')">
+                <span>🧹 緊急浄化 (Emergency Purge)</span>
+                <span>▼</span>
+            </div>
+            <div class="accordion-content">
+                <p class="muted" style="font-size:12px; margin-bottom:15px;">
+                    直近に参加した迷い子（迷惑ユーザー）による不適切な発言を、一括で虚空へ消し去ります。お嬢の手を煩わせるまでもありません。</p>
+                <div style="display:flex; gap:15px; align-items:flex-end;">
+                    <div style="flex:1;">
+                        <label class="muted">対象時間 (過去何分間に参加したユーザーを浄化するか: 1-60分)</label>
+                        <input id="purgeMins" type="number" value="10" min="1" max="60"
+                            style="width:100%; margin-top:5px;">
+                    </div>
+                </div>
+                <button id="runPurge" class="btn btn-primary"
+                    style="width:100%; margin-top:15px; background:#f4212e; border-color:#f4212e;">
+                    浄化を執行する
+                </button>
+                <div id="purgeResult" class="muted" style="margin-top:10px; font-size:12px; text-align:center;"></div>
+            </div>
+        </div>
+
         <button id="save" class="btn btn-primary" style="width:100%; padding:15px; font-size:18px; margin-top:10px;">
             要塞設定を保存
         </button>
@@ -327,6 +351,30 @@
                 if (statusEl) statusEl.textContent = "Saved";
             } else {
                 alert("Error: " + res.error);
+            }
+        };
+
+        // v2.7.0 Emergency Purge
+        document.getElementById('runPurge').onclick = async () => {
+            const gid = $("globalGuildSelect")?.value;
+            const mins = parseInt(document.getElementById('purgeMins').value);
+            if (!gid) return;
+            if (!confirm(`過去${mins}分間に参加したユーザーのメッセージを一括削除します。よろしいですか？`)) return;
+
+            const btn = document.getElementById('runPurge');
+            const resEl = document.getElementById('purgeResult');
+            btn.disabled = true;
+            btn.textContent = "浄化中...";
+            resEl.textContent = "";
+
+            const res = await api("/api/purge", { guild: gid, mins });
+            btn.disabled = false;
+            btn.textContent = "浄化を執行する";
+
+            if (res.ok) {
+                resEl.innerHTML = `<span style="color:#00ba7c;">✅ 完了: ${res.userCount}人のユーザーによる${res.deletedCount}件のメッセージを浄化しました。</span>`;
+            } else {
+                resEl.innerHTML = `<span style="color:#f4212e;">❌ エラー: ${res.error}</span>`;
             }
         };
     }

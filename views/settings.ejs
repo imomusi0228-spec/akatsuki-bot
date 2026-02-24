@@ -263,6 +263,23 @@
         </div>
 
 
+        <!-- 7. Reaction Roles (v2.7.0) -->
+        <div class="accordion-item" id="sec-rr">
+            <div class="accordion-header" onclick="toggleAccordion('sec-rr')">
+                <span>🎭 リアクションロール管理</span>
+                <span>▼</span>
+            </div>
+            <div class="accordion-content">
+                <p class="muted" style="font-size:12px; margin-bottom:15px;">Discord上でのリアクションに応じたロール付与設定を管理します。</p>
+                <div id="rr-loading" class="muted" style="text-align:center; padding:20px; display:none;">ロード中...</div>
+                <div id="rr-list" style="display:flex; flex-direction:column; gap:10px;">
+                    <!-- Reaction Roles loaded via JS -->
+                </div>
+                <p class="muted" style="font-size:11px; margin-top:15px;">※
+                    新規作成はDiscord上の各メッセージに対して行ってください。ここでは既存の設定の確認と削除が可能です。</p>
+            </div>
+        </div>
+
     </div>
 </div>
 
