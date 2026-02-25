@@ -1,8 +1,4 @@
-# Update Logs (v1.0.0 - v2.7.1)
-
-## v2.7.1 (2026/02/25) - 究極の洗練 (Ultimate Refinement)
-- **[Branding]** 「アルティメット」プランの表記を「ULTIMATE」へ全世界一斉変更。
-- **[System]** バージョンを v2.7.1 へ更新。
+# Update Logs (v1.0.0 - v2.7.0)
 
 ## v2.7.0 (2026/02/24) - 盤面への帰還 (The Command Consolidation)
 - **[Admin]** Discordコマンドの整理を実施。`/report`, `/rr`, `/purgeraid`, `/aura` を完全に廃止し、ウェブダッシュボードへ機能を統合。
