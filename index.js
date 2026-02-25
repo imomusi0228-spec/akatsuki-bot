@@ -20,7 +20,7 @@ process.on("unhandledRejection", (reason) => {
 });
 
 (async () => {
-    console.log("🚀 Booting Akatsuki Bot (v2.7.0)...");
+    console.log("🚀 Booting Akatsuki Bot (v2.7.3)...");
 
     try {
         // 1. Initialize Database
@@ -40,7 +40,7 @@ process.on("unhandledRejection", (reason) => {
         // 5. Start Background Tasks
         console.log("⚙️  Initializing Background Tasks...");
 
-        const VERSION = "2.7.0";
+        const VERSION = "2.7.3";
         const runTasks = async () => {
             await runEngagementCheck();
             await new Promise(r => setTimeout(r, 5000)); // 5s delay
