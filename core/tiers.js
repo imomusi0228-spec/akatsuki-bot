@@ -36,7 +36,7 @@ export const TIER_COLORS = {
     [TIERS.PRO_PLUS_YEARLY]: "#fbbf24",
     [TIERS.TRIAL_PRO_PLUS]: "#fbbf24",
     [TIERS.TRIAL_PRO]: "#1d9bf0",
-    [TIERS.ULTIMATE]: "#A020F0"
+    [TIERS.ULTIMATE]: "#bb9af7"
 };
 
 export const FEATURES = {
