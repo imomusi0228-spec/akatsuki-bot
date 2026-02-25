@@ -166,25 +166,25 @@
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    initTicketsPage();
-});
+    document.addEventListener('DOMContentLoaded', () => {
+        initTicketsPage();
+    });
 
-async function initTicketsPage() {
-    loadTickets();
+    async function initTicketsPage() {
+        loadTickets();
 
-    document.getElementById("refreshTickets")
-        .addEventListener("click", loadTickets);
+        document.getElementById("refreshTickets")
+            .addEventListener("click", loadTickets);
 
-    document.getElementById("statusFilter")
-        .addEventListener("change", loadTickets);
-}
+        document.getElementById("statusFilter")
+            .addEventListener("change", loadTickets);
+    }
 
-async function loadTickets() {
-    const tbody = document.getElementById("ticketList");
-    const status = document.getElementById("statusFilter").value;
+    async function loadTickets() {
+        const tbody = document.getElementById("ticketList");
+        const status = document.getElementById("statusFilter").value;
 
-    tbody.innerHTML = `
+        tbody.innerHTML = `
         <tr>
             <td colspan="6" style="text-align:center; padding:20px;">
                 読み込み中...
@@ -192,35 +192,36 @@ async function loadTickets() {
         </tr>
     `;
 
-    try {
-        const res = await fetch("/api/tickets");
-        const tickets = await res.json();
+        try {
+            const gid = getGuildId();
+            const res = await api(`/api/tickets?guild=${gid}`);
+            const tickets = res.ok ? res.tickets : [];
 
-        const filtered = status === "all"
-            ? tickets
-            : tickets.filter(t => t.status === status);
+            const filtered = status === "all"
+                ? tickets
+                : tickets.filter(t => t.status === status);
 
-        if (!filtered.length) {
-            tbody.innerHTML = `
+            if (!filtered.length) {
+                tbody.innerHTML = `
                 <tr>
                     <td colspan="6" style="text-align:center; padding:20px;">
                         チケットはありません。
                     </td>
                 </tr>
             `;
-            return;
-        }
+                return;
+            }
 
-        tbody.innerHTML = "";
+            tbody.innerHTML = "";
 
-        filtered.forEach(t => {
-            const tr = document.createElement("tr");
+            filtered.forEach(t => {
+                const tr = document.createElement("tr");
 
-            const logBtn = t.transcript_id
-                ? `<a href="/transcripts/${t.transcript_id}.html" target="_blank" class="staff-assign-btn">📄 ログ</a>`
-                : "";
+                const logBtn = t.transcript_id
+                    ? `<a href="/transcripts/${t.transcript_id}.html" target="_blank" class="staff-assign-btn">📄 ログ</a>`
+                    : "";
 
-            tr.innerHTML = `
+                tr.innerHTML = `
                 <td>${t.id}</td>
                 <td>${t.user_id}</td>
                 <td>${t.assigned_to || "未割当"}</td>
@@ -235,18 +236,18 @@ async function loadTickets() {
                 </td>
             `;
 
-            tbody.appendChild(tr);
-        });
+                tbody.appendChild(tr);
+            });
 
-    } catch (err) {
-        tbody.innerHTML = `
+        } catch (err) {
+            tbody.innerHTML = `
             <tr>
                 <td colspan="6" style="text-align:center; padding:20px;">
                     読み込み失敗
                 </td>
             </tr>
         `;
-        console.error(err);
+            console.error(err);
+        }
     }
-}
 </script>

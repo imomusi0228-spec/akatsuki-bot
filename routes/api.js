@@ -313,8 +313,8 @@ export async function handleApiRoute(req, res, pathname, url) {
                     SELECT 
                         EXTRACT(HOUR FROM created_at) as hour_of_day,
                         COUNT(*) as cnt
-                    FROM ng_logs
-                    WHERE guild_id = $1
+                    FROM member_events
+                    WHERE guild_id = $1 AND event_type = 'message'
                       AND created_at >= $2 AND created_at <= $3
                     GROUP BY hour_of_day
                 `, [guildId, startOfMonth, endOfMonth])
@@ -1098,12 +1098,41 @@ export async function handleApiRoute(req, res, pathname, url) {
             const guild = await getSafeGuild(body.guild);
             const channel = guild?.channels.cache.get(channelId);
 
+            // 1. Generate Transcript (v2.8.3)
+            let transcriptId = null;
+            if (channel) {
+                try {
+                    const messages = await channel.messages.fetch({ limit: 100 }).catch(() => []);
+                    const transcriptData = Array.from(messages.values()).reverse().map(m => {
+                        return `<div style="margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px;">
+                            <strong style="color:#5865F2">${m.author.tag}</strong> <small style="color:#72767d">${m.createdAt.toLocaleString()}</small><br>
+                            <div style="margin-top:5px;">${m.content.replace(/\n/g, '<br>')}</div>
+                            ${m.attachments.size > 0 ? `<div style="color:#1da1f2; font-size:0.8em;">[Attachment: ${m.attachments.first().url}]</div>` : ''}
+                        </div>`;
+                    }).join('');
+
+                    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Ticket Transcript</title>
+                        <style>body{background:#36393f; color:#dcddde; font-family:sans-serif; padding:20px; line-height:1.5;} strong{color:#fff;}</style>
+                        </head><body>
+                        <h2>Transcript: #${channel.name}</h2>
+                        ${transcriptData}
+                        </body></html>`;
+
+                    transcriptId = `t-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+                    const dir = path.join(process.cwd(), "public", "transcripts");
+                    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+                    fs.writeFileSync(path.join(dir, `${transcriptId}.html`), html);
+                } catch (e) {
+                    console.error("[TRANSCRIPT ERROR]", e);
+                }
+            }
+
             // Update DB
-            await dbQuery("UPDATE tickets SET status = 'closed', closed_at = NOW() WHERE id = $1", [body.ticket_id]);
+            await dbQuery("UPDATE tickets SET status = 'closed', closed_at = NOW(), transcript_id = $1 WHERE id = $2", [transcriptId, body.ticket_id]);
 
             // Try to close/delete channel in Discord if it exists
             if (channel) {
-                await channel.send("🔒 このチケットはウェブダッシュボードから解決済みとしてマークされました。チャンネルを削除します...");
+                await channel.send("🔒 このチケットはウェブダッシュボードから解決済みとしてマークされました。過去ログが保存されました。チャンネルを削除します...");
                 setTimeout(() => channel.delete().catch(() => { }), 5000);
             }
 

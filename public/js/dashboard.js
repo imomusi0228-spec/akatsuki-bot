@@ -253,10 +253,10 @@ async function updateCharts(gid, tier, mon) {
                     order: 2
                 },
                 {
-                    label: "NG Detected",
+                    label: "Messages",
                     data: heatmapRes.ng_heatmap || Array(24).fill(0),
                     type: "line",
-                    borderColor: "#f4212e",
+                    borderColor: "#1da1f2",
                     backgroundColor: "transparent",
                     borderWidth: 2,
                     tension: 0.4,
@@ -268,7 +268,7 @@ async function updateCharts(gid, tier, mon) {
             {
                 scales: {
                     y: { beginAtZero: true, position: 'left' },
-                    y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#f4212e' } }
+                    y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#1da1f2' } }
                 }
             }
         );
