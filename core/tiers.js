@@ -25,7 +25,7 @@ export const TIER_NAMES = {
     [TIERS.PRO_PLUS_YEARLY]: "Pro+",
     [TIERS.TRIAL_PRO_PLUS]: "Trial Pro+",
     [TIERS.TRIAL_PRO]: "Trial Pro",
-    [TIERS.ULTIMATE]: "アルティメット"
+    [TIERS.ULTIMATE]: "ULTIMATE"
 };
 
 export const TIER_COLORS = {
@@ -172,7 +172,7 @@ export function getFeatures(tier, guildId = null, userId = null, isOwner = false
     const gated = { ...baseFeatures };
 
     // Milestone Gating Logic (Manual/Sub based)
-    // For Ultimate, we skip gating by returning above.
+    // For ULTIMATE, we skip gating by returning above.
     // For others, we apply gating if milestone < 5.
     const milestone = 5; // Default to max for now or fetch if needed
 
