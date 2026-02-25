@@ -1,4 +1,9 @@
-# Update Logs (v1.0.0 - v2.7.0)
+# Update Logs (v1.0.0 - v2.7.1)
+
+## v2.7.1 (2026/02/25) - 選択機能の修正 (Server Selection Fix)
+- **[Fix]** サーバー設定・アクティビティ・AI分析ページで、サーバー選択後にチャンネル・ロールのドロップダウンが空白になる重大バグを修正。
+- **[Fix]** `dashboard.js` に欠落していた `loadMasters()` 関数と `loadChannels()` 関数を実装。サーバー切り替え時に各ページのドロップダウンが正常にロードされるよう修正。
+- **[Fix]** `initSettings` と `initAiPage` 内のデータ取得順序を最適化。
 
 ## v2.7.0 (2026/02/24) - 盤面への帰還 (The Command Consolidation)
 - **[Admin]** Discordコマンドの整理を実施。`/report`, `/rr`, `/purgeraid`, `/aura` を完全に廃止し、ウェブダッシュボードへ機能を統合。
