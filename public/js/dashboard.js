@@ -323,9 +323,9 @@ async function initSettings() {
             saveBtn.textContent = t("loading") + "...";
         }
 
-        const [ng, st] = await Promise.all([api("/api/ngwords?guild=" + gid), api("/api/settings?guild=" + gid)]);
-        // まずマスターデータ（チャンネル・ロール）を取得してドロップダウンを構築
+        // 先にチャンネル・ロールのドロップダウンを構築してから設定値をセット
         await loadMasters(gid);
+        const [ng, st] = await Promise.all([api("/api/ngwords?guild=" + gid), api("/api/settings?guild=" + gid)]);
 
         if (st.ok && st.settings) {
             if (saveBtn) {
@@ -898,9 +898,9 @@ async function initAiPage() {
         saveGuildSelection();
         const gid = $("globalGuildSelect")?.value;
         if (!gid) return;
-        // AI ページ用のチャンネルとセッティングを並列取得
-        const res = await api(`/api/settings?guild=${gid}`);
+        // 先にチャンネルのドロップダウンを構築してから設定値をセット
         await loadMasters(gid);
+        const res = await api(`/api/settings?guild=${gid}`);
         if (res.ok && res.settings) {
             const s = res.settings;
             if ($("aiAdviceDays")) $("aiAdviceDays").value = s.ai_advice_days || 14;
