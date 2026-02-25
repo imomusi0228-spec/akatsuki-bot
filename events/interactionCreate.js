@@ -198,7 +198,14 @@ export default {
 
                 // Save to file for Web View
                 const transcriptId = `${guildId}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-                const transcriptPath = path.join(ROOT_DIR, "public", "transcripts", `${transcriptId}.html`);
+                const transcriptDir = path.join(ROOT_DIR, "public", "transcripts");
+
+                // フォルダが無ければ作成
+                if (!fs.existsSync(transcriptDir)) {
+                    fs.mkdirSync(transcriptDir, { recursive: true });
+                }
+                
+                const transcriptPath = path.join(transcriptDir, `${transcriptId}.html`);
                 fs.writeFileSync(transcriptPath, html);
 
                 const buffer = Buffer.from(html, "utf-8");
