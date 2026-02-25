@@ -27,6 +27,30 @@ const api = async (path, body, method = null) => {
     }
 };
 
+const showPageError = (msg) => {
+    const main = document.querySelector("main");
+    if (!main) return;
+    const errDiv = document.createElement("div");
+    errDiv.className = "error-banner glass mb-4";
+    errDiv.style = "padding: 2.5rem; border-left: 8px solid var(--danger-color); background: rgba(244, 33, 46, 0.1); backdrop-filter: blur(10px); color: var(--text-color); margin-top: 1rem; border-radius: 1rem;";
+    errDiv.innerHTML = `
+        <h3 style="color: var(--danger-color); display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-exclamation-triangle"></i> 
+            お嬢、エラーが発生したぞ
+        </h3>
+        <p style="margin: 1rem 0; opacity: 0.9;">${escapeHTML(msg)}</p>
+        <div style="display: flex; gap: 1rem;">
+            <button class="btn btn-primary" onclick="location.reload()" style="background: var(--danger-color); border: none;">
+                <i class="fas fa-sync-alt"></i> 再試行
+            </button>
+            <a href="/dashboard" class="btn btn-secondary">
+                <i class="fas fa-home"></i> ダッシュボードへ
+            </a>
+        </div>
+    `;
+    main.prepend(errDiv);
+};
+
 function setLang(l) { document.cookie = "lang=" + l + ";path=/;max-age=31536000;SameSite=Lax"; location.reload(); }
 
 let _guildsLoaded = false;
@@ -313,81 +337,89 @@ window.releaseNgTimeout = async (uid, gid) => {
 
 async function initSettings() {
     window.__pageReload = async () => {
-        saveGuildSelection();
-        const gid = $("globalGuildSelect")?.value;
-        if (!gid) return;
+        try {
+            saveGuildSelection();
+            const gid = $("globalGuildSelect")?.value;
+            if (!gid) return;
 
-        const saveBtn = $("save");
-        if (saveBtn) {
-            saveBtn.disabled = true;
-            saveBtn.textContent = t("loading") + "...";
-        }
-
-        // 先にチャンネル・ロールのドロップダウンを構築してから設定値をセット
-        await loadMasters(gid);
-        const [ng, st] = await Promise.all([api("/api/ngwords?guild=" + gid), api("/api/settings?guild=" + gid)]);
-
-        if (st.ok && st.settings) {
+            const saveBtn = $("save");
             if (saveBtn) {
-                saveBtn.disabled = false;
-                saveBtn.textContent = t("save_settings");
+                saveBtn.disabled = true;
+                saveBtn.textContent = t("loading") + "...";
             }
-            const s = st.settings;
-            if ($("logCh")) $("logCh").value = s.log_channel_id || "";
-            if ($("ngLogCh")) $("ngLogCh").value = s.ng_log_channel_id || "";
-            if ($("reportCh")) $("reportCh").value = s.report_channel_id || "";
-            if ($("threshold")) $("threshold").value = s.ng_threshold ?? 3;
-            if ($("timeout")) $("timeout").value = s.timeout_minutes ?? 10;
-            if ($("introGateEnabled")) $("introGateEnabled").checked = !!s.self_intro_enabled;
-            if ($("introRole")) $("introRole").value = s.self_intro_role_id || "";
-            if ($("introMinLen")) $("introMinLen").value = s.self_intro_min_length ?? 10;
-            if ($("aiAdviceDays")) $("aiAdviceDays").value = s.ai_advice_days ?? 14;
-            if ($("aiAdviceCh")) $("aiAdviceCh").value = s.ai_advice_channel_id || "";
-            if ($("aiInsightEnabled")) $("aiInsightEnabled").checked = !!s.ai_insight_enabled;
-            if ($("aiInsightCh")) $("aiInsightCh").value = s.ai_insight_channel_id || "";
-            if ($("introReminderHours")) $("introReminderHours").value = s.intro_reminder_hours ?? 24;
-            if ($("vcReportCh")) $("vcReportCh").value = s.vc_report_channel_id || "";
-            if ($("vcReportInterval")) $("vcReportInterval").value = s.vc_report_interval || "weekly";
-            if ($("autoVcCategory")) $("autoVcCategory").value = s.auto_vc_creator_id || "";
-            const rulesList = $("roleRulesList");
-            if (rulesList) {
-                rulesList.innerHTML = "";
-                (s.vc_role_rules || []).forEach(r => addRoleRule(r));
-            }
-        }
-        if (ng.ok) {
-            const list = $("ngList");
-            const words = ng.words || [];
-            if (list) {
-                if (words.length === 0) list.innerHTML = '<div class="muted" style="padding:10px; text-align:center;">' + t("ng_none") + '</div>';
-                else list.innerHTML = words.map(w => `<div class="ng-item"><span>${escapeHTML(w.word)}</span><button onclick="removeNg('${escapeHTML(w.word)}')">×</button></div>`).join("");
-            }
-            if ($("ngCount")) $("ngCount").textContent = words.length + " " + t("words");
-        }
 
-        // v2.7.0 Reaction Roles
-        const rrList = $("rr-list");
-        const rrLoading = $("rr-loading");
-        if (rrList) {
-            rrList.innerHTML = "";
-            rrLoading.style.display = "block";
-            const rrRes = await api("/api/rr?guild=" + gid);
-            rrLoading.style.display = "none";
-            if (rrRes.ok && rrRes.reactionRoles) {
-                if (rrRes.reactionRoles.length === 0) {
-                    rrList.innerHTML = '<div class="muted" style="padding:10px; text-align:center;">設定されているリアクションロールはありません。</div>';
-                } else {
-                    rrList.innerHTML = rrRes.reactionRoles.map(r => `
-                        <div class="color-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                            <div>
-                                <div style="font-weight:600; font-size:13px;">Msg ID: ${r.message_id}</div>
-                                <div class="muted" style="font-size:11px;">Emoji: ${escapeHTML(r.emoji)} | Role ID: ${r.role_id}</div>
+            // 先にチャンネル・ロールのドロップダウンを構築してから設定値をセット
+            await loadMasters(gid);
+            const [ng, st] = await Promise.all([api("/api/ngwords?guild=" + gid), api("/api/settings?guild=" + gid)]);
+
+            if (st.ok && st.settings) {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = t("save_settings");
+                }
+                const s = st.settings;
+                if ($("logCh")) $("logCh").value = s.log_channel_id || "";
+                if ($("ngLogCh")) $("ngLogCh").value = s.ng_log_channel_id || "";
+                if ($("reportCh")) $("reportCh").value = s.report_channel_id || "";
+                if ($("threshold")) $("threshold").value = s.ng_threshold ?? 3;
+                if ($("timeout")) $("timeout").value = s.timeout_minutes ?? 10;
+                if ($("introGateEnabled")) $("introGateEnabled").checked = !!s.self_intro_enabled;
+                if ($("introRole")) $("introRole").value = s.self_intro_role_id || "";
+                if ($("introMinLen")) $("introMinLen").value = s.self_intro_min_length ?? 10;
+                if ($("aiAdviceDays")) $("aiAdviceDays").value = s.ai_advice_days ?? 14;
+                if ($("aiAdviceCh")) $("aiAdviceCh").value = s.ai_advice_channel_id || "";
+                if ($("aiInsightEnabled")) $("aiInsightEnabled").checked = !!s.ai_insight_enabled;
+                if ($("aiInsightCh")) $("aiInsightCh").value = s.ai_insight_channel_id || "";
+                if ($("introReminderHours")) $("introReminderHours").value = s.intro_reminder_hours ?? 24;
+                if ($("vcReportCh")) $("vcReportCh").value = s.vc_report_channel_id || "";
+                if ($("vcReportInterval")) $("vcReportInterval").value = s.vc_report_interval || "weekly";
+                if ($("autoVcCategory")) $("autoVcCategory").value = s.auto_vc_creator_id || "";
+                const rulesList = $("roleRulesList");
+                if (rulesList) {
+                    rulesList.innerHTML = "";
+                    (s.vc_role_rules || []).forEach(r => addRoleRule(r));
+                }
+            } else if (st.error) {
+                showPageError(st.error);
+            }
+
+            if (ng.ok) {
+                const list = $("ngList");
+                const words = ng.words || [];
+                if (list) {
+                    if (words.length === 0) list.innerHTML = '<div class="muted" style="padding:10px; text-align:center;">' + t("ng_none") + '</div>';
+                    else list.innerHTML = words.map(w => `<div class="ng-item"><span>${escapeHTML(w.word)}</span><button onclick="removeNg('${escapeHTML(w.word)}')">×</button></div>`).join("");
+                }
+                if ($("ngCount")) $("ngCount").textContent = words.length + " " + t("words");
+            }
+
+            // v2.7.0 Reaction Roles
+            const rrList = $("rr-list");
+            const rrLoading = $("rr-loading");
+            if (rrList) {
+                rrList.innerHTML = "";
+                rrLoading.style.display = "block";
+                const rrRes = await api("/api/rr?guild=" + gid);
+                rrLoading.style.display = "none";
+                if (rrRes.ok && rrRes.reactionRoles) {
+                    if (rrRes.reactionRoles.length === 0) {
+                        rrList.innerHTML = '<div class="muted" style="padding:10px; text-align:center;">設定されているリアクションロールはありません。</div>';
+                    } else {
+                        rrList.innerHTML = rrRes.reactionRoles.map(r => `
+                            <div class="color-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                <div>
+                                    <div style="font-weight:600; font-size:13px;">Msg ID: ${r.message_id}</div>
+                                    <div class="muted" style="font-size:11px;">Emoji: ${escapeHTML(r.emoji)} | Role ID: ${r.role_id}</div>
+                                </div>
+                                <button onclick="removeRR('${r.id}')" class="btn btn-delete" style="padding:4px 10px; font-size:11px;">削除</button>
                             </div>
-                            <button onclick="removeRR('${r.id}')" class="btn btn-delete" style="padding:4px 10px; font-size:11px;">削除</button>
-                        </div>
-                    `).join("");
+                        `).join("");
+                    }
                 }
             }
+        } catch (e) {
+            console.error("initSettings Error:", e);
+            showPageError(e.message);
         }
     };
 
@@ -437,37 +469,44 @@ async function initSettings() {
 
 async function initActivity() {
     window.__pageReload = async () => {
-        saveGuildSelection();
-        const gid = $("globalGuildSelect")?.value;
-        if (!gid) return;
+        try {
+            saveGuildSelection();
+            const gid = $("globalGuildSelect")?.value;
+            if (!gid) return;
 
-        const [chRes, roleRes, setRes] = await Promise.all([
-            api("/api/channels?guild=" + gid),
-            api("/api/roles?guild=" + gid),
-            api("/api/settings?guild=" + gid)
-        ]);
+            const [chRes, roleRes, setRes] = await Promise.all([
+                api("/api/channels?guild=" + gid),
+                api("/api/roles?guild=" + gid),
+                api("/api/settings?guild=" + gid)
+            ]);
 
-        if (chRes.ok) {
-            const chOpts = '<option value="">' + t("none") + '</option>' + chRes.channels.map(c => '<option value="' + c.id + '">#' + c.name + '</option>').join('');
-            if ($("logCh")) $("logCh").innerHTML = chOpts;
-            if ($("ngLogCh")) $("ngLogCh").innerHTML = chOpts;
-            if ($("reportCh")) $("reportCh").innerHTML = chOpts;
-            if ($("introCh")) $("introCh").innerHTML = chOpts;
-        }
-        if (roleRes.ok && $("auditRole")) {
-            $("auditRole").innerHTML = '<option value="">None</option>' + roleRes.roles.map(r => '<option value="' + r.id + '">' + r.name + '</option>').join('');
-        }
-        if (setRes.ok && setRes.settings) {
-            const s = setRes.settings;
-            if ($("auditRole")) $("auditRole").value = s.audit_role_id || "";
-            if ($("introCh")) $("introCh").value = s.intro_channel_id || "";
-            if ($("logCh")) $("logCh").value = s.log_channel_id || "";
-            if ($("ngLogCh")) $("ngLogCh").value = s.ng_log_channel_id || "";
-            if ($("reportCh")) $("reportCh").value = s.report_channel_id || "";
-        }
+            if (chRes.ok) {
+                const chOpts = '<option value="">' + t("none") + '</option>' + chRes.channels.map(c => '<option value="' + c.id + '">#' + c.name + '</option>').join('');
+                if ($("logCh")) $("logCh").innerHTML = chOpts;
+                if ($("ngLogCh")) $("ngLogCh").innerHTML = chOpts;
+                if ($("reportCh")) $("reportCh").innerHTML = chOpts;
+                if ($("introCh")) $("introCh").innerHTML = chOpts;
+            }
+            if (roleRes.ok && $("auditRole")) {
+                $("auditRole").innerHTML = '<option value="">None</option>' + roleRes.roles.map(r => '<option value="' + r.id + '">' + r.name + '</option>').join('');
+            }
+            if (setRes.ok && setRes.settings) {
+                const s = setRes.settings;
+                if ($("auditRole")) $("auditRole").value = s.audit_role_id || "";
+                if ($("introCh")) $("introCh").value = s.intro_channel_id || "";
+                if ($("logCh")) $("logCh").value = s.log_channel_id || "";
+                if ($("ngLogCh")) $("ngLogCh").value = s.ng_log_channel_id || "";
+                if ($("reportCh")) $("reportCh").value = s.report_channel_id || "";
+            } else if (setRes.error) {
+                showPageError(setRes.error);
+            }
 
-        // Auto-run scan on tab load
-        await runScan();
+            // Auto-run scan on tab load
+            await runScan();
+        } catch (e) {
+            console.error("initActivity Error:", e);
+            showPageError(e.message);
+        }
     };
 
     let currentData = [];
@@ -895,23 +934,30 @@ async function initBrandingPage() {
 // AI Analysis & Insights Page
 async function initAiPage() {
     window.__pageReload = async () => {
-        saveGuildSelection();
-        const gid = $("globalGuildSelect")?.value;
-        if (!gid) return;
-        // 先にチャンネルのドロップダウンを構築してから設定値をセット
-        await loadMasters(gid);
-        const res = await api(`/api/settings?guild=${gid}`);
-        if (res.ok && res.settings) {
-            const s = res.settings;
-            if ($("aiAdviceDays")) $("aiAdviceDays").value = s.ai_advice_days || 14;
-            if ($("aiAdviceCh")) $("aiAdviceCh").value = s.ai_advice_channel_id || '';
-            if ($("aiInsightEnabled")) $("aiInsightEnabled").checked = !!s.ai_insight_enabled;
-            if ($("aiInsightCh")) $("aiInsightCh").value = s.ai_insight_channel_id || '';
-            if ($("insightGrowth")) $("insightGrowth").checked = !!s.insight_growth;
-            if ($("insightToxicity")) $("insightToxicity").checked = !!s.insight_toxicity;
-            if ($("insightVc")) $("insightVc").checked = !!s.insight_vc;
-            if ($("aiPredictionEnabled")) $("aiPredictionEnabled").checked = !!s.ai_prediction_enabled;
-            if ($("aiPredictCh")) $("aiPredictCh").value = s.ai_predict_channel_id || '';
+        try {
+            saveGuildSelection();
+            const gid = $("globalGuildSelect")?.value;
+            if (!gid) return;
+            // 先にチャンネルのドロップダウンを構築してから設定値をセット
+            await loadMasters(gid);
+            const res = await api(`/api/settings?guild=${gid}`);
+            if (res.ok && res.settings) {
+                const s = res.settings;
+                if ($("aiAdviceDays")) $("aiAdviceDays").value = s.ai_advice_days || 14;
+                if ($("aiAdviceCh")) $("aiAdviceCh").value = s.ai_advice_channel_id || '';
+                if ($("aiInsightEnabled")) $("aiInsightEnabled").checked = !!s.ai_insight_enabled;
+                if ($("aiInsightCh")) $("aiInsightCh").value = s.ai_insight_channel_id || '';
+                if ($("insightGrowth")) $("insightGrowth").checked = !!s.insight_growth;
+                if ($("insightToxicity")) $("insightToxicity").checked = !!s.insight_toxicity;
+                if ($("insightVc")) $("insightVc").checked = !!s.insight_vc;
+                if ($("aiPredictionEnabled")) $("aiPredictionEnabled").checked = !!s.ai_prediction_enabled;
+                if ($("aiPredictCh")) $("aiPredictCh").value = s.ai_predict_channel_id || '';
+            } else if (res.error) {
+                showPageError(res.error);
+            }
+        } catch (e) {
+            console.error("initAiPage Error:", e);
+            showPageError(e.message);
         }
     };
     if (!await loadGuilds()) return;

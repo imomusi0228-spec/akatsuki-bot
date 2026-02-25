@@ -129,15 +129,20 @@ export async function handleApiRoute(req, res, pathname, url) {
         return;
     }
 
+    // Helper: Get guild with fetch fallback if cache is empty
+    const getSafeGuild = async (gid) => {
+        if (!gid) return null;
+        return client.guilds.cache.get(gid) || await client.guilds.fetch(gid).catch(() => null);
+    };
+
     // Helper: Verify guild ownership and permissions
     const verifyGuild = async (guildId) => {
         if (!guildId) return false;
 
         try {
             // bot がそのサーバーに参加しているか確認（キャッシュにない場合は fetch で確認）
-            const botInGuild = client.guilds.cache.has(guildId)
-                || await client.guilds.fetch(guildId).then(() => true).catch(() => false);
-            if (!botInGuild) return false;
+            const guild = await getSafeGuild(guildId);
+            if (!guild) return false;
 
             // Use global or session cache if available
             const globalCache = cache.getUserGuilds(session.user.id);
@@ -215,7 +220,7 @@ export async function handleApiRoute(req, res, pathname, url) {
             };
 
             // Get guild for member fetching
-            const guild = client.guilds.cache.get(guildId);
+            const guild = await getSafeGuild(guildId);
 
             // Enrich with Discord Data
             const topUsers = await Promise.all(ngTopRes.rows.map(async (row) => {
@@ -324,7 +329,7 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
 
         try {
-            const guild = client.guilds.cache.get(guildId);
+            const guild = await getSafeGuild(guildId);
             if (!guild) return resJson({ ok: false, error: "Guild not found" }, 404);
 
             const channel = guild.channels.cache.get(channelId);
@@ -458,7 +463,7 @@ export async function handleApiRoute(req, res, pathname, url) {
                 const userIds = logRes.rows.map(r => r.user_id);
 
                 if (userIds.length > 0) {
-                    const guild = client.guilds.cache.get(body.guild);
+                    const guild = await getSafeGuild(body.guild);
                     if (guild) {
                         // Process concurrently but catch errors individually
                         await Promise.all(userIds.map(async (userId) => {
@@ -549,7 +554,7 @@ export async function handleApiRoute(req, res, pathname, url) {
     if (pathname === "/api/channels") {
         if (!guildId) return res.end(JSON.stringify({ ok: false }));
         if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
-        const guild = client.guilds.cache.get(guildId);
+        const guild = await getSafeGuild(guildId);
         if (!guild) return res.end(JSON.stringify({ ok: false, error: "Guild not found" }));
 
         const channels = guild.channels.cache
@@ -564,7 +569,7 @@ export async function handleApiRoute(req, res, pathname, url) {
     if (pathname === "/api/roles") {
         if (!guildId) return res.end(JSON.stringify({ ok: false }));
         if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
-        const guild = client.guilds.cache.get(guildId);
+        const guild = await getSafeGuild(guildId);
         if (!guild) return res.end(JSON.stringify({ ok: false, error: "Guild not found" }));
 
         const roles = guild.roles.cache
@@ -584,7 +589,7 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
 
         try {
-            const guild = client.guilds.cache.get(guildId);
+            const guild = await getSafeGuild(guildId);
             if (!guild) return resJson({ ok: false, error: "Guild not found" }, 404);
 
             const role = await guild.roles.fetch(roleId).catch(() => null);
@@ -729,7 +734,7 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (body.auto_vc_creator_id) {
             try {
                 const { ChannelType } = await import("discord.js");
-                const guild = client.guilds.cache.get(body.guild);
+                const guild = await getSafeGuild(body.guild);
                 if (guild) {
                     const category = await guild.channels.fetch(body.auto_vc_creator_id).catch(() => null);
                     if (category && category.type === ChannelType.GuildCategory) {
@@ -771,7 +776,7 @@ export async function handleApiRoute(req, res, pathname, url) {
         // Real implementation: Fetch guild members, check `joinedAt` and compare with simple threshold.
         // Use discord.js cache to find members.
 
-        const guild = client.guilds.cache.get(guildId);
+        const guild = await getSafeGuild(guildId);
         if (!guild) return res.end(JSON.stringify({ ok: false, error: "Guild not found" }));
 
         // 1. Get Audit Settings (Allow overrides from query)
@@ -1008,7 +1013,7 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (!await verifyGuild(body.guild)) return resJson({ ok: false, error: "Forbidden" }, 403);
 
         try {
-            const guild = client.guilds.cache.get(body.guild);
+            const guild = await getSafeGuild(body.guild);
             if (!guild) return resJson({ ok: false, error: "Guild not found" }, 404);
 
             const member = await guild.members.fetch(body.user_id).catch(() => null);
@@ -1061,7 +1066,7 @@ export async function handleApiRoute(req, res, pathname, url) {
             const userIds = new Set(result.rows.map(t => t.user_id));
             result.rows.forEach(t => { if (t.assigned_to) userIds.add(t.assigned_to); });
 
-            const guild = client.guilds.cache.get(guildId);
+            const guild = await getSafeGuild(guildId);
             let membersMap = new Map();
             if (guild && userIds.size > 0) {
                 // Bulk fetch members
@@ -1096,7 +1101,7 @@ export async function handleApiRoute(req, res, pathname, url) {
             if (resData.rows.length === 0) return resJson({ ok: false, error: "Ticket not found" }, 404);
 
             const channelId = resData.rows[0].channel_id;
-            const guild = client.guilds.cache.get(body.guild);
+            const guild = await getSafeGuild(body.guild);
             const channel = guild?.channels.cache.get(channelId);
 
             // Update DB
@@ -1128,7 +1133,7 @@ export async function handleApiRoute(req, res, pathname, url) {
             // Notify in Discord channel if possible
             const resData = await dbQuery("SELECT channel_id FROM tickets WHERE id = $1 AND guild_id = $2", [body.ticket_id, body.guild]);
             if (resData.rows.length > 0) {
-                const guild = client.guilds.cache.get(body.guild);
+                const guild = await getSafeGuild(body.guild);
                 const channel = guild?.channels.cache.get(resData.rows[0].channel_id);
                 if (channel) {
                     await channel.send(`👥 担当者が変更されました: <@${body.user_id}> がこのチケットを担当します。`);

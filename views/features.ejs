@@ -322,51 +322,134 @@
     </p>
 </div>
 
-<div class="plan-grid">
-    <!-- Free Tier -->
-    <div class="plan-card">
-        <div class="plan-badge">Basic</div>
-        <h3>
-            <%= t("plan_free") %>
-        </h3>
-        <div class="plan-price">¥0 <span>/ month</span></div>
-        <ul class="feature-summary">
-            <li><%- t("feat_list_free") %></li>
-        </ul>
-        <a href="/login" class="plan-btn">
-            <%= t("get_started") %>
-        </a>
+<!-- ===== 利用開始の流れ ===== -->
+<div style="max-width:900px; margin: 0 auto 70px; padding: 0 20px;">
+    <h2
+        style="text-align:center; font-size:32px; margin-bottom:40px; border-bottom:2px solid var(--accent-color); display:inline-block; padding-bottom:10px;">
+        <%= t("how_to_title") %>
+    </h2>
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:20px; margin-top:30px;">
+
+        <!-- Step 1 -->
+        <div
+            style="background:rgba(25,39,52,0.5); border:1px solid var(--border-color); border-radius:16px; padding:24px; position:relative;">
+            <div
+                style="position:absolute; top:-14px; left:20px; background:var(--primary-color); color:#fff; font-size:11px; font-weight:900; padding:4px 14px; border-radius:10px; letter-spacing:1px;">
+                STEP 1</div>
+            <h4 style="margin:10px 0 8px; font-size:16px;">🤖 <%= t("step1_title") %>
+            </h4>
+            <p style="color:#8899a6; font-size:14px; line-height:1.7; margin:0;">
+                <%= t("step1_desc") %>
+            </p>
+        </div>
+
+        <!-- Step 2 -->
+        <div
+            style="background:rgba(25,39,52,0.5); border:1px solid var(--border-color); border-radius:16px; padding:24px; position:relative;">
+            <div
+                style="position:absolute; top:-14px; left:20px; background:var(--primary-color); color:#fff; font-size:11px; font-weight:900; padding:4px 14px; border-radius:10px; letter-spacing:1px;">
+                STEP 2</div>
+            <h4 style="margin:10px 0 8px; font-size:16px;">🏠 <%= t("step2_title") %>
+            </h4>
+            <p style="color:#8899a6; font-size:14px; line-height:1.7; margin:0;">
+                <%= t("step2_desc") %>
+            </p>
+        </div>
+
+        <!-- Step 3 -->
+        <div
+            style="background:rgba(25,39,52,0.5); border:1px solid var(--border-color); border-radius:16px; padding:24px; position:relative;">
+            <div
+                style="position:absolute; top:-14px; left:20px; background:var(--primary-color); color:#fff; font-size:11px; font-weight:900; padding:4px 14px; border-radius:10px; letter-spacing:1px;">
+                STEP 3</div>
+            <h4 style="margin:10px 0 8px; font-size:16px;">📝 <%= t("step3_title") %>
+            </h4>
+            <p style="color:#8899a6; font-size:14px; line-height:1.7; margin:0;">
+                <%= t("step3_desc") %>
+            </p>
+        </div>
+
+        <!-- Step 4 -->
+        <div
+            style="background:rgba(25,39,52,0.5); border:1px solid var(--border-color); border-radius:16px; padding:24px; position:relative;">
+            <div
+                style="position:absolute; top:-14px; left:20px; background:var(--primary-color); color:#fff; font-size:11px; font-weight:900; padding:4px 14px; border-radius:10px; letter-spacing:1px;">
+                STEP 4</div>
+            <h4 style="margin:10px 0 8px; font-size:16px;">✅ <%= t("step4_title") %>
+            </h4>
+            <p style="color:#8899a6; font-size:14px; line-height:1.7; margin:0;">
+                <%= t("step4_desc") %>
+            </p>
+        </div>
+
+        <!-- Step 5 -->
+        <div
+            style="background:rgba(25,39,52,0.5); border:1px solid var(--border-color); border-radius:16px; padding:24px; position:relative; border-color:var(--accent-color);">
+            <div
+                style="position:absolute; top:-14px; left:20px; background:var(--accent-color); color:#fff; font-size:11px; font-weight:900; padding:4px 14px; border-radius:10px; letter-spacing:1px;">
+                COMPLETE</div>
+            <h4 style="margin:10px 0 8px; font-size:16px;">🎉 <%= t("step5_title") %>
+            </h4>
+            <p style="color:#8899a6; font-size:14px; line-height:1.7; margin:0;">
+                <%= t("step5_desc") %>
+            </p>
+        </div>
+
     </div>
 
-    <!-- Pro Tier -->
-    <div class="plan-card pro">
-        <div class="plan-badge">Standard</div>
-        <h3>
-            <%= t("plan_pro") %>
-        </h3>
-        <div class="plan-price">¥680 <span>/ month</span></div>
-        <ul class="feature-summary">
-            <li><%- t("feat_list_pro") %></li>
-        </ul>
-        <a href="https://imomusi0213.booth.pm/items/7935721" target="_blank" class="plan-btn">
-            <%= t("purchase_btn") %>
-        </a>
+    <!-- 注意事項 -->
+    <div
+        style="margin-top:32px; padding:20px 24px; background:rgba(29,161,242,0.06); border:1px solid rgba(29,161,242,0.2); border-radius:12px; font-size:14px; color:#8899a6; line-height:1.9;">
+        <strong style="color:var(--primary-color);">📋 <%= t("notice_title") %></strong><br />
+        <%- t("notice_body") %>
     </div>
+</div>
 
-    <!-- Pro+ Tier -->
-    <div class="plan-card pro-plus">
-        <div class="plan-badge">Premium</div>
-        <h3>
-            <%= t("plan_pro_plus") %>
-        </h3>
-        <div class="plan-price">¥1,800 <span>/ month</span></div>
-        <ul class="feature-summary">
-            <li><%- t("feat_list_pro_plus") %></li>
-        </ul>
-        <a href="https://imomusi0213.booth.pm/items/7935721" target="_blank" class="plan-btn">
-            <%= t("purchase_btn") %>
-        </a>
-    </div>
+
+<!-- Free Tier -->
+<div class="plan-card">
+    <div class="plan-badge">Basic</div>
+    <h3>
+        <%= t("plan_free") %>
+    </h3>
+    <div class="plan-price">¥0 <span>/ month</span></div>
+    <ul class="feature-summary">
+        <li><%- t("feat_list_free") %></li>
+    </ul>
+    <a href="/login" class="plan-btn">
+        <%= t("get_started") %>
+    </a>
+</div>
+
+<!-- Pro Tier -->
+<div class="plan-card pro">
+    <div class="plan-badge">Standard</div>
+    <h3>
+        <%= t("plan_pro") %>
+    </h3>
+    <div class="plan-price">¥680 <span>/ month</span></div>
+    <ul class="feature-summary">
+        <li><%- t("feat_list_pro") %></li>
+    </ul>
+    <a href="https://imomusi0213.booth.pm/items/7935721" target="_blank" class="plan-btn">
+        <%= t("purchase_btn") %>
+    </a>
+</div>
+
+<!-- Pro+ Tier -->
+<div class="plan-card pro-plus">
+    <div class="plan-badge">Premium</div>
+    <h3>
+        <%= t("plan_pro_plus") %>
+    </h3>
+    <div class="plan-price">¥1,800 <span>/ month</span></div>
+    <ul class="feature-summary">
+        <li><%- t("feat_list_pro_plus") %></li>
+    </ul>
+    <a href="https://imomusi0213.booth.pm/items/7935721" target="_blank" class="plan-btn">
+        <%= t("purchase_btn") %>
+    </a>
+</div>
 </div>
 
 <div class="notice-container">

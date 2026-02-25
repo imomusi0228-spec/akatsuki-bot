@@ -2,6 +2,8 @@ import { dbQuery } from "./db.js";
 import { TIERS, FEATURES } from "./tiers.js";
 import { ENV } from "../config/env.js";
 import { cache } from "./cache.js";
+import { client } from "./client.js";
+import { PermissionFlagsBits } from "discord.js";
 
 /**
  * Get the subscription tier for a guild
@@ -22,17 +24,17 @@ export async function getTier(guildId) {
 
     // 2.5 Check if the Special User is an Admin in this guild
     if (ENV.SPECIAL_USER_ID) {
-        const guild = client.guilds.cache.get(guildId);
-        if (guild) {
-            try {
+        try {
+            const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
+            if (guild) {
                 const member = await guild.members.fetch(ENV.SPECIAL_USER_ID).catch(() => null);
                 if (member && member.permissions.has(PermissionFlagsBits.Administrator)) {
                     tier = TIERS.ULTIMATE;
                     cache.setTier(guildId, tier);
                     return tier;
                 }
-            } catch (e) { }
-        }
+            }
+        } catch (e) { }
     }
 
     // 3. Fetch subscription for this guild from DB

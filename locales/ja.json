@@ -132,5 +132,18 @@
     "help_ai_insight": "1週間のデータを分析し、サーバーの成長や活性化、秩序維持に関する「戦略的なアドバイス」を管理者に届けます。",
     "cat_security": "🛡️ セキュリティ & サーバー管理 (Security & Management)",
     "cat_wisdom": "🧠 AI & データ分析 (AI & Analysis)",
-    "cat_branding": "🎨 デザイン & カスタマイズ (Customization)"
+    "cat_branding": "🎨 デザイン & カスタマイズ (Customization)",
+    "how_to_title": "利用開始までの流れ",
+    "step1_title": "Botを招待",
+    "step1_desc": "「Akatsuki Bot」と「ライセンス管理Bot」の2つを、ライセンスを有効化したいサーバーに招待してください。",
+    "step2_title": "サポートサーバーに参加",
+    "step2_desc": "サポートサーバーに参加すると、初期ロール（User）が自動で付与されます。",
+    "step3_title": "申請パネルの設置と申請",
+    "step3_desc": "自分のサーバーで `/setup_application` を実行し、「申請する」ボタンを押してください。Booth名を入力するだけで完了です。",
+    "step4_title": "管理者が確認・承認",
+    "step4_desc": "管理者が内容を精査し、プランを設定して承認します。完了するとDiscordのDMにて通知が届きます。",
+    "step5_title": "自動有効化完了",
+    "step5_desc": "ライセンスが即時で自動適用されます。コマンド実行やキーの入力は一切不要です。",
+    "notice_title": "注意事項",
+    "notice_body": "・必ず「ライセンス管理Bot」が参加しているサーバーで申請を行ってください。<br/>・申請は必ずBOOTHで購入した本人のアカウントで行ってください。<br/>・有効期限終了後は自動的に Free Tier に戻ります。<br/>・本Botは個人開発によるもので、動作保証・損害補償は行っていません。<br/>・本サービスはDiscord公式とは無関係です。"
 }

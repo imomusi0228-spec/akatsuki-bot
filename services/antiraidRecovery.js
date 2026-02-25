@@ -35,7 +35,7 @@ export async function runAutoRecoveryCheck() {
                 }
 
                 // 3. Revert Discord Tier (Verification Level)
-                const guild = client.guilds.cache.get(s.guild_id);
+                const guild = client.guilds.cache.get(s.guild_id) || await client.guilds.fetch(s.guild_id).catch(() => null);
                 if (guild) {
                     try {
                         // If it was forced to VeryHigh during lockdown, drop it back to Medium
