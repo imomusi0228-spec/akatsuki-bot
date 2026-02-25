@@ -299,23 +299,38 @@ export async function handleApiRoute(req, res, pathname, url) {
             const startOfMonth = startOfMonthRaw < limitDate ? limitDate : startOfMonthRaw;
             const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
 
-            const heatmapRes = await dbQuery(`
-                SELECT 
-                    EXTRACT(HOUR FROM join_time) as hour_of_day,
-                    SUM(COALESCE(duration_seconds, EXTRACT(EPOCH FROM (NOW() - join_time)))) / 60 as total_minutes
-                FROM vc_sessions
-                WHERE guild_id = $1 
-                  AND join_time >= $2 AND join_time <= $3
-                GROUP BY hour_of_day
-                ORDER BY hour_of_day
-            `, [guildId, startOfMonth, endOfMonth]);
+            const [heatmapRes, ngHeatmapRes] = await Promise.all([
+                dbQuery(`
+                    SELECT 
+                        EXTRACT(HOUR FROM join_time) as hour_of_day,
+                        SUM(COALESCE(duration_seconds, EXTRACT(EPOCH FROM (NOW() - join_time)))) / 60 as total_minutes
+                    FROM vc_sessions
+                    WHERE guild_id = $1 
+                      AND join_time >= $2 AND join_time <= $3
+                    GROUP BY hour_of_day
+                `, [guildId, startOfMonth, endOfMonth]),
+                dbQuery(`
+                    SELECT 
+                        EXTRACT(HOUR FROM created_at) as hour_of_day,
+                        COUNT(*) as cnt
+                    FROM ng_logs
+                    WHERE guild_id = $1
+                      AND created_at >= $2 AND created_at <= $3
+                    GROUP BY hour_of_day
+                `, [guildId, startOfMonth, endOfMonth])
+            ]);
 
             const heatmap = Array(24).fill(0);
             heatmapRes.rows.forEach(r => {
                 heatmap[parseInt(r.hour_of_day)] = Math.round(parseFloat(r.total_minutes));
             });
 
-            resJson({ ok: true, heatmap });
+            const ng_heatmap = Array(24).fill(0);
+            ngHeatmapRes.rows.forEach(r => {
+                ng_heatmap[parseInt(r.hour_of_day)] = parseInt(r.cnt);
+            });
+
+            resJson({ ok: true, heatmap, ng_heatmap });
         } catch (e) {
             console.error("Heatmap Error:", e);
             return resJson({ ok: false, error: e.message }, 500);
@@ -394,6 +409,50 @@ export async function handleApiRoute(req, res, pathname, url) {
             resJson({ ok: true, events: growthRes.rows });
         } catch (e) {
             console.error("Growth Stats Error:", e);
+            resJson({ ok: false, error: e.message }, 500);
+        }
+        return;
+    }
+
+    // GET /api/leaderboard (v2.8.2)
+    if (pathname === "/api/leaderboard") {
+        if (!guildId) return resJson({ ok: false, error: "Missing guild ID" }, 400);
+        if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
+
+        try {
+            const statsRes = await dbQuery(`
+                SELECT user_id, xp, level, message_count, total_vc_minutes
+                FROM member_stats
+                WHERE guild_id = $1
+                ORDER BY xp DESC
+                LIMIT 10
+            `, [guildId]);
+
+            const guild = await getSafeGuild(guildId);
+            const leaderboard = await Promise.all(statsRes.rows.map(async (row) => {
+                let user = client.users.cache.get(row.user_id);
+                if (!user) {
+                    try {
+                        user = await Promise.race([
+                            client.users.fetch(row.user_id),
+                            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 500))
+                        ]);
+                    } catch (e) { }
+                }
+                return {
+                    user_id: row.user_id,
+                    display_name: user ? (user.globalName || user.username) : "Unknown User",
+                    avatar_url: user ? user.displayAvatarURL({ size: 64 }) : null,
+                    xp: row.xp,
+                    level: row.level,
+                    message_count: row.message_count,
+                    vc_minutes: row.total_vc_minutes
+                };
+            }));
+
+            resJson({ ok: true, leaderboard });
+        } catch (e) {
+            console.error("Leaderboard API Error:", e);
             resJson({ ok: false, error: e.message }, 500);
         }
         return;

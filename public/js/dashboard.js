@@ -189,8 +189,13 @@ async function loadMasters(gid) {
             const catOpt = '<option value="">' + (t('none') || 'なし') + '</option>' +
                 categories.map(c => `<option value="${c.id}">📁 ${c.name}</option>`).join('');
 
-            const ids = ['logCh', 'ngLogCh', 'reportCh', 'vcReportCh', 'aiAdviceCh', 'aiInsightCh', 'aiPredictCh', 'brChannel', 'introCh', 'ticketLogCh', 'antiraidHoneypotChannel'];
-            ids.forEach(id => { if ($(id)) $(id).innerHTML = allChOpt; });
+            const ids = ['logCh', 'ngLogCh', 'reportCh', 'vcReportCh', 'aiAdviceCh', 'aiInsightCh', 'aiPredictCh', 'brChannel', 'introCh', 'ticketLogCh', 'antiraidHoneypotChannel', 'autoSlowmodeChannels'];
+            ids.forEach(id => {
+                const el = $(id);
+                if (el) {
+                    el.innerHTML = allChOpt;
+                }
+            });
             if ($('autoVcCategory')) $('autoVcCategory').innerHTML = catOpt;
         }
 
@@ -236,20 +241,36 @@ async function updateCharts(gid, tier, mon) {
     // 1. Heatmap (Pro)
     const heatmapRes = await api(`/api/stats/heatmap?guild=${gid}&month=${mon}`);
     if (heatmapRes.ok) {
-        const hasData = heatmapRes.heatmap.some(v => v > 0);
-        if (!hasData) {
-            // If no data, we could show a message or just a flat chart. 
-            // Let's show a flat chart but maybe adjust label
-        }
         renderChart("heatmapChart", "bar",
             Array.from({ length: 24 }, (_, i) => i + "h"),
-            [{
-                label: t("vc_activity_mins"),
-                data: heatmapRes.heatmap,
-                backgroundColor: "rgba(29, 161, 242, 0.5)",
-                borderColor: "rgb(29, 161, 242)",
-                borderWidth: 1
-            }]
+            [
+                {
+                    label: t("vc_activity_mins"),
+                    data: heatmapRes.heatmap,
+                    backgroundColor: "rgba(29, 161, 242, 0.4)",
+                    borderColor: "rgb(29, 161, 242)",
+                    borderWidth: 1,
+                    order: 2
+                },
+                {
+                    label: "NG Detected",
+                    data: heatmapRes.ng_heatmap || Array(24).fill(0),
+                    type: "line",
+                    borderColor: "#f4212e",
+                    backgroundColor: "transparent",
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: false,
+                    order: 1,
+                    yAxisID: 'y1'
+                }
+            ],
+            {
+                scales: {
+                    y: { beginAtZero: true, position: 'left' },
+                    y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#f4212e' } }
+                }
+            }
         );
     }
 
@@ -293,6 +314,29 @@ async function initDashboard() {
                 if ($("stat-leaves")) $("stat-leaves").textContent = s.leaves;
                 if ($("stat-timeouts")) $("stat-timeouts").textContent = s.timeouts;
                 if ($("stat-ng")) $("stat-ng").textContent = s.ngDetected;
+
+                // Load Leaderboard (v2.8.2)
+                const lbRes = await api(`/api/leaderboard?guild=${gid}`);
+                const lbBody = $("leaderboard-body");
+                if (lbBody && lbRes.ok) {
+                    if (lbRes.leaderboard.length === 0) {
+                        lbBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;" class="muted">No data available yet.</td></tr>';
+                    } else {
+                        lbBody.innerHTML = lbRes.leaderboard.map((u, i) => `
+                            <tr>
+                                <td style="font-weight:800; color:var(--accent-color)">#${i + 1}</td>
+                                <td style="display:flex; align-items:center; gap:8px;">
+                                    <img src="${u.avatar_url || '/img/default-avatar.png'}" style="width:24px; height:24px; border-radius:50%;">
+                                    <span>${escapeHTML(u.display_name)}</span>
+                                </td>
+                                <td style="text-align:center;"><span class="badge" style="background:#FFD700; color:black; font-weight:bold;">${u.level}</span></td>
+                                <td style="text-align:right;">${u.xp.toLocaleString()}</td>
+                                <td style="text-align:right;">${u.message_count.toLocaleString()}</td>
+                                <td style="text-align:right;">${u.vc_minutes.toLocaleString()}</td>
+                            </tr>
+                        `).join('');
+                    }
+                }
 
                 const topNgEl = $("topNg");
                 if (topNgEl) {
@@ -378,6 +422,16 @@ async function initSettings() {
                 if ($("vcReportCh")) $("vcReportCh").value = s.vc_report_channel_id || "";
                 if ($("vcReportInterval")) $("vcReportInterval").value = s.vc_report_interval || "weekly";
                 if ($("autoVcCategory")) $("autoVcCategory").value = s.auto_vc_creator_id || "";
+
+                // Auto Slowmode (v2.8.2)
+                const slowChs = s.auto_slowmode_channels || [];
+                if ($("autoSlowmodeEnabled")) $("autoSlowmodeEnabled").checked = slowChs.length > 0;
+                const slowSelect = $("autoSlowmodeChannels");
+                if (slowSelect) {
+                    Array.from(slowSelect.options).forEach(opt => {
+                        opt.selected = slowChs.includes(opt.value);
+                    });
+                }
                 const rulesList = $("roleRulesList");
                 if (rulesList) {
                     rulesList.innerHTML = "";
@@ -594,7 +648,8 @@ async function initSettings() {
             vc_report_channel_id: $("vcReportCh")?.value || "",
             vc_report_interval: $("vcReportInterval")?.value || "weekly",
             auto_vc_creator_id: $("autoVcCategory")?.value || null,
-            intro_reminder_hours: parseInt($("introReminderHours")?.value || 24)
+            intro_reminder_hours: parseInt($("introReminderHours")?.value || 24),
+            auto_slowmode_channels: $("autoSlowmodeEnabled")?.checked ? Array.from($("autoSlowmodeChannels")?.selectedOptions || []).map(o => o.value) : []
         };
         const res = await api("/api/settings/update", body);
         if (res.ok) alert(t("save_success")); else alert("Error: " + res.error);

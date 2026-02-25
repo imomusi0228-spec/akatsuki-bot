@@ -107,25 +107,58 @@
         </div>
     </div>
 
-    <div id="card-raid" class="card" style="padding:12px; max-width: 1000px;">
-        <h4
-            style="margin:0 0 10px 0; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:6px;">
-            <span>🛡️ Anti-Raid & Security</span>
-        </h4>
-        <table class="data-table" style="font-size:12px;">
-            <thead>
-                <tr>
-                    <th style="text-align:left">
-                        <%= t("header_user") %>
-                    </th>
-                    <th style="text-align:right">
-                        <%= t("header_count") %>
-                    </th>
-                    <th style="text-align:right">Action</th>
-                </tr>
-            </thead>
-            <tbody id="topNg"></tbody>
-        </table>
+    <div
+        style="display:grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap:15px; margin-bottom:15px;">
+        <!-- Activity Leaderboard -->
+        <div class="card" style="padding:15px; margin-bottom:0;">
+            <h4
+                style="margin:0 0 15px 0; font-size:14px; font-weight:800; color:var(--text-primary); border-bottom: 2px solid #FFD700; padding-bottom: 6px; text-transform:uppercase; letter-spacing:0.05em;">
+                <span>🏆 Activity Leaderboard (Top 10)</span>
+            </h4>
+            <div style="overflow-x: auto;">
+                <table class="data-table" style="font-size:12px; width:100%;">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left; width:40px;">#</th>
+                            <th style="text-align:left;">
+                                <%= t("header_user") %>
+                            </th>
+                            <th style="text-align:center;">LV</th>
+                            <th style="text-align:right;">XP</th>
+                            <th style="text-align:right;">Messages</th>
+                            <th style="text-align:right;">VC (Min)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                        <tr>
+                            <td colspan="6" style="text-align:center; padding:20px;" class="muted">Loading
+                                leaderboard...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="card-raid" class="card" style="padding:15px; margin-bottom:0;">
+            <h4
+                style="margin:0 0 10px 0; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                <span>🛡️ Anti-Raid & Security</span>
+            </h4>
+            <table class="data-table" style="font-size:12px;">
+                <thead>
+                    <tr>
+                        <th style="text-align:left">
+                            <%= t("header_user") %>
+                        </th>
+                        <th style="text-align:right">
+                            <%= t("header_count") %>
+                        </th>
+                        <th style="text-align:right">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="topNg"></tbody>
+            </table>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

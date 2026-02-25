@@ -260,6 +260,24 @@
                         <select id="ngLogCh" style="width:100%; margin-top:5px;"></select>
                     </div>
                 </div>
+
+                <!-- Auto Slowmode Settings (v2.8.2) -->
+                <div style="border-top:1px solid var(--border-color); padding-top:20px; margin-top:20px;">
+                    <label style="display:flex; align-items:center; cursor:pointer; margin-bottom:15px;">
+                        <input type="checkbox" id="autoSlowmodeEnabled"
+                            style="width:18px; height:18px; margin-right:10px;">
+                        <span style="font-weight:bold;">🚨 異常検知時の自動低速モードを有効化</span>
+                    </label>
+                    <div style="margin-bottom:10px;">
+                        <label class="muted" style="font-size:12px;">適用対象チャンネル（複数選択可 / Ctrl+クリック）</label><br />
+                        <select id="autoSlowmodeChannels" multiple
+                            style="width:100%; height:120px; margin-top:5px; padding:8px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); border-radius:6px; color:white;">
+                        </select>
+                        <p class="muted" style="font-size:11px; margin-top:5px;">
+                            ※ 大量のNGワードや不自然なメッセージ密度を検知した際、指定したチャンネルを自動的に低速モード（10秒）に設定します。
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
 
