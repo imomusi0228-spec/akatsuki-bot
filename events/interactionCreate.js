@@ -46,6 +46,29 @@ export default {
         if (interaction.isButton()) {
             const guildId = interaction.guild.id;
 
+            // v2.8.0: Button Role Handling
+            if (interaction.customId.startsWith('btn_role_')) {
+                const roleId = interaction.customId.replace('btn_role_', '');
+                const member = interaction.member;
+                if (!member) return;
+
+                await interaction.deferReply({ ephemeral: true });
+
+                try {
+                    if (member.roles.cache.has(roleId)) {
+                        await member.roles.remove(roleId);
+                        await interaction.editReply(`✅ 役職 <@&${roleId}> を解除しました。`);
+                    } else {
+                        await member.roles.add(roleId);
+                        await interaction.editReply(`✅ 役職 <@&${roleId}> を付与しました。`);
+                    }
+                } catch (e) {
+                    console.error("Button Role Interaction Error:", e);
+                    await interaction.editReply(`❌ エラーが発生しました: ${e.message}`);
+                }
+                return;
+            }
+
             // Ticket Creation
             if (interaction.customId === 'ticket_create') {
                 await interaction.deferReply({ ephemeral: true });

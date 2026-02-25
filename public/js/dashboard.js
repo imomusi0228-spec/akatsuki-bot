@@ -189,7 +189,7 @@ async function loadMasters(gid) {
             const catOpt = '<option value="">' + (t('none') || 'なし') + '</option>' +
                 categories.map(c => `<option value="${c.id}">📁 ${c.name}</option>`).join('');
 
-            const ids = ['logCh', 'ngLogCh', 'reportCh', 'vcReportCh', 'aiAdviceCh', 'aiInsightCh', 'aiPredictCh'];
+            const ids = ['logCh', 'ngLogCh', 'reportCh', 'vcReportCh', 'aiAdviceCh', 'aiInsightCh', 'aiPredictCh', 'brChannel'];
             ids.forEach(id => { if ($(id)) $(id).innerHTML = allChOpt; });
             if ($('autoVcCategory')) $('autoVcCategory').innerHTML = catOpt;
         }
@@ -395,29 +395,11 @@ async function initSettings() {
                 if ($("ngCount")) $("ngCount").textContent = words.length + " " + t("words");
             }
 
-            // v2.7.0 Reaction Roles
-            const rrList = $("rr-list");
-            const rrLoading = $("rr-loading");
-            if (rrList) {
-                rrList.innerHTML = "";
-                rrLoading.style.display = "block";
-                const rrRes = await api("/api/rr?guild=" + gid);
-                rrLoading.style.display = "none";
-                if (rrRes.ok && rrRes.reactionRoles) {
-                    if (rrRes.reactionRoles.length === 0) {
-                        rrList.innerHTML = '<div class="muted" style="padding:10px; text-align:center;">設定されているリアクションロールはありません。</div>';
-                    } else {
-                        rrList.innerHTML = rrRes.reactionRoles.map(r => `
-                            <div class="color-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                <div>
-                                    <div style="font-weight:600; font-size:13px;">Msg ID: ${r.message_id}</div>
-                                    <div class="muted" style="font-size:11px;">Emoji: ${escapeHTML(r.emoji)} | Role ID: ${r.role_id}</div>
-                                </div>
-                                <button onclick="removeRR('${r.id}')" class="btn btn-delete" style="padding:4px 10px; font-size:11px;">削除</button>
-                            </div>
-                        `).join("");
-                    }
-                }
+            // v2.8.0 Button Roles
+            const brList = $("br-list");
+            const brLoading = $("br-loading");
+            if (brList) {
+                window.loadButtonRoles();
             }
         } catch (e) {
             console.error("initSettings Error:", e);
@@ -425,12 +407,159 @@ async function initSettings() {
         }
     };
 
-    window.removeRR = async (id) => {
-        if (!confirm("このリアクションロール設定を削除しますか？")) return;
+    window.addBrButtonRow = (data = null) => {
+        const list = $("brButtonsList");
+        if (!list) return;
+        if (list.children.length >= 5) {
+            alert("ボタンは最大5個までです。");
+            return;
+        }
+
+        const div = document.createElement("div");
+        div.className = "br-button-row";
+        div.style.display = "grid";
+        div.style.gridTemplateColumns = "1fr 1fr auto";
+        div.style.gap = "10px";
+        div.style.alignItems = "center";
+        div.style.marginBottom = "5px";
+
+        const labelInput = document.createElement("input");
+        labelInput.type = "text";
+        labelInput.placeholder = "ボタンのラベル";
+        labelInput.value = data ? data.label : "";
+        labelInput.style.fontSize = "12px";
+
+        const roleSelect = document.createElement("select");
+        roleSelect.style.fontSize = "12px";
+        roleSelect.innerHTML = $("introRole").innerHTML; // Copy role options from intro gate
+        if (data) roleSelect.value = data.role_id;
+
+        const delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.innerHTML = "×";
+        delBtn.className = "btn btn-delete";
+        delBtn.style.padding = "2px 8px";
+        delBtn.onclick = () => div.remove();
+
+        div.appendChild(labelInput);
+        div.appendChild(roleSelect);
+        div.appendChild(delBtn);
+        list.appendChild(div);
+    };
+
+    window.resetBrForm = () => {
+        if ($("brId")) $("brId").value = "";
+        if ($("brMessageId")) $("brMessageId").value = "";
+        if ($("brTitle")) $("brTitle").value = "";
+        if ($("brContent")) $("brContent").value = "";
+        if ($("brColor")) $("brColor").value = "#5865F2";
+        if ($("brColorHex")) $("brColorHex").value = "#5865F2";
+        if ($("brButtonsList")) $("brButtonsList").innerHTML = "";
+    };
+
+    window.loadButtonRoles = async () => {
         const gid = $("globalGuildSelect")?.value;
-        const res = await api("/api/rr", { guild: gid, id }, "DELETE");
+        const brList = $("br-list");
+        const brLoading = $("br-loading");
+        if (!brList || !gid) return;
+
+        brList.innerHTML = "";
+        brLoading.style.display = "block";
+        const res = await api("/api/button-roles?guild=" + gid);
+        brLoading.style.display = "none";
+
+        if (res.ok && res.data) {
+            if (res.data.length === 0) {
+                brList.innerHTML = '<div class="muted" style="padding:10px; text-align:center;">作成済みのパネルはありません。</div>';
+            } else {
+                brList.innerHTML = res.data.map(r => {
+                    const buttons = typeof r.buttons === 'string' ? JSON.parse(r.buttons) : r.buttons;
+                    return `
+                    <div class="color-item" style="border-left: 4px solid ${r.color}; padding: 12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                            <div style="flex:1;">
+                                <div style="font-weight:600; font-size:14px; margin-bottom:4px;">${escapeHTML(r.embed_title || "無題のパネル")}</div>
+                                <div class="muted" style="font-size:11px;">
+                                    CH: <#${r.channel_id}> | Msg: ${r.message_id || "None"}<br/>
+                                    ボタン: ${buttons.map(b => `[${escapeHTML(b.label)}]`).join(" ")}
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:5px;">
+                                <button onclick='editBr(${JSON.stringify(r).replace(/'/g, "&apos;")})' class="btn" style="padding:4px 10px; font-size:11px;">編集</button>
+                                <button onclick="removeBr('${r.id}')" class="btn btn-delete" style="padding:4px 10px; font-size:11px;">削除</button>
+                            </div>
+                        </div>
+                    </div>
+                `}).join("");
+            }
+        }
+    };
+
+    window.editBr = (data) => {
+        window.resetBrForm();
+        $("brId").value = data.id;
+        $("brMessageId").value = data.message_id || "";
+        $("brChannel").value = data.channel_id;
+        $("brTitle").value = data.embed_title || "";
+        $("brContent").value = data.content || "";
+        $("brColor").value = data.color || "#5865F2";
+        $("brColorHex").value = data.color || "#5865F2";
+
+        const buttons = typeof data.buttons === 'string' ? JSON.parse(data.buttons) : data.buttons;
+        buttons.forEach(b => window.addBrButtonRow(b));
+
+        // Open accordion if closed
+        const sec = $("sec-br");
+        if (sec && !sec.classList.contains("active")) toggleAccordion("sec-br");
+        sec.scrollIntoView({ behavior: "smooth" });
+    };
+
+    window.removeBr = async (id) => {
+        if (!confirm("このパネル設定を一覧から削除しますか？（Discord上のメッセージは削除されません）")) return;
+        const gid = $("globalGuildSelect")?.value;
+        const res = await api("/api/button-roles", { guild: gid, id }, "DELETE");
         if (res.ok) {
-            if (window.__pageReload) window.__pageReload();
+            window.loadButtonRoles();
+        } else {
+            alert("Error: " + res.error);
+        }
+    };
+
+    window.saveButtonRole = async () => {
+        const gid = $("globalGuildSelect")?.value;
+        if (!gid) return;
+
+        const channelId = $("brChannel").value;
+        if (!channelId) return alert("送信先チャンネルを選択してください。");
+
+        const buttons = [];
+        const rows = document.querySelectorAll(".br-button-row");
+        rows.forEach(row => {
+            const inputs = row.querySelectorAll("input, select");
+            buttons.push({
+                label: inputs[0].value,
+                role_id: inputs[1].value
+            });
+        });
+
+        if (buttons.length === 0) return alert("ボタンを少なくとも1つ追加してください。");
+
+        const body = {
+            guild: gid,
+            id: $("brId").value || null,
+            message_id: $("brMessageId").value || null,
+            channel_id: channelId,
+            embed_title: $("brTitle").value,
+            content: $("brContent").value,
+            color: $("brColor").value,
+            buttons: buttons
+        };
+
+        const res = await api("/api/button-roles", body, "POST");
+        if (res.ok) {
+            alert("保存しました！Discordを確認してください。");
+            window.resetBrForm();
+            window.loadButtonRoles();
         } else {
             alert("Error: " + res.error);
         }

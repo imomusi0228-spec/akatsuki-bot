@@ -337,7 +337,22 @@ export async function initDb() {
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS antiraid_auto_recovery_enabled BOOLEAN DEFAULT FALSE;`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS antiraid_honeypot_channel_id TEXT;`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS antiraid_avatar_scrutiny_enabled BOOLEAN DEFAULT FALSE;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS last_raid_at TIMESTAMPTZ;`
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS last_raid_at TIMESTAMPTZ;`,
+            
+            // v2.8.0: Button Roles
+            `CREATE TABLE IF NOT EXISTS button_roles (
+                id SERIAL PRIMARY KEY,
+                guild_id TEXT NOT NULL,
+                channel_id TEXT NOT NULL,
+                message_id TEXT,
+                content TEXT,
+                embed_title TEXT,
+                color TEXT DEFAULT '#5865F2',
+                buttons JSONB DEFAULT '[]',
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            );`,
+            `CREATE INDEX IF NOT EXISTS idx_br_guild ON button_roles(guild_id);`
 
         ];
 

@@ -263,20 +263,67 @@
         </div>
 
 
-        <!-- 7. Reaction Roles (v2.7.0) -->
-        <div class="accordion-item" id="sec-rr">
-            <div class="accordion-header" onclick="toggleAccordion('sec-rr')">
-                <span>🎭 リアクションロール管理</span>
+        <!-- 7. Button Roles (v2.8.0) -->
+        <div class="accordion-item" id="sec-br">
+            <div class="accordion-header" onclick="toggleAccordion('sec-br')">
+                <span>🔘 ボタンロール管理</span>
                 <span>▼</span>
             </div>
             <div class="accordion-content">
-                <p class="muted" style="font-size:12px; margin-bottom:15px;">Discord上でのリアクションに応じたロール付与設定を管理します。</p>
-                <div id="rr-loading" class="muted" style="text-align:center; padding:20px; display:none;">ロード中...</div>
-                <div id="rr-list" style="display:flex; flex-direction:column; gap:10px;">
-                    <!-- Reaction Roles loaded via JS -->
+                <p class="muted" style="font-size:12px; margin-bottom:15px;">ボタンを押すと役職が付与されるメッセージを作成・管理します。既存パネルの編集も可能です。</p>
+                
+                <!-- Creator Form -->
+                <div style="background: rgba(0,0,0,0.1); padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid var(--border-color);">
+                    <h4 style="margin-top:0; font-size:14px; color: var(--accent-color); border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 15px;">🎨 パネル作成・編集</h4>
+                    <input type="hidden" id="brId" value="">
+                    <input type="hidden" id="brMessageId" value="">
+                    
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
+                        <div>
+                            <label class="muted">送信先チャンネル</label><br/>
+                            <select id="brChannel" style="width:100%; margin-top:5px;"></select>
+                        </div>
+                        <div>
+                            <label class="muted">アクセントカラー</label><br/>
+                            <div style="display:flex; gap:10px; align-items:center; margin-top:5px;">
+                                <input type="color" id="brColor" value="#5865F2" style="width:40px; height:35px; border:none; padding:0; background:none; cursor:pointer;" oninput="document.getElementById('brColorHex').value = this.value.toUpperCase()">
+                                <input type="text" id="brColorHex" value="#5865F2" style="flex:1; font-family:monospace; text-transform:uppercase;" maxlength="7" oninput="document.getElementById('brColor').value = this.value">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom:15px;">
+                        <label class="muted">タイトル（埋め込み）</label><br/>
+                        <input id="brTitle" type="text" placeholder="役職パネル" style="width:100%; margin-top:5px;">
+                    </div>
+                    
+                    <div style="margin-bottom:15px;">
+                        <label class="muted">メッセージ本文</label><br/>
+                        <textarea id="brContent" rows="3" style="width:100%; margin-top:5px; background:var(--card-bg); color:var(--text-color); border:1px solid var(--border-color); border-radius:4px; padding:8px;" placeholder="空欄の場合は自動的に説明文が生成されます"></textarea>
+                    </div>
+                    
+                    <div style="margin-bottom:15px;">
+                        <label class="muted">ボタン設定（1行に最大5個）</label>
+                        <div id="brButtonsList" style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+                            <!-- Button Rows loaded via JS -->
+                        </div>
+                        <button type="button" onclick="addBrButtonRow()" class="btn" style="font-size:12px; width:100%; margin-top:10px; background:rgba(255,255,255,0.05); border:1px dashed var(--border-color);">+ ボタンを追加</button>
+                    </div>
+                    
+                    <div style="display:flex; gap:10px; margin-top:20px;">
+                        <button type="button" onclick="saveButtonRole()" class="btn btn-primary" style="flex:2; padding:10px;">🚀 Discordに送信・保存</button>
+                        <button type="button" onclick="resetBrForm()" class="btn" style="flex:1; padding:10px;">リセット</button>
+                    </div>
                 </div>
-                <p class="muted" style="font-size:11px; margin-top:15px;">※
-                    新規作成はDiscord上の各メッセージに対して行ってください。ここでは既存の設定の確認と削除が可能です。</p>
+
+                <h4 style="font-size:14px; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                    <span style="width:8px; height:8px; background:var(--accent-color); border-radius:50%;"></span>
+                    作成済みパネル一覧
+                </h4>
+                <div id="br-loading" class="muted" style="text-align:center; padding:15px; display:none;">ロード中...</div>
+                <div id="br-list" style="display:flex; flex-direction:column; gap:12px;">
+                    <!-- Button Role List Items -->
+                </div>
             </div>
         </div>
 
