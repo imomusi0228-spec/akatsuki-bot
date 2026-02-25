@@ -189,7 +189,7 @@ async function loadMasters(gid) {
             const catOpt = '<option value="">' + (t('none') || 'なし') + '</option>' +
                 categories.map(c => `<option value="${c.id}">📁 ${c.name}</option>`).join('');
 
-            const ids = ['logCh', 'ngLogCh', 'reportCh', 'vcReportCh', 'aiAdviceCh', 'aiInsightCh', 'aiPredictCh', 'brChannel'];
+            const ids = ['logCh', 'ngLogCh', 'reportCh', 'vcReportCh', 'aiAdviceCh', 'aiInsightCh', 'aiPredictCh', 'brChannel', 'introCh', 'ticketLogCh', 'antiraidHoneypotChannel'];
             ids.forEach(id => { if ($(id)) $(id).innerHTML = allChOpt; });
             if ($('autoVcCategory')) $('autoVcCategory').innerHTML = catOpt;
         }
@@ -197,8 +197,9 @@ async function loadMasters(gid) {
         if (roleRes.ok) {
             window._serverRoles = roleRes.roles;
             const roleOpt = '<option value="">' + (t('none') || 'なし') + '</option>' +
-                (roleRes.roles || []).map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+                (roleRes.roles || []).map(r => `<option value="${r.id}">${escapeHTML(r.name)}</option>`).join('');
             if ($('introRole')) $('introRole').innerHTML = roleOpt;
+            if ($('ticketStaffRole')) $('ticketStaffRole').innerHTML = roleOpt;
         }
     } catch (e) {
         console.error('[loadMasters] Error:', e);
@@ -366,6 +367,7 @@ async function initSettings() {
                 if ($("threshold")) $("threshold").value = s.ng_threshold ?? 3;
                 if ($("timeout")) $("timeout").value = s.timeout_minutes ?? 10;
                 if ($("introGateEnabled")) $("introGateEnabled").checked = !!s.self_intro_enabled;
+                if ($("introCh")) $("introCh").value = s.intro_channel_id || "";
                 if ($("introRole")) $("introRole").value = s.self_intro_role_id || "";
                 if ($("introMinLen")) $("introMinLen").value = s.self_intro_min_length ?? 10;
                 if ($("aiAdviceDays")) $("aiAdviceDays").value = s.ai_advice_days ?? 14;
@@ -579,6 +581,7 @@ async function initSettings() {
             ng_threshold: parseInt($("threshold")?.value || 3),
             timeout_minutes: parseInt($("timeout")?.value || 10),
             self_intro_enabled: $("introGateEnabled")?.checked || false,
+            intro_channel_id: $("introCh")?.value || "",
             self_intro_role_id: $("introRole")?.value || "",
             self_intro_min_length: parseInt($("introMinLen")?.value || 10),
             vc_role_rules: Array.from(document.querySelectorAll(".role-rule-item")).map(item => ({
@@ -835,35 +838,17 @@ window.initTicketsPage = async () => {
         const list = $("ticketList");
         if (list) list.innerHTML = `<tr><td colspan="6" class="muted" style="text-align:center; padding:30px;">${t("loading")}...</td></tr>`;
 
-        const [ticketsRes, settingsRes, rolesRes, channelsRes] = await Promise.all([
+        await loadMasters(gid);
+        const [ticketsRes, settingsRes] = await Promise.all([
             api(`/api/tickets?guild=${gid}&status=${status}`),
-            api(`/api/settings?guild=${gid}`),
-            api(`/api/roles?guild=${gid}`),
-            api(`/api/channels?guild=${gid}`)
+            api(`/api/settings?guild=${gid}`)
         ]);
 
-        // Populate Roles
-        const roleSel = $("ticketStaffRole");
-        if (roleSel && rolesRes.ok) {
-            roleSel.innerHTML = '<option value="">--- ロールを選択してください ---</option>' +
-                rolesRes.roles.map(r => `<option value="${r.id}">${escapeHTML(r.name)}</option>`).join("");
-            if (settingsRes.ok && settingsRes.settings) {
-                roleSel.value = settingsRes.settings.ticket_staff_role_id || "";
-            }
-        }
-
-        // Populate Log Channels
-        const logChSel = $("ticketLogCh");
-        if (logChSel && channelsRes.ok) {
-            logChSel.innerHTML = '<option value="">--- チャンネルを選択してください ---</option>' +
-                channelsRes.channels.filter(c => c.type === 0).map(c => `<option value="${c.id}">#${escapeHTML(c.name)}</option>`).join("");
-            if (settingsRes.ok && settingsRes.settings) {
-                logChSel.value = settingsRes.settings.ticket_log_channel_id || "";
-            }
-        }
-
         if (settingsRes.ok && settingsRes.settings) {
-            if ($("ticketWelcomeMsg")) $("ticketWelcomeMsg").value = settingsRes.settings.ticket_welcome_msg || "";
+            const s = settingsRes.settings;
+            if ($("ticketStaffRole")) $("ticketStaffRole").value = s.ticket_staff_role_id || "";
+            if ($("ticketLogCh")) $("ticketLogCh").value = s.ticket_log_channel_id || "";
+            if ($("ticketWelcomeMsg")) $("ticketWelcomeMsg").value = s.ticket_welcome_msg || "";
         }
 
         if (ticketsRes.ok && list) {
@@ -1078,9 +1063,13 @@ async function initAiPage() {
                 if ($("aiAdviceCh")) $("aiAdviceCh").value = s.ai_advice_channel_id || '';
                 if ($("aiInsightEnabled")) $("aiInsightEnabled").checked = !!s.ai_insight_enabled;
                 if ($("aiInsightCh")) $("aiInsightCh").value = s.ai_insight_channel_id || '';
-                if ($("insightGrowth")) $("insightGrowth").checked = !!s.insight_growth;
-                if ($("insightToxicity")) $("insightToxicity").checked = !!s.insight_toxicity;
-                if ($("insightVc")) $("insightVc").checked = !!s.insight_vc;
+
+                // Handle insight_sections array
+                const sections = s.insight_sections || ["growth", "toxicity", "vc"];
+                if ($("insightGrowth")) $("insightGrowth").checked = sections.includes("growth");
+                if ($("insightToxicity")) $("insightToxicity").checked = sections.includes("toxicity");
+                if ($("insightVc")) $("insightVc").checked = sections.includes("vc");
+
                 if ($("aiPredictionEnabled")) $("aiPredictionEnabled").checked = !!s.ai_prediction_enabled;
                 if ($("aiPredictCh")) $("aiPredictCh").value = s.ai_predict_channel_id || '';
             } else if (res.error) {
@@ -1097,15 +1086,18 @@ async function initAiPage() {
     if ($("saveAi")) $("saveAi").onclick = async () => {
         const gid = $("globalGuildSelect")?.value;
         if (!gid) return;
+        const sections = [];
+        if ($("insightGrowth")?.checked) sections.push("growth");
+        if ($("insightToxicity")?.checked) sections.push("toxicity");
+        if ($("insightVc")?.checked) sections.push("vc");
+
         const body = {
             guild: gid,
             ai_advice_days: parseInt($("aiAdviceDays")?.value || 14),
             ai_advice_channel_id: $("aiAdviceCh")?.value || "",
             ai_insight_enabled: $("aiInsightEnabled")?.checked || false,
             ai_insight_channel_id: $("aiInsightCh")?.value || "",
-            insight_growth: $("insightGrowth")?.checked || false,
-            insight_toxicity: $("insightToxicity")?.checked || false,
-            insight_vc: $("insightVc")?.checked || false,
+            insight_sections: sections,
             ai_prediction_enabled: $("aiPredictionEnabled")?.checked || false,
             ai_predict_channel_id: $("aiPredictCh")?.value || ""
         };

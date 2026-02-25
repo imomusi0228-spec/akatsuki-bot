@@ -290,6 +290,7 @@
             // Load Settings
             if (st.ok && st.settings) {
                 const s = st.settings;
+                await loadMasters(gid); // Ensure masters are loaded
                 setGuard(s.antiraid_guard_level || 0);
                 document.getElementById('raidThreshold').value = s.raid_join_threshold || 10;
                 document.getElementById('newcomerRestrictMins').value = s.newcomer_restrict_mins || 10;
@@ -300,18 +301,8 @@
                 // v2.4.9 Iron Fortress II
                 document.getElementById('antiraidAutoRecovery').checked = !!s.antiraid_auto_recovery_enabled;
                 document.getElementById('antiraidAvatarScrutiny').checked = !!s.antiraid_avatar_scrutiny_enabled;
-
-                const chRes = await api("/api/channels?guild=" + gid);
-                if (chRes.ok) {
-                    const honeypotSelect = document.getElementById('antiraidHoneypotChannel');
-                    honeypotSelect.innerHTML = '<option value="">無効 (None)</option>';
-                    chRes.channels.filter(c => c.type === 0).forEach(c => {
-                        const opt = document.createElement('option');
-                        opt.value = c.id;
-                        opt.textContent = '#' + c.name;
-                        if (c.id === s.antiraid_honeypot_channel_id) opt.selected = true;
-                        honeypotSelect.appendChild(opt);
-                    });
+                if (document.getElementById('antiraidHoneypotChannel')) {
+                    document.getElementById('antiraidHoneypotChannel').value = s.antiraid_honeypot_channel_id || "";
                 }
             }
         };

@@ -619,114 +619,46 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (!body.guild) return res.end(JSON.stringify({ ok: false }));
         if (!await verifyGuild(body.guild)) return resJson({ ok: false, error: "Forbidden" }, 403);
 
-        // Upsert
-        // Atomic Upsert using ON CONFLICT
+        // Partially Dynamic Upsert
         try {
+            const allowedFields = [
+                "log_channel_id", "ng_log_channel_id", "audit_role_id", "intro_channel_id",
+                "ng_threshold", "timeout_minutes", "antiraid_enabled", "antiraid_threshold",
+                "self_intro_enabled", "self_intro_role_id", "self_intro_min_length",
+                "vc_report_enabled", "vc_report_channel_id", "vc_report_interval", "vc_role_rules",
+                "antiraid_guard_level", "raid_join_threshold", "newcomer_restrict_mins", "newcomer_min_account_age",
+                "link_block_enabled", "domain_blacklist", "ai_advice_days", "ai_advice_channel_id",
+                "ai_insight_enabled", "ai_insight_channel_id", "insight_sections",
+                "phase2_threshold", "phase2_action", "phase3_threshold", "phase3_action", "phase4_threshold", "phase4_action",
+                "intro_reminder_hours", "report_channel_id", "ng_warning_enabled",
+                "ticket_welcome_msg", "color_log", "color_ng", "color_vc_join", "color_vc_leave", "color_level", "color_ticket",
+                "dashboard_theme_color", "dashboard_theme_mode", "ai_prediction_enabled", "ai_predict_channel_id",
+                "auto_vc_creator_id", "ticket_staff_role_id", "ticket_log_channel_id",
+                "antiraid_auto_recovery_enabled", "antiraid_honeypot_channel_id", "antiraid_avatar_scrutiny_enabled"
+            ];
+
+            const keys = Object.keys(body).filter(k => allowedFields.includes(k));
+            if (keys.length === 0) return resJson({ ok: true });
+
+            const values = keys.map(k => {
+                const val = body[k];
+                // Handle JSON serialization for specific fields
+                if (["vc_role_rules", "domain_blacklist", "insight_sections"].includes(k)) {
+                    return JSON.stringify(val || (k === "domain_blacklist" ? [] : k === "insight_sections" ? ["growth", "toxicity", "vc"] : []));
+                }
+                return val;
+            });
+
+            const placeholders = keys.map((_, i) => `$${i + 2}`).join(", ");
+            const updateSet = keys.map((k, i) => `${k} = EXCLUDED.${k}`).join(", ");
+
             await dbQuery(`
-                INSERT INTO settings (
-                    guild_id, log_channel_id, ng_log_channel_id, audit_role_id, intro_channel_id, ng_threshold, timeout_minutes, 
-                    antiraid_enabled, antiraid_threshold, self_intro_enabled, self_intro_role_id, self_intro_min_length,
-                    vc_report_enabled, vc_report_channel_id, vc_report_interval, vc_role_rules,
-                    antiraid_guard_level, raid_join_threshold, newcomer_restrict_mins, newcomer_min_account_age,
-                    link_block_enabled, domain_blacklist,
-                    ai_advice_days, ai_advice_channel_id,
-                    ai_insight_enabled, ai_insight_channel_id, insight_sections,
-                    phase2_threshold, phase2_action, phase3_threshold, phase3_action, phase4_threshold, phase4_action,
-                    intro_reminder_hours, report_channel_id, ng_warning_enabled,
-                    ticket_welcome_msg, color_log, color_ng, color_vc_join, color_vc_leave, color_level, color_ticket, 
-                    dashboard_theme_color, dashboard_theme_mode, ai_prediction_enabled,
-                    auto_vc_creator_id, ticket_staff_role_id, ticket_log_channel_id,
-                    antiraid_auto_recovery_enabled, antiraid_honeypot_channel_id, antiraid_avatar_scrutiny_enabled,
-                    updated_at
-                ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, NOW()
-                )
+                INSERT INTO settings (guild_id, ${keys.join(", ")}, updated_at)
+                VALUES ($1, ${placeholders}, NOW())
                 ON CONFLICT (guild_id) DO UPDATE SET
-                    log_channel_id = EXCLUDED.log_channel_id,
-                    ng_log_channel_id = EXCLUDED.ng_log_channel_id,
-                    audit_role_id = EXCLUDED.audit_role_id,
-                    intro_channel_id = EXCLUDED.intro_channel_id,
-                    ng_threshold = EXCLUDED.ng_threshold,
-                    timeout_minutes = EXCLUDED.timeout_minutes,
-                    antiraid_enabled = EXCLUDED.antiraid_enabled,
-                    antiraid_threshold = EXCLUDED.antiraid_threshold,
-                    self_intro_enabled = EXCLUDED.self_intro_enabled,
-                    self_intro_role_id = EXCLUDED.self_intro_role_id,
-                    self_intro_min_length = EXCLUDED.self_intro_min_length,
-                    vc_report_enabled = EXCLUDED.vc_report_enabled,
-                    vc_report_channel_id = EXCLUDED.vc_report_channel_id,
-                    vc_report_interval = EXCLUDED.vc_report_interval,
-                    vc_role_rules = EXCLUDED.vc_role_rules,
-                    antiraid_guard_level = EXCLUDED.antiraid_guard_level,
-                    raid_join_threshold = EXCLUDED.raid_join_threshold,
-                    newcomer_restrict_mins = EXCLUDED.newcomer_restrict_mins,
-                    newcomer_min_account_age = EXCLUDED.newcomer_min_account_age,
-                    link_block_enabled = EXCLUDED.link_block_enabled,
-                    domain_blacklist = EXCLUDED.domain_blacklist,
-                    ai_advice_days = EXCLUDED.ai_advice_days,
-                    ai_advice_channel_id = EXCLUDED.ai_advice_channel_id,
-                    ai_insight_enabled = EXCLUDED.ai_insight_enabled,
-                    ai_insight_channel_id = EXCLUDED.ai_insight_channel_id,
-                    insight_sections = EXCLUDED.insight_sections,
-                    phase2_threshold = EXCLUDED.phase2_threshold,
-                    phase2_action = EXCLUDED.phase2_action,
-                    phase3_threshold = EXCLUDED.phase3_threshold,
-                    phase3_action = EXCLUDED.phase3_action,
-                    phase4_threshold = EXCLUDED.phase4_threshold,
-                    phase4_action = EXCLUDED.phase4_action,
-                    intro_reminder_hours = EXCLUDED.intro_reminder_hours,
-                    report_channel_id = EXCLUDED.report_channel_id,
-                    ng_warning_enabled = EXCLUDED.ng_warning_enabled,
-                    ticket_welcome_msg = EXCLUDED.ticket_welcome_msg,
-                    color_log = EXCLUDED.color_log,
-                    color_ng = EXCLUDED.color_ng,
-                    color_vc_join = EXCLUDED.color_vc_join,
-                    color_vc_leave = EXCLUDED.color_vc_leave,
-                    color_level = EXCLUDED.color_level,
-                    color_ticket = EXCLUDED.color_ticket,
-                    dashboard_theme_color = EXCLUDED.dashboard_theme_color,
-                    dashboard_theme_mode = EXCLUDED.dashboard_theme_mode,
-                    ai_prediction_enabled = EXCLUDED.ai_prediction_enabled,
-                    auto_vc_creator_id = EXCLUDED.auto_vc_creator_id,
-                    ticket_staff_role_id = EXCLUDED.ticket_staff_role_id,
-                    ticket_log_channel_id = EXCLUDED.ticket_log_channel_id,
-                    antiraid_auto_recovery_enabled = EXCLUDED.antiraid_auto_recovery_enabled,
-                    antiraid_honeypot_channel_id = EXCLUDED.antiraid_honeypot_channel_id,
-                    antiraid_avatar_scrutiny_enabled = EXCLUDED.antiraid_avatar_scrutiny_enabled,
+                    ${updateSet},
                     updated_at = NOW();
-            `, [
-                body.guild,
-                body.log_channel_id, body.ng_log_channel_id, body.audit_role_id, body.intro_channel_id, body.ng_threshold, body.timeout_minutes,
-                body.antiraid_enabled, body.antiraid_threshold, body.self_intro_enabled, body.self_intro_role_id, body.self_intro_min_length,
-                body.vc_report_enabled, body.vc_report_channel_id, body.vc_report_interval, JSON.stringify(body.vc_role_rules),
-                body.antiraid_guard_level || 0, body.raid_join_threshold || 10, body.newcomer_restrict_mins || 10, body.newcomer_min_account_age || 1,
-                body.link_block_enabled || false, JSON.stringify(body.domain_blacklist || []),
-                body.ai_advice_days || 14, body.ai_advice_channel_id || null,
-                body.ai_insight_enabled || false, body.ai_insight_channel_id || null,
-                JSON.stringify(body.insight_sections || ["growth", "toxicity", "vc"]),
-                body.phase2_threshold || 3, body.phase2_action || 'timeout',
-                body.phase3_threshold || 6, body.phase3_action || 'kick',
-                body.phase4_threshold || 10, body.phase4_action || 'ban',
-                body.intro_reminder_hours || 24,
-                body.report_channel_id || null,
-                body.ng_warning_enabled !== false,
-                body.ticket_welcome_msg || null,
-                body.color_log || '#5865F2',
-                body.color_ng || '#f4212e',
-                body.color_vc_join || '#1da1f2',
-                body.color_vc_leave || '#8b9bb4',
-                body.color_level || '#FFD700',
-                body.color_ticket || '#2ECC71',
-                body.dashboard_theme_color || '#5865F2',
-                body.dashboard_theme_mode || 'midnight',
-                body.ai_prediction_enabled === true,
-                body.auto_vc_creator_id || null,
-                body.ticket_staff_role_id || null,
-                body.ticket_log_channel_id || null,
-                body.antiraid_auto_recovery_enabled === true,
-                body.antiraid_honeypot_channel_id || null,
-                body.antiraid_avatar_scrutiny_enabled === true
-            ]);
+            `, [body.guild, ...values]);
         } catch (e) {
             console.error("Settings Update Error:", e);
             res.writeHead(500, { "Content-Type": "application/json" });

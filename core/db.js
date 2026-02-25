@@ -338,7 +338,8 @@ export async function initDb() {
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS antiraid_honeypot_channel_id TEXT;`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS antiraid_avatar_scrutiny_enabled BOOLEAN DEFAULT FALSE;`,
             `ALTER TABLE settings ADD COLUMN IF NOT EXISTS last_raid_at TIMESTAMPTZ;`,
-            
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_predict_channel_id TEXT;`,
+
             // v2.8.0: Button Roles
             `CREATE TABLE IF NOT EXISTS button_roles (
                 id SERIAL PRIMARY KEY,
