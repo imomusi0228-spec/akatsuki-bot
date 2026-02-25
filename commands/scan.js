@@ -26,10 +26,10 @@ export async function execute(interaction) {
 
     // Pro+ のみ利用可能
     const tier = await getTier(guildId);
-    const features = getFeatures(tier);
+    const features = getFeatures(tier, guildId, interaction.user.id);
     if (!features.audit) {
         return interaction.reply({
-            content: "❌ `/scan` コマンドは **Pro+** プランのみご利用いただけます。\n詳細は `/activity` または Web管理画面からご確認ください。",
+            content: "❌ `/scan` コマンドは上位プラン専用の機能です。\n詳細は Web管理画面からプラン状況をご確認ください。",
             flags: [MessageFlags.Ephemeral]
         });
     }

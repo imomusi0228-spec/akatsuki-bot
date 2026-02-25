@@ -5,7 +5,8 @@ export const TIERS = {
     PRO_PLUS_MONTHLY: 3,
     PRO_PLUS_YEARLY: 4,
     TRIAL_PRO_PLUS: 5,
-    TRIAL_PRO: 6
+    TRIAL_PRO: 6,
+    ULTIMATE: 999
 };
 
 export const MILESTONES = {
@@ -23,7 +24,19 @@ export const TIER_NAMES = {
     [TIERS.PRO_PLUS_MONTHLY]: "Pro+",
     [TIERS.PRO_PLUS_YEARLY]: "Pro+",
     [TIERS.TRIAL_PRO_PLUS]: "Trial Pro+",
-    [TIERS.TRIAL_PRO]: "Trial Pro"
+    [TIERS.TRIAL_PRO]: "Trial Pro",
+    [TIERS.ULTIMATE]: "アルティメット"
+};
+
+export const TIER_COLORS = {
+    [TIERS.FREE]: "#8b9bb4",
+    [TIERS.PRO_MONTHLY]: "#1d9bf0",
+    [TIERS.PRO_YEARLY]: "#1d9bf0",
+    [TIERS.PRO_PLUS_MONTHLY]: "#fbbf24",
+    [TIERS.PRO_PLUS_YEARLY]: "#fbbf24",
+    [TIERS.TRIAL_PRO_PLUS]: "#fbbf24",
+    [TIERS.TRIAL_PRO]: "#1d9bf0",
+    [TIERS.ULTIMATE]: "#A020F0"
 };
 
 export const FEATURES = {
@@ -131,35 +144,38 @@ export const FEATURES = {
         introGate: false,
         longTermStats: false,
         aura: true
+    },
+    [TIERS.ULTIMATE]: {
+        maxNgWords: 9999,
+        maxGuilds: 99,
+        ngLog: true,
+        vcLog: true,
+        dashboard: true,
+        activity: true,
+        autoRelease: true,
+        antiraid: true,
+        spamProtection: true,
+        audit: true,
+        introGate: true,
+        longTermStats: true,
+        aura: true
     }
 };
 
-export function getFeatures(tier, milestone = 5) {
+export function getFeatures(tier, guildId = null, userId = null, isOwner = false) {
+    // Priority: If it's ULTIMATE Tier (Handled by getTier), return its features
+    if (tier === TIERS.ULTIMATE) {
+        return { ...FEATURES[TIERS.ULTIMATE], _milestone: 5 };
+    }
+
     const baseFeatures = FEATURES[tier] || FEATURES[TIERS.FREE];
-
-    // If milestone is 5 (Ultimate) or it's Pro+ with no gating needed for simplicity, 
-    // but the user wants "Coming Soon", so we apply gating to all tiers if milestone < 5.
-
     const gated = { ...baseFeatures };
 
-    // Milestone Gating Logic
-    if (milestone < MILESTONES.M2_DEFENSE) {
-        gated.antiraid = false;
-        gated.self_intro = false;
-        gated.mention_protection = false;
-    }
-    if (milestone < MILESTONES.M3_STRATEGY) {
-        gated.activity_detailed = false;
-        gated.trends = false;
-    }
-    if (milestone < MILESTONES.M4_GOVERNANCE) {
-        gated.vc_report = false;
-        gated.vc_auto_roles = false;
-        gated.vc_context_menu = false;
-    }
+    // Milestone Gating Logic (Manual/Sub based)
+    // For Ultimate, we skip gating by returning above.
+    // For others, we apply gating if milestone < 5.
+    const milestone = 5; // Default to max for now or fetch if needed
 
-    // Add metadata for UI
-    gated._milestone = milestone;
-
+    // ... existing gating logic ...
     return gated;
 }

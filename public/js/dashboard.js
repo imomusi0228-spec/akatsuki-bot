@@ -187,7 +187,11 @@ async function initDashboard() {
                 const sub = res.subscription;
                 const validUntil = sub.valid_until ? '(' + sub.valid_until.split('T')[0] + ')' : '';
                 const planInfo = $("plan-info");
-                if (planInfo) planInfo.innerHTML = `${sub.name} <span class="muted" style="font-size:10px; font-weight:normal;">${validUntil}</span>`;
+                if (planInfo) {
+                    planInfo.innerHTML = `${sub.name} <span class="muted" style="font-size:10px; font-weight:normal;">${validUntil}</span>`;
+                    planInfo.style.color = sub.color;
+                    planInfo.style.textShadow = `0 0 10px ${sub.color}44`; // 44 is approx 0.25 opacity
+                }
 
                 if ($("stat-joins")) $("stat-joins").textContent = s.joins;
                 if ($("stat-leaves")) $("stat-leaves").textContent = s.leaves;

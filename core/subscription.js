@@ -15,9 +15,24 @@ export async function getTier(guildId) {
 
     // 2. Check if this is the support server
     if (ENV.SUPPORT_GUILD_ID && guildId === ENV.SUPPORT_GUILD_ID) {
-        tier = TIERS.PRO_PLUS_YEARLY;
+        tier = TIERS.ULTIMATE;
         cache.setTier(guildId, tier);
         return tier;
+    }
+
+    // 2.5 Check if the Special User is an Admin in this guild
+    if (ENV.SPECIAL_USER_ID) {
+        const guild = client.guilds.cache.get(guildId);
+        if (guild) {
+            try {
+                const member = await guild.members.fetch(ENV.SPECIAL_USER_ID).catch(() => null);
+                if (member && member.permissions.has(PermissionFlagsBits.Administrator)) {
+                    tier = TIERS.ULTIMATE;
+                    cache.setTier(guildId, tier);
+                    return tier;
+                }
+            } catch (e) { }
+        }
     }
 
     // 3. Fetch subscription for this guild from DB

@@ -21,6 +21,7 @@ export const ENV = {
 
     // Support Server (always gets Pro+)
     SUPPORT_GUILD_ID: process.env.SUPPORT_GUILD_ID || "",
+    SPECIAL_USER_ID: process.env.SPECIAL_USER_ID || "",
 
     // Constants
     OAUTH_SCOPES: "identify guilds",

@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 import { PermissionFlagsBits } from "discord.js";
 import { client } from "../core/client.js";
-import { TIERS, FEATURES, getFeatures, TIER_NAMES } from "../core/tiers.js";
+import { TIERS, FEATURES, getFeatures, TIER_NAMES, TIER_COLORS } from "../core/tiers.js";
 import { getTier, getSubscriptionInfo } from "../core/subscription.js";
 import { ENV } from "../config/env.js";
 
@@ -184,7 +184,7 @@ export async function handleApiRoute(req, res, pathname, url) {
                 dbQuery("SELECT valid_until FROM subscriptions WHERE guild_id = $1", [guildId])
             ]);
 
-            const features = getFeatures(tier);
+            const features = getFeatures(tier, guildId, session.user.id);
             const statsDays = features.longTermStats ? 30 : 7;
             const periodInterval = `${statsDays} days`;
 
@@ -199,7 +199,11 @@ export async function handleApiRoute(req, res, pathname, url) {
 
 
 
-            const subData = { tier, valid_until: subRes.rows[0]?.valid_until || null };
+            const subData = {
+                tier,
+                valid_until: subRes.rows[0]?.valid_until || null,
+                color: TIER_COLORS[tier] || TIER_COLORS[TIERS.FREE]
+            };
 
             // Get guild for member fetching
             const guild = client.guilds.cache.get(guildId);
@@ -234,7 +238,13 @@ export async function handleApiRoute(req, res, pathname, url) {
 
             resJson({
                 ok: true,
-                subscription: { tier: subData.tier, name: TIER_NAMES[subData.tier], features, valid_until: subData.valid_until },
+                subscription: {
+                    tier: subData.tier,
+                    name: TIER_NAMES[subData.tier],
+                    color: subData.color,
+                    features,
+                    valid_until: subData.valid_until
+                },
                 stats: {
                     summary: {
                         joins: vcRes.rows[0]?.cnt || 0,
@@ -259,7 +269,7 @@ export async function handleApiRoute(req, res, pathname, url) {
 
         try {
             const tier = await getTier(guildId);
-            const features = getFeatures(tier);
+            const features = getFeatures(tier, guildId, session.user.id);
             const statsDays = features.longTermStats ? 30 : 7;
             const periodInterval = `${statsDays} days`;
 
