@@ -110,6 +110,75 @@ function saveGuildSelection() {
     }
 }
 
+// Helper: Load channels into a select element
+async function loadChannels(elId, gid, selectedVal, types) {
+    const sel = $(elId);
+    if (!sel) return;
+    const res = await api(`/api/channels?guild=${gid}`);
+    if (!res.ok) return;
+    let channels = res.channels;
+    if (types) channels = channels.filter(c => types.includes(c.type));
+    sel.innerHTML = '<option value="">' + (t('none') || 'なし') + '</option>';
+    channels.forEach(c => {
+        const o = document.createElement('option');
+        o.value = c.id;
+        o.textContent = '#' + c.name;
+        if (selectedVal && c.id === String(selectedVal)) o.selected = true;
+        sel.appendChild(o);
+    });
+    if (selectedVal) sel.value = String(selectedVal);
+}
+
+// Helper: Load roles into a select element
+async function loadRolesIntoSelect(elId, gid, selectedVal) {
+    const sel = $(elId);
+    if (!sel) return;
+    const res = await api(`/api/roles?guild=${gid}`);
+    if (!res.ok) return;
+    sel.innerHTML = '<option value="">' + (t('none') || 'なし') + '</option>';
+    (res.roles || []).forEach(r => {
+        const o = document.createElement('option');
+        o.value = r.id;
+        o.textContent = r.name;
+        if (selectedVal && r.id === String(selectedVal)) o.selected = true;
+        sel.appendChild(o);
+    });
+    if (selectedVal) sel.value = String(selectedVal);
+}
+
+// Helper: Load masters (channels, roles, categories) for settings page
+async function loadMasters(gid) {
+    try {
+        const [chRes, roleRes] = await Promise.all([
+            api(`/api/channels?guild=${gid}`),
+            api(`/api/roles?guild=${gid}`)
+        ]);
+
+        if (chRes.ok) {
+            window._serverChannels = chRes.channels;
+            const textChannels = chRes.channels.filter(c => c.type === 0);
+            const categories = chRes.channels.filter(c => c.type === 4);
+            const allChOpt = '<option value="">' + (t('none') || 'なし') + '</option>' +
+                textChannels.map(c => `<option value="${c.id}">#${c.name}</option>`).join('');
+            const catOpt = '<option value="">' + (t('none') || 'なし') + '</option>' +
+                categories.map(c => `<option value="${c.id}">📁 ${c.name}</option>`).join('');
+
+            const ids = ['logCh', 'ngLogCh', 'reportCh', 'vcReportCh', 'aiAdviceCh', 'aiInsightCh', 'aiPredictCh'];
+            ids.forEach(id => { if ($(id)) $(id).innerHTML = allChOpt; });
+            if ($('autoVcCategory')) $('autoVcCategory').innerHTML = catOpt;
+        }
+
+        if (roleRes.ok) {
+            window._serverRoles = roleRes.roles;
+            const roleOpt = '<option value="">' + (t('none') || 'なし') + '</option>' +
+                (roleRes.roles || []).map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+            if ($('introRole')) $('introRole').innerHTML = roleOpt;
+        }
+    } catch (e) {
+        console.error('[loadMasters] Error:', e);
+    }
+}
+
 const charts = {};
 
 function renderChart(id, type, labels, datasets, options = {}) {
@@ -254,8 +323,9 @@ async function initSettings() {
             saveBtn.textContent = t("loading") + "...";
         }
 
-        await loadMasters(gid);
         const [ng, st] = await Promise.all([api("/api/ngwords?guild=" + gid), api("/api/settings?guild=" + gid)]);
+        // まずマスターデータ（チャンネル・ロール）を取得してドロップダウンを構築
+        await loadMasters(gid);
 
         if (st.ok && st.settings) {
             if (saveBtn) {
@@ -268,12 +338,12 @@ async function initSettings() {
             if ($("reportCh")) $("reportCh").value = s.report_channel_id || "";
             if ($("threshold")) $("threshold").value = s.ng_threshold ?? 3;
             if ($("timeout")) $("timeout").value = s.timeout_minutes ?? 10;
-            if ($("introGateEnabled")) $("introGateEnabled").checked = s.self_intro_enabled;
+            if ($("introGateEnabled")) $("introGateEnabled").checked = !!s.self_intro_enabled;
             if ($("introRole")) $("introRole").value = s.self_intro_role_id || "";
             if ($("introMinLen")) $("introMinLen").value = s.self_intro_min_length ?? 10;
             if ($("aiAdviceDays")) $("aiAdviceDays").value = s.ai_advice_days ?? 14;
             if ($("aiAdviceCh")) $("aiAdviceCh").value = s.ai_advice_channel_id || "";
-            if ($("aiInsightEnabled")) $("aiInsightEnabled").checked = s.ai_insight_enabled;
+            if ($("aiInsightEnabled")) $("aiInsightEnabled").checked = !!s.ai_insight_enabled;
             if ($("aiInsightCh")) $("aiInsightCh").value = s.ai_insight_channel_id || "";
             if ($("introReminderHours")) $("introReminderHours").value = s.intro_reminder_hours ?? 24;
             if ($("vcReportCh")) $("vcReportCh").value = s.vc_report_channel_id || "";
@@ -828,18 +898,20 @@ async function initAiPage() {
         saveGuildSelection();
         const gid = $("globalGuildSelect")?.value;
         if (!gid) return;
+        // AI ページ用のチャンネルとセッティングを並列取得
         const res = await api(`/api/settings?guild=${gid}`);
+        await loadMasters(gid);
         if (res.ok && res.settings) {
             const s = res.settings;
             if ($("aiAdviceDays")) $("aiAdviceDays").value = s.ai_advice_days || 14;
-            if ($("aiAdviceCh")) await loadChannels("aiAdviceCh", gid, s.ai_advice_channel_id);
+            if ($("aiAdviceCh")) $("aiAdviceCh").value = s.ai_advice_channel_id || '';
             if ($("aiInsightEnabled")) $("aiInsightEnabled").checked = !!s.ai_insight_enabled;
-            if ($("aiInsightCh")) await loadChannels("aiInsightCh", gid, s.ai_insight_channel_id);
+            if ($("aiInsightCh")) $("aiInsightCh").value = s.ai_insight_channel_id || '';
             if ($("insightGrowth")) $("insightGrowth").checked = !!s.insight_growth;
             if ($("insightToxicity")) $("insightToxicity").checked = !!s.insight_toxicity;
             if ($("insightVc")) $("insightVc").checked = !!s.insight_vc;
             if ($("aiPredictionEnabled")) $("aiPredictionEnabled").checked = !!s.ai_prediction_enabled;
-            if ($("aiPredictCh")) await loadChannels("aiPredictCh", gid, s.ai_predict_channel_id);
+            if ($("aiPredictCh")) $("aiPredictCh").value = s.ai_predict_channel_id || '';
         }
     };
     if (!await loadGuilds()) return;
