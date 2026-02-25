@@ -211,12 +211,25 @@ export default {
                 const buffer = Buffer.from(html, "utf-8");
                 const attachment = new AttachmentBuilder(buffer, { name: `transcript-${interaction.channel.name}.html` });
 
+                // ===== クリック可能な完全URL生成 =====
+                const baseUrl =
+                process.env.DASHBOARD_URL ||
+                "https://akatsuki-bot-production.up.railway.app";
+
+                const webLogUrl = `${baseUrl}/transcripts/${transcriptId}.html`;
                 const logEmbed = new EmbedBuilder()
-                    .setTitle("🎫 チケットクローズ")
-                    .setDescription(`**チケット**: ${interaction.channel.name}\n**作成者**: <@${creatorId || interaction.user.id}>\n**クローズした人**: <@${interaction.user.id}>`)
-                    .addFields({ name: "WebログURL", value: `[ログをブラウザで表示](${process.env.DASHBOARD_URL || ""}/transcripts/${transcriptId})` })
-                    .setColor(0x00A2E8)
-                    .setTimestamp();
+                .setTitle("🎫 チケットクローズ")
+                .setDescription(
+                    `**チケット**: ${interaction.channel.name}\n` +
+                    `**作成者**: <@${creatorId || interaction.user.id}>\n` +
+                    `**クローズした人**: <@${interaction.user.id}>`
+                )
+                .addFields({
+                    name: "WebログURL",
+                    value: `[ログをブラウザで表示](${webLogUrl})`
+                })
+                .setColor(0x00A2E8)
+                .setTimestamp();
 
                 // Send Log to configured channel or default
                 if (settings?.ticket_log_channel_id) {
