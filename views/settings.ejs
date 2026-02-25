@@ -150,18 +150,23 @@
         <!-- 4. Self Introduction Gate -->
         <div class="accordion-item" id="sec-intro">
             <div class="accordion-header" onclick="toggleAccordion('sec-intro')">
-                <span>📝 <%= t("roadmap_introgate") %><span class="help-tip"
-                            data-tip="<%= t('help_introgate') %>">?</span></span>
+                <span>📝 <%= t("roadmap_introgate") %>
+                    <span class="help-tip" data-tip="<%= t('help_introgate') %>">?</span>
+                </span>
                 <span>▼</span>
             </div>
             <div class="accordion-content">
+
+                <!-- Enable Toggle -->
                 <div style="margin-bottom:15px;">
                     <label style="display:flex; align-items:center; cursor:pointer;">
                         <input type="checkbox" id="introGateEnabled"
-                            style="width:18px; height:18px; margin-right:10px;">
+                        style="width:18px; height:18px; margin-right:10px;">
                         <span>自己紹介ゲートを有効化</span>
                     </label>
                 </div>
+
+                <!-- Main Settings -->
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
                     <div>
                         <label class="muted">付与するロール</label><br />
@@ -169,15 +174,31 @@
                     </div>
                     <div>
                         <label class="muted">必要最小文字数</label><br />
-                        <input id="introMinLen" type="number" min="1" value="10" style="width:100%; margin-top:5px;">
+                        <input id="introMinLen" type="number" min="1" value="10"
+                        style="width:100%; margin-top:5px;">
                     </div>
                 </div>
+
+                <!-- NEW: Intro Channel Selection -->
                 <div style="margin-top:15px;">
-                    <label class="muted">📬 未投稿リマインダー (参加からN時間後にDM送信)</label><br />
-                    <input id="introReminderHours" type="number" min="1" max="720" value="24"
-                        style="width:100%; max-width:200px; margin-top:5px;">
-                    <p class="muted" style="font-size:11px; margin-top:5px;">※
-                        自己紹介チャンネルにまだ投稿していないメンバーへ自動でDMを送ります。0に設定すると無効になります。</p>
+                    <label class="muted">📝 自己紹介チャンネル</label><br />
+                    <select id="introChannel" style="width:100%; margin-top:5px;"></select>
+                    <p class="muted" style="font-size:11px; margin-top:5px;">
+                        ※ このチャンネルに投稿するとゲートが解除されます。
+                    </p>
+                </div>
+
+                <!-- Reminder -->
+                <div style="margin-top:20px;">
+                    <label class="muted">
+                        📬 未投稿リマインダー (参加からN時間後にDM送信)
+                    </label><br />
+                    <input id="introReminderHours" type="number" min="0" max="720" value="24"
+                    style="width:100%; max-width:200px; margin-top:5px;">
+                    <p class="muted" style="font-size:11px; margin-top:5px;">
+                        ※ 自己紹介チャンネルにまだ投稿していないメンバーへ自動DMを送ります。
+                        0に設定すると無効になります。
+                    </p>
                 </div>
             </div>
         </div>
