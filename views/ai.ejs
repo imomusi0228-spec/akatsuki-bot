@@ -154,4 +154,8 @@
     </div>
 </div>
 
-<script>initAiPage();</script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof initAiPage === 'function') initAiPage();
+    });
+</script>

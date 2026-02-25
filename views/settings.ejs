@@ -295,4 +295,8 @@
 </div>
 </div>
 
-<script>initSettings();</script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof initSettings === 'function') initSettings();
+    });
+</script>

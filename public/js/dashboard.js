@@ -54,17 +54,18 @@ const showPageError = (msg) => {
 function setLang(l) { document.cookie = "lang=" + l + ";path=/;max-age=31536000;SameSite=Lax"; location.reload(); }
 
 let _guildsLoaded = false;
-async function loadGuilds() {
+async function loadGuilds(force = false) {
     const sel = $("globalGuildSelect");
     if (!sel) return false;
-    if (_guildsLoaded) {
+    if (_guildsLoaded && !force) {
         // Just re-bind the onchange and return
         sel.onchange = () => {
             saveGuildSelection();
             if (window.__pageReload) window.__pageReload();
         };
         const reloadBtn = $("globalReload");
-        if (reloadBtn) reloadBtn.onclick = () => {
+        if (reloadBtn) reloadBtn.onclick = async () => {
+            await loadGuilds(true);
             if (window.__pageReload) window.__pageReload();
         };
         return true;
@@ -74,7 +75,7 @@ async function loadGuilds() {
     sel.disabled = true;
 
     try {
-        const d = await api("/api/guilds");
+        const d = await api("/api/guilds" + (force ? "?refresh=true" : ""));
         sel.innerHTML = "";
         sel.disabled = false;
 
@@ -115,7 +116,8 @@ async function loadGuilds() {
         };
 
         const reloadBtn = $("globalReload");
-        if (reloadBtn) reloadBtn.onclick = () => {
+        if (reloadBtn) reloadBtn.onclick = async () => {
+            await loadGuilds(true);
             if (window.__pageReload) window.__pageReload();
         };
 

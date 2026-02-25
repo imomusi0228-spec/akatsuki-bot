@@ -75,12 +75,14 @@ export async function handleApiRoute(req, res, pathname, url) {
         try {
             let userGuilds;
 
-            // Use global cache or session cache first to avoid hitting Discord rate limits
-            const globalCache = cache.getUserGuilds(session.user.id);
+            const refresh = url.searchParams.get("refresh") === "true";
+
+            // Use global cache or session cache first unless refresh is requested
+            const globalCache = !refresh ? cache.getUserGuilds(session.user.id) : null;
             if (globalCache) {
                 userGuilds = globalCache;
                 session.guilds = globalCache;
-            } else if (Array.isArray(session.guilds) && session.guilds.length > 0) {
+            } else if (!refresh && Array.isArray(session.guilds) && session.guilds.length > 0) {
                 userGuilds = session.guilds;
                 cache.setUserGuilds(session.user.id, userGuilds); // Sync back to global
             } else {
@@ -121,6 +123,7 @@ export async function handleApiRoute(req, res, pathname, url) {
                 return null;
             }))).filter(Boolean);
 
+            console.log(`[API INFO] /api/guilds: Found ${availableGuilds.length} available guilds for user ${session.user.id}`);
             resJson({ ok: true, guilds: availableGuilds });
         } catch (e) {
             console.error(`[API ERROR] /api/guilds:`, e.message);

@@ -93,4 +93,8 @@
     </div>
 </div>
 
-<script>initActivity();</script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof initActivity === 'function') initActivity();
+    });
+</script>
