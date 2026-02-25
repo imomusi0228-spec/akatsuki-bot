@@ -109,10 +109,17 @@ export async function handleApiRoute(req, res, pathname, url) {
                 if (!userGuilds) throw new Error("Failed to fetch guilds after retries");
             }
 
-            const availableGuilds = userGuilds
-                .filter(g => hasManageGuild(g.permissions, g.owner))
-                .filter(g => client.guilds.cache.has(g.id))
-                .map(g => ({ id: g.id, name: g.name, icon: g.icon }));
+            const managedGuilds = userGuilds.filter(g => hasManageGuild(g.permissions, g.owner));
+
+            // bot のキャッシュにあるか確認。なければ Discord API から fetch してチェック
+            const availableGuilds = (await Promise.all(managedGuilds.map(async g => {
+                if (client.guilds.cache.has(g.id)) return { id: g.id, name: g.name, icon: g.icon };
+                try {
+                    const fetched = await client.guilds.fetch(g.id).catch(() => null);
+                    if (fetched) return { id: g.id, name: g.name, icon: g.icon };
+                } catch (_) { }
+                return null;
+            }))).filter(Boolean);
 
             resJson({ ok: true, guilds: availableGuilds });
         } catch (e) {
@@ -127,8 +134,10 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (!guildId) return false;
 
         try {
-            // Check if bot is even in the guild
-            if (!client.guilds.cache.has(guildId)) return false;
+            // bot がそのサーバーに参加しているか確認（キャッシュにない場合は fetch で確認）
+            const botInGuild = client.guilds.cache.has(guildId)
+                || await client.guilds.fetch(guildId).then(() => true).catch(() => false);
+            if (!botInGuild) return false;
 
             // Use global or session cache if available
             const globalCache = cache.getUserGuilds(session.user.id);
