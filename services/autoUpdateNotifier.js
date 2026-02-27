@@ -79,19 +79,18 @@ export async function runAutoUpdateCheck() {
         }
 
         // 送信試行後は必ずバージョンを記録して重複送信を防ぐ
-        if (globalRes.rows.length > 0) {
-            await dbQuery(
-                "UPDATE settings SET last_notified_version = $1 WHERE guild_id = 'GLOBAL'",
-                [version]
-            );
-        } else {
-            await dbQuery(
-                "INSERT INTO settings (guild_id, last_notified_version) VALUES ('GLOBAL', $1)",
-                [version]
-            );
+        try {
+            await dbQuery(`
+                INSERT INTO settings (guild_id, last_notified_version)
+                VALUES ('GLOBAL', $1)
+                ON CONFLICT (guild_id)
+                DO UPDATE SET last_notified_version = EXCLUDED.last_notified_version, updated_at = NOW();
+            `, [version]);
+            console.log(`[AutoUpdate] Recorded version ${version} as notified (sent: ${sendOk}).`);
+        } catch (dbErr) {
+            console.error(`❌ [AutoUpdate] DB record failed: ${dbErr.message}`);
         }
-        console.log(`[AutoUpdate] Recorded version ${version} as notified (sent: ${sendOk}).`);
     } catch (e) {
-        console.error("[AutoUpdate] Error:", e.message);
+        console.error("[AutoUpdate] Error in runAutoUpdateCheck:", e.message);
     }
 }

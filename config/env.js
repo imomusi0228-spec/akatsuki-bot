@@ -11,6 +11,7 @@ export const ENV = {
 
     // Web / OAuth
     ADMIN_TOKEN: process.env.ADMIN_TOKEN || "",
+    MANAGEMENT_API_URL: (process.env.MANAGEMENT_API_URL || "").trim().replace(/\/+$/, ""),
     PUBLIC_URL: (process.env.PUBLIC_URL || "").trim().replace(/\/+$/, ""),
     PORT: process.env.PORT || 3000,
 
