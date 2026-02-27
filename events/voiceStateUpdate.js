@@ -138,12 +138,12 @@ export default {
                     cache.clearActiveSession(guildId, userId);
 
                     const minutesAdded = Math.floor(durationSec / 60);
-                    const xpFromVc = minutesAdded * (Math.floor(Math.random() * 5) + 8);
+                    const xpFromVc = minutesAdded * (Math.floor(Math.random() * 11) + 15);
 
                     const currentStats = await dbQuery("SELECT xp, level FROM member_stats WHERE guild_id = $1 AND user_id = $2", [guildId, userId]);
                     const currentXp = (currentStats.rows[0]?.xp || 0) + xpFromVc;
                     let currentLevel = currentStats.rows[0]?.level || 1;
-                    const nextLevelXp = currentLevel * currentLevel * 100;
+                    const nextLevelXp = currentLevel * currentLevel * 80;
 
                     let levelUp = false;
                     if (currentXp >= nextLevelXp) {

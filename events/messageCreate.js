@@ -38,12 +38,12 @@ export default {
 
             let xpToGain = 0;
             if (!row || !row.last_xp_gain_at || (now - new Date(row.last_xp_gain_at)) > 60000) {
-                xpToGain = Math.floor(Math.random() * 11) + 15;
+                xpToGain = Math.floor(Math.random() * 21) + 20;
             }
 
             let currentLevel = row?.level || 1;
             let currentXp = (row?.xp || 0) + xpToGain;
-            const nextLevelXp = currentLevel * currentLevel * 100;
+            const nextLevelXp = currentLevel * currentLevel * 80;
 
             let levelUp = false;
             if (currentXp >= nextLevelXp) {
