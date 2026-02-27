@@ -54,37 +54,43 @@ export async function runAutoUpdateCheck() {
             return;
         }
 
-        const response = await fetch(`${managementUrl}/api/updates/receive`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                version,
-                title,
-                content: bodyContent,
-                color,
-                token: adminToken
-            })
-        });
-
-        if (response.ok) {
-            console.log(`✅ [AutoUpdate] Automatically notified version ${version} (${title})`);
-
-            // GLOBAL設定に通知済みバージョンを記録
-            if (globalRes.rows.length > 0) {
-                await dbQuery(
-                    "UPDATE settings SET last_notified_version = $1 WHERE guild_id = 'GLOBAL'",
-                    [version]
-                );
+        let sendOk = false;
+        try {
+            const response = await fetch(`${managementUrl}/api/updates/receive`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    version,
+                    title,
+                    content: bodyContent,
+                    color,
+                    token: adminToken
+                })
+            });
+            sendOk = response.ok;
+            if (response.ok) {
+                console.log(`✅ [AutoUpdate] Automatically notified version ${version} (${title})`);
             } else {
-                await dbQuery(
-                    "INSERT INTO settings (guild_id, last_notified_version) VALUES ('GLOBAL', $1)",
-                    [version]
-                );
+                const err = await response.json().catch(() => ({}));
+                console.error(`❌ [AutoUpdate] API failed: ${err.error || response.statusText}`);
             }
-        } else {
-            const err = await response.json().catch(() => ({}));
-            console.error(`❌ [AutoUpdate] API failed: ${err.error || response.statusText}`);
+        } catch (fetchErr) {
+            console.error(`❌ [AutoUpdate] Fetch error: ${fetchErr.message}`);
         }
+
+        // 送信試行後は必ずバージョンを記録して重複送信を防ぐ
+        if (globalRes.rows.length > 0) {
+            await dbQuery(
+                "UPDATE settings SET last_notified_version = $1 WHERE guild_id = 'GLOBAL'",
+                [version]
+            );
+        } else {
+            await dbQuery(
+                "INSERT INTO settings (guild_id, last_notified_version) VALUES ('GLOBAL', $1)",
+                [version]
+            );
+        }
+        console.log(`[AutoUpdate] Recorded version ${version} as notified (sent: ${sendOk}).`);
     } catch (e) {
         console.error("[AutoUpdate] Error:", e.message);
     }
