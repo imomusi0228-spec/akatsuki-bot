@@ -12,238 +12,157 @@ const ROOT_DIR = path.resolve(__dirname, ".."); // ← ★ここに追加
 export default {
     name: Events.InteractionCreate,
     async default(interaction) {
-        if (interaction.isChatInputCommand()) {
-            const command = client.commands.get(interaction.commandName);
-            if (!command) return;
-            try {
-                await command.execute(interaction);
-            } catch (error) {
-                console.error(`Error executing ${interaction.commandName}:`, error);
-                const msg = { content: 'コマンドの実行中にエラーが発生しました。', flags: [MessageFlags.Ephemeral] };
-                if (interaction.replied || interaction.deferred) await interaction.followUp(msg);
-                else await interaction.reply(msg);
-            }
-            return;
-        }
+        try {
+            const guildId = interaction.guild?.id;
 
-        if (interaction.isAnySelectMenu()) {
-            if (interaction.customId === 'ticket_assign_menu') {
-                await interaction.deferUpdate();
-                const userId = interaction.values[0];
-                await dbQuery("UPDATE tickets SET assigned_to = $1 WHERE channel_id = $2", [userId, interaction.channel.id]);
-
-                const embeds = interaction.message.embeds.map(e => EmbedBuilder.from(e));
-                if (embeds[1]) {
-                    embeds[1].setDescription(`✅ **担当者決定**: <@${userId}>`)
-                        .setColor(0x2ECC71);
-                }
-
-                await interaction.editReply({ embeds });
-                await interaction.channel.send(`👤 <@${interaction.user.id}> が <@${userId}> をこのチケットの担当に指名しました。`);
-            }
-            return;
-        }
-
-        if (interaction.isButton()) {
-            const guildId = interaction.guild.id;
-
-            // v2.8.0: Button Role Handling
-            if (interaction.customId.startsWith('btn_role_')) {
-                const roleId = interaction.customId.replace('btn_role_', '');
-                const member = interaction.member;
-                if (!member) return;
-
-                await interaction.deferReply({ ephemeral: true });
-
+            // 1. Slash Commands
+            if (interaction.isChatInputCommand()) {
+                const command = client.commands.get(interaction.commandName);
+                if (!command) return;
                 try {
-                    if (member.roles.cache.has(roleId)) {
-                        await member.roles.remove(roleId);
-                        await interaction.editReply(`✅ 役職 <@&${roleId}> を解除しました。`);
-                    } else {
-                        await member.roles.add(roleId);
-                        await interaction.editReply(`✅ 役職 <@&${roleId}> を付与しました。`);
-                    }
-                } catch (e) {
-                    console.error("Button Role Interaction Error:", e);
-                    await interaction.editReply(`❌ エラーが発生しました: ${e.message}`);
+                    await command.execute(interaction);
+                } catch (error) {
+                    console.error(`[COMMAND ERROR] ${interaction.commandName}:`, error);
+                    const msg = { content: "⚠️ コマンドの実行中にエラーが発生しました。", ephemeral: true };
+                    if (interaction.replied || interaction.deferred) await interaction.followUp(msg).catch(() => { });
+                    else await interaction.reply(msg).catch(() => { });
                 }
                 return;
             }
 
-            // Ticket Creation
-            if (interaction.customId === 'ticket_create') {
-                await interaction.deferReply({ ephemeral: true });
+            // 2. Button Interactions
+            if (interaction.isButton()) {
+                if (!guildId) return;
 
-                const settingsRes = await dbQuery("SELECT ticket_welcome_msg, color_ticket, ticket_staff_role_id, ticket_log_channel_id FROM settings WHERE guild_id = $1", [guildId]);
-                const settings = settingsRes.rows[0];
+                // Button Role handling
+                if (interaction.customId.startsWith('btn_role_')) {
+                    const roleId = interaction.customId.replace('btn_role_', '');
+                    await interaction.deferReply({ ephemeral: true });
+                    try {
+                        if (interaction.member.roles.cache.has(roleId)) {
+                            await interaction.member.roles.remove(roleId);
+                            await interaction.editReply(`✅ 役職 <@&${roleId}> を解除しました。`);
+                        } else {
+                            await interaction.member.roles.add(roleId);
+                            await interaction.editReply(`✅ 役職 <@&${roleId}> を付与しました。`);
+                        }
+                    } catch (e) {
+                        await interaction.editReply(`❌ エラー: ${e.message}`);
+                    }
+                    return;
+                }
 
-                const channel = await interaction.guild.channels.create({
-                    name: `ticket-${interaction.user.username}`,
-                    type: ChannelType.GuildText,
-                    permissionOverwrites: [
-                        { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-                        { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.AttachFiles] },
-                    ],
-                });
+                // Ticket: Create
+                if (interaction.customId === 'ticket_create') {
+                    await interaction.deferReply({ ephemeral: true });
+                    const settingsRes = await dbQuery("SELECT ticket_welcome_msg, color_ticket, ticket_staff_role_id FROM settings WHERE guild_id = $1", [guildId]);
+                    const settings = settingsRes.rows[0];
+                    const channel = await interaction.guild.channels.create({
+                        name: `ticket-${interaction.user.username}`,
+                        type: ChannelType.GuildText,
+                        permissionOverwrites: [
+                            { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+                            { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.AttachFiles] },
+                        ],
+                    });
+                    await dbQuery("INSERT INTO tickets (guild_id, channel_id, user_id, status) VALUES ($1, $2, $3, 'open')", [guildId, channel.id, interaction.user.id]);
 
-                await dbQuery("INSERT INTO tickets (guild_id, channel_id, user_id, status) VALUES ($1, $2, $3, 'open')", [guildId, channel.id, interaction.user.id]);
+                    const embedColor = settings?.color_ticket ? parseInt(settings.color_ticket.replace('#', ''), 16) : 0x00FF00;
+                    const userEmbed = new EmbedBuilder()
+                        .setTitle("🎫 チケットが作成されました")
+                        .setDescription(settings?.ticket_welcome_msg || "スタッフが対応するまでお待ちください。")
+                        .setColor(embedColor).setTimestamp();
 
-                const welcomeMsg = settings?.ticket_welcome_msg || `こんにちは <@${interaction.user.id}> さん。\nスタッフが対応するまで、相談内容や証拠をここに記入してお待ちください。\n解決した場合は、下のボタンでチケットをクローズできます。`;
-                const embedColor = settings?.color_ticket ? parseInt(settings.color_ticket.replace('#', ''), 16) : 0x00FF00;
+                    const staffEmbed = new EmbedBuilder().setTitle("🛠️ スタッフ管理パネル").setDescription("このチケットの対応を担当しますか？").setColor(0x5865F2);
+                    const userRow = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId("ticket_close").setLabel("チケットを閉じる").setStyle(ButtonStyle.Danger));
+                    const staffRow = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder().setCustomId("ticket_assign_me").setLabel("担当を引き受ける").setStyle(ButtonStyle.Primary),
+                        new ButtonBuilder().setCustomId("ticket_request_expert").setLabel("専門家に依頼").setStyle(ButtonStyle.Secondary)
+                    );
+                    const assignMenuRow = new ActionRowBuilder().addComponents(new UserSelectMenuBuilder().setCustomId("ticket_assign_menu").setPlaceholder("担当を直接指定"));
 
-                const userEmbed = new EmbedBuilder()
-                    .setTitle("🎫 チケットが作成されました")
-                    .setDescription(welcomeMsg)
-                    .setColor(embedColor)
-                    .setTimestamp();
+                    const mention = settings?.ticket_staff_role_id ? `<@&${settings.ticket_staff_role_id}>` : "";
+                    await channel.send({ content: `${mention} <@${interaction.user.id}> さんがチケットを作成しました。`, embeds: [userEmbed, staffEmbed], components: [userRow, staffRow, assignMenuRow] });
+                    await interaction.editReply(`✅ チケットを作成しました: <#${channel.id}>`);
+                }
 
-                const staffEmbed = new EmbedBuilder()
-                    .setTitle("🛠️ スタッフ管理パネル")
-                    .setDescription("このチケットの対応を担当しますか？")
-                    .setColor(0x5865F2)
-                    .setFooter({ text: "担当者が決まるとユーザーに通知されます" });
+                // Ticket: Assign Me
+                if (interaction.customId === 'ticket_assign_me') {
+                    await interaction.deferUpdate();
+                    await dbQuery("UPDATE tickets SET assigned_to = $1 WHERE channel_id = $2", [interaction.user.id, interaction.channel.id]);
+                    const embeds = interaction.message.embeds.map(e => EmbedBuilder.from(e));
+                    if (embeds[1]) embeds[1].setDescription(`✅ **担当者決定**: <@${interaction.user.id}>`).setColor(0x2ECC71);
+                    const rows = interaction.message.components.map(c => ActionRowBuilder.from(c));
+                    if (rows[1]) rows[1].components[0].setDisabled(true).setLabel("対応中");
+                    await interaction.editReply({ embeds, components: rows });
+                    await interaction.channel.send(`👤 <@${interaction.user.id}> がこのチケットの担当になりました。`);
+                }
 
-                const userRow = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder()
-                        .setCustomId("ticket_close")
-                        .setLabel("チケットを閉じる")
-                        .setStyle(ButtonStyle.Danger)
-                );
+                // Ticket: Expert request
+                if (interaction.customId === 'ticket_request_expert') {
+                    await interaction.deferUpdate();
+                    await interaction.channel.send(`📢 <@${interaction.user.id}> が専門スタッフに協力を依頼しました。`);
+                    const rows = interaction.message.components.map(c => ActionRowBuilder.from(c));
+                    if (rows[1]) rows[1].components[1].setDisabled(true).setLabel("依頼済み");
+                    await interaction.editReply({ components: rows });
+                }
 
-                const staffRow = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder()
-                        .setCustomId("ticket_assign_me")
-                        .setLabel("担当を引き受ける")
-                        .setStyle(ButtonStyle.Primary),
-                    new ButtonBuilder()
-                        .setCustomId("ticket_request_expert")
-                        .setLabel("専門家に依頼")
-                        .setStyle(ButtonStyle.Secondary)
-                );
+                // Ticket: Close
+                if (interaction.customId === 'ticket_close') {
+                    await interaction.deferReply();
+                    const ticketRes = await dbQuery("SELECT user_id FROM tickets WHERE channel_id = $1", [interaction.channel.id]);
+                    const settingsRes = await dbQuery("SELECT ticket_log_channel_id FROM settings WHERE guild_id = $1", [guildId]);
+                    const creatorId = ticketRes.rows[0]?.user_id;
 
-                const assignMenuRow = new ActionRowBuilder().addComponents(
-                    new UserSelectMenuBuilder()
-                        .setCustomId("ticket_assign_menu")
-                        .setPlaceholder("担当を直接指定（モデレーター用）")
-                );
+                    // Transcript generation
+                    const messages = await interaction.channel.messages.fetch({ limit: 100 });
+                    const logs = Array.from(messages.values()).reverse();
+                    let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Transcript</title><style>body { background-color: #36393f; color: #dcddde; font-family: sans-serif; padding: 20px; } .msg { display: flex; margin-bottom: 20px; } .author { font-weight: bold; color: #fff; } .text { margin-top: 5px; }</style></head><body><h2>Transcript: ${interaction.channel.name}</h2>`;
+                    for (const m of logs) {
+                        html += `<div class="msg"><div class="content"><span class="author">${m.author.tag}</span> <span class="time">${m.createdAt.toLocaleString()}</span><div class="text">${m.content}</div></div></div>`;
+                    }
+                    html += "</body></html>";
 
-                const mention = settings?.ticket_staff_role_id ? `<@&${settings.ticket_staff_role_id}>` : "";
-                await channel.send({
-                    content: `${mention} <@${interaction.user.id}> さんがチケットを作成しました。`,
-                    embeds: [userEmbed, staffEmbed],
-                    components: [userRow, staffRow, assignMenuRow]
-                });
-                await interaction.editReply(`✅ チケットを作成しました: <#${channel.id}>`);
+                    const transcriptId = `${guildId}-${Date.now()}`;
+                    const transcriptDir = path.join(ROOT_DIR, "public", "transcripts");
+                    if (!fs.existsSync(transcriptDir)) fs.mkdirSync(transcriptDir, { recursive: true });
+                    fs.writeFileSync(path.join(transcriptDir, `${transcriptId}.html`), html);
+
+                    const webUrl = `${process.env.DASHBOARD_URL || "http://localhost:3000"}/transcripts/${transcriptId}.html`;
+                    const logEmbed = new EmbedBuilder()
+                        .setTitle("🎫 チケットクローズ")
+                        .setDescription(`**作成者**: <@${creatorId || "不明"}>\n**クローズ**: <@${interaction.user.id}>\n[ログを表示](${webUrl})`)
+                        .setColor(0x3498DB).setTimestamp();
+
+                    const logChannelId = settingsRes.rows[0]?.ticket_log_channel_id;
+                    if (logChannelId) {
+                        const logCh = interaction.guild.channels.cache.get(logChannelId);
+                        if (logCh) await logCh.send({ embeds: [logEmbed], files: [new AttachmentBuilder(Buffer.from(html), { name: "transcript.html" })] });
+                    }
+
+                    await dbQuery("UPDATE tickets SET status = 'closed', closed_at = NOW(), transcript_id = $1 WHERE channel_id = $2", [transcriptId, interaction.channel.id]);
+                    await interaction.editReply("🔒 チケットをクローズしました。5秒後に削除します。");
+                    setTimeout(() => interaction.channel.delete().catch(() => { }), 5000);
+                }
+                return;
             }
 
-            // Ticket Assignment
-            if (interaction.customId === 'ticket_assign_me') {
-                await interaction.deferUpdate();
-                await dbQuery("UPDATE tickets SET assigned_to = $1 WHERE channel_id = $2", [interaction.user.id, interaction.channel.id]);
-
-                const embeds = interaction.message.embeds.map(e => EmbedBuilder.from(e));
-                if (embeds[1]) {
-                    embeds[1].setDescription(`✅ **担当者決定**: <@${interaction.user.id}>`)
-                        .setColor(0x2ECC71);
+            // 3. Select Menu Interactions
+            if (interaction.isUserSelectMenu()) {
+                if (interaction.customId === 'ticket_assign_menu') {
+                    const targetId = interaction.values[0];
+                    await interaction.deferUpdate();
+                    await dbQuery("UPDATE tickets SET assigned_to = $1 WHERE channel_id = $2", [targetId, interaction.channel.id]);
+                    const embeds = interaction.message.embeds.map(e => EmbedBuilder.from(e));
+                    if (embeds[1]) embeds[1].setDescription(`✅ **担担当者決定**: <@${targetId}>`).setColor(0x2ECC71);
+                    await interaction.editReply({ embeds });
+                    await interaction.channel.send(`👤 <@${interaction.user.id}> が <@${targetId}> を担当に指名しました。`);
                 }
-
-                const rows = interaction.message.components.map(c => ActionRowBuilder.from(c));
-                // Disable assign button
-                if (rows[1]) {
-                    rows[1].components[0].setDisabled(true).setLabel("対応中");
-                }
-
-                await interaction.editReply({ embeds, components: rows });
-                await interaction.channel.send(`👤 <@${interaction.user.id}> がこのチケットの担当になりました。`);
+                return;
             }
 
-            // Ticket Request Expert
-            if (interaction.customId === 'ticket_request_expert') {
-                await interaction.deferUpdate();
-                await interaction.channel.send(`📢 <@${interaction.user.id}> が専門のモデレーターに協力を依頼しました。`);
-
-                const rows = interaction.message.components.map(c => ActionRowBuilder.from(c));
-                if (rows[1]) {
-                    rows[1].components[1].setDisabled(true).setLabel("依頼済み");
-                }
-                await interaction.editReply({ components: rows });
-            }
-
-            // Ticket Closing
-            if (interaction.customId === 'ticket_close') {
-                await interaction.deferReply();
-
-                // Get Ticket Info from DB
-                const ticketRes = await dbQuery("SELECT user_id, created_at FROM tickets WHERE channel_id = $1", [interaction.channel.id]);
-                const settingsRes = await dbQuery("SELECT ticket_log_channel_id FROM settings WHERE guild_id = $1", [guildId]);
-                const ticketData = ticketRes.rows[0];
-                const settings = settingsRes.rows[0];
-                const creatorId = ticketData?.user_id;
-
-                const creator = creatorId ? await interaction.guild.members.fetch(creatorId).catch(() => null) : null;
-                const creatorTag = creator ? creator.user.tag : "不明なユーザー";
-
-                // Generate HTML Transcript
-                const messages = await interaction.channel.messages.fetch({ limit: 100 });
-                const logs = Array.from(messages.values()).reverse();
-
-                let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Transcript - ${interaction.channel.name}</title><style>body { background-color: #36393f; color: #dcddde; font-family: sans-serif; padding: 20px; } .msg { display: flex; margin-bottom: 20px; } .avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 15px; } .content { flex-grow: 1; } .author { font-weight: bold; color: #fff; margin-right: 5px; } .time { font-size: 0.75rem; color: #72767d; } .text { margin-top: 5px; line-height: 1.4; }</style></head><body><h2>Transcript: ${interaction.channel.name}</h2><p>Created by: ${creatorTag} | Closed by: ${interaction.user.tag}</p><hr style="border-color: #4f545c;">`;
-
-                for (const m of logs) {
-                    const time = m.createdAt.toLocaleString("ja-JP");
-                    const content = m.content.replace(/\n/g, "<br>");
-                    html += `<div class="msg"><img class="avatar" src="${m.author.displayAvatarURL()}"><div class="content"><span class="author">${m.author.tag}</span> <span class="time">${time}</span><div class="text">${content}</div></div></div>`;
-                }
-                html += "</body></html>";
-
-                // Save to file for Web View
-                const transcriptId = `${guildId}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-                const transcriptDir = path.join(ROOT_DIR, "public", "transcripts");
-
-                // フォルダが無ければ作成
-                if (!fs.existsSync(transcriptDir)) {
-                    fs.mkdirSync(transcriptDir, { recursive: true });
-                }
-                
-                const transcriptPath = path.join(transcriptDir, `${transcriptId}.html`);
-                fs.writeFileSync(transcriptPath, html);
-
-                const buffer = Buffer.from(html, "utf-8");
-                const attachment = new AttachmentBuilder(buffer, { name: `transcript-${interaction.channel.name}.html` });
-
-                // ===== クリック可能な完全URL生成 =====
-                const baseUrl =
-                process.env.DASHBOARD_URL ||
-                "https://akatsuki-bot-production.up.railway.app";
-
-                const webLogUrl = `${baseUrl}/transcripts/${transcriptId}.html`;
-                const logEmbed = new EmbedBuilder()
-                .setTitle("🎫 チケットクローズ")
-                .setDescription(
-                    `**チケット**: ${interaction.channel.name}\n` +
-                    `**作成者**: <@${creatorId || interaction.user.id}>\n` +
-                    `**クローズした人**: <@${interaction.user.id}>`
-                )
-                .addFields({
-                    name: "WebログURL",
-                    value: `[ログをブラウザで表示](${webLogUrl})`
-                })
-                .setColor(0x00A2E8)
-                .setTimestamp();
-
-                // Send Log to configured channel or default
-                if (settings?.ticket_log_channel_id) {
-                    const logCh = interaction.guild.channels.cache.get(settings.ticket_log_channel_id);
-                    if (logCh) await logCh.send({ embeds: [logEmbed], files: [attachment] });
-                } else {
-                    const { sendLog } = await import("../core/logger.js");
-                    await sendLog(interaction.guild, 'ng', { embeds: [logEmbed], files: [attachment] });
-                }
-
-                await dbQuery("UPDATE tickets SET status = 'closed', closed_at = NOW(), transcript_id = $1 WHERE channel_id = $2", [transcriptId, interaction.channel.id]);
-                await interaction.editReply("🔒 チケットをクローズし、ログを保存しました。5秒後にチャンネルを削除します。");
-                setTimeout(() => interaction.channel.delete().catch(() => { }), 5000);
-            }
+        } catch (e) {
+            console.error("[CRITICAL INTERACTION ERROR]:", e);
         }
-    },
+    }
 };
