@@ -313,143 +313,64 @@
 </style>
 
 <div style="text-align:center; padding: 60px 20px 20px;">
-    <h1 style="font-size: 48px; margin-bottom: 10px; letter-spacing: -1px;">
+    <h1
+        style="font-size: 56px; margin-bottom: 12px; letter-spacing: -2px; font-weight: 900; background: linear-gradient(135deg, #fff 0%, #8899a6 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">
         <%= t("features_title") %>
     </h1>
     <p
-        style="font-size: 18px; color: #8899a6; margin-bottom: 40px; max-width: 600px; margin-left: auto; margin-right: auto;">
+        style="font-size: 18px; color: #8899a6; margin-bottom: 50px; max-width: 650px; margin-left: auto; margin-right: auto; line-height: 1.6;">
         <%= t("features_subtitle") %>
     </p>
 </div>
 
-<!-- ===== 利用開始の流れ ===== -->
-<div style="max-width:900px; margin: 0 auto 70px; padding: 0 20px;">
-    <h2
-        style="text-align:center; font-size:32px; margin-bottom:40px; border-bottom:2px solid var(--accent-color); display:inline-block; padding-bottom:10px;">
-        <%= t("how_to_title") %>
-    </h2>
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:20px; margin-top:30px;">
-
-        <!-- Step 1 -->
-        <div
-            style="background:rgba(25,39,52,0.5); border:1px solid var(--border-color); border-radius:16px; padding:24px; position:relative;">
-            <div
-                style="position:absolute; top:-14px; left:20px; background:var(--primary-color); color:#fff; font-size:11px; font-weight:900; padding:4px 14px; border-radius:10px; letter-spacing:1px;">
-                STEP 1</div>
-            <h4 style="margin:10px 0 8px; font-size:16px;">🤖 <%= t("step1_title") %>
-            </h4>
-            <p style="color:#8899a6; font-size:14px; line-height:1.7; margin:0;">
-                <%= t("step1_desc") %>
-            </p>
-        </div>
-
-        <!-- Step 2 -->
-        <div
-            style="background:rgba(25,39,52,0.5); border:1px solid var(--border-color); border-radius:16px; padding:24px; position:relative;">
-            <div
-                style="position:absolute; top:-14px; left:20px; background:var(--primary-color); color:#fff; font-size:11px; font-weight:900; padding:4px 14px; border-radius:10px; letter-spacing:1px;">
-                STEP 2</div>
-            <h4 style="margin:10px 0 8px; font-size:16px;">🏠 <%= t("step2_title") %>
-            </h4>
-            <p style="color:#8899a6; font-size:14px; line-height:1.7; margin:0;">
-                <%= t("step2_desc") %>
-            </p>
-        </div>
-
-        <!-- Step 3 -->
-        <div
-            style="background:rgba(25,39,52,0.5); border:1px solid var(--border-color); border-radius:16px; padding:24px; position:relative;">
-            <div
-                style="position:absolute; top:-14px; left:20px; background:var(--primary-color); color:#fff; font-size:11px; font-weight:900; padding:4px 14px; border-radius:10px; letter-spacing:1px;">
-                STEP 3</div>
-            <h4 style="margin:10px 0 8px; font-size:16px;">📝 <%= t("step3_title") %>
-            </h4>
-            <p style="color:#8899a6; font-size:14px; line-height:1.7; margin:0;">
-                <%= t("step3_desc") %>
-            </p>
-        </div>
-
-        <!-- Step 4 -->
-        <div
-            style="background:rgba(25,39,52,0.5); border:1px solid var(--border-color); border-radius:16px; padding:24px; position:relative;">
-            <div
-                style="position:absolute; top:-14px; left:20px; background:var(--primary-color); color:#fff; font-size:11px; font-weight:900; padding:4px 14px; border-radius:10px; letter-spacing:1px;">
-                STEP 4</div>
-            <h4 style="margin:10px 0 8px; font-size:16px;">✅ <%= t("step4_title") %>
-            </h4>
-            <p style="color:#8899a6; font-size:14px; line-height:1.7; margin:0;">
-                <%= t("step4_desc") %>
-            </p>
-        </div>
-
-        <!-- Step 5 -->
-        <div
-            style="background:rgba(25,39,52,0.5); border:1px solid var(--border-color); border-radius:16px; padding:24px; position:relative; border-color:var(--accent-color);">
-            <div
-                style="position:absolute; top:-14px; left:20px; background:var(--accent-color); color:#fff; font-size:11px; font-weight:900; padding:4px 14px; border-radius:10px; letter-spacing:1px;">
-                COMPLETE</div>
-            <h4 style="margin:10px 0 8px; font-size:16px;">🎉 <%= t("step5_title") %>
-            </h4>
-            <p style="color:#8899a6; font-size:14px; line-height:1.7; margin:0;">
-                <%= t("step5_desc") %>
-            </p>
-        </div>
-
+<!-- ===== プラン比較カード (v2.9.1) ===== -->
+<div class="plan-grid">
+    <!-- Free Tier -->
+    <div class="plan-card">
+        <div class="plan-badge">Basic</div>
+        <h3 style="font-size: 24px; margin-bottom: 10px;">
+            <%= t("plan_free") %>
+        </h3>
+        <div class="plan-price" style="color: #8899a6;">¥0<span
+                style="font-size: 14px; opacity: 0.6; margin-left: 4px;">/ forever</span></div>
+        <ul class="feature-summary">
+            <li><%- t("feat_list_free") %></li>
+        </ul>
+        <a href="/login" class="plan-btn" style="background: rgba(136, 153, 166, 0.2); color: #fff;">
+            <%= t("get_started") %>
+        </a>
     </div>
 
-    <!-- 注意事項 -->
-    <div
-        style="margin-top:32px; padding:20px 24px; background:rgba(29,161,242,0.06); border:1px solid rgba(29,161,242,0.2); border-radius:12px; font-size:14px; color:#8899a6; line-height:1.9;">
-        <strong style="color:var(--primary-color);">📋 <%= t("notice_title") %></strong><br />
-        <%- t("notice_body") %>
+    <!-- Pro Tier -->
+    <div class="plan-card pro">
+        <div class="plan-badge">Standard</div>
+        <h3 style="font-size: 24px; margin-bottom: 10px;">
+            <%= t("plan_pro") %>
+        </h3>
+        <div class="plan-price">¥680<span style="font-size: 14px; opacity: 0.6; margin-left: 4px;">/ month</span></div>
+        <ul class="feature-summary">
+            <li><%- t("feat_list_pro") %></li>
+        </ul>
+        <a href="https://imomusi0213.booth.pm/items/7935721" target="_blank" class="plan-btn">
+            <%= t("purchase_btn") %>
+        </a>
     </div>
-</div>
 
-
-<!-- Free Tier -->
-<div class="plan-card">
-    <div class="plan-badge">Basic</div>
-    <h3>
-        <%= t("plan_free") %>
-    </h3>
-    <div class="plan-price">¥0 <span>/ month</span></div>
-    <ul class="feature-summary">
-        <li><%- t("feat_list_free") %></li>
-    </ul>
-    <a href="/login" class="plan-btn">
-        <%= t("get_started") %>
-    </a>
-</div>
-
-<!-- Pro Tier -->
-<div class="plan-card pro">
-    <div class="plan-badge">Standard</div>
-    <h3>
-        <%= t("plan_pro") %>
-    </h3>
-    <div class="plan-price">¥680 <span>/ month</span></div>
-    <ul class="feature-summary">
-        <li><%- t("feat_list_pro") %></li>
-    </ul>
-    <a href="https://imomusi0213.booth.pm/items/7935721" target="_blank" class="plan-btn">
-        <%= t("purchase_btn") %>
-    </a>
-</div>
-
-<!-- Pro+ Tier -->
-<div class="plan-card pro-plus">
-    <div class="plan-badge">Premium</div>
-    <h3>
-        <%= t("plan_pro_plus") %>
-    </h3>
-    <div class="plan-price">¥1,800 <span>/ month</span></div>
-    <ul class="feature-summary">
-        <li><%- t("feat_list_pro_plus") %></li>
-    </ul>
-    <a href="https://imomusi0213.booth.pm/items/7935721" target="_blank" class="plan-btn">
-        <%= t("purchase_btn") %>
-    </a>
-</div>
+    <!-- Pro+ Tier -->
+    <div class="plan-card pro-plus">
+        <div class="plan-badge">Premium</div>
+        <h3 style="font-size: 24px; margin-bottom: 10px;">
+            <%= t("plan_pro_plus") %>
+        </h3>
+        <div class="plan-price">¥1,800<span style="font-size: 14px; opacity: 0.6; margin-left: 4px;">/ month</span>
+        </div>
+        <ul class="feature-summary">
+            <li><%- t("feat_list_pro_plus") %></li>
+        </ul>
+        <a href="https://imomusi0213.booth.pm/items/7935721" target="_blank" class="plan-btn">
+            <%= t("purchase_btn") %>
+        </a>
+    </div>
 </div>
 
 <div class="notice-container">
@@ -458,7 +379,8 @@
         <%= t("compare_table_title") %>
     </h2>
 
-    <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+    <div
+        style="overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
         <table class="comparison-table">
             <thead>
                 <tr>
@@ -500,7 +422,6 @@
                     <td class="col-pro">1</td>
                     <td class="col-pro-plus"><strong>3</strong></td>
                 </tr>
-                <!-- L1: 全プラン共通 -->
                 <tr>
                     <td>
                         <%= t("comp_ng_detect") %>
@@ -521,9 +442,9 @@
                     <td>
                         <%= t("comp_raid_alert") %>
                     </td>
-                    <td class="warning-mark">△</td>
-                    <td class="active-check col-pro">✓</td>
-                    <td class="active-check col-pro-plus">✓</td>
+                    <td style="color: #6a7682;">Basic</td>
+                    <td class="active-check col-pro">✓ Full</td>
+                    <td class="active-check col-pro-plus">✓ Full</td>
                 </tr>
                 <tr>
                     <td>
@@ -556,7 +477,6 @@
                         <%= t("cat_wisdom") %>
                     </td>
                 </tr>
-                <!-- L2: Pro以上 -->
                 <tr>
                     <td>
                         <%= t("comp_ai_advice") %>
@@ -569,11 +489,10 @@
                     <td>
                         <%= t("comp_stats_7d") %>
                     </td>
-                    <td class="dim-cross">✕</td>
+                    <td style="color: #6a7682;">Basic</td>
                     <td class="active-check col-pro">✓</td>
                     <td class="active-check col-pro-plus">✓</td>
                 </tr>
-                <!-- L3: Pro+専用 -->
                 <tr>
                     <td>
                         <%= t("comp_audit") %>
@@ -597,7 +516,6 @@
                         <%= t("cat_branding") %>
                     </td>
                 </tr>
-                <!-- L1: 全プラン共通 -->
                 <tr>
                     <td>
                         <%= t("comp_aura_system") %>
@@ -614,7 +532,6 @@
                     <td class="active-check col-pro">✓</td>
                     <td class="active-check col-pro-plus">✓</td>
                 </tr>
-                <!-- L2: Pro以上 -->
                 <tr>
                     <td>
                         <%= t("comp_dashboard") %>
@@ -628,10 +545,9 @@
                         <%= t("comp_branding") %>
                     </td>
                     <td class="dim-cross">✕</td>
-                    <td class="warning-mark col-pro">△</td>
-                    <td class="active-check col-pro-plus">✓</td>
+                    <td style="color: #6a7682;">Limited</td>
+                    <td class="active-check col-pro-plus">✓ Full</td>
                 </tr>
-                <!-- L3: Pro+専用 -->
                 <tr>
                     <td>
                         <%= t("comp_intro_gate") %>
@@ -645,25 +561,115 @@
                 <tr>
                     <td></td>
                     <td>
-                        <a href="/login" class="plan-btn" style="padding: 8px 16px; font-size: 14px; margin-top: 5px;">
+                        <a href="/login" class="plan-btn"
+                            style="padding: 10px 16px; font-size: 13px; margin-top: 5px; opacity: 0.8; background: rgba(136,153,166,0.2);">
                             <%= t("get_started") %>
                         </a>
                     </td>
                     <td class="col-pro">
                         <a href="https://imomusi0213.booth.pm/items/7935721" target="_blank" class="plan-btn"
-                            style="padding: 8px 16px; font-size: 14px; margin-top: 5px;">
+                            style="padding: 10px 16px; font-size: 13px; margin-top: 5px;">
                             <%= t("purchase_btn") %>
                         </a>
                     </td>
                     <td class="col-pro-plus">
                         <a href="https://imomusi0213.booth.pm/items/7935721" target="_blank" class="plan-btn"
-                            style="padding: 8px 16px; font-size: 14px; margin-top: 5px;">
+                            style="padding: 10px 16px; font-size: 13px; margin-top: 5px;">
                             <%= t("purchase_btn") %>
                         </a>
                     </td>
                 </tr>
             </tbody>
         </table>
+    </div>
+</div>
+
+<!-- ===== 利用開始の流れ (v2.9.1 - Reordered to bottom) ===== -->
+<div style="max-width:1000px; margin: 100px auto 120px; padding: 0 20px;">
+    <div style="text-align: center; margin-bottom: 60px;">
+        <h2
+            style="font-size:36px; margin-bottom:15px; background: linear-gradient(135deg, var(--accent-color) 0%, #fff 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900;">
+            <%= t("how_to_title") %>
+        </h2>
+        <div style="width: 60px; height: 4px; background: var(--accent-color); margin: 0 auto; border-radius: 2px;">
+        </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:25px; margin-top:30px;">
+
+        <!-- Step 1 -->
+        <div
+            style="background:rgba(25,39,52,0.3); border:1px solid rgba(255,255,255,0.05); backdrop-filter: blur(10px); border-radius:24px; padding:35px; position:relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+            <div
+                style="position:absolute; top:-18px; left:30px; background:var(--primary-color); color:#fff; font-size:12px; font-weight:900; padding:6px 18px; border-radius:30px; letter-spacing:1px; box-shadow: 0 4px 12px rgba(29,161,242,0.3);">
+                STEP 1</div>
+            <h4 style="margin:15px 0 12px; font-size:20px; font-weight: 800;">🤖 <%= t("step1_title") %>
+            </h4>
+            <p style="color:#8899a6; font-size:15px; line-height:1.8; margin:0;">
+                <%= t("step1_desc") %>
+            </p>
+        </div>
+
+        <!-- Step 2 -->
+        <div
+            style="background:rgba(25,39,52,0.3); border:1px solid rgba(255,255,255,0.05); backdrop-filter: blur(10px); border-radius:24px; padding:35px; position:relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+            <div
+                style="position:absolute; top:-18px; left:30px; background:var(--primary-color); color:#fff; font-size:12px; font-weight:900; padding:6px 18px; border-radius:30px; letter-spacing:1px; box-shadow: 0 4px 12px rgba(29,161,242,0.3);">
+                STEP 2</div>
+            <h4 style="margin:15px 0 12px; font-size:20px; font-weight: 800;">🏠 <%= t("step2_title") %>
+            </h4>
+            <p style="color:#8899a6; font-size:15px; line-height:1.8; margin:0;">
+                <%= t("step2_desc") %>
+            </p>
+        </div>
+
+        <!-- Step 3 -->
+        <div
+            style="background:rgba(25,39,52,0.3); border:1px solid rgba(255,255,255,0.05); backdrop-filter: blur(10px); border-radius:24px; padding:35px; position:relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+            <div
+                style="position:absolute; top:-18px; left:30px; background:var(--primary-color); color:#fff; font-size:12px; font-weight:900; padding:6px 18px; border-radius:30px; letter-spacing:1px; box-shadow: 0 4px 12px rgba(29,161,242,0.3);">
+                STEP 3</div>
+            <h4 style="margin:15px 0 12px; font-size:20px; font-weight: 800;">📝 <%= t("step3_title") %>
+            </h4>
+            <p style="color:#8899a6; font-size:15px; line-height:1.8; margin:0;">
+                <%= t("step3_desc") %>
+            </p>
+        </div>
+
+        <!-- Step 4 -->
+        <div
+            style="background:rgba(25,39,52,0.3); border:1px solid rgba(255,255,255,0.05); backdrop-filter: blur(10px); border-radius:24px; padding:35px; position:relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+            <div
+                style="position:absolute; top:-18px; left:30px; background:var(--primary-color); color:#fff; font-size:12px; font-weight:900; padding:6px 18px; border-radius:30px; letter-spacing:1px; box-shadow: 0 4px 12px rgba(29,161,242,0.3);">
+                STEP 4</div>
+            <h4 style="margin:15px 0 12px; font-size:20px; font-weight: 800;">✅ <%= t("step4_title") %>
+            </h4>
+            <p style="color:#8899a6; font-size:15px; line-height:1.8; margin:0;">
+                <%= t("step4_desc") %>
+            </p>
+        </div>
+
+        <!-- Step 5 -->
+        <div
+            style="background:rgba(25,39,52,0.3); border:1px solid var(--accent-color); backdrop-filter: blur(10px); border-radius:24px; padding:35px; position:relative; box-shadow: 0 10px 40px rgba(var(--accent-rgb), 0.1);">
+            <div
+                style="position:absolute; top:-18px; left:30px; background:var(--accent-color); color:#fff; font-size:12px; font-weight:900; padding:6px 18px; border-radius:30px; letter-spacing:1px; box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3);">
+                COMPLETE</div>
+            <h4 style="margin:15px 0 12px; font-size:20px; font-weight: 800;">🎉 <%= t("step5_title") %>
+            </h4>
+            <p style="color:#8899a6; font-size:15px; line-height:1.8; margin:0;">
+                <%= t("step5_desc") %>
+            </p>
+        </div>
+
+    </div>
+
+    <!-- 注意事項 -->
+    <div
+        style="margin-top:60px; padding:30px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.05); border-radius:20px; font-size:14px; color:#8899a6; line-height:2.0; backdrop-filter: blur(5px);">
+        <strong style="color:var(--accent-color); font-size: 16px; margin-bottom: 10px; display: block;">📋 <%=
+                t("notice_title") %></strong>
+        <%- t("notice_body") %>
     </div>
 </div>
 
