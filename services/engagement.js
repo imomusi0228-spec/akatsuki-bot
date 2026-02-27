@@ -117,15 +117,10 @@ async function processVCRoles(guild, settings) {
         WHERE guild_id = $1 AND total_vc_minutes >= $2
     `, [guild.id, minHours * 60]);
 
-    // 2. Find currently assigned members to check for removal
-    // Note: In high scale, it's better to only check those who HAVE the roles
-    const membersWithRoles = await guild.members.fetch({ force: false }).catch(() => null);
-    // fetch() without query returns cached members. For high precision in role removal, we might need specific logic.
-    // However, to keep it fast, we rely on the DB list + current cache.
-
+    // 2. Fetch required members efficiently
     const targetUserIds = new Set(potentialRes.rows.map(r => r.user_id));
 
-    // Add users who currently have the roles in the guild
+    // Also include those who already have the relevant roles to check for removal
     roleIds.forEach(roleId => {
         const role = guild.roles.cache.get(roleId);
         if (role) {
@@ -135,18 +130,22 @@ async function processVCRoles(guild, settings) {
 
     if (targetUserIds.size === 0) return;
 
-    // 3. Batch fetch only necessary members
-    const members = await guild.members.fetch({ user: Array.from(targetUserIds) }).catch(() => new Map());
+    // Filter out users already in cache to minimize API calls
+    const idsToFetch = Array.from(targetUserIds).filter(id => !guild.members.cache.has(id));
+    if (idsToFetch.length > 0) {
+        await guild.members.fetch({ user: idsToFetch }).catch(() => null);
+    }
 
     const stats = {};
     potentialRes.rows.forEach(r => stats[r.user_id] = r.total_vc_minutes / 60);
 
     const sortedRules = [...vcRules].sort((a, b) => b.hours - a.hours);
 
-    for (const [memberId, member] of members) {
-        if (member.user.bot) continue;
-        const userHours = stats[memberId] || 0;
+    for (const userId of targetUserIds) {
+        const member = guild.members.cache.get(userId);
+        if (!member || member.user.bot) continue;
 
+        const userHours = stats[userId] || 0;
         let targetRule = null;
         for (const rule of sortedRules) {
             if (userHours >= rule.hours) {
@@ -155,7 +154,7 @@ async function processVCRoles(guild, settings) {
             }
         }
 
-        // Apply / Remove
+        // Apply / Remove Roles
         for (const rule of vcRules) {
             const hasRole = member.roles.cache.has(rule.role_id);
             if (targetRule && rule.role_id === targetRule.role_id) {

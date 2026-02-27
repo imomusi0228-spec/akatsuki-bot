@@ -40,19 +40,23 @@ export async function loadCommands() {
         if (fs.existsSync(commandsPath)) {
             const files = fs.readdirSync(commandsPath).filter((f) => f.endsWith(".js"));
             for (const file of files) {
-                const filePath = path.join(commandsPath, file);
-                const mod = await importFile(filePath);
+                try {
+                    const filePath = path.join(commandsPath, file);
+                    const mod = await importFile(filePath);
 
-                if (mod?.data) {
-                    if (Array.isArray(mod.data)) {
-                        mod.data.forEach(cmd => {
-                            if (cmd?.name && typeof mod.execute === "function") {
-                                client.commands.set(cmd.name, mod);
-                            }
-                        });
-                    } else if (mod.data.name && typeof mod.execute === "function") {
-                        client.commands.set(mod.data.name, mod);
+                    if (mod?.data) {
+                        if (Array.isArray(mod.data)) {
+                            mod.data.forEach(cmd => {
+                                if (cmd?.name && typeof mod.execute === "function") {
+                                    client.commands.set(cmd.name, mod);
+                                }
+                            });
+                        } else if (mod.data.name && typeof mod.execute === "function") {
+                            client.commands.set(mod.data.name, mod);
+                        }
                     }
+                } catch (cmdErr) {
+                    console.error(`❌ [Command Error] Failed to load ${file}:`, cmdErr.message);
                 }
             }
             console.log(`✅ Loaded ${client.commands.size} commands.`);

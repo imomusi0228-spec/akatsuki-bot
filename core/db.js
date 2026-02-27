@@ -84,7 +84,9 @@ export async function initDb() {
         `CREATE INDEX IF NOT EXISTS idx_member_stats_guild_xp ON member_stats(guild_id, xp DESC);`,
         `CREATE INDEX IF NOT EXISTS idx_member_events_guild_type ON member_events(guild_id, event_type, created_at DESC);`,
         `CREATE INDEX IF NOT EXISTS idx_ng_logs_guild_created ON ng_logs(guild_id, created_at DESC);`,
-        `CREATE INDEX IF NOT EXISTS idx_subscriptions_guild_id ON subscriptions(guild_id);`
+        `CREATE INDEX IF NOT EXISTS idx_subscriptions_guild_id ON subscriptions(guild_id);`,
+        `CREATE INDEX IF NOT EXISTS idx_warnings_guild_user ON warnings(guild_id, user_id);`,
+        `CREATE INDEX IF NOT EXISTS idx_tickets_guild_status ON tickets(guild_id, status, created_at DESC);`
     ];
 
     try {
@@ -117,5 +119,4 @@ export async function cleanupOldData() {
     }
 }
 
-// Run once every 24 hours
-setInterval(cleanupOldData, 24 * 60 * 60 * 1000);
+// Note: Periodic cleanup is now managed by the central cron system in index.js to prevent multiple overlapping cycles.

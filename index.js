@@ -5,10 +5,10 @@ import { loadEvents } from "./core/eventLoader.js";
 import { startServer } from "./core/server.js";
 
 import { runEngagementCheck } from "./services/engagement.js";
-import { runDataPruning } from "./services/pruning.js";
 import { runInsightCheck } from "./services/insight.js";
 import { runIntroReminder } from "./services/introReminder.js";
 import { runAutoRecoveryCheck } from "./services/antiraidRecovery.js";
+import { cleanupOldData } from "./core/db.js";
 
 
 // Global Error Handlers for Production Stability
@@ -49,10 +49,10 @@ process.on("unhandledRejection", (reason) => {
             runEngagementCheck();
         });
 
-        // Data Pruning: Every day at 03:00
+        // Data Pruning & DB Maintenance: Every day at 03:00
         cron.default.schedule("0 3 * * *", () => {
-            console.log("[CRON] Starting Data Pruning...");
-            runDataPruning();
+            console.log("[CRON] Starting Database Maintenance...");
+            cleanupOldData();
         });
 
         // Insight check: Every 2 hours
