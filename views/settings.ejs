@@ -528,7 +528,7 @@
                     <label style="display:flex; align-items:center; cursor:pointer; margin-bottom:15px;">
                         <input type="checkbox" id="autoSlowmodeEnabled"
                             style="width:18px; height:18px; margin-right:10px;">
-                        <span style="font-weight:bold;">🚨 <%= t("vc_report_enabled_label") %></span>
+                        <span style="font-weight:bold;">🚨 <%= t("auto_slowmode_enabled_label") %></span>
                     </label>
                     <div style="margin-bottom:10px;">
                         <label class="muted" style="font-size:12px;">
@@ -705,9 +705,11 @@
 
                 <h4 style="font-size:14px; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
                     <span style="width:8px; height:8px; background:var(--accent-color); border-radius:50%;"></span>
-                    作成済みパネル一覧
+                    <%= t("br_list_title") %>
                 </h4>
-                <div id="br-loading" class="muted" style="text-align:center; padding:15px; display:none;">ロード中...</div>
+                <div id="br-loading" class="muted" style="text-align:center; padding:15px; display:none;">
+                    <%= t("loading_dots") %>
+                </div>
                 <div id="br-list" style="display:flex; flex-direction:column; gap:12px;">
                     <!-- Button Role List Items -->
                 </div>

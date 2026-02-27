@@ -364,7 +364,7 @@
                 const tr = document.createElement("tr");
 
                 const logBtn = t.transcript_id
-                    ? `<a href="/transcripts/${t.transcript_id}.html" target="_blank" class="staff-assign-btn">📄 ログ</a>`
+                    ? `<a href="/transcripts/${t.transcript_id}.html" target="_blank" class="staff-assign-btn">${t("ticket_log_btn")}</a>`
                     : "";
 
                 tr.innerHTML = `
@@ -376,7 +376,7 @@
                         ${t.status}
                     </span>
                 </td>
-                <td>${new Date(t.created_at).toLocaleString("ja-JP")}</td>
+                <td>${new Date(t.created_at).toLocaleString(window.lang === 'ja' ? 'ja-JP' : 'en-US')}</td>
                 <td style="text-align:right;">
                     ${logBtn}
                 </td>

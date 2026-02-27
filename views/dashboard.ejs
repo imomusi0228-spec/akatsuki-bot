@@ -30,7 +30,8 @@
             <div style="display: flex; align-items: center; gap: 8px;">
                 <span
                     style="font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-primary);">⚡
-                    <%= t("realtime_title") %></span>
+                    <%= t("realtime_title") %>
+                </span>
                 <span id="rt-status-dot"
                     style="width: 8px; height: 8px; border-radius: 50%; background: #00BA7C; display: inline-block; box-shadow: 0 0 6px #00BA7C; animation: rtPulse 2s infinite;"></span>
             </div>
@@ -277,7 +278,9 @@
                         <th style="text-align:right">
                             <%= t("header_count") %>
                         </th>
-                        <th style="text-align:right">Action</th>
+                        <th style="text-align:right">
+                            <%= t("action") %>
+                        </th>
                     </tr>
                 </thead>
                 <tbody id="topNg"></tbody>
