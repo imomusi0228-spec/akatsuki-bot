@@ -299,10 +299,10 @@ export async function handleApiRoute(req, res, pathname, url) {
             const startOfMonth = startOfMonthRaw < limitDate ? limitDate : startOfMonthRaw;
             const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
 
-            const [heatmapRes, ngHeatmapRes] = await Promise.all([
+            const [heatmapRes, msgHeatmapRes] = await Promise.all([
                 dbQuery(`
                     SELECT 
-                        EXTRACT(HOUR FROM join_time) as hour_of_day,
+                        EXTRACT(HOUR FROM join_time AT TIME ZONE 'Asia/Tokyo') as hour_of_day,
                         SUM(COALESCE(duration_seconds, EXTRACT(EPOCH FROM (NOW() - join_time)))) / 60 as total_minutes
                     FROM vc_sessions
                     WHERE guild_id = $1 
@@ -311,7 +311,7 @@ export async function handleApiRoute(req, res, pathname, url) {
                 `, [guildId, startOfMonth, endOfMonth]),
                 dbQuery(`
                     SELECT 
-                        EXTRACT(HOUR FROM created_at) as hour_of_day,
+                        EXTRACT(HOUR FROM created_at AT TIME ZONE 'Asia/Tokyo') as hour_of_day,
                         COUNT(*) as cnt
                     FROM member_events
                     WHERE guild_id = $1 AND event_type = 'message'
@@ -325,12 +325,12 @@ export async function handleApiRoute(req, res, pathname, url) {
                 heatmap[parseInt(r.hour_of_day)] = Math.round(parseFloat(r.total_minutes));
             });
 
-            const ng_heatmap = Array(24).fill(0);
-            ngHeatmapRes.rows.forEach(r => {
-                ng_heatmap[parseInt(r.hour_of_day)] = parseInt(r.cnt);
+            const msg_heatmap = Array(24).fill(0);
+            msgHeatmapRes.rows.forEach(r => {
+                msg_heatmap[parseInt(r.hour_of_day)] = parseInt(r.cnt);
             });
 
-            resJson({ ok: true, heatmap, ng_heatmap });
+            resJson({ ok: true, heatmap, msg_heatmap, ng_heatmap: msg_heatmap }); // keep ng_heatmap for temporary compatibility
         } catch (e) {
             console.error("Heatmap Error:", e);
             return resJson({ ok: false, error: e.message }, 500);

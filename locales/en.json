@@ -73,6 +73,7 @@
     "status_soon": "Coming Soon",
     "help_growth_trend": "A graph showing the trend of server joins and leaves aggregated by day.",
     "help_heatmap": "Aggregates voice channel activity by hour of day to identify active periods.",
+    "messages_count": "Messages",
     "help_ng_limit": "Define specific keywords to be detected and restricted in messages.",
     "help_antiraid": "Automatically detects and restricts suspicious mass joins to protect the server.",
     "help_timeout": "The duration to automatically timeout users when an NG word is detected.",
