@@ -137,7 +137,7 @@ export default {
                             .setTitle(`🛡️ Iron Fortress: ${reason}`)
                             .setDescription(`**ユーザー**: <@${userId}>\n**アクション**: ${action}`)
                             .setTimestamp();
-                        await sendLog(message.guild, 'ng', logEmbed);
+                        await sendLog(message.guild, 'mod', logEmbed);
                     }
                     return;
                 }

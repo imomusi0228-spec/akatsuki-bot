@@ -11,7 +11,7 @@ import { dbQuery } from "./db.js";
  */
 export async function sendLog(guild, type, payload, date = new Date(), options = {}) {
     try {
-        const settingsRes = await dbQuery("SELECT log_channel_id, ng_log_channel_id, color_log, color_ng, color_vc_join, color_vc_leave, branding_footer_text FROM settings WHERE guild_id = $1", [guild.id]);
+        const settingsRes = await dbQuery("SELECT log_channel_id, ng_log_channel_id, mod_log_channel_id, color_log, color_ng, color_vc_join, color_vc_leave, branding_footer_text FROM settings WHERE guild_id = $1", [guild.id]);
         const settings = settingsRes.rows[0];
         if (!settings) return;
 
@@ -24,7 +24,15 @@ export async function sendLog(guild, type, payload, date = new Date(), options =
         const footerText = settings.branding_footer_text;
 
         // 種別に応じてログチャンネルを選択
-        const channelId = type.startsWith('vc') ? settings.log_channel_id : (settings.ng_log_channel_id || settings.log_channel_id);
+        let channelId;
+        if (type === 'mod') {
+            channelId = settings.mod_log_channel_id || settings.ng_log_channel_id || settings.log_channel_id;
+        } else if (type.startsWith('vc')) {
+            channelId = settings.log_channel_id;
+        } else {
+            channelId = settings.ng_log_channel_id || settings.log_channel_id;
+        }
+
         if (!channelId) return;
 
         const channel = await guild.channels.fetch(channelId).catch(() => null);
