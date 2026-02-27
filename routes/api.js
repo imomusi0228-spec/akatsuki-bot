@@ -598,8 +598,7 @@ export async function handleApiRoute(req, res, pathname, url) {
                 leaderboard_enabled, levelup_enabled, levelup_channel_id,
                 welcome_enabled, welcome_channel_id, welcome_message,
                 farewell_enabled, farewell_channel_id, farewell_message,
-                mod_log_channel_id, mod_log_flags,
-                update_announce_channel_id
+                mod_log_channel_id, mod_log_flags
             FROM settings 
             WHERE guild_id = $1
         `, [guildId]);
@@ -704,8 +703,7 @@ export async function handleApiRoute(req, res, pathname, url) {
                 "leaderboard_enabled", "levelup_enabled", "levelup_channel_id",
                 "welcome_enabled", "welcome_channel_id", "welcome_message",
                 "farewell_enabled", "farewell_channel_id", "farewell_message",
-                "mod_log_channel_id", "mod_log_flags",
-                "update_announce_channel_id"
+                "mod_log_channel_id", "mod_log_flags"
             ];
 
             const keys = Object.keys(body).filter(k => allowedFields.includes(k));
@@ -1037,66 +1035,6 @@ export async function handleApiRoute(req, res, pathname, url) {
         }
     }
 
-    // POST /api/updates/receive
-    if (pathname === "/api/updates/receive" && method === "POST") {
-        const body = await getBody();
-        if (body.token !== ENV.ADMIN_TOKEN) {
-            return resJson({ ok: false, error: "Unauthorized" }, 401);
-        }
-
-        const newVersion = body.version?.trim();
-        const newTitle = body.title?.trim();
-        const newContent = body.content?.trim();
-
-        if (!newVersion || !newTitle) {
-            return resJson({ ok: false, error: "version and title are required" }, 400);
-        }
-
-        console.log(`[UPDATE NOTIFY] Received: ${newTitle} (${newVersion})`);
-
-        try {
-            // update_announce_channel_id が設定されている全ギルドを取得
-            const guildsRes = await dbQuery(
-                "SELECT guild_id, update_announce_channel_id, last_notified_version FROM settings WHERE update_announce_channel_id IS NOT NULL AND update_announce_channel_id != ''",
-                []
-            );
-
-            let notified = 0;
-            for (const row of guildsRes.rows) {
-                // 同じバージョンは送らない
-                if (row.last_notified_version === newVersion) continue;
-
-                const { getSafeGuild } = await import("../core/client.js");
-                const guild = await getSafeGuild(row.guild_id);
-                if (!guild) continue;
-
-                const channel = guild.channels.cache.get(row.update_announce_channel_id);
-                if (!channel) continue;
-
-                const { EmbedBuilder } = await import("discord.js");
-                const embed = new EmbedBuilder()
-                    .setTitle(`🌟 Akatsuki Bot アップデート — ${newTitle}`)
-                    .setDescription(newContent || "詳細はコマンドログをご確認ください。")
-                    .setColor(0x00BA7C)
-                    .setFooter({ text: `バージョン ${newVersion}` })
-                    .setTimestamp();
-
-                await channel.send({ embeds: [embed] }).catch(() => { });
-
-                // 通知済みバージョンを更新
-                await dbQuery(
-                    "UPDATE settings SET last_notified_version = $1 WHERE guild_id = $2",
-                    [newVersion, row.guild_id]
-                );
-                notified++;
-            }
-
-            return resJson({ ok: true, message: `Notified ${notified} guild(s)` });
-        } catch (e) {
-            console.error("[UPDATE NOTIFY] Error:", e.message);
-            return resJson({ ok: false, error: e.message }, 500);
-        }
-    }
 
     // GET /api/tickets
     if (pathname === "/api/tickets" && method === "GET") {

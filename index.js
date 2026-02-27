@@ -62,6 +62,16 @@ process.on("unhandledRejection", (reason) => {
         setInterval(runIntroReminder, 6 * 60 * 60 * 1000);    // 6 hours
         setInterval(runAutoRecoveryCheck, 10 * 60 * 1000);   // 10 minutes
 
+        // Weekly Update Notification (Friday 21:00)
+        const { runAutoUpdateCheck } = await import("./services/autoUpdateNotifier.js");
+        setInterval(() => {
+            const now = new Date();
+            // Friday is 5. Hour 21. Minute 0.
+            if (now.getDay() === 5 && now.getHours() === 21 && now.getMinutes() === 0) {
+                runAutoUpdateCheck();
+            }
+        }, 60 * 1000); // Check every minute
+
 
         console.log("✅ All systems initialized successfully.");
     } catch (e) {

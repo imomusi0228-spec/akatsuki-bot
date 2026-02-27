@@ -189,7 +189,7 @@ async function loadMasters(gid) {
             const catOpt = '<option value="">' + (t('none') || 'なし') + '</option>' +
                 categories.map(c => `<option value="${c.id}">📁 ${c.name}</option>`).join('');
 
-            const ids = ['logCh', 'ngLogCh', 'reportCh', 'vcReportCh', 'aiAdviceCh', 'aiInsightCh', 'aiPredictCh', 'brChannel', 'introCh', 'ticketLogCh', 'antiraidHoneypotChannel', 'autoSlowmodeChannels', 'levelupCh', 'welcomeCh', 'farewellCh', 'modLogCh', 'updateAnnounceCh'];
+            const ids = ['logCh', 'ngLogCh', 'reportCh', 'vcReportCh', 'aiAdviceCh', 'aiInsightCh', 'aiPredictCh', 'brChannel', 'introCh', 'ticketLogCh', 'antiraidHoneypotChannel', 'autoSlowmodeChannels', 'levelupCh', 'welcomeCh', 'farewellCh', 'modLogCh'];
             ids.forEach(id => {
                 const el = $(id);
                 if (el) {
@@ -501,11 +501,7 @@ async function initSettings() {
                 if ($("mlRoleRemove")) $("mlRoleRemove").checked = !!mlFlags.role_remove;
                 if ($("mlChCreate")) $("mlChCreate").checked = !!mlFlags.channel_create;
                 if ($("mlChDelete")) $("mlChDelete").checked = !!mlFlags.channel_delete;
-                if ($("mlMsgEdit")) $("mlMsgEdit").checked = !!mlFlags.message_edit;
                 if ($("mlMsgDelete")) $("mlMsgDelete").checked = !!mlFlags.message_delete;
-
-                // Update Announce
-                if ($("updateAnnounceCh")) $("updateAnnounceCh").value = s.update_announce_channel_id || "";
 
                 // Auto Slowmode (v2.8.2)
                 const slowChs = s.auto_slowmode_channels || [];
@@ -757,11 +753,9 @@ async function initSettings() {
                 role_add: $("mlRoleAdd")?.checked || false,
                 role_remove: $("mlRoleRemove")?.checked || false,
                 channel_create: $("mlChCreate")?.checked || false,
-                channel_delete: $("mlChDelete")?.checked || false,
                 message_edit: $("mlMsgEdit")?.checked || false,
                 message_delete: $("mlMsgDelete")?.checked || false
-            },
-            update_announce_channel_id: $("updateAnnounceCh")?.value || ""
+            }
         };
         const res = await api("/api/settings/update", body);
         if (res.ok) alert(t("save_success")); else alert("Error: " + res.error);
