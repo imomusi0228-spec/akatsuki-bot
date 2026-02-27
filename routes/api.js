@@ -593,7 +593,13 @@ export async function handleApiRoute(req, res, pathname, url) {
                 color_log, color_ng, color_vc_join, color_vc_leave,
                 color_level, color_ticket, dashboard_theme_color,
                 dashboard_theme_mode, ai_prediction_enabled,
-                auto_vc_creator_id, ticket_staff_role_id
+                auto_vc_creator_id, ticket_staff_role_id,
+                auto_action_on_warns, warn_action_threshold, warn_action,
+                leaderboard_enabled, levelup_enabled, levelup_channel_id,
+                welcome_enabled, welcome_channel_id, welcome_message,
+                farewell_enabled, farewell_channel_id, farewell_message,
+                mod_log_channel_id, mod_log_flags,
+                update_announce_channel_id
             FROM settings 
             WHERE guild_id = $1
         `, [guildId]);
@@ -693,7 +699,13 @@ export async function handleApiRoute(req, res, pathname, url) {
                 "ticket_welcome_msg", "color_log", "color_ng", "color_vc_join", "color_vc_leave", "color_level", "color_ticket",
                 "dashboard_theme_color", "dashboard_theme_mode", "ai_prediction_enabled", "ai_predict_channel_id",
                 "auto_vc_creator_id", "ticket_staff_role_id", "ticket_log_channel_id",
-                "antiraid_auto_recovery_enabled", "antiraid_honeypot_channel_id", "antiraid_avatar_scrutiny_enabled"
+                "antiraid_auto_recovery_enabled", "antiraid_honeypot_channel_id", "antiraid_avatar_scrutiny_enabled",
+                "auto_action_on_warns", "warn_action_threshold", "warn_action",
+                "leaderboard_enabled", "levelup_enabled", "levelup_channel_id",
+                "welcome_enabled", "welcome_channel_id", "welcome_message",
+                "farewell_enabled", "farewell_channel_id", "farewell_message",
+                "mod_log_channel_id", "mod_log_flags",
+                "update_announce_channel_id"
             ];
 
             const keys = Object.keys(body).filter(k => allowedFields.includes(k));
@@ -1032,9 +1044,58 @@ export async function handleApiRoute(req, res, pathname, url) {
             return resJson({ ok: false, error: "Unauthorized" }, 401);
         }
 
-        console.log(`[UPDATE RECEIVE] Received: ${body.title}`);
-        // Optionally save to DB or just acknowledge
-        return resJson({ ok: true, message: "Update received successfully" });
+        const newVersion = body.version?.trim();
+        const newTitle = body.title?.trim();
+        const newContent = body.content?.trim();
+
+        if (!newVersion || !newTitle) {
+            return resJson({ ok: false, error: "version and title are required" }, 400);
+        }
+
+        console.log(`[UPDATE NOTIFY] Received: ${newTitle} (${newVersion})`);
+
+        try {
+            // update_announce_channel_id が設定されている全ギルドを取得
+            const guildsRes = await dbQuery(
+                "SELECT guild_id, update_announce_channel_id, last_notified_version FROM settings WHERE update_announce_channel_id IS NOT NULL AND update_announce_channel_id != ''",
+                []
+            );
+
+            let notified = 0;
+            for (const row of guildsRes.rows) {
+                // 同じバージョンは送らない
+                if (row.last_notified_version === newVersion) continue;
+
+                const { getSafeGuild } = await import("../core/client.js");
+                const guild = await getSafeGuild(row.guild_id);
+                if (!guild) continue;
+
+                const channel = guild.channels.cache.get(row.update_announce_channel_id);
+                if (!channel) continue;
+
+                const { EmbedBuilder } = await import("discord.js");
+                const embed = new EmbedBuilder()
+                    .setTitle(`🌟 Akatsuki Bot アップデート — ${newTitle}`)
+                    .setDescription(newContent || "詳細はコマンドログをご確認ください。")
+                    .setColor(0x00BA7C)
+                    .setFooter({ text: `バージョン ${newVersion}` })
+                    .setTimestamp();
+
+                await channel.send({ embeds: [embed] }).catch(() => { });
+
+                // 通知済みバージョンを更新
+                await dbQuery(
+                    "UPDATE settings SET last_notified_version = $1 WHERE guild_id = $2",
+                    [newVersion, row.guild_id]
+                );
+                notified++;
+            }
+
+            return resJson({ ok: true, message: `Notified ${notified} guild(s)` });
+        } catch (e) {
+            console.error("[UPDATE NOTIFY] Error:", e.message);
+            return resJson({ ok: false, error: e.message }, 500);
+        }
     }
 
     // GET /api/tickets
@@ -1282,6 +1343,187 @@ export async function handleApiRoute(req, res, pathname, url) {
         await dbQuery("DELETE FROM button_roles WHERE id = $1 AND guild_id = $2", [body.id, body.guild]);
         return resJson({ ok: true });
     }
+
+    // GET /api/realtime-stats (B-6: Real-time Dashboard Panel)
+    if (pathname === "/api/realtime-stats") {
+        if (!guildId) return resJson({ ok: false, error: "Missing guild ID" }, 400);
+        if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
+
+        try {
+            const guild = await getSafeGuild(guildId);
+
+            // Online member count from Discord cache
+            let onlineCount = 0;
+            if (guild) {
+                try {
+                    const members = guild.members.cache;
+                    onlineCount = members.filter(m =>
+                        m.presence?.status && m.presence.status !== "offline" && !m.user.bot
+                    ).size;
+                } catch (_) { }
+            }
+
+            // Today's VC unique users (JOIN events today)
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+
+            const [todayVcRes, todayJoinRes, weekNgRes, weekTimeoutRes, activeVcRes] = await Promise.all([
+                dbQuery(
+                    "SELECT COUNT(DISTINCT user_id) as cnt FROM vc_sessions WHERE guild_id = $1 AND join_time >= $2",
+                    [guildId, todayStart]
+                ),
+                dbQuery(
+                    "SELECT COUNT(*) as cnt FROM member_events WHERE guild_id = $1 AND event_type = 'join' AND created_at >= $2",
+                    [guildId, todayStart]
+                ),
+                dbQuery(
+                    "SELECT COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 AND created_at >= NOW() - INTERVAL '7 days'",
+                    [guildId]
+                ),
+                dbQuery(
+                    "SELECT COUNT(*) as cnt FROM member_events WHERE guild_id = $1 AND event_type = 'timeout' AND created_at >= NOW() - INTERVAL '7 days'",
+                    [guildId]
+                ),
+                dbQuery(
+                    "SELECT COUNT(*) as cnt FROM vc_sessions WHERE guild_id = $1 AND leave_time IS NULL AND join_time >= NOW() - INTERVAL '12 hours'",
+                    [guildId]
+                )
+            ]);
+
+            resJson({
+                ok: true,
+                realtime: {
+                    online_count: onlineCount,
+                    today_vc_users: parseInt(todayVcRes.rows[0]?.cnt || 0),
+                    today_joins: parseInt(todayJoinRes.rows[0]?.cnt || 0),
+                    week_ng: parseInt(weekNgRes.rows[0]?.cnt || 0),
+                    week_timeouts: parseInt(weekTimeoutRes.rows[0]?.cnt || 0),
+                    active_vc_sessions: parseInt(activeVcRes.rows[0]?.cnt || 0),
+                    fetched_at: new Date().toISOString()
+                }
+            });
+        } catch (e) {
+            console.error("[API] /api/realtime-stats error:", e.message);
+            resJson({ ok: false, error: e.message }, 500);
+        }
+        return;
+    }
+
+    // ===== B-10: チケットカテゴリAPI =====
+
+    // GET /api/ticket-categories
+    if (pathname === "/api/ticket-categories" && method === "GET") {
+        if (!guildId) return resJson({ ok: false, error: "Missing guild" }, 400);
+        if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
+        const r = await dbQuery("SELECT * FROM ticket_categories WHERE guild_id=$1 ORDER BY id", [guildId]);
+        return resJson({ ok: true, categories: r.rows });
+    }
+
+    // POST /api/ticket-categories
+    if (pathname === "/api/ticket-categories" && method === "POST") {
+        const body = await getBody();
+        if (!body.guild || !body.name) return resJson({ ok: false, error: "Missing fields" }, 400);
+        if (!await verifyGuild(body.guild)) return resJson({ ok: false, error: "Forbidden" }, 403);
+        await dbQuery("INSERT INTO ticket_categories (guild_id, name, emoji, description) VALUES ($1, $2, $3, $4)",
+            [body.guild, body.name, body.emoji || "🎫", body.description || ""]);
+        return resJson({ ok: true });
+    }
+
+    // DELETE /api/ticket-categories
+    if (pathname === "/api/ticket-categories" && method === "DELETE") {
+        const body = await getBody();
+        if (!body.guild || !body.id) return resJson({ ok: false, error: "Missing fields" }, 400);
+        if (!await verifyGuild(body.guild)) return resJson({ ok: false, error: "Forbidden" }, 403);
+        await dbQuery("DELETE FROM ticket_categories WHERE id=$1 AND guild_id=$2", [body.id, body.guild]);
+        return resJson({ ok: true });
+    }
+
+    // ===== /B-10 =====
+
+    // ===== B-9: 警告管理API =====
+
+    // GET /api/warnings?guild=&user=
+    if (pathname === "/api/warnings" && method === "GET") {
+        const userId = url.searchParams.get("user");
+        if (!guildId) return resJson({ ok: false, error: "Missing guild" }, 400);
+        if (!await verifyGuild(guildId)) return resJson({ ok: false, error: "Forbidden" }, 403);
+
+        try {
+            let query = "SELECT * FROM warnings WHERE guild_id = $1";
+            const params = [guildId];
+            if (userId) { query += " AND user_id = $2 ORDER BY created_at DESC"; params.push(userId); }
+            else query += " ORDER BY created_at DESC LIMIT 200";
+
+            const res2 = await dbQuery(query, params);
+            return resJson({ ok: true, warnings: res2.rows });
+        } catch (e) {
+            return resJson({ ok: false, error: e.message }, 500);
+        }
+    }
+
+    // POST /api/warnings — 警告発行
+    if (pathname === "/api/warnings" && method === "POST") {
+        const body = await getBody();
+        if (!body.guild || !body.user_id || !body.reason) return resJson({ ok: false, error: "Missing fields" }, 400);
+        if (!await verifyGuild(body.guild)) return resJson({ ok: false, error: "Forbidden" }, 403);
+
+        try {
+            const issuedBy = session.user?.username || "Web Dashboard";
+            await dbQuery(
+                "INSERT INTO warnings (guild_id, user_id, reason, issued_by) VALUES ($1, $2, $3, $4)",
+                [body.guild, body.user_id, body.reason, issuedBy]
+            );
+
+            const countRes = await dbQuery("SELECT COUNT(*) as cnt FROM warnings WHERE guild_id=$1 AND user_id=$2", [body.guild, body.user_id]);
+            const totalWarnings = parseInt(countRes.rows[0]?.cnt || 0);
+
+            // 自動アクション（閾値超過時）
+            const setRes = await dbQuery("SELECT auto_action_on_warns, warn_action_threshold, warn_action, timeout_minutes FROM settings WHERE guild_id=$1", [body.guild]);
+            const s = setRes.rows[0] || {};
+            if (s.auto_action_on_warns && totalWarnings >= (s.warn_action_threshold || 3)) {
+                const guild = await getSafeGuild(body.guild);
+                if (guild) {
+                    const member = await guild.members.fetch(body.user_id).catch(() => null);
+                    if (member) {
+                        const action = s.warn_action || "timeout";
+                        if (action === "timeout") {
+                            const mins = s.timeout_minutes || 10;
+                            await member.timeout(mins * 60 * 1000, `警告${totalWarnings}回達成 (自動アクション)`).catch(() => { });
+                        } else if (action === "kick") {
+                            await member.kick(`警告${totalWarnings}回達成 (自動アクション)`).catch(() => { });
+                        } else if (action === "ban") {
+                            await member.ban({ reason: `警告${totalWarnings}回達成 (自動アクション)` }).catch(() => { });
+                        }
+                    }
+                }
+            }
+
+            return resJson({ ok: true, totalWarnings });
+        } catch (e) {
+            console.error("[API] POST /api/warnings error:", e.message);
+            return resJson({ ok: false, error: e.message }, 500);
+        }
+    }
+
+    // DELETE /api/warnings — 全リセットまたは個別削除
+    if (pathname === "/api/warnings" && method === "DELETE") {
+        const body = await getBody();
+        if (!body.guild || !body.user_id) return resJson({ ok: false, error: "Missing fields" }, 400);
+        if (!await verifyGuild(body.guild)) return resJson({ ok: false, error: "Forbidden" }, 403);
+
+        try {
+            if (body.id) {
+                await dbQuery("DELETE FROM warnings WHERE id=$1 AND guild_id=$2", [body.id, body.guild]);
+            } else {
+                await dbQuery("DELETE FROM warnings WHERE guild_id=$1 AND user_id=$2", [body.guild, body.user_id]);
+            }
+            return resJson({ ok: true });
+        } catch (e) {
+            return resJson({ ok: false, error: e.message }, 500);
+        }
+    }
+
+    // ===== /B-9 =====
 
     res.writeHead(404, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: false, error: "Not Found" }));

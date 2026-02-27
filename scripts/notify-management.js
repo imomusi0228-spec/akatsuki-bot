@@ -9,38 +9,46 @@ async function notify() {
         const logPath = path.join(process.cwd(), "UPDATE_LOG.md");
         const content = await fs.readFile(logPath, "utf-8");
 
-        // 一番上のリリースノートを抽出
-        // format: # Akatsuki Bot v1.2.1 リリースノート ... ---
-        const sections = content.split("---");
-        if (sections.length === 0) {
-            console.error("No release notes found in UPDATE_LOG.md");
-            return;
+        // ## v2.x.x (日付) - タイトル 形式で最新セクションを抽出
+        // ヘッダー行のパターン: ## vX.X.X
+        const sectionRegex = /^(## v(\d+\.\d+\.\d+)[\s\S]*?)(?=\n## v|\n# |$)/m;
+        const match = content.match(sectionRegex);
+
+        if (!match) {
+            console.error("❌ UPDATE_LOG.md に ## vX.X.X 形式のエントリが見つかりませんでした。");
+            process.exit(1);
         }
 
-        const latestSection = sections[0].trim();
-        const titleMatch = latestSection.match(/# (.*?)\n/);
-        const title = titleMatch ? titleMatch[1] : "Akatsuki Bot Update";
+        const latestSection = match[1].trim();
+        const version = match[2]; // "2.9.0"
 
-        // タイトル行を削除して残りをコンテンツに
-        const bodyContent = latestSection.replace(/^# .*?\n/, "").trim();
+        // タイトル行（## v2.9.0 (日付) - タイトル）を抽出
+        const titleLineMatch = latestSection.match(/^## (v[\d.]+ .*?)$/m);
+        const title = titleLineMatch ? titleLineMatch[1] : `v${version}`;
 
-        console.log(`Sending update: ${title}`);
+        // タイトル行を除いた本文
+        const bodyContent = latestSection.replace(/^## .*?\n/, "").trim();
+
+        console.log(`📦 最新バージョン: ${version}`);
+        console.log(`📋 タイトル: ${title}`);
+        console.log("---");
+        console.log(bodyContent.substring(0, 200) + "...");
+        console.log("---");
 
         const managementUrl = process.env.MANAGEMENT_API_URL || "http://localhost:3000";
         const adminToken = process.env.ADMIN_TOKEN;
 
         if (!adminToken) {
-            console.error("ADMIN_TOKEN is not set in .env");
-            return;
+            console.error("❌ .env に ADMIN_TOKEN が設定されていません。");
+            process.exit(1);
         }
 
         const response = await fetch(`${managementUrl}/api/updates/receive`, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                title: title,
+                version,
+                title,
                 content: bodyContent,
                 token: adminToken
             })
@@ -48,12 +56,14 @@ async function notify() {
 
         const result = await response.json();
         if (response.ok) {
-            console.log("✅ Success:", result.message);
+            console.log(`✅ 成功: ${result.message}`);
         } else {
-            console.error("❌ Failed:", result.error || response.statusText);
+            console.error(`❌ 失敗: ${result.error || response.statusText}`);
+            process.exit(1);
         }
     } catch (error) {
-        console.error("🔥 Error:", error.message);
+        console.error("🔥 エラー:", error.message);
+        process.exit(1);
     }
 }
 

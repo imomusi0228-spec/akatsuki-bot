@@ -91,5 +91,29 @@ export default {
         } catch (e) {
             console.error("[EVENT ERROR] GuildMemberAdd:", e.message);
         }
+
+        // A-3: サーバー参加メッセージ
+        try {
+            let settings = cache.getSettings(member.guild.id);
+            if (!settings) {
+                const r = await dbQuery("SELECT * FROM settings WHERE guild_id = $1", [member.guild.id]);
+                settings = r.rows[0] || {};
+                cache.setSettings(member.guild.id, settings);
+            }
+            if (settings.welcome_enabled && settings.welcome_channel_id) {
+                const channel = member.guild.channels.cache.get(settings.welcome_channel_id);
+                if (channel) {
+                    const tmpl = settings.welcome_message || "👋 {user} さん、**{server}** へようこそ！";
+                    const msg = tmpl
+                        .replace(/{user}/g, `<@${member.id}>`)
+                        .replace(/{username}/g, member.user.username)
+                        .replace(/{server}/g, member.guild.name)
+                        .replace(/{count}/g, String(member.guild.memberCount));
+                    await channel.send(msg).catch(() => { });
+                }
+            }
+        } catch (e) {
+            console.error("[A-3 Welcome] Error:", e.message);
+        }
     },
 };

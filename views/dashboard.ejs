@@ -23,6 +23,69 @@
         </div>
     </div>
 
+    <!-- ===== B-6: リアルタイム統計パネル ===== -->
+    <div id="realtime-panel" style="margin-bottom: 15px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-primary);">⚡ リアルタイム</span>
+                <span id="rt-status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #00BA7C; display: inline-block; box-shadow: 0 0 6px #00BA7C; animation: rtPulse 2s infinite;"></span>
+            </div>
+            <span id="rt-last-updated" style="font-size: 11px; color: var(--text-secondary);">更新中...</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px;">
+            <!-- オンライン -->
+            <div class="rt-card" style="background: rgba(0,186,124,0.06); border: 1px solid rgba(0,186,124,0.15); border-radius: 12px; padding: 14px; text-align: center;">
+                <div style="font-size: 22px; margin-bottom: 4px;">🟢</div>
+                <div id="rt-online" style="font-size: 28px; font-weight: 900; color: #00BA7C; line-height: 1;">—</div>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; font-weight: 600;">オンライン</div>
+            </div>
+            <!-- 現在VC中 -->
+            <div class="rt-card" style="background: rgba(29,161,242,0.06); border: 1px solid rgba(29,161,242,0.15); border-radius: 12px; padding: 14px; text-align: center;">
+                <div style="font-size: 22px; margin-bottom: 4px;">🔊</div>
+                <div id="rt-active-vc" style="font-size: 28px; font-weight: 900; color: #1DA1F2; line-height: 1;">—</div>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; font-weight: 600;">現在VC中</div>
+            </div>
+            <!-- 今日のVC参加 -->
+            <div class="rt-card" style="background: rgba(29,161,242,0.04); border: 1px solid rgba(29,161,242,0.1); border-radius: 12px; padding: 14px; text-align: center;">
+                <div style="font-size: 22px; margin-bottom: 4px;">📊</div>
+                <div id="rt-today-vc" style="font-size: 28px; font-weight: 900; color: #1DA1F2; line-height: 1;">—</div>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; font-weight: 600;">今日のVC参加</div>
+            </div>
+            <!-- 今日の新規参加 -->
+            <div class="rt-card" style="background: rgba(255,173,31,0.06); border: 1px solid rgba(255,173,31,0.15); border-radius: 12px; padding: 14px; text-align: center;">
+                <div style="font-size: 22px; margin-bottom: 4px;">👋</div>
+                <div id="rt-today-joins" style="font-size: 28px; font-weight: 900; color: #FFAD1F; line-height: 1;">—</div>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; font-weight: 600;">今日の参加者</div>
+            </div>
+            <!-- 今週NG -->
+            <div class="rt-card" style="background: rgba(244,33,46,0.06); border: 1px solid rgba(244,33,46,0.15); border-radius: 12px; padding: 14px; text-align: center;">
+                <div style="font-size: 22px; margin-bottom: 4px;">🚫</div>
+                <div id="rt-week-ng" style="font-size: 28px; font-weight: 900; color: #F4212E; line-height: 1;">—</div>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; font-weight: 600;">今週NG検知</div>
+            </div>
+            <!-- 今週タイムアウト -->
+            <div class="rt-card" style="background: rgba(244,33,46,0.04); border: 1px solid rgba(244,33,46,0.1); border-radius: 12px; padding: 14px; text-align: center;">
+                <div style="font-size: 22px; margin-bottom: 4px;">⏱️</div>
+                <div id="rt-week-timeout" style="font-size: 28px; font-weight: 900; color: #F4212E; line-height: 1;">—</div>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; font-weight: 600;">今週TO</div>
+            </div>
+        </div>
+    </div>
+    <style>
+        @keyframes rtPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.8); }
+        }
+        .rt-card { transition: transform 0.2s, box-shadow 0.2s; }
+        .rt-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+        .rt-num-flash { animation: rtFlash 0.4s ease; }
+        @keyframes rtFlash {
+            0% { opacity: 0.3; transform: scale(0.9); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+    </style>
+    <!-- ===== /B-6 ===== -->
+
     <div
         style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:8px; margin-bottom:15px; max-width: 1000px; margin-left: auto; margin-right: auto; align-items: stretch;">
         <!-- Chart 1: Growth -->

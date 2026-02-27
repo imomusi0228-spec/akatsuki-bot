@@ -189,7 +189,7 @@ async function loadMasters(gid) {
             const catOpt = '<option value="">' + (t('none') || 'なし') + '</option>' +
                 categories.map(c => `<option value="${c.id}">📁 ${c.name}</option>`).join('');
 
-            const ids = ['logCh', 'ngLogCh', 'reportCh', 'vcReportCh', 'aiAdviceCh', 'aiInsightCh', 'aiPredictCh', 'brChannel', 'introCh', 'ticketLogCh', 'antiraidHoneypotChannel', 'autoSlowmodeChannels'];
+            const ids = ['logCh', 'ngLogCh', 'reportCh', 'vcReportCh', 'aiAdviceCh', 'aiInsightCh', 'aiPredictCh', 'brChannel', 'introCh', 'ticketLogCh', 'antiraidHoneypotChannel', 'autoSlowmodeChannels', 'levelupCh', 'welcomeCh', 'farewellCh', 'modLogCh', 'updateAnnounceCh'];
             ids.forEach(id => {
                 const el = $(id);
                 if (el) {
@@ -366,6 +366,57 @@ async function initDashboard() {
             monInput.onchange = window.__pageReload;
         }
         window.__pageReload();
+
+        // ===== B-6: リアルタイム統計ポーリング =====
+        let _rtPollTimer = null;
+        const setRtNum = (id, val) => {
+            const el = $(id);
+            if (!el) return;
+            if (el.textContent !== String(val)) {
+                el.textContent = val;
+                el.classList.remove("rt-num-flash");
+                void el.offsetWidth; // reflow
+                el.classList.add("rt-num-flash");
+            }
+        };
+
+        const fetchRealtime = async () => {
+            const gid = $("globalGuildSelect")?.value;
+            if (!gid) return;
+            const res = await api(`/api/realtime-stats?guild=${gid}`);
+            if (res.ok && res.realtime) {
+                const rt = res.realtime;
+                setRtNum("rt-online", rt.online_count);
+                setRtNum("rt-active-vc", rt.active_vc_sessions);
+                setRtNum("rt-today-vc", rt.today_vc_users);
+                setRtNum("rt-today-joins", rt.today_joins);
+                setRtNum("rt-week-ng", rt.week_ng);
+                setRtNum("rt-week-timeout", rt.week_timeouts);
+                const updEl = $("rt-last-updated");
+                if (updEl) updEl.textContent = "最終更新: " + new Date(rt.fetched_at).toLocaleTimeString("ja-JP");
+                const dot = $("rt-status-dot");
+                if (dot) { dot.style.background = "#00BA7C"; dot.style.boxShadow = "0 0 6px #00BA7C"; }
+            } else {
+                const dot = $("rt-status-dot");
+                if (dot) { dot.style.background = "#F4212E"; dot.style.boxShadow = "0 0 6px #F4212E"; }
+            }
+        };
+
+        const startRtPoll = () => {
+            fetchRealtime();
+            if (_rtPollTimer) clearInterval(_rtPollTimer);
+            _rtPollTimer = setInterval(fetchRealtime, 30000);
+        };
+
+        startRtPoll();
+
+        // サーバー切り替え時にポーリングをリセット
+        const origReload = window.__pageReload;
+        window.__pageReload = async () => {
+            await origReload();
+            startRtPoll();
+        };
+        // ===== /B-6 =====
     } catch (e) {
         console.error("Init Error:", e);
     }
@@ -422,6 +473,39 @@ async function initSettings() {
                 if ($("vcReportCh")) $("vcReportCh").value = s.vc_report_channel_id || "";
                 if ($("vcReportInterval")) $("vcReportInterval").value = s.vc_report_interval || "weekly";
                 if ($("autoVcCategory")) $("autoVcCategory").value = s.auto_vc_creator_id || "";
+
+                // B-9 Warning auto-action
+                if ($("autoActionOnWarns")) $("autoActionOnWarns").checked = !!s.auto_action_on_warns;
+                if ($("warnActionThreshold")) $("warnActionThreshold").value = s.warn_action_threshold ?? 3;
+                if ($("warnAction")) $("warnAction").value = s.warn_action || "timeout";
+
+                // A-1 / A-2
+                if ($("leaderboardEnabled")) $("leaderboardEnabled").checked = s.leaderboard_enabled !== false;
+                if ($("levelupEnabled")) $("levelupEnabled").checked = !!s.levelup_enabled;
+                if ($("levelupCh")) $("levelupCh").value = s.levelup_channel_id || "";
+
+                // A-3 Welcome/Farewell
+                if ($("welcomeEnabled")) $("welcomeEnabled").checked = !!s.welcome_enabled;
+                if ($("welcomeCh")) $("welcomeCh").value = s.welcome_channel_id || "";
+                if ($("welcomeMsg")) $("welcomeMsg").value = s.welcome_message || "";
+                if ($("farewellEnabled")) $("farewellEnabled").checked = !!s.farewell_enabled;
+                if ($("farewellCh")) $("farewellCh").value = s.farewell_channel_id || "";
+                if ($("farewellMsg")) $("farewellMsg").value = s.farewell_message || "";
+
+                // B-8 ModLog
+                if ($("modLogCh")) $("modLogCh").value = s.mod_log_channel_id || "";
+                const mlFlags = s.mod_log_flags || {};
+                if ($("mlBan")) $("mlBan").checked = mlFlags.ban !== false;
+                if ($("mlKick")) $("mlKick").checked = mlFlags.kick !== false;
+                if ($("mlRoleAdd")) $("mlRoleAdd").checked = !!mlFlags.role_add;
+                if ($("mlRoleRemove")) $("mlRoleRemove").checked = !!mlFlags.role_remove;
+                if ($("mlChCreate")) $("mlChCreate").checked = !!mlFlags.channel_create;
+                if ($("mlChDelete")) $("mlChDelete").checked = !!mlFlags.channel_delete;
+                if ($("mlMsgEdit")) $("mlMsgEdit").checked = !!mlFlags.message_edit;
+                if ($("mlMsgDelete")) $("mlMsgDelete").checked = !!mlFlags.message_delete;
+
+                // Update Announce
+                if ($("updateAnnounceCh")) $("updateAnnounceCh").value = s.update_announce_channel_id || "";
 
                 // Auto Slowmode (v2.8.2)
                 const slowChs = s.auto_slowmode_channels || [];
@@ -649,7 +733,35 @@ async function initSettings() {
             vc_report_interval: $("vcReportInterval")?.value || "weekly",
             auto_vc_creator_id: $("autoVcCategory")?.value || null,
             intro_reminder_hours: parseInt($("introReminderHours")?.value || 24),
-            auto_slowmode_channels: $("autoSlowmodeEnabled")?.checked ? Array.from($("autoSlowmodeChannels")?.selectedOptions || []).map(o => o.value) : []
+            auto_slowmode_channels: $("autoSlowmodeEnabled")?.checked ? Array.from($("autoSlowmodeChannels")?.selectedOptions || []).map(o => o.value) : [],
+            // B-9 Warning auto-action
+            auto_action_on_warns: $("autoActionOnWarns")?.checked || false,
+            warn_action_threshold: parseInt($("warnActionThreshold")?.value || 3),
+            warn_action: $("warnAction")?.value || "timeout",
+            // A-1 / A-2
+            leaderboard_enabled: $("leaderboardEnabled")?.checked !== false,
+            levelup_enabled: $("levelupEnabled")?.checked || false,
+            levelup_channel_id: $("levelupCh")?.value || "",
+            // A-3 Welcome/Farewell
+            welcome_enabled: $("welcomeEnabled")?.checked || false,
+            welcome_channel_id: $("welcomeCh")?.value || "",
+            welcome_message: $("welcomeMsg")?.value || "",
+            farewell_enabled: $("farewellEnabled")?.checked || false,
+            farewell_channel_id: $("farewellCh")?.value || "",
+            farewell_message: $("farewellMsg")?.value || "",
+            // B-8 ModLog
+            mod_log_channel_id: $("modLogCh")?.value || "",
+            mod_log_flags: {
+                ban: $("mlBan")?.checked || false,
+                kick: $("mlKick")?.checked || false,
+                role_add: $("mlRoleAdd")?.checked || false,
+                role_remove: $("mlRoleRemove")?.checked || false,
+                channel_create: $("mlChCreate")?.checked || false,
+                channel_delete: $("mlChDelete")?.checked || false,
+                message_edit: $("mlMsgEdit")?.checked || false,
+                message_delete: $("mlMsgDelete")?.checked || false
+            },
+            update_announce_channel_id: $("updateAnnounceCh")?.value || ""
         };
         const res = await api("/api/settings/update", body);
         if (res.ok) alert(t("save_success")); else alert("Error: " + res.error);

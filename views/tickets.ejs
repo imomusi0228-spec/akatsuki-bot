@@ -46,6 +46,29 @@
         </div>
     </div>
 
+    <!-- B-10: チケットカテゴリ管理 -->
+    <div class="setting-section"
+        style="margin-bottom:24px; background:rgba(255,255,255,0.02); padding:20px; border-radius:8px; border:1px solid var(--border-color);">
+        <h4
+            style="margin-top:0; margin-bottom:15px; font-size:14px; color:var(--text-primary); border-left: 4px solid #FFAD1F; padding-left: 10px;">
+            🏷️ チケットカテゴリ設定（B-10）
+        </h4>
+        <p class="muted" style="font-size:12px; margin-bottom:15px;">
+            チケット作成時に表示するカテゴリを設定します。ユーザーはチケット作成前に相談内容のカテゴリを選択します。
+        </p>
+        <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap: wrap;">
+            <input id="newCategoryEmoji" type="text" placeholder="🎫" style="width:60px; text-align:center;">
+            <input id="newCategoryName" type="text" placeholder="カテゴリ名（例: 不具合報告）" style="flex:1; min-width:180px;">
+            <input id="newCategoryDesc" type="text" placeholder="説明（任意）" style="flex:2; min-width:200px;">
+            <button onclick="addTicketCategory()" class="btn btn-primary"
+                style="padding:6px 16px; white-space:nowrap;">＋ 追加</button>
+        </div>
+        <div id="categoryList" style="display:flex; flex-direction:column; gap:8px;">
+            <div class="muted" style="text-align:center; padding:15px;">読み込み中...</div>
+        </div>
+    </div>
+    <!-- /B-10 -->
+
     <div style="overflow-x: auto;">
         <table style="width:100%; min-width:800px;">
             <thead>
@@ -172,12 +195,85 @@
 
     async function initTicketsPage() {
         loadTickets();
+        loadCategories();
 
         document.getElementById("refreshTickets")
             .addEventListener("click", loadTickets);
 
         document.getElementById("statusFilter")
             .addEventListener("change", loadTickets);
+
+        // B-10: チケット設定保存ボタン
+        const saveBtn = document.getElementById("saveTicketSettings");
+        if (saveBtn) {
+            saveBtn.onclick = async () => {
+                const gid = getGuildId();
+                if (!gid) return;
+                const body = {
+                    guild: gid,
+                    ticket_staff_role_id: document.getElementById("ticketStaffRole")?.value || "",
+                    ticket_log_channel_id: document.getElementById("ticketLogCh")?.value || "",
+                    ticket_welcome_msg: document.getElementById("ticketWelcomeMsg")?.value || ""
+                };
+                const r = await api("/api/settings/update", body);
+                const st = document.getElementById("saveStatus");
+                if (st) st.textContent = r.ok ? "✅ 保存しました" : "❌ " + r.error;
+                setTimeout(() => { if (st) st.textContent = ""; }, 3000);
+            };
+        }
+    }
+
+    // B-10: カテゴリ一覧読み込み
+    async function loadCategories() {
+        const gid = getGuildId();
+        const list = document.getElementById("categoryList");
+        if (!gid || !list) return;
+        const r = await api(`/api/ticket-categories?guild=${gid}`);
+        if (!r.ok) { list.innerHTML = '<div class="muted" style="text-align:center; padding:15px;">読み込み失敗</div>'; return; }
+        if (r.categories.length === 0) {
+            list.innerHTML = '<div class="muted" style="text-align:center; padding:15px;">カテゴリが登録されていません。追加してください。</div>';
+        } else {
+            list.innerHTML = r.categories.map(c => `
+                <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid var(--border-color);">
+                    <span style="font-size:22px;">${escapeHTML(c.emoji || '🎫')}</span>
+                    <div style="flex:1;">
+                        <div style="font-weight:600; font-size:13px;">${escapeHTML(c.name)}</div>
+                        <div class="muted" style="font-size:11px;">${escapeHTML(c.description || '')}</div>
+                    </div>
+                    <button onclick="deleteCategory(${c.id})" class="btn" style="padding:3px 10px; font-size:11px; background:rgba(244,33,46,0.1); color:#f4212e; border-color:rgba(244,33,46,0.3);">削除</button>
+                </div>
+            `).join('');
+        }
+    }
+
+    // B-10: カテゴリ追加
+    async function addTicketCategory() {
+        const gid = getGuildId();
+        const name = document.getElementById("newCategoryName")?.value?.trim();
+        if (!gid || !name) return alert("カテゴリ名を入力してください。");
+        const r = await api("/api/ticket-categories", {
+            guild: gid,
+            name,
+            emoji: document.getElementById("newCategoryEmoji")?.value?.trim() || "🎫",
+            description: document.getElementById("newCategoryDesc")?.value?.trim() || ""
+        }, "POST");
+        if (r.ok) {
+            document.getElementById("newCategoryName").value = "";
+            document.getElementById("newCategoryDesc").value = "";
+            loadCategories();
+        } else alert("Error: " + r.error);
+    }
+
+    // B-10: カテゴリ削除
+    async function deleteCategory(id) {
+        const gid = getGuildId();
+        if (!confirm("このカテゴリを削除しますか？")) return;
+        const r = await api("/api/ticket-categories", { guild: gid, id }, "DELETE");
+        if (r.ok) loadCategories(); else alert("Error: " + r.error);
+    }
+
+    function getGuildId() {
+        return document.getElementById("globalGuildSelect")?.value || null;
     }
 
     async function loadTickets() {

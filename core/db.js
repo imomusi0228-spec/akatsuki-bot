@@ -353,7 +353,45 @@ export async function initDb() {
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 updated_at TIMESTAMPTZ DEFAULT NOW()
             );`,
-            `CREATE INDEX IF NOT EXISTS idx_br_guild ON button_roles(guild_id);`
+            `CREATE INDEX IF NOT EXISTS idx_br_guild ON button_roles(guild_id);`,
+
+            // v2.9.0: B-9 Warning management enhancement
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS auto_action_on_warns BOOLEAN DEFAULT FALSE;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS warn_action_threshold INTEGER DEFAULT 3;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS warn_action TEXT DEFAULT 'timeout';`,
+
+            // v2.9.0: A-1 XP Leaderboard / A-2 Level-up Notifications
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS leaderboard_enabled BOOLEAN DEFAULT TRUE;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS levelup_enabled BOOLEAN DEFAULT FALSE;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS levelup_channel_id TEXT;`,
+
+            // v2.9.0: B-10 Ticket Categories
+            `CREATE TABLE IF NOT EXISTS ticket_categories (
+                id SERIAL PRIMARY KEY,
+                guild_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                emoji TEXT DEFAULT '🎫',
+                description TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );`,
+            `CREATE INDEX IF NOT EXISTS idx_tcategory_guild ON ticket_categories(guild_id);`,
+            `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS category TEXT;`,
+
+            // v2.9.0: A-3 Welcome/Farewell Messages
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS welcome_channel_id TEXT;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS welcome_message TEXT;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS farewell_channel_id TEXT;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS farewell_message TEXT;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS welcome_enabled BOOLEAN DEFAULT FALSE;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS farewell_enabled BOOLEAN DEFAULT FALSE;`,
+
+            // v2.9.0: B-8 Moderation Log Enhancement
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS mod_log_channel_id TEXT;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS mod_log_flags JSONB DEFAULT '{"ban":true,"kick":true,"role_add":false,"role_remove":false,"channel_create":false,"channel_delete":false,"message_edit":false,"message_delete":false}';`,
+
+            // v2.9.1: アップデート通知機能
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS update_announce_channel_id TEXT;`,
+            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS last_notified_version TEXT;`
 
         ];
 

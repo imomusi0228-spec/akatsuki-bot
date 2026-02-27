@@ -59,20 +59,32 @@ export default {
                         cache.setSettings(message.guild.id, settings);
                     }
 
-                    const embedColor = settings.color_level ? parseInt(settings.color_level.replace('#', ''), 16) : 0xFFD700;
-                    const footerText = settings.branding_footer_text || "Akatsuki Leveling System";
+                    // A-2: levelup_enabled でON/OFFを制御
+                    if (settings.levelup_enabled === false) {
+                        // レベルアップ通知が無効の場合はスキップ
+                    } else {
+                        const embedColor = settings.color_level ? parseInt(settings.color_level.replace('#', ''), 16) : 0xFFD700;
+                        const footerText = settings.branding_footer_text || "Akatsuki Leveling System";
 
-                    const embed = new EmbedBuilder()
-                        .setTitle("🎊 Level Up!")
-                        .setDescription(`おめでとうございます <@${message.author.id}> さん！\nレベルが **Level ${currentLevel}** に到達しました！`)
-                        .setColor(embedColor)
-                        .setThumbnail(message.author.displayAvatarURL())
-                        .setFooter({ text: footerText })
-                        .setTimestamp();
+                        const embed = new EmbedBuilder()
+                            .setTitle("🎊 Level Up!")
+                            .setDescription(`おめでとうございます <@${message.author.id}> さん！\nレベルが **Level ${currentLevel}** に到達しました！`)
+                            .setColor(embedColor)
+                            .setThumbnail(message.author.displayAvatarURL())
+                            .setFooter({ text: footerText })
+                            .setTimestamp();
 
-                    const systemChannel = message.guild.systemChannel || (await message.guild.channels.fetch().then(cs => cs.find(c => c.type === ChannelType.GuildText)));
-                    if (systemChannel) {
-                        await systemChannel.send({ embeds: [embed] });
+                        // A-2: levelup_channel_id が設定されていればそこに送信、なければ発言チャンネル
+                        let targetChannel = null;
+                        if (settings.levelup_channel_id) {
+                            targetChannel = message.guild.channels.cache.get(settings.levelup_channel_id) || null;
+                        }
+                        if (!targetChannel) {
+                            targetChannel = message.channel;
+                        }
+                        if (targetChannel) {
+                            await targetChannel.send({ embeds: [embed] }).catch(() => { });
+                        }
                     }
                 } catch (e) { }
             }
