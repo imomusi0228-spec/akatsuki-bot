@@ -273,8 +273,9 @@
         window.escapeHTML = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
         window.setLang = (l) => { document.cookie = "lang=" + l + ";path=/;max-age=31536000;SameSite=Lax"; location.reload(); };
         window.t = (key, params = {}) => {
-            const dict = (window.DICTIONARY && window.DICTIONARY[window.lang]) || (window.DICTIONARY && window.DICTIONARY['ja']) || {};
-            let text = dict[key] || key;
+            const primary = (window.DICTIONARY && window.DICTIONARY[window.lang]) || {};
+            const fallback = (window.DICTIONARY && window.DICTIONARY['ja']) || {};
+            let text = primary[key] !== undefined ? primary[key] : (fallback[key] !== undefined ? fallback[key] : key);
             if (params) {
                 Object.keys(params).forEach(p => { text = text.replace('{' + p + '}', params[p]); });
             }
