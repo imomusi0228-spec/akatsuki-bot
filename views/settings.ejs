@@ -111,7 +111,8 @@
                             <input type="checkbox" id="ngWarningEnabled" checked
                                 style="width:16px; height:16px; margin-right:8px;">
                             <span>
-                                <%= t("ng_warning_enabled") %>
+                                <%= t("ng_warning_enabled") %><span class="help-tip"
+                                        data-tip="<%= t('help_warn_mgmt') %>">?</span>
                             </span>
                         </label>
                     </div>
@@ -181,7 +182,8 @@
         <!-- B-9. 手動警告管理 -->
         <div class="accordion-item" id="sec-warn">
             <div class="accordion-header" onclick="toggleAccordion('sec-warn')">
-                <span>⚠️ <%= t("warn_mgmt_title") %></span>
+                <span>⚠️ <%= t("warn_mgmt_title") %><span class="help-tip"
+                            data-tip="<%= t('help_warn_mgmt') %>">?</span></span>
                 <span>▼</span>
             </div>
             <div class="accordion-content">
@@ -232,7 +234,8 @@
         <div class="accordion-item" id="sec-level">
             <div class="accordion-header" onclick="toggleAccordion('sec-level')">
                 <span>
-                    <%= t("level_stats_title") %>
+                    🏆 <%= t("level_stats_title") %><span class="help-tip"
+                            data-tip="<%= t('help_level_stats') %>">?</span>
                 </span>
                 <span>▼</span>
             </div>
@@ -273,7 +276,8 @@
         <div class="accordion-item" id="sec-welcome">
             <div class="accordion-header" onclick="toggleAccordion('sec-welcome')">
                 <span>
-                    <%= t("welcome_custom_title") %>
+                    👋 <%= t("welcome_custom_title") %><span class="help-tip"
+                            data-tip="<%= t('help_welcome_msg') %>">?</span>
                 </span>
                 <span>▼</span>
             </div>
@@ -344,7 +348,7 @@
         <div class="accordion-item" id="sec-modlog">
             <div class="accordion-header" onclick="toggleAccordion('sec-modlog')">
                 <span>
-                    <%= t("mod_log_title") %>
+                    🛡️ <%= t("mod_log_title") %><span class="help-tip" data-tip="<%= t('help_mod_log') %>">?</span>
                 </span>
                 <span>▼</span>
             </div>
@@ -504,7 +508,8 @@
         <!-- 5. Channels -->
         <div class="accordion-item" id="sec-ch">
             <div class="accordion-header" onclick="toggleAccordion('sec-ch')">
-                <span>📢 <%= t("log_settings") %></span>
+                <span>📢 <%= t("log_settings") %><span class="help-tip"
+                            data-tip="<%= t('help_log_settings') %>">?</span></span>
                 <span>▼</span>
             </div>
             <div class="accordion-content">
@@ -548,7 +553,7 @@
         <div class="accordion-item" id="sec-vc">
             <div class="accordion-header" onclick="toggleAccordion('sec-vc')">
                 <span>
-                    <%= t("vc_advanced_title") %>
+                    🎙️ <%= t("vc_advanced_title") %><span class="help-tip" data-tip="<%= t('help_vc_role') %>">?</span>
                 </span>
                 <span>▼</span>
             </div>
@@ -625,7 +630,7 @@
         <div class="accordion-item" id="sec-br">
             <div class="accordion-header" onclick="toggleAccordion('sec-br')">
                 <span>
-                    <%= t("br_mgmt_title") %>
+                    🔘 <%= t("br_mgmt_title") %><span class="help-tip" data-tip="<%= t('help_br_mgmt') %>">?</span>
                 </span>
                 <span>▼</span>
             </div>

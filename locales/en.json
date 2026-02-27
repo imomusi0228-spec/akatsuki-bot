@@ -383,5 +383,12 @@
     "br_list_title": "Created Panels",
     "branding": "Branding",
     "ticket_mgmt": "Tickets",
-    "wisdom": "Insights"
+    "wisdom": "Insights",
+    "help_mod_log": "Detailed logging of moderation events like BANs and message deletions.",
+    "help_welcome_msg": "Configure custom messages sent when members join or leave the server.",
+    "help_warn_mgmt": "Configure manual warnings and automated actions when limits are reached.",
+    "help_level_stats": "XP (Experience Points) system and level-up notification settings.",
+    "help_log_settings": "Configure destination for system logs and NG word detections.",
+    "help_br_mgmt": "Create and manage panels that assign roles via buttons.",
+    "vc_role_rules_title": "Aura System (VC Auto-Roles)"
 }
