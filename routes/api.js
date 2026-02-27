@@ -396,7 +396,7 @@ export async function handleApiRoute(req, res, pathname, url) {
             // Member join/leave trends per day
             const growthRes = await dbQuery(`
                 SELECT 
-                    DATE(created_at) as date,
+                    DATE(created_at AT TIME ZONE 'Asia/Tokyo') as date,
                     event_type,
                     COUNT(*) as count
                 FROM member_events
