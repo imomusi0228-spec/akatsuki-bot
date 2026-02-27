@@ -63,7 +63,9 @@ export async function handleAuthRoute(req, res, pathname, url) {
         const storedState = cookies.oauth_state;
         console.log(`[AUTH DEBUG] /callback: ReceivedState=${state}, StoredState=${storedState}, StatesHas=${states.has(state)}`);
 
-        if (!state || !storedState || state !== storedState || !states.has(state)) {
+        // Resilience: We prioritize cookie-to-URL match. In-memory states Map might be cleared on restart,
+        // but the cookie (HttpOnly/Secure/Lax) still provides CSRF protection.
+        if (!state || !storedState || state !== storedState) {
             console.error(`[AUTH DEBUG] /callback: State mismatch or missing!`);
             res.writeHead(400, { "Content-Type": "text/plain" });
             res.end("Invalid State (CSRF check failed). Try /login again.");
