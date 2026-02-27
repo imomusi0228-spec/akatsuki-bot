@@ -25,25 +25,30 @@ export async function runIntroReminder() {
             const reminderHours = settings.intro_reminder_hours || 24;
             const roleId = settings.self_intro_role_id;
 
-            // intro_channel でメッセージを送っていない（= roleがない）メンバーのうち
-            // 参加から reminderHours 時間以上経過したもの
-            const members = await guild.members.fetch();
-            for (const [memberId, member] of members) {
-                if (member.user.bot) continue;
-                if (member.roles.cache.has(roleId)) continue; // 既に紹介済み
+            // 1. Get recent joins from DB (last 7 days to avoid checking ancient users)
+            const recentRes = await dbQuery(
+                `SELECT user_id, created_at FROM member_events 
+                 WHERE guild_id = $1 AND event_type = 'join' 
+                 AND created_at < NOW() - ($2 || ' hours')::INTERVAL
+                 AND created_at > NOW() - INTERVAL '7 days'`,
+                [settings.guild_id, reminderHours]
+            );
 
-                const joinedAt = member.joinedAt;
-                if (!joinedAt) continue;
+            for (const row of recentRes.rows) {
+                const memberId = row.user_id;
 
-                const hoursSinceJoin = (Date.now() - joinedAt.getTime()) / (1000 * 60 * 60);
-                if (hoursSinceJoin < reminderHours) continue;
-
-                // DBで既にリマインダー送信済みかチェック
+                // 2. Check if already reminded
                 const alreadySent = await dbQuery(
                     "SELECT 1 FROM member_stats WHERE guild_id = $1 AND user_id = $2 AND intro_reminded = TRUE",
                     [settings.guild_id, memberId]
                 );
                 if (alreadySent.rows.length > 0) continue;
+
+                const member = await guild.members.fetch(memberId).catch(() => null);
+                if (!member || member.user.bot) continue;
+
+                // 3. Check role
+                if (member.roles.cache.has(roleId)) continue;
 
                 // DM送信
                 try {
@@ -58,7 +63,9 @@ export async function runIntroReminder() {
 
                 // 送信済みフラグを更新
                 await dbQuery(
-                    "INSERT INTO member_stats (guild_id, user_id, intro_reminded) VALUES ($1, $2, TRUE) ON CONFLICT (guild_id, user_id) DO UPDATE SET intro_reminded = TRUE",
+                    `INSERT INTO member_stats (guild_id, user_id, intro_reminded, last_activity_at) 
+                     VALUES ($1, $2, TRUE, NOW()) 
+                     ON CONFLICT (guild_id, user_id) DO UPDATE SET intro_reminded = TRUE`,
                     [settings.guild_id, memberId]
                 );
             }

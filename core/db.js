@@ -25,380 +25,74 @@ export async function initDb() {
         console.log(`📡 Database attempt (manual parse): ${ENV.DATABASE_URL.substring(0, 15)}...`);
     }
 
+    const coreTables = [
+        `CREATE TABLE IF NOT EXISTS settings (
+            guild_id TEXT PRIMARY KEY,
+            log_channel_id TEXT,
+            updated_at TIMESTAMPTZ DEFAULT NOW(),
+            -- ... other columns handled by migrations for safety
+            log_channel_name TEXT
+        );`,
+        `CREATE TABLE IF NOT EXISTS subscriptions (
+            guild_id TEXT PRIMARY KEY,
+            tier INTEGER DEFAULT 0,
+            valid_until TIMESTAMPTZ,
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );`,
+        `CREATE TABLE IF NOT EXISTS member_stats (
+            guild_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            total_vc_minutes INTEGER DEFAULT 0,
+            last_activity_at TIMESTAMPTZ DEFAULT NOW(),
+            PRIMARY KEY (guild_id, user_id)
+        );`
+    ];
+
+    const featureTables = [
+        `CREATE TABLE IF NOT EXISTS ng_words (id SERIAL PRIMARY KEY, guild_id TEXT NOT NULL, word TEXT NOT NULL, kind TEXT DEFAULT 'exact', created_at TIMESTAMPTZ DEFAULT NOW());`,
+        `CREATE TABLE IF NOT EXISTS vc_sessions (id SERIAL PRIMARY KEY, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, join_time TIMESTAMPTZ NOT NULL, leave_time TIMESTAMPTZ, duration_seconds INTEGER);`,
+        `CREATE TABLE IF NOT EXISTS ng_logs (id SERIAL PRIMARY KEY, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, word TEXT, created_at TIMESTAMPTZ DEFAULT NOW());`,
+        `CREATE TABLE IF NOT EXISTS warnings (id SERIAL PRIMARY KEY, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, reason TEXT, issued_by TEXT, created_at TIMESTAMPTZ DEFAULT NOW());`,
+        `CREATE TABLE IF NOT EXISTS tickets (id SERIAL PRIMARY KEY, guild_id TEXT NOT NULL, channel_id TEXT NOT NULL, user_id TEXT NOT NULL, status TEXT DEFAULT 'open', created_at TIMESTAMPTZ DEFAULT NOW());`,
+        `CREATE TABLE IF NOT EXISTS member_events (id SERIAL PRIMARY KEY, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, event_type TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW());`
+    ];
+
+    const migrations = [
+        // Column normalization
+        `DO $$ BEGIN 
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subscriptions' AND column_name='server_id') THEN
+                ALTER TABLE subscriptions RENAME COLUMN server_id TO guild_id;
+            END IF;
+         END $$;`,
+        `ALTER TABLE settings ADD COLUMN IF NOT EXISTS autorole_id TEXT;`,
+        `ALTER TABLE settings ADD COLUMN IF NOT EXISTS autorole_enabled BOOLEAN DEFAULT FALSE;`,
+        `ALTER TABLE settings ADD COLUMN IF NOT EXISTS antiraid_enabled BOOLEAN DEFAULT FALSE;`,
+        `ALTER TABLE settings ADD COLUMN IF NOT EXISTS self_intro_enabled BOOLEAN DEFAULT FALSE;`,
+        `ALTER TABLE settings ADD COLUMN IF NOT EXISTS mod_log_channel_id TEXT;`,
+        `ALTER TABLE settings ADD COLUMN IF NOT EXISTS mod_log_flags JSONB DEFAULT '{"ban":true,"kick":true}';`,
+        `ALTER TABLE member_stats ADD COLUMN IF NOT EXISTS xp INTEGER DEFAULT 0;`,
+        `ALTER TABLE member_stats ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1;`,
+        `ALTER TABLE member_stats ADD COLUMN IF NOT EXISTS message_count INTEGER DEFAULT 0;`,
+        `ALTER TABLE member_stats ADD COLUMN IF NOT EXISTS intro_reminded BOOLEAN DEFAULT FALSE;`,
+        `ALTER TABLE settings ADD COLUMN IF NOT EXISTS update_announce_channel_id TEXT;`,
+        `ALTER TABLE settings ADD COLUMN IF NOT EXISTS last_notified_version TEXT;`,
+        `ALTER TABLE settings ADD COLUMN IF NOT EXISTS leaderboard_enabled BOOLEAN DEFAULT TRUE;`
+    ];
+
+    const indexes = [
+        `CREATE INDEX IF NOT EXISTS idx_vc_sessions_guild_jointime ON vc_sessions(guild_id, join_time DESC);`,
+        `CREATE INDEX IF NOT EXISTS idx_member_stats_guild_xp ON member_stats(guild_id, xp DESC);`,
+        `CREATE INDEX IF NOT EXISTS idx_member_events_guild_type ON member_events(guild_id, event_type, created_at DESC);`,
+        `CREATE INDEX IF NOT EXISTS idx_ng_logs_guild_created ON ng_logs(guild_id, created_at DESC);`,
+        `CREATE INDEX IF NOT EXISTS idx_subscriptions_guild_id ON subscriptions(guild_id);`
+    ];
+
     try {
-        const queries = [
-            `CREATE TABLE IF NOT EXISTS settings (
-                guild_id TEXT PRIMARY KEY,
-                log_channel_id TEXT,
-                log_channel_name TEXT,
-                ng_threshold INTEGER DEFAULT 3,
-                timeout_minutes INTEGER DEFAULT 10,
-                autorole_id TEXT,
-                autorole_enabled BOOLEAN DEFAULT FALSE,
-                updated_at TIMESTAMPTZ DEFAULT NOW()
-            );`,
-            `CREATE TABLE IF NOT EXISTS ng_words (
-                id SERIAL PRIMARY KEY,
-                guild_id TEXT NOT NULL,
-                word TEXT NOT NULL,
-                kind TEXT DEFAULT 'exact',
-                created_by TEXT,
-                created_at TIMESTAMPTZ DEFAULT NOW()
-            );`,
-            `CREATE TABLE IF NOT EXISTS vc_sessions (
-                id SERIAL PRIMARY KEY,
-                guild_id TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                join_time TIMESTAMPTZ NOT NULL,
-                leave_time TIMESTAMPTZ,
-                duration_seconds INTEGER
-            );`,
-            `CREATE TABLE IF NOT EXISTS subscriptions (
-                guild_id TEXT PRIMARY KEY,
-                tier INTEGER DEFAULT 0,
-                valid_until TIMESTAMPTZ,
-                updated_at TIMESTAMPTZ DEFAULT NOW()
-            );`,
-            `DO $$ 
-            BEGIN 
-                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subscriptions' AND column_name='server_id') THEN
-                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subscriptions' AND column_name='guild_id') THEN
-                        ALTER TABLE subscriptions DROP COLUMN server_id;
-                    ELSE
-                        ALTER TABLE subscriptions RENAME COLUMN server_id TO guild_id;
-                    END IF;
-                END IF;
-
-                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subscriptions' AND column_name='plan_tier') THEN
-                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subscriptions' AND column_name='tier') THEN
-                        ALTER TABLE subscriptions DROP COLUMN plan_tier;
-                    ELSE
-                        ALTER TABLE subscriptions RENAME COLUMN plan_tier TO tier;
-                    END IF;
-                END IF;
-            END $$;`,
-            `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS guild_id TEXT;`,
-            `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS tier INTEGER DEFAULT 0;`,
-            `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS valid_until TIMESTAMPTZ;`,
-            `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS user_id VARCHAR(64);`,
-            `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();`,
-
-            `DO $$ 
-            BEGIN 
-                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vc_sessions' AND column_name='join_ts') THEN
-                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vc_sessions' AND column_name='join_time') THEN
-                        ALTER TABLE vc_sessions DROP COLUMN join_ts;
-                    ELSE
-                        ALTER TABLE vc_sessions RENAME COLUMN join_ts TO join_time;
-                    END IF;
-                END IF;
-
-                IF EXISTS (
-                    SELECT 1 
-                    FROM information_schema.table_constraints tc 
-                    JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name 
-                    WHERE tc.table_name = 'vc_sessions' 
-                    AND tc.constraint_type = 'PRIMARY KEY' 
-                    AND kcu.column_name != 'id'
-                ) THEN
-                    ALTER TABLE vc_sessions DROP CONSTRAINT vc_sessions_pkey;
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vc_sessions' AND column_name='id') THEN
-                        ALTER TABLE vc_sessions ADD COLUMN id SERIAL;
-                    END IF;
-                    ALTER TABLE vc_sessions ADD PRIMARY KEY (id);
-                ELSIF NOT EXISTS (
-                    SELECT 1 FROM information_schema.table_constraints 
-                    WHERE table_name = 'vc_sessions' AND constraint_type = 'PRIMARY KEY'
-                ) THEN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vc_sessions' AND column_name='id') THEN
-                        ALTER TABLE vc_sessions ADD COLUMN id SERIAL;
-                    END IF;
-                    ALTER TABLE vc_sessions ADD PRIMARY KEY (id);
-                END IF;
-            END $$;`,
-
-            `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS guild_id TEXT;`,
-            `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS user_id TEXT;`,
-            `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS channel_id TEXT;`,
-            `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS join_time TIMESTAMPTZ;`,
-            `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS leave_time TIMESTAMPTZ;`,
-            `ALTER TABLE vc_sessions ADD COLUMN IF NOT EXISTS duration_seconds INTEGER;`,
-
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS guild_id TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS log_channel_name TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS autorole_id TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS autorole_enabled BOOLEAN DEFAULT FALSE;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();`,
-
-            `ALTER TABLE ng_words ADD COLUMN IF NOT EXISTS guild_id TEXT;`,
-            `ALTER TABLE ng_words ADD COLUMN IF NOT EXISTS created_by TEXT;`,
-            `ALTER TABLE ng_words ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();`,
-            `ALTER TABLE ng_words ADD COLUMN IF NOT EXISTS kind TEXT DEFAULT 'exact';`,
-
-            `DO $$ 
-            BEGIN 
-                -- 1. Check if 'id' column exists
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='ng_words' AND column_name='id') THEN
-                    ALTER TABLE ng_words ADD COLUMN id SERIAL;
-                END IF;
-
-                -- 2. Check for existing Primary Key constraints (and drop if not on 'id')
-                IF EXISTS (
-                    SELECT 1 
-                    FROM information_schema.table_constraints tc 
-                    JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name 
-                    WHERE tc.table_name = 'ng_words' 
-                    AND tc.constraint_type = 'PRIMARY KEY' 
-                    AND kcu.column_name != 'id'
-                ) THEN
-                    -- Drop old PK (likely on guild_id or word composite)
-                    DECLARE r RECORD;
-                    BEGIN
-                        FOR r IN (SELECT constraint_name FROM information_schema.table_constraints WHERE table_name = 'ng_words' AND constraint_type = 'PRIMARY KEY') LOOP
-                            EXECUTE 'ALTER TABLE ng_words DROP CONSTRAINT ' || quote_ident(r.constraint_name);
-                        END LOOP;
-                    END;
-                END IF;
-
-                -- 3. Add Primary Key on 'id' if no PK exists
-                IF NOT EXISTS (
-                    SELECT 1 FROM information_schema.table_constraints 
-                    WHERE table_name = 'ng_words' AND constraint_type = 'PRIMARY KEY'
-                ) THEN
-                    ALTER TABLE ng_words ADD PRIMARY KEY (id);
-                END IF;
-            END $$;`,
-
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS intro_channel_id TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS audit_role_id TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ng_log_channel_id TEXT;`,
-
-            `CREATE TABLE IF NOT EXISTS ng_logs (
-                id SERIAL PRIMARY KEY,
-                guild_id TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                user_name TEXT,
-                word TEXT,
-                created_at TIMESTAMPTZ DEFAULT NOW()
-            );`,
-            `CREATE INDEX IF NOT EXISTS idx_ng_logs_guild_user ON ng_logs(guild_id, user_id);`,
-
-            `CREATE TABLE IF NOT EXISTS member_events (
-                id SERIAL PRIMARY KEY,
-                guild_id TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                event_type TEXT NOT NULL, -- 'join' or 'leave'
-                created_at TIMESTAMPTZ DEFAULT NOW()
-            );`,
-            `CREATE INDEX IF NOT EXISTS idx_vc_sessions_guild_user ON vc_sessions(guild_id, user_id);`,
-            `CREATE INDEX IF NOT EXISTS idx_vc_sessions_join ON vc_sessions(join_time);`,
-            `CREATE INDEX IF NOT EXISTS idx_vc_sessions_guild_jointime ON vc_sessions(guild_id, join_time);`,
-            `CREATE INDEX IF NOT EXISTS idx_ng_words_guild ON ng_words(guild_id);`,
-            `CREATE INDEX IF NOT EXISTS idx_ng_logs_guild_created ON ng_logs(guild_id, created_at);`,
-            `CREATE INDEX IF NOT EXISTS idx_ng_logs_user_recent ON ng_logs(user_id, created_at);`,
-            `CREATE INDEX IF NOT EXISTS idx_member_events_guild_type ON member_events(guild_id, event_type, created_at);`,
-            `CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);`,
-            `CREATE INDEX IF NOT EXISTS idx_subscriptions_guild_id ON subscriptions(guild_id);`,
-
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS antiraid_enabled BOOLEAN DEFAULT FALSE;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS antiraid_threshold INTEGER DEFAULT 10;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS self_intro_role_id TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS self_intro_min_length INTEGER DEFAULT 10;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS self_intro_enabled BOOLEAN DEFAULT FALSE;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS vc_report_enabled BOOLEAN DEFAULT FALSE;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS vc_report_channel_id TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS vc_report_interval TEXT DEFAULT 'weekly';`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS vc_report_last_sent TIMESTAMPTZ;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS vc_role_rules JSONB DEFAULT '[]';`,
-            `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS current_milestone INT DEFAULT 1;`,
-            `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS auto_unlock_enabled BOOLEAN DEFAULT FALSE;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS last_announced_version TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS alpha_features JSONB DEFAULT '[]';`,
-
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS antiraid_guard_level INTEGER DEFAULT 0;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS raid_join_threshold INTEGER DEFAULT 10;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS newcomer_restrict_mins INTEGER DEFAULT 10;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS newcomer_min_account_age INTEGER DEFAULT 1;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS link_block_enabled BOOLEAN DEFAULT FALSE;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS domain_blacklist JSONB DEFAULT '[]';`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS auto_slowmode_channels JSONB DEFAULT '[]';`,
-            `CREATE TABLE IF NOT EXISTS member_stats (
-                guild_id TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                total_vc_minutes INTEGER DEFAULT 0,
-                last_activity_at TIMESTAMPTZ DEFAULT NOW(),
-                intro_reminded BOOLEAN DEFAULT FALSE,
-                PRIMARY KEY (guild_id, user_id)
-            );`,
-            `CREATE INDEX IF NOT EXISTS idx_member_stats_last_act ON member_stats(last_activity_at);`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_advice_days INTEGER DEFAULT 14;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_advice_channel_id TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_insight_enabled BOOLEAN DEFAULT FALSE;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_insight_channel_id TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_insight_last_sent TIMESTAMPTZ;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS insight_sections JSONB DEFAULT '["growth","toxicity","vc"]';`,
-
-            // Phase escalation for NG word violations
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS phase2_threshold INTEGER DEFAULT 3;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS phase3_threshold INTEGER DEFAULT 6;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS phase4_threshold INTEGER DEFAULT 10;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS phase2_action TEXT DEFAULT 'timeout';`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS phase3_action TEXT DEFAULT 'kick';`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS phase4_action TEXT DEFAULT 'ban';`,
-
-            // Self-intro reminder
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS intro_reminder_hours INTEGER DEFAULT 24;`,
-
-            // Report channel
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS report_channel_id TEXT;`,
-
-            // Toggle for automatic NG warnings (DM)
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ng_warning_enabled BOOLEAN DEFAULT TRUE;`,
-
-            // Message count for Aura system
-            `ALTER TABLE member_stats ADD COLUMN IF NOT EXISTS message_count INTEGER DEFAULT 0;`,
-
-            // Warnings table for manual /warn command
-            `CREATE TABLE IF NOT EXISTS warnings (
-                id SERIAL PRIMARY KEY,
-                guild_id TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                reason TEXT NOT NULL,
-                issued_by TEXT NOT NULL,
-                created_at TIMESTAMPTZ DEFAULT NOW()
-            );`,
-            `CREATE INDEX IF NOT EXISTS idx_warnings_guild_user ON warnings(guild_id, user_id);`,
-
-            // Reaction Roles table
-            `CREATE TABLE IF NOT EXISTS reaction_roles (
-                id SERIAL PRIMARY KEY,
-                guild_id TEXT NOT NULL,
-                message_id TEXT NOT NULL,
-                emoji TEXT NOT NULL,
-                role_id TEXT NOT NULL,
-                created_at TIMESTAMPTZ DEFAULT NOW()
-            );`,
-            `CREATE INDEX IF NOT EXISTS idx_rr_message ON reaction_roles(message_id);`,
-
-            // Tickets table
-            `CREATE TABLE IF NOT EXISTS tickets (
-                id SERIAL PRIMARY KEY,
-                guild_id TEXT NOT NULL,
-                channel_id TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                status TEXT DEFAULT 'open', -- 'open', 'closed'
-                created_at TIMESTAMPTZ DEFAULT NOW(),
-                closed_at TIMESTAMPTZ
-            );`,
-            `CREATE INDEX IF NOT EXISTS idx_tickets_guild_status ON tickets(guild_id, status);`,
-
-            // Leveling / XP system enhancements
-            `ALTER TABLE member_stats ADD COLUMN IF NOT EXISTS xp INTEGER DEFAULT 0;`,
-            `ALTER TABLE member_stats ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1;`,
-            `ALTER TABLE member_stats ADD COLUMN IF NOT EXISTS last_xp_gain_at TIMESTAMPTZ;`,
-
-            // Tier 2.2.0: AI Predictive & Branding
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ticket_welcome_msg TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS color_log TEXT DEFAULT '#5865F2';`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS color_ng TEXT DEFAULT '#f4212e';`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS color_vc_join TEXT DEFAULT '#1da1f2';`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS color_vc_leave TEXT DEFAULT '#8b9bb4';`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS color_level TEXT DEFAULT '#FFD700';`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS color_ticket TEXT DEFAULT '#2ECC71';`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS dashboard_theme_color TEXT DEFAULT '#5865F2';`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS branding_footer_text TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_prediction_enabled BOOLEAN DEFAULT FALSE;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS dashboard_theme_mode TEXT DEFAULT 'midnight';`,
-
-            // Tier 2.3.0: High Scalability Indexes
-            `CREATE INDEX IF NOT EXISTS idx_member_stats_guild_xp ON member_stats(guild_id, xp DESC);`,
-            `CREATE INDEX IF NOT EXISTS idx_member_stats_guild_vc ON member_stats(guild_id, total_vc_minutes DESC);`,
-            `CREATE INDEX IF NOT EXISTS idx_tickets_guild_user_status ON tickets(guild_id, user_id, status);`,
-            `CREATE INDEX IF NOT EXISTS idx_member_events_recent_msg ON member_events(guild_id, event_type, created_at DESC);`,
-
-            // Tier 2.4.0: Dynamic VC (Auto-VC)
-            `CREATE TABLE IF NOT EXISTS auto_vc_channels (
-                channel_id TEXT PRIMARY KEY,
-                guild_id TEXT NOT NULL,
-                owner_id TEXT NOT NULL,
-                created_at TIMESTAMPTZ DEFAULT NOW()
-            );`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS auto_vc_creator_id TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ticket_staff_role_id TEXT;`,
-
-            // Tickets assignment
-            `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS assigned_to TEXT;`,
-
-            // v2.4.8: Ticket Log & Transcripts
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ticket_log_channel_id TEXT;`,
-            `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS transcript_id TEXT;`,
-
-            // v2.4.9: Iron Fortress II (Advanced Anti-Raid)
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS antiraid_auto_recovery_enabled BOOLEAN DEFAULT FALSE;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS antiraid_honeypot_channel_id TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS antiraid_avatar_scrutiny_enabled BOOLEAN DEFAULT FALSE;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS last_raid_at TIMESTAMPTZ;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ai_predict_channel_id TEXT;`,
-
-            // v2.8.0: Button Roles
-            `CREATE TABLE IF NOT EXISTS button_roles (
-                id SERIAL PRIMARY KEY,
-                guild_id TEXT NOT NULL,
-                channel_id TEXT NOT NULL,
-                message_id TEXT,
-                content TEXT,
-                embed_title TEXT,
-                color TEXT DEFAULT '#5865F2',
-                buttons JSONB DEFAULT '[]',
-                created_at TIMESTAMPTZ DEFAULT NOW(),
-                updated_at TIMESTAMPTZ DEFAULT NOW()
-            );`,
-            `CREATE INDEX IF NOT EXISTS idx_br_guild ON button_roles(guild_id);`,
-
-            // v2.9.0: B-9 Warning management enhancement
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS auto_action_on_warns BOOLEAN DEFAULT FALSE;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS warn_action_threshold INTEGER DEFAULT 3;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS warn_action TEXT DEFAULT 'timeout';`,
-
-            // v2.9.0: A-1 XP Leaderboard / A-2 Level-up Notifications
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS leaderboard_enabled BOOLEAN DEFAULT TRUE;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS levelup_enabled BOOLEAN DEFAULT FALSE;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS levelup_channel_id TEXT;`,
-
-            // v2.9.0: B-10 Ticket Categories
-            `CREATE TABLE IF NOT EXISTS ticket_categories (
-                id SERIAL PRIMARY KEY,
-                guild_id TEXT NOT NULL,
-                name TEXT NOT NULL,
-                emoji TEXT DEFAULT '🎫',
-                description TEXT,
-                created_at TIMESTAMPTZ DEFAULT NOW()
-            );`,
-            `CREATE INDEX IF NOT EXISTS idx_tcategory_guild ON ticket_categories(guild_id);`,
-            `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS category TEXT;`,
-
-            // v2.9.0: A-3 Welcome/Farewell Messages
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS welcome_channel_id TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS welcome_message TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS farewell_channel_id TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS farewell_message TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS welcome_enabled BOOLEAN DEFAULT FALSE;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS farewell_enabled BOOLEAN DEFAULT FALSE;`,
-
-            // v2.9.0: B-8 Moderation Log Enhancement
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS mod_log_channel_id TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS mod_log_flags JSONB DEFAULT '{"ban":true,"kick":true,"role_add":false,"role_remove":false,"channel_create":false,"channel_delete":false,"message_edit":false,"message_delete":false}';`,
-
-            // v2.9.1: アップデート通知機能
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS update_announce_channel_id TEXT;`,
-            `ALTER TABLE settings ADD COLUMN IF NOT EXISTS last_notified_version TEXT;`
-
-        ];
-
-        for (const query of queries) {
+        const allQueries = [...coreTables, ...featureTables, ...migrations, ...indexes];
+        for (const query of allQueries) {
             await dbQuery(query);
         }
-        console.log("✅ Database initialized (Tables ready)");
+        console.log("✅ Database initialized (Maintenance simplified)");
         return true;
     } catch (e) {
         console.error("❌ Database initialization failed:", e.message);
@@ -411,12 +105,13 @@ export async function initDb() {
  */
 export async function cleanupOldData() {
     try {
-        console.log("[DB] Starting periodic cleanup...");
+        console.log("[DB] Starting periodic cleanup (Optimized)...");
+        // Using batching if necessary, but these are simple date-based deletes which hit indexes
         const ngRes = await dbQuery("DELETE FROM ng_logs WHERE created_at < NOW() - INTERVAL '30 days'");
         const memRes = await dbQuery("DELETE FROM member_events WHERE created_at < NOW() - INTERVAL '30 days'");
         const vcRes = await dbQuery("DELETE FROM vc_sessions WHERE join_time < NOW() - INTERVAL '60 days'");
 
-        console.log(`[DB] Cleanup finished. Deleted logs: NG(${ngRes.rowCount || 0}), Events(${memRes.rowCount || 0}), VC(${vcRes.rowCount || 0})`);
+        console.log(`[DB] Cleanup finished. Deleted logs: NG(${ngRes.rowCount}), Events(${memRes.rowCount}), VC(${vcRes.rowCount})`);
     } catch (e) {
         console.error("[DB ERROR] Maintenance failed:", e.message);
     }

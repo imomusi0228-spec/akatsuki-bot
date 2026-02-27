@@ -37,40 +37,52 @@ process.on("unhandledRejection", (reason) => {
         // 4. Connect to Discord
         await startBot();
 
-        // 5. Start Background Tasks
-        console.log("⚙️  Initializing Background Tasks...");
+        // 5. Start Background Tasks (A-2)
+        console.log("⚙️  Initializing Background Tasks (node-cron)...");
+        const cron = await import("node-cron");
 
-        const VERSION = "2.7.3";
-        const runTasks = async () => {
-            await runEngagementCheck();
-            await new Promise(r => setTimeout(r, 5000)); // 5s delay
-            await runDataPruning();
-            await new Promise(r => setTimeout(r, 5000));
-            await runInsightCheck();
-            await new Promise(r => setTimeout(r, 5000));
-            await runIntroReminder();
-            await new Promise(r => setTimeout(r, 5000));
-            await runAutoRecoveryCheck();
-        };
+        const VERSION = "2.9.2";
 
+        // Engagement check: Every hour
+        cron.default.schedule("0 * * * *", () => {
+            console.log("[CRON] Starting Engagement Check...");
+            runEngagementCheck();
+        });
 
-        runTasks(); // Initial run (async)
+        // Data Pruning: Every day at 03:00
+        cron.default.schedule("0 3 * * *", () => {
+            console.log("[CRON] Starting Data Pruning...");
+            runDataPruning();
+        });
 
-        setInterval(runEngagementCheck, 60 * 60 * 1000);      // 1 hour
-        setInterval(runDataPruning, 24 * 60 * 60 * 1000);     // 24 hours
-        setInterval(runInsightCheck, 2 * 60 * 60 * 1000);     // 2 hours
-        setInterval(runIntroReminder, 6 * 60 * 60 * 1000);    // 6 hours
-        setInterval(runAutoRecoveryCheck, 10 * 60 * 1000);   // 10 minutes
+        // Insight check: Every 2 hours
+        cron.default.schedule("0 */2 * * *", () => {
+            console.log("[CRON] Starting Insight Check...");
+            runInsightCheck();
+        });
+
+        // Intro reminder: Every 6 hours
+        cron.default.schedule("0 */6 * * *", () => {
+            console.log("[CRON] Starting Intro Reminder...");
+            runIntroReminder();
+        });
+
+        // Auto Recovery check: Every 10 minutes
+        cron.default.schedule("*/10 * * * *", () => {
+            runAutoRecoveryCheck();
+        });
 
         // Weekly Update Notification (Friday 21:00)
         const { runAutoUpdateCheck } = await import("./services/autoUpdateNotifier.js");
-        setInterval(() => {
-            const now = new Date();
-            // Friday is 5. Hour 21. Minute 0.
-            if (now.getDay() === 5 && now.getHours() === 21 && now.getMinutes() === 0) {
-                runAutoUpdateCheck();
-            }
-        }, 60 * 1000); // Check every minute
+        cron.default.schedule("0 21 * * 5", () => {
+            console.log("[CRON] Starting Weekly Update Check...");
+            runAutoUpdateCheck();
+        });
+
+        // Initial small delay check for critical tasks if needed
+        setTimeout(() => {
+            runAutoRecoveryCheck(); // Important to run early
+        }, 5000);
 
 
         console.log("✅ All systems initialized successfully.");
