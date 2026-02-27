@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="<%= lang %>">
 
 <head>
@@ -285,7 +285,7 @@
     <script>
         // Data Loading Block
         window.lang = "<%= lang %>";
-        window.DICTIONARY = <%- dictionary %>;
+        window.DICTIONARY = <% - dictionary %>;
     </script>
 </head>
 
@@ -319,12 +319,12 @@
             <% if (oauth && user) { %>
                 <div class="global-selector-container"
                     style="display:flex; align-items:center; gap:8px; background: rgba(255,255,255,0.05); padding: 4px 12px; border-radius: 99px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(4px);">
-                    <span style="font-size:14px;" title="GLOBAL SERVER SELECT">??</span>
+                    <span style="font-size:14px;" title="GLOBAL SERVER SELECT">🌏</span>
                     <select id="globalGuildSelect"
                         style="background:transparent; border:none; color:white; font-size:13px; font-weight:600; cursor:pointer; outline:none; max-width:200px;"></select>
                     <button id="globalReload"
                         style="background:transparent; border:none; color:var(--text-secondary); cursor:pointer; font-size:12px; display:flex; align-items:center; padding:0 4px;"
-                        title="Reload Data">??</button>
+                        title="Reload Data">🔄</button>
                 </div>
                 <% } %>
 
@@ -362,12 +362,12 @@
                 <%= t("settings") %>
             </a>
             <a href="/admin/branding" class="nav-item <%= activeTab === 'branding' ? 'active' : '' %>">
-                <span class="nav-icon">??</span>
-                <span>�u�����f�B���O</span>
+                <span class="nav-icon">🎨</span>
+                <span>ブランディング</span>
             </a>
             <a href="/admin/tickets" class="nav-item <%= title === 'Ticket Management' ? 'active' : '' %>">
-                <span class="nav-icon">??</span>
-                <span>�`�P�b�g�Ǘ�</span>
+                <span class="nav-icon">🎫</span>
+                <span>チケット管理</span>
             </a>
             <a href="/admin/activity" class="nav-item <%= activeTab === 'activity' ? 'active' : '' %>">
                 <%= t("activity") %>
@@ -376,8 +376,8 @@
                 <%= t("nav_antiraid") %>
             </a>
             <a href="/admin/ai" class="nav-item <%= activeTab === 'ai' ? 'active' : '' %>">
-                <span class="nav-icon">??</span>
-                <span>AI ����</span>
+                <span class="nav-icon">🤖</span>
+                <span>AI 分析</span>
             </a>
         </div>
         <% } %>
