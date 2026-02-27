@@ -1,34 +1,66 @@
 import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
 import { dbQuery } from "../core/db.js";
 import { client } from "../core/client.js";
+import { t } from "../core/i18n.js";
 
 export const data = new SlashCommandBuilder()
     .setName("level")
-    .setDescription("レベル・XP関連のコマンド")
+    .setNameLocalizations({
+        ja: "レベル",
+        "en-US": "level",
+        "en-GB": "level"
+    })
+    .setDescription("Level and XP related commands")
+    .setDescriptionLocalizations({
+        ja: "レベル・XP関連のコマンド",
+        "en-US": "Level and XP related commands",
+        "en-GB": "Level and XP related commands"
+    })
     .addSubcommand(sub => sub
         .setName("rank")
-        .setDescription("自分または指定ユーザーの現在のレベルとXPを表示します。")
-        .addUserOption(opt => opt.setName("user").setDescription("確認するユーザー").setRequired(false))
+        .setNameLocalizations({ ja: "ランク", "en-US": "rank", "en-GB": "rank" })
+        .setDescription("Displays current level and XP for you or a designated user.")
+        .setDescriptionLocalizations({
+            ja: "自分または指定ユーザーの現在のレベルとXPを表示します。",
+            "en-US": "Displays current level and XP for you or a designated user.",
+            "en-GB": "Displays current level and XP for you or a designated user."
+        })
+        .addUserOption(opt => opt
+            .setName("user")
+            .setNameLocalizations({ ja: "ユーザー", "en-US": "user", "en-GB": "user" })
+            .setDescription("The user to check.")
+            .setDescriptionLocalizations({
+                ja: "確認するユーザー",
+                "en-US": "The user to check.",
+                "en-GB": "The user to check."
+            })
+            .setRequired(false))
     )
     .addSubcommand(sub => sub
         .setName("leaderboard")
-        .setDescription("このサーバーのXPランキングトップ10を表示します。")
+        .setNameLocalizations({ ja: "ランキング", "en-US": "leaderboard", "en-GB": "leaderboard" })
+        .setDescription("Displays the top 10 XP rankings for this server.")
+        .setDescriptionLocalizations({
+            ja: "このサーバーのXPランキングトップ10を表示します。",
+            "en-US": "Displays the top 10 XP rankings for this server.",
+            "en-GB": "Displays the top 10 XP rankings for this server."
+        })
     );
 
 export async function execute(interaction) {
+    const locale = interaction.locale.startsWith("ja") ? "ja" : "en";
     const sub = interaction.options.getSubcommand();
     const guildId = interaction.guild.id;
 
-    // leaderboard_enabled チェック（A-1: ON/OFF設定）
     const setRes = await dbQuery("SELECT leaderboard_enabled FROM settings WHERE guild_id = $1", [guildId]);
-    const leaderboardEnabled = setRes.rows[0]?.leaderboard_enabled !== false; // default true
+    const leaderboardEnabled = setRes.rows[0]?.leaderboard_enabled !== false;
 
     if (sub === "rank") {
         const target = interaction.options.getUser("user") || interaction.user;
         const res = await dbQuery("SELECT xp, level, total_vc_minutes, message_count FROM member_stats WHERE guild_id = $1 AND user_id = $2", [guildId, target.id]);
 
         if (res.rows.length === 0) {
-            return interaction.reply({ content: `ℹ️ ${target.username} さんのデータはまだありません。`, ephemeral: true });
+            return interaction.reply({ content: `ℹ️ ${t("no_guilds", locale)} (${target.username})`, ephemeral: true });
         }
 
         const { xp, level, total_vc_minutes, message_count } = res.rows[0];
@@ -39,20 +71,19 @@ export async function execute(interaction) {
         const filled = Math.floor(progress / (100 / barSize));
         const bar = "🟦".repeat(filled) + "⬜".repeat(barSize - filled);
 
-        // ランキング順位を取得
         const rankRes = await dbQuery("SELECT COUNT(*) as cnt FROM member_stats WHERE guild_id = $1 AND xp > $2", [guildId, xp]);
-        const rank = parseInt(rankRes.rows[0]?.cnt || 0) + 1;
+        const rankNum = parseInt(rankRes.rows[0]?.cnt || 0) + 1;
 
         const embed = new EmbedBuilder()
             .setAuthor({ name: target.displayName, iconURL: target.displayAvatarURL() })
-            .setTitle(`🌟 レベルステータス`)
+            .setTitle(`🌟 ${t("level_stats_title", locale)}`)
             .setColor(0x00A2E8)
             .addFields(
-                { name: "ランキング", value: `**#${rank}**`, inline: true },
-                { name: "レベル", value: `**Lv. ${level}**`, inline: true },
-                { name: "経験値 (XP)", value: `${xp.toLocaleString()} / ${nextLevelXp.toLocaleString()}`, inline: true },
-                { name: "進捗", value: `${bar} (${progress}%)` },
-                { name: "統計", value: `💬 メッセージ: ${(message_count || 0).toLocaleString()}通\n🎙️ VC滞在: ${(total_vc_minutes || 0).toLocaleString()}分` }
+                { name: t("status"), value: `**#${rankNum}**`, inline: true },
+                { name: t("plan_badge_std", locale), value: `**Lv. ${level}**`, inline: true },
+                { name: "XP", value: `${xp.toLocaleString()} / ${nextLevelXp.toLocaleString()}`, inline: true },
+                { name: locale === "ja" ? "進捗" : "Progress", value: `${bar} (${progress}%)` },
+                { name: locale === "ja" ? "統計" : "Stats", value: `💬 ${t("messages_count", locale)}: ${(message_count || 0).toLocaleString()}\n🎙️ VC: ${(total_vc_minutes || 0).toLocaleString()}${t("none", locale)}` }
             )
             .setTimestamp();
 
@@ -60,7 +91,7 @@ export async function execute(interaction) {
 
     } else if (sub === "leaderboard") {
         if (!leaderboardEnabled) {
-            return interaction.reply({ content: "❌ このサーバーではランキング機能が無効になっています。", ephemeral: true });
+            return interaction.reply({ content: `❌ ${t("leaderboard_help", locale).split('。')[0]}`, ephemeral: true });
         }
 
         await interaction.deferReply();
@@ -68,7 +99,7 @@ export async function execute(interaction) {
         const statsRes = await dbQuery("SELECT user_id, xp, level, message_count, total_vc_minutes FROM member_stats WHERE guild_id = $1 ORDER BY xp DESC LIMIT 10", [guildId]);
 
         if (statsRes.rows.length === 0) {
-            return interaction.editReply("📊 まだ誰のデータもありません。");
+            return interaction.editReply(`📊 ${t("ng_none", locale)}`);
         }
 
         const rows = await Promise.all(statsRes.rows.map(async (row, i) => {
@@ -82,10 +113,10 @@ export async function execute(interaction) {
         }));
 
         const embed = new EmbedBuilder()
-            .setTitle(`🏆 XPランキング — ${interaction.guild.name}`)
+            .setTitle(`🏆 ${t("leaderboard_title", locale, { count: 10 })} — ${interaction.guild.name}`)
             .setDescription(rows.join("\n"))
             .setColor(0xFFD700)
-            .setFooter({ text: `全期間の累計XPに基づくランキングです` })
+            .setFooter({ text: locale === "ja" ? "全期間の累計XPに基づくランキングです" : "Rankings based on cumulative all-time XP." })
             .setTimestamp();
 
         await interaction.editReply({ embeds: [embed] });

@@ -1,33 +1,46 @@
-import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from "discord.js";
+import { SlashCommandBuilder } from "discord.js";
+import { t } from "../core/i18n.js";
 
 export const data = new SlashCommandBuilder()
     .setName("help")
-    .setDescription("コマンド一覧を表示します。");
+    .setNameLocalizations({
+        ja: "ヘルプ",
+        "en-US": "help",
+        "en-GB": "help"
+    })
+    .setDescription("Displays the command list.")
+    .setDescriptionLocalizations({
+        ja: "コマンド一覧を表示します。",
+        "en-US": "Displays the command list.",
+        "en-GB": "Displays the command list."
+    });
 
 export async function execute(interaction) {
-    const helpText = `**🛠️ Akatsuki Bot コマンド一覧 & 機能ガイド**
+    const locale = interaction.locale.startsWith("ja") ? "ja" : "en";
 
-**📊 統計・分析 (Analytics)**
-\`/vc top\` : 今月のVC滞在時間ランキングを表示
-\`/vc user [target]\` : 指定ユーザーの滞在時間を表示
-\`/level [target]\` : レベルと経験値（XP）を表示
-\`/activity\` : 機能詳細ページへのリンクを表示
+    // Build help text dynamically based on locale
+    let helpText = `**🛠️ ${t("help_guide_title", locale)}**\n\n`;
 
-**🛡️ 管理・設定 (Administration)**
-\`/admin\` : Web管理画面へのリンクを発行
-\`/setlog [channel] [type]\` : ログの送信先を設定
-\`/aura\` : オーラ（自動ロール付与）システムの設定
+    helpText += `**${t("help_cat_analytics", locale)}**\n`;
+    helpText += `\`/vc top\` : ${t("cmd_vc_top_desc", locale)}\n`;
+    helpText += `\`/vc user [target]\` : ${t("cmd_vc_user_desc", locale)}\n`;
+    helpText += `\`/level [target]\` : ${t("cmd_level_desc", locale)}\n`;
+    helpText += `\`/activity\` : ${t("view_features", locale)}\n\n`;
 
-**🚫 モデレーション (Moderation)**
-\`/ngword add/list\` : NGワードの追加・確認
-\`/report [user] [reason]\` : メンバーをモデレーターに報告
-\`/ticket setup\` : チケット作成パネルを設置
-\`/rr add/list/remove\` : リアクションロールの設定
-\`/warn issue/list\` : 警告の発行・履歴確認 (運営専用)
-\`/scan [type]\` : 過去ログのスキャン・復元 (Pro+ 限定)
+    helpText += `**${t("help_cat_admin", locale)}**\n`;
+    helpText += `\`/admin\` : ${t("cmd_admin_desc", locale)}\n`;
+    helpText += `\`/setlog [channel] [type]\` : ${t("log_settings", locale)}\n`;
+    helpText += `\`/aura\` : ${t("aura_system_desc", locale)}\n\n`;
 
-**ℹ️ その他**
-\`/help\` : コマンド一覧を表示`;
+    helpText += `**${t("help_cat_mod", locale)}**\n`;
+    helpText += `\`/ngword add/list\` : ${t("ng_word_settings", locale)}\n`;
+    helpText += `\`/ticket setup\` : ${t("ticket_basic_settings", locale)}\n`;
+    helpText += `\`/scan [type]\` : ${t("cmd_scan_desc", locale)}\n\n`;
+
+    helpText += `**${t("help_cat_info", locale)}**\n`;
+    helpText += `\`/help\` : ${t("cmd_help_desc", locale)}\n\n`;
+
+    helpText += `*${t("help_footer", locale)}*`;
 
     await interaction.reply({ content: helpText });
 }

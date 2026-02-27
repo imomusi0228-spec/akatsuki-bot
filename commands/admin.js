@@ -1,26 +1,38 @@
 import { SlashCommandBuilder, MessageFlags, EmbedBuilder } from "discord.js";
 import { ENV } from "../config/env.js";
+import { t } from "../core/i18n.js";
 
 export const data = new SlashCommandBuilder()
     .setName("admin")
-    .setDescription("Web管理画面の主要機能への案内を表示");
+    .setNameLocalizations({
+        ja: "管理画面",
+        "en-US": "admin",
+        "en-GB": "admin"
+    })
+    .setDescription("Generates a link to the Web Admin Dashboard.")
+    .setDescriptionLocalizations({
+        ja: "Web管理画面へのリンクを発行します。",
+        "en-US": "Generates a link to the Web Admin Dashboard.",
+        "en-GB": "Generates a link to the Web Admin Dashboard."
+    });
 
 export async function execute(interaction) {
+    const locale = interaction.locale.startsWith("ja") ? "ja" : "en";
     const baseUrl = ENV.PUBLIC_URL || `http://localhost:${ENV.PORT}`;
 
     const embed = new EmbedBuilder()
-        .setTitle("🏰 Akatsuki Bot 管理ポータル")
-        .setDescription("すべての設定はWebダッシュボードから一括管理可能です。")
+        .setTitle(`🏰 ${t("admin_title", locale)}`)
+        .setDescription(t("subtitle", locale))
         .setColor(0x00ba7c)
         .addFields(
-            { name: "📊 ダッシュボード", value: `[統計と概要を確認](${baseUrl}/admin/dashboard)`, inline: true },
-            { name: "⚙️ サーバー設定", value: `[NGワード・ログ設定](${baseUrl}/admin/settings)`, inline: true },
-            { name: "🛡️ アンチ・レイド", value: `[防衛・ロック設定](${baseUrl}/admin/antiraid)`, inline: true },
-            { name: "🎫 チケット管理", value: `[チケット対応状況](${baseUrl}/admin/tickets)`, inline: true },
-            { name: "🤖 AI分析", value: `[戦略レポート・インサイト](${baseUrl}/admin/ai)`, inline: true },
-            { name: "🎨 外観・テーマ", value: `[ブランディング設定](${baseUrl}/admin/branding)`, inline: true }
+            { name: `📊 ${t("dashboard", locale)}`, value: `[${t("dashboard_loading", locale)}](${baseUrl}/admin/dashboard)`, inline: true },
+            { name: `⚙️ ${t("settings", locale)}`, value: `[${t("ng_word_settings", locale)}](${baseUrl}/admin/settings)`, inline: true },
+            { name: `🛡️ ${t("nav_antiraid", locale)}`, value: `[${t("ar_title", locale)}](${baseUrl}/admin/antiraid)`, inline: true },
+            { name: `🎫 ${t("ticket_mgmt", locale)}`, value: `[${t("ticket_mgmt_title", locale)}](${baseUrl}/admin/tickets)`, inline: true },
+            { name: `🤖 ${t("ai_insight_title", locale)}`, value: `[${t("ai_insight_title", locale)}](${baseUrl}/admin/ai)`, inline: true },
+            { name: `🎨 ${t("branding", locale)}`, value: `[${t("branding_title", locale)}](${baseUrl}/admin/branding)`, inline: true }
         )
-        .setFooter({ text: "※お嬢の指示により、管理コマンドはこちらに統合されました。" });
+        .setFooter({ text: locale === "ja" ? "※お嬢の指示により、管理コマンドはこちらに統合されました。" : "Admin features are unified here as per instructions." });
 
     await interaction.reply({
         embeds: [embed],
