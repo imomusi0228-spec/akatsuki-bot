@@ -285,7 +285,7 @@
     <script>
         // Data Loading Block
         window.lang = "<%= lang %>";
-        window.DICTIONARY = <%- dictionary %>;
+        window.DICTIONARY = <% - dictionary %>;
     </script>
 </head>
 
@@ -363,11 +363,15 @@
             </a>
             <a href="/admin/branding" class="nav-item <%= activeTab === 'branding' ? 'active' : '' %>">
                 <span class="nav-icon">🎨</span>
-                <span>ブランディング</span>
+                <span>
+                    <%= t("branding") %>
+                </span>
             </a>
             <a href="/admin/tickets" class="nav-item <%= title === 'Ticket Management' ? 'active' : '' %>">
                 <span class="nav-icon">🎫</span>
-                <span>チケット管理</span>
+                <span>
+                    <%= t("ticket_mgmt") %>
+                </span>
             </a>
             <a href="/admin/activity" class="nav-item <%= activeTab === 'activity' ? 'active' : '' %>">
                 <%= t("activity") %>
@@ -377,7 +381,9 @@
             </a>
             <a href="/admin/ai" class="nav-item <%= activeTab === 'ai' ? 'active' : '' %>">
                 <span class="nav-icon">🤖</span>
-                <span>AI 分析</span>
+                <span>
+                    <%= t("wisdom") %>
+                </span>
             </a>
         </div>
         <% } %>

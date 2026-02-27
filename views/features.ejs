@@ -332,7 +332,9 @@
             <%= t("plan_free") %>
         </h3>
         <div class="plan-price" style="color: #8899a6;">¥0<span
-                style="font-size: 14px; opacity: 0.6; margin-left: 4px;">/ forever</span></div>
+                style="font-size: 14px; opacity: 0.6; margin-left: 4px;">
+                <%= t("period_forever") %>
+            </span></div>
         <ul class="feature-summary">
             <li><%- t("feat_list_free") %></li>
         </ul>
@@ -347,7 +349,9 @@
         <h3 style="font-size: 24px; margin-bottom: 10px;">
             <%= t("plan_pro") %>
         </h3>
-        <div class="plan-price">¥680<span style="font-size: 14px; opacity: 0.6; margin-left: 4px;">/ month</span></div>
+        <div class="plan-price">¥680<span style="font-size: 14px; opacity: 0.6; margin-left: 4px;">
+                <%= t("period_month") %>
+            </span></div>
         <ul class="feature-summary">
             <li><%- t("feat_list_pro") %></li>
         </ul>
@@ -362,7 +366,9 @@
         <h3 style="font-size: 24px; margin-bottom: 10px;">
             <%= t("plan_pro_plus") %>
         </h3>
-        <div class="plan-price">¥1,800<span style="font-size: 14px; opacity: 0.6; margin-left: 4px;">/ month</span>
+        <div class="plan-price">¥1,800<span style="font-size: 14px; opacity: 0.6; margin-left: 4px;">
+                <%= t("period_month") %>
+            </span>
         </div>
         <ul class="feature-summary">
             <li><%- t("feat_list_pro_plus") %></li>
@@ -442,7 +448,9 @@
                     <td>
                         <%= t("comp_raid_alert") %>
                     </td>
-                    <td style="color: #6a7682;">Basic</td>
+                    <td style="color: #6a7682;">
+                        <%= t("plan_badge_std") %>
+                    </td>
                     <td class="active-check col-pro">✓ Full</td>
                     <td class="active-check col-pro-plus">✓ Full</td>
                 </tr>
@@ -489,7 +497,9 @@
                     <td>
                         <%= t("comp_stats_7d") %>
                     </td>
-                    <td style="color: #6a7682;">Basic</td>
+                    <td style="color: #6a7682;">
+                        <%= t("plan_badge_std") %>
+                    </td>
                     <td class="active-check col-pro">✓</td>
                     <td class="active-check col-pro-plus">✓</td>
                 </tr>
@@ -545,7 +555,9 @@
                         <%= t("comp_branding") %>
                     </td>
                     <td class="dim-cross">✕</td>
-                    <td style="color: #6a7682;">Limited</td>
+                    <td style="color: #6a7682;">
+                        <%= t("status_soon") %>
+                    </td>
                     <td class="active-check col-pro-plus">✓ Full</td>
                 </tr>
                 <tr>

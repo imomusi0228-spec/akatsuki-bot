@@ -89,18 +89,24 @@
             </div>
             <div class="accordion-content">
                 <div style="display:flex; gap:10px; margin-bottom:15px;">
-                    <input id="newWord" type="text" placeholder="Add word..." style="flex:1;">
-                    <button onclick="addNg()" class="btn btn-primary">+</button>
+                    <input id="newWord" type="text" placeholder="<%= t(" add_word_placeholder") %>" style="flex:1;">
+                    <button onclick="addNg()" class="btn btn-pro"
+                        style="font-size:11px; padding:5px 12px; margin-top:10px;">
+                        <%= t("add_btn_label") %>
+                    </button>
                 </div>
                 <div id="ngList" style="background:rgba(0,0,0,0.2); border-radius:8px; padding:10px; min-height:60px;">
                 </div>
-                <p class="muted" style="margin-top:10px; font-size:11px; margin-bottom: 20px;">※スラッシュで囲むと正規表現として扱われます
-                    (例: /badword/i)</p>
+                <p class="muted" style="margin-top:10px; font-size:11px; margin-bottom: 20px;">
+                    <%= t("ng_regex_help") %>
+                </p>
 
                 <!-- Moved: Phase Escalation Settings -->
                 <div style="border-top:1px solid var(--border-color); padding-top:20px; margin-top:18px;">
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:15px;">
-                        <label class="muted" style="margin:0;">⚠️ 段階制裁設定（NGワード自動エスカレーション）</label>
+                        <label class="muted" style="margin:0;">
+                            <%= t("ng_esc_title") %>
+                        </label>
                         <label style="display:flex; align-items:center; cursor:pointer; font-size:12px;">
                             <input type="checkbox" id="ngWarningEnabled" checked
                                 style="width:16px; height:16px; margin-right:8px;">
@@ -111,37 +117,62 @@
                     </div>
                     <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:15px;">
                         <div>
-                            <label class="muted" style="font-size:12px;">フェーズ2：違反N回以上</label><br />
+                            <label class="muted" style="font-size:12px;">
+                                <%= t("phase2_label", {count: "{count}" }) %>
+                            </label><br />
                             <input id="phase2Threshold" type="number" min="1" value="3"
                                 style="width:100%; margin-top:5px;">
                             <select id="phase2Action" style="width:100%; margin-top:5px;">
-                                <option value="timeout">タイムアウト</option>
-                                <option value="kick">キック</option>
-                                <option value="ban">BAN</option>
+                                <option value="timeout">
+                                    <%= t("action_timeout") %>
+                                </option>
+                                <option value="kick">
+                                    <%= t("action_kick") %>
+                                </option>
+                                <option value="ban">
+                                    <%= t("action_ban") %>
+                                </option>
                             </select>
                         </div>
                         <div>
-                            <label class="muted" style="font-size:12px;">フェーズ3：違反N回以上</label><br />
+                            <label class="muted" style="font-size:12px;">
+                                <%= t("phase3_label", {count: "{count}" }) %>
+                            </label><br />
                             <input id="phase3Threshold" type="number" min="1" value="6"
                                 style="width:100%; margin-top:5px;">
                             <select id="phase3Action" style="width:100%; margin-top:5px;">
-                                <option value="timeout">タイムアウト</option>
-                                <option value="kick">キック</option>
-                                <option value="ban">BAN</option>
+                                <option value="timeout">
+                                    <%= t("action_timeout") %>
+                                </option>
+                                <option value="kick">
+                                    <%= t("action_kick") %>
+                                </option>
+                                <option value="ban">
+                                    <%= t("action_ban") %>
+                                </option>
                             </select>
                         </div>
                         <div>
-                            <label class="muted" style="font-size:12px;">フェーズ4：違反N回以上</label><br />
+                            <label class="muted" style="font-size:12px;">
+                                <%= t("phase4_label", {count: "{count}" }) %>
+                            </label><br />
                             <input id="phase4Threshold" type="number" min="1" value="10"
                                 style="width:100%; margin-top:5px;">
                             <select id="phase4Action" style="width:100%; margin-top:5px;">
-                                <option value="timeout">タイムアウト</option>
-                                <option value="kick">キック</option>
-                                <option value="ban">BAN</option>
+                                <option value="timeout">
+                                    <%= t("action_timeout") %>
+                                </option>
+                                <option value="kick">
+                                    <%= t("action_kick") %>
+                                </option>
+                                <option value="ban">
+                                    <%= t("action_ban") %>
+                                </option>
                             </select>
                         </div>
                     </div>
-                    <p class="muted" style="font-size:11px; margin-top:8px;">※ 過去1時間のNG違反回数が各しきい値に達すると選択したアクションが実行されます。
+                    <p class="muted" style="font-size:11px; margin-top:8px;">
+                        <%= t("ng_esc_help") %>
                     </p>
                 </div>
             </div>
@@ -150,34 +181,49 @@
         <!-- B-9. 手動警告管理 -->
         <div class="accordion-item" id="sec-warn">
             <div class="accordion-header" onclick="toggleAccordion('sec-warn')">
-                <span>⚠️ 手動警告管理</span>
+                <span>⚠️ <%= t("warn_mgmt_title") %></span>
                 <span>▼</span>
             </div>
             <div class="accordion-content">
                 <p class="muted" style="font-size:12px; margin-bottom:15px;">
-                    メンバー監査ページから手動で警告を発行・確認できます。ここでは警告が一定回数に達した場合の自動アクションを設定します。
+                    <%= t("warn_mgmt_desc") %>
                 </p>
                 <label style="display:flex; align-items:center; cursor:pointer; margin-bottom:20px;">
                     <input type="checkbox" id="autoActionOnWarns" style="width:18px; height:18px; margin-right:10px;">
-                    <span style="font-weight:bold;">警告N回達成時に自動アクションを実行する</span>
+                    <span style="font-weight:bold;">
+                        <%= t("warn_auto_action_enabled") %>
+                    </span>
                 </label>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
                     <div>
-                        <label class="muted" style="font-size:12px;">自動アクション発動しきい値（回）</label><br />
+                        <label class="muted" style="font-size:12px;">
+                            <%= t("warn_threshold_label") %>
+                        </label><br />
                         <input id="warnActionThreshold" type="number" min="1" value="3"
                             style="width:100%; margin-top:5px;">
                     </div>
                     <div>
-                        <label class="muted" style="font-size:12px;">実行するアクション</label><br />
+                        <label class="muted" style="font-size:12px;">
+                            <%= t("warn_action_label") %>
+                        </label><br />
                         <select id="warnAction" style="width:100%; margin-top:5px;">
-                            <option value="timeout">タイムアウト</option>
-                            <option value="kick">キック</option>
-                            <option value="ban">BAN</option>
+                            <option value="timeout">
+                                <%= t("action_timeout") %>
+                            </option>
+                            <option value="kick">
+                                <%= t("action_kick") %>
+                            </option>
+                            <option value="ban">
+                                <%= t("action_ban") %>
+                            </option>
                         </select>
                     </div>
                 </div>
+                <label class="muted" style="font-size:12px; display:block; margin-top:15px;">
+                    <%= t("btn_settings_label") %>
+                </label>
                 <p class="muted" style="font-size:11px; margin-top:10px;">
-                    ※ タイムアウト時間は「ログ設定」→「タイムアウト時間」の設定値が使用されます。
+                    <%= t("warn_timeout_help") %>
                 </p>
             </div>
         </div>
@@ -185,7 +231,9 @@
         <!-- A-1 / A-2: XPランキング・レベルアップ設定 -->
         <div class="accordion-item" id="sec-level">
             <div class="accordion-header" onclick="toggleAccordion('sec-level')">
-                <span>📊 XPランキング・レベルアップ通知</span>
+                <span>
+                    <%= t("level_stats_title") %>
+                </span>
                 <span>▼</span>
             </div>
             <div class="accordion-content">
@@ -194,19 +242,29 @@
                     <label style="display:flex; align-items:center; cursor:pointer; margin-bottom:8px;">
                         <input type="checkbox" id="leaderboardEnabled"
                             style="width:18px; height:18px; margin-right:10px;">
-                        <span style="font-weight:bold;">🏆 XPランキング機能を有効化（/level leaderboard）</span>
+                        <span style="font-weight:bold;">
+                            <%= t("leaderboard_enabled_label") %>
+                        </span>
                     </label>
-                    <p class="muted" style="font-size:11px;">OFFにするとランキングコマンドが使用不可になります。XP自体は引き続き蓄積されます。</p>
+                    <p class="muted" style="font-size:11px;">
+                        <%= t("leaderboard_help") %>
+                    </p>
                 </div>
                 <!-- A-2 -->
                 <div style="border-top:1px solid var(--border-color); padding-top:20px;">
                     <label style="display:flex; align-items:center; cursor:pointer; margin-bottom:15px;">
                         <input type="checkbox" id="levelupEnabled" style="width:18px; height:18px; margin-right:10px;">
-                        <span style="font-weight:bold;">🎉 レベルアップ通知を有効化</span>
+                        <span style="font-weight:bold;">
+                            <%= t("levelup_enabled_label") %>
+                        </span>
                     </label>
-                    <label class="muted" style="font-size:12px;">通知送信先チャンネル（空欄 = 発言チャンネルに通知）</label><br />
+                    <label class="muted" style="font-size:12px;">
+                        <%= t("levelup_ch_label") %>
+                    </label><br />
                     <select id="levelupCh" style="width:100%; max-width:400px; margin-top:5px;"></select>
-                    <p class="muted" style="font-size:11px; margin-top:5px;">※ チャンネルを選択するとそのチャンネルに固定送信されます。</p>
+                    <p class="muted" style="font-size:11px; margin-top:5px;">
+                        <%= t("levelup_ch_help") %>
+                    </p>
                 </div>
             </div>
         </div>
@@ -214,33 +272,42 @@
         <!-- A-3: 入退室メッセージカスタマイズ -->
         <div class="accordion-item" id="sec-welcome">
             <div class="accordion-header" onclick="toggleAccordion('sec-welcome')">
-                <span>📝 入退室メッセージカスタマイズ</span>
+                <span>
+                    <%= t("welcome_custom_title") %>
+                </span>
                 <span>▼</span>
             </div>
             <div class="accordion-content">
                 <p class="muted" style="font-size:12px; margin-bottom:15px;">
-                    メンバーがサーバーに参加・退出した際に送信するメッセージを設定します。<br>
-                    <code
-                        style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;">{user}</code>…メンション
-                    <code
-                        style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;">{username}</code>…名前
-                    <code
-                        style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;">{server}</code>…サーバー名
+                    <%= t("welcome_custom_desc") %><br>
+                        <code
+                            style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;"><%= t("placeholder_user") %></code>
+                        <code
+                            style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;"><%= t("placeholder_username") %></code>
+                        <code
+                            style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;"><%= t("placeholder_server") %></code>
                 </p>
                 <!-- Welcome -->
                 <div style="margin-bottom:20px;">
                     <label style="display:flex; align-items:center; cursor:pointer; margin-bottom:12px;">
                         <input type="checkbox" id="welcomeEnabled" style="width:18px; height:18px; margin-right:10px;">
-                        <span style="font-weight:bold;">👋 参加メッセージを有効化</span>
+                        <span style="font-weight:bold;">
+                            <%= t("welcome_enabled_label") %>
+                        </span>
                     </label>
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
                         <div>
-                            <label class="muted" style="font-size:12px;">送信先チャンネル</label><br />
+                            <label class="muted" style="font-size:12px;">
+                                <%= t("target_channel") %>
+                            </label><br />
                             <select id="welcomeCh" style="width:100%; margin-top:5px;"></select>
                         </div>
                         <div>
-                            <label class="muted" style="font-size:12px;">メッセージ内容</label><br />
-                            <textarea id="welcomeMsg" rows="2" placeholder="{user} さん、{server} へようこそ！"
+                            <label class="muted" style="font-size:12px;">
+                                <%= t("message_content") %>
+                            </label><br />
+                            <textarea id="welcomeMsg" rows="2" placeholder="<%= t(" welcome_default_msg")
+                                %>"
                                 style="width:100%; margin-top:5px; background:var(--card-bg); color:var(--text-primary); border:1px solid var(--border-color); border-radius:6px; padding:8px; font-size:13px;"></textarea>
                         </div>
                     </div>
@@ -249,16 +316,23 @@
                 <div style="border-top:1px solid var(--border-color); padding-top:20px;">
                     <label style="display:flex; align-items:center; cursor:pointer; margin-bottom:12px;">
                         <input type="checkbox" id="farewellEnabled" style="width:18px; height:18px; margin-right:10px;">
-                        <span style="font-weight:bold;">🚪 退出メッセージを有効化</span>
+                        <span style="font-weight:bold;">
+                            <%= t("farewell_enabled_label") %>
+                        </span>
                     </label>
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
                         <div>
-                            <label class="muted" style="font-size:12px;">送信先チャンネル</label><br />
+                            <label class="muted" style="font-size:12px;">
+                                <%= t("target_channel") %>
+                            </label><br />
                             <select id="farewellCh" style="width:100%; margin-top:5px;"></select>
                         </div>
                         <div>
-                            <label class="muted" style="font-size:12px;">メッセージ内容</label><br />
-                            <textarea id="farewellMsg" rows="2" placeholder="{username} さんが退出しました。"
+                            <label class="muted" style="font-size:12px;">
+                                <%= t("message_content") %>
+                            </label><br />
+                            <textarea id="farewellMsg" rows="2" placeholder="<%= t(" farewell_default_msg")
+                                %>"
                                 style="width:100%; margin-top:5px; background:var(--card-bg); color:var(--text-primary); border:1px solid var(--border-color); border-radius:6px; padding:8px; font-size:13px;"></textarea>
                         </div>
                     </div>
@@ -269,49 +343,61 @@
         <!-- B-8: モデレーションログ強化 -->
         <div class="accordion-item" id="sec-modlog">
             <div class="accordion-header" onclick="toggleAccordion('sec-modlog')">
-                <span>📋 モデレーションログ強化</span>
+                <span>
+                    <%= t("mod_log_title") %>
+                </span>
                 <span>▼</span>
             </div>
             <div class="accordion-content">
                 <p class="muted" style="font-size:12px; margin-bottom:15px;">
-                    記録するログの種別と送信先チャンネルを設定します。
+                    <%= t("mod_log_desc") %>
                 </p>
                 <div style="margin-bottom:15px;">
-                    <label class="muted" style="font-size:12px;">ログ送信先チャンネル</label><br />
+                    <label class="muted" style="font-size:12px;">
+                        <%= t("mod_log_ch_label") %>
+                    </label><br />
                     <select id="modLogCh" style="width:100%; max-width:400px; margin-top:5px;"></select>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                     <label
                         style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px; background:rgba(255,255,255,0.03); border-radius:6px;">
-                        <input type="checkbox" id="mlBan" checked> <span style="font-size:13px;">🔨 BAN</span>
+                        <input type="checkbox" id="mlBan" checked> <span style="font-size:13px;">🔨 <%= t("log_ban") %>
+                        </span>
                     </label>
                     <label
                         style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px; background:rgba(255,255,255,0.03); border-radius:6px;">
-                        <input type="checkbox" id="mlKick" checked> <span style="font-size:13px;">👢 キック</span>
+                        <input type="checkbox" id="mlKick" checked> <span style="font-size:13px;">👢 <%= t("log_kick")
+                                %></span>
                     </label>
                     <label
                         style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px; background:rgba(255,255,255,0.03); border-radius:6px;">
-                        <input type="checkbox" id="mlRoleAdd"> <span style="font-size:13px;">✅ ロール付与</span>
+                        <input type="checkbox" id="mlRoleAdd"> <span style="font-size:13px;">✅ <%= t("log_role_add") %>
+                        </span>
                     </label>
                     <label
                         style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px; background:rgba(255,255,255,0.03); border-radius:6px;">
-                        <input type="checkbox" id="mlRoleRemove"> <span style="font-size:13px;">❌ ロール剥奪</span>
+                        <input type="checkbox" id="mlRoleRemove"> <span style="font-size:13px;">❌ <%=
+                                t("log_role_remove") %></span>
                     </label>
                     <label
                         style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px; background:rgba(255,255,255,0.03); border-radius:6px;">
-                        <input type="checkbox" id="mlChCreate"> <span style="font-size:13px;">📂 チャンネル作成</span>
+                        <input type="checkbox" id="mlChCreate"> <span style="font-size:13px;">📂 <%= t("log_ch_create")
+                                %></span>
                     </label>
                     <label
                         style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px; background:rgba(255,255,255,0.03); border-radius:6px;">
-                        <input type="checkbox" id="mlChDelete"> <span style="font-size:13px;">🗑️ チャンネル削除</span>
+                        <input type="checkbox" id="mlChDelete"> <span style="font-size:13px;">🗑️ <%= t("log_ch_delete")
+                                %></span>
                     </label>
                     <label
                         style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px; background:rgba(255,255,255,0.03); border-radius:6px;">
-                        <input type="checkbox" id="mlMsgEdit"> <span style="font-size:13px;">✏️ メッセージ編集</span>
+                        <input type="checkbox" id="mlMsgEdit"> <span style="font-size:13px;">✏️ <%= t("log_msg_edit") %>
+                        </span>
                     </label>
                     <label
                         style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px; background:rgba(255,255,255,0.03); border-radius:6px;">
-                        <input type="checkbox" id="mlMsgDelete"> <span style="font-size:13px;">🗑️ メッセージ削除</span>
+                        <input type="checkbox" id="mlMsgDelete"> <span style="font-size:13px;">🗑️ <%=
+                                t("log_msg_delete") %></span>
                     </label>
                 </div>
             </div>
@@ -333,40 +419,46 @@
                     <label style="display:flex; align-items:center; cursor:pointer;">
                         <input type="checkbox" id="introGateEnabled"
                             style="width:18px; height:18px; margin-right:10px;">
-                        <span>自己紹介ゲートを有効化</span>
+                        <span>
+                            <%= t("intro_gate_enabled_label") %>
+                        </span>
                     </label>
                 </div>
 
                 <!-- Main Grid -->
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
                     <div>
-                        <label class="muted">付与するロール</label><br />
+                        <label class="muted" style="font-size:12px;">
+                            <%= t("role_to_assign") %>
+                        </label><br />
                         <select id="introRole" style="width:100%; margin-top:5px;"></select>
                     </div>
                     <div>
-                        <label class="muted">必要最小文字数</label><br />
-                        <input id="introMinLen" type="number" min="1" value="10" style="width:100%; margin-top:5px;">
+                        <label class="muted" style="font-size:12px;">
+                            <%= t("min_chars") %>
+                        </label><br />
+                        <input id="introMinChars" type="number" min="0" value="20" style="width:100%; margin-top:5px;">
                     </div>
-                </div>
-
-                <!-- Intro Channel Select -->
-                <div style="margin-top:15px;">
-                    <label class="muted">📝 自己紹介チャンネル</label><br />
-                    <select id="introChannel" style="width:100%; margin-top:5px;"></select>
-                    <p class="muted" style="font-size:11px; margin-top:5px;">
-                        ※ このサーバーのテキストチャンネルのみ表示されます。
-                    </p>
+                    <div>
+                        <label class="muted" style="font-size:12px;">
+                            <%= t("intro_ch_label") %>
+                        </label><br />
+                        <select id="introCh" style="width:100%; margin-top:5px;"></select>
+                        <p class="muted" style="font-size:11px; margin-top:4px;">
+                            <%= t("text_ch_only_notice") %>
+                        </p>
+                    </div>
                 </div>
 
                 <!-- Reminder -->
                 <div style="margin-top:20px;">
-                    <label class="muted">
-                        📬 未投稿リマインダー (参加からN時間後にDM送信)
+                    <label class="muted" style="font-size:12px;">
+                        <%= t("intro_reminder_label") %>
                     </label><br />
-                    <input id="introReminderHours" type="number" min="0" max="720" value="24"
+                    <input id="introReminder" type="number" min="0" value="0"
                         style="width:100%; max-width:200px; margin-top:5px;">
-                    <p class="muted" style="font-size:11px; margin-top:5px;">
-                        0に設定すると無効になります。
+                    <p class="muted" style="font-size:11px; margin-top:4px;">
+                        <%= t("disable_if_zero") %>
                     </p>
                 </div>
             </div>
@@ -436,15 +528,16 @@
                     <label style="display:flex; align-items:center; cursor:pointer; margin-bottom:15px;">
                         <input type="checkbox" id="autoSlowmodeEnabled"
                             style="width:18px; height:18px; margin-right:10px;">
-                        <span style="font-weight:bold;">🚨 異常検知時の自動低速モードを有効化</span>
+                        <span style="font-weight:bold;">🚨 <%= t("vc_report_enabled_label") %></span>
                     </label>
                     <div style="margin-bottom:10px;">
-                        <label class="muted" style="font-size:12px;">適用対象チャンネル（複数選択可 / Ctrl+クリック）</label><br />
+                        <label class="muted" style="font-size:12px;">
+                            <%= t("slowmode_ch_label") %>
+                        </label><br />
                         <select id="autoSlowmodeChannels" multiple
-                            style="width:100%; height:120px; margin-top:5px; padding:8px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); border-radius:6px; color:white;">
-                        </select>
+                            style="width:100%; height:120px; margin-top:5px; background:var(--card-bg); color:var(--text-primary); border:1px solid var(--border-color); border-radius:6px; padding:8px;"></select>
                         <p class="muted" style="font-size:11px; margin-top:5px;">
-                            ※ 大量のNGワードや不自然なメッセージ密度を検知した際、指定したチャンネルを自動的に低速モード（10秒）に設定します。
+                            <%= t("slowmode_help") %>
                         </p>
                     </div>
                 </div>
@@ -454,18 +547,23 @@
         <!-- 6. VC Related (Roles & Reports) -->
         <div class="accordion-item" id="sec-vc">
             <div class="accordion-header" onclick="toggleAccordion('sec-vc')">
-                <span>🎤 VC高度設定 (Roles & Reports)</span>
+                <span>
+                    <%= t("vc_advanced_title") %>
+                </span>
                 <span>▼</span>
             </div>
             <div class="accordion-content">
                 <!-- Role Rules -->
                 <div style="margin-bottom:24px;">
-                    <label class="muted" style="display:block; margin-bottom:10px;">VC活動時間に応じたオーラ付与（名称と時間）<span
-                            class="help-tip" data-tip="<%= t('help_vc_role') %>">?</span></label>
+                    <label class="muted" style="display:block; margin-bottom:10px;">
+                        <%= t("vc_role_rules_title") %><span class="help-tip"
+                                data-tip="<%= t('help_vc_role') %>">?</span>
+                    </label>
                     <div id="roleRulesList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;">
                     </div>
                     <button type="button" onclick="addRoleRule()" class="btn" style="font-size:12px; width:100%;">+
-                        オーラを追加</button>
+                        <%= t("add_aura_btn") %>
+                    </button>
 
                 </div>
 
@@ -473,20 +571,36 @@
                 <div style="border-top:1px solid var(--border-color); padding-top:20px;">
                     <label style="display:flex; align-items:center; cursor:pointer; margin-bottom:15px;">
                         <input type="checkbox" id="vcReportEnabled" style="width:18px; height:18px; margin-right:10px;">
-                        <span>VCアクティビティ週報を有効化<span class="help-tip"
-                                data-tip="<%= t('help_vc_report') %>">?</span></span>
+                        <span>
+                            <%= t("vc_report_enabled") %><span class="help-tip"
+                                    data-tip="<%= t('help_vc_report') %>">?</span>
+                        </span>
                     </label>
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
                         <div>
-                            <label class="muted">レポート送信先</label><br />
+                            <label class="muted">
+                                <label class="muted">
+                                    <%= t("report_target") %>
+                                </label><br />
+                            </label><br />
                             <select id="vcReportCh" style="width:100%; margin-top:5px;"></select>
                         </div>
                         <div>
-                            <label class="muted">送信間隔</label><br />
+                            <label class="muted">
+                                <label class="muted">
+                                    <%= t("send_interval") %>
+                                </label><br />
+                            </label><br />
                             <select id="vcReportInterval" style="width:100%; margin-top:5px;">
-                                <option value="daily">毎日</option>
-                                <option value="weekly" selected>毎週</option>
-                                <option value="monthly">毎月</option>
+                                <option value="daily">
+                                    <%= t("interval_daily") %>
+                                </option>
+                                <option value="weekly" selected>
+                                    <%= t("interval_weekly") %>
+                                </option>
+                                <option value="monthly">
+                                    <%= t("interval_monthly") %>
+                                </option>
                             </select>
                         </div>
                     </div>
@@ -494,10 +608,14 @@
 
                 <!-- Dynamic VC (Auto-VC) -->
                 <div style="border-top:1px solid var(--border-color); padding-top:20px; margin-top:20px;">
-                    <label class="muted">📂 Auto-VC 対象カテゴリ<span class="help-tip"
-                            data-tip="指定したカテゴリ内の最上位チャンネルに入ると、自分専用のVCが自動生成されます。">?</span></label><br />
+                    <label class="muted" style="font-size:12px;">
+                        <%= t("auto_vc_cat_label") %><span class="help-tip" data-tip="<%= t(" help_auto_vc")
+                                %>">?</span>
+                    </label><br />
                     <select id="autoVcCategory" style="width:100%; max-width:400px; margin-top:5px;"></select>
-                    <p class="muted" style="font-size:11px; margin-top:5px;">※ カテゴリ内の最上位VCに入室時に作成、退出時（0人時）に削除されます。</p>
+                    <p class="muted" style="font-size:11px; margin-top:5px;">
+                        <%= t("auto_vc_help") %>
+                    </p>
                 </div>
             </div>
         </div>
@@ -506,29 +624,35 @@
         <!-- 7. Button Roles (v2.8.0) -->
         <div class="accordion-item" id="sec-br">
             <div class="accordion-header" onclick="toggleAccordion('sec-br')">
-                <span>🔘 ボタンロール管理</span>
+                <span>
+                    <%= t("br_mgmt_title") %>
+                </span>
                 <span>▼</span>
             </div>
             <div class="accordion-content">
                 <p class="muted" style="font-size:12px; margin-bottom:15px;">
-                    ボタンを押すと役職が付与されるメッセージを作成・管理します。既存パネルの編集も可能です。</p>
-
+                    <%= t("br_mgmt_desc") %>
+                </p>
                 <!-- Creator Form -->
                 <div
                     style="background: rgba(0,0,0,0.1); padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid var(--border-color);">
-                    <h4
-                        style="margin-top:0; font-size:14px; color: var(--accent-color); border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 15px;">
-                        🎨 パネル作成・編集</h4>
+                    <h5 style="margin:20px 0 10px 0; color:var(--text-primary); font-size:14px;">
+                        <%= t("br_panel_edit_title") %>
+                    </h5>
                     <input type="hidden" id="brId" value="">
                     <input type="hidden" id="brMessageId" value="">
 
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
                         <div>
-                            <label class="muted">送信先チャンネル</label><br />
+                            <label class="muted">
+                                <%= t("target_channel") %>
+                            </label><br />
                             <select id="brChannel" style="width:100%; margin-top:5px;"></select>
                         </div>
                         <div>
-                            <label class="muted">アクセントカラー</label><br />
+                            <label class="muted">
+                                <%= t("accent_color_label") %>
+                            </label><br />
                             <div style="display:flex; gap:10px; align-items:center; margin-top:5px;">
                                 <input type="color" id="brColor" value="#5865F2"
                                     style="width:40px; height:35px; border:none; padding:0; background:none; cursor:pointer;"
@@ -541,32 +665,41 @@
                     </div>
 
                     <div style="margin-bottom:15px;">
-                        <label class="muted">タイトル（埋め込み）</label><br />
-                        <input id="brTitle" type="text" placeholder="役職パネル" style="width:100%; margin-top:5px;">
+                        <label class="muted">
+                            <%= t("embed_title_label") %>
+                        </label><br />
+                        <input id="brTitle" type="text" placeholder="<%= t(" br_default_title") %>" style="width:100%;
+                        margin-top:5px;">
                     </div>
 
                     <div style="margin-bottom:15px;">
-                        <label class="muted">メッセージ本文</label><br />
-                        <textarea id="brContent" rows="3"
-                            style="width:100%; margin-top:5px; background:var(--card-bg); color:var(--text-color); border:1px solid var(--border-color); border-radius:4px; padding:8px;"
-                            placeholder="空欄の場合は自動的に説明文が生成されます"></textarea>
+                        <label class="muted" style="font-size:12px;">
+                            <%= t("message_body_label") %>
+                        </label><br />
+                        <textarea id="brContent" rows="2" placeholder="<%= t(" br_empty_content_desc")
+                            %>" style="width:100%; margin-top:5px; background:var(--card-bg); color:var(--text-primary); border:1px solid var(--border-color); border-radius:6px; padding:8px; font-size:13px;"></textarea>
                     </div>
 
                     <div style="margin-bottom:15px;">
-                        <label class="muted">ボタン設定（1行に最大5個）</label>
+                        <label class="muted">
+                            <%= t("btn_settings_label") %>
+                        </label>
                         <div id="brButtonsList" style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
                             <!-- Button Rows loaded via JS -->
                         </div>
-                        <button type="button" onclick="addBrButtonRow()" class="btn"
+                        <button type="button" onclick="addBrButton()" class="btn"
                             style="font-size:12px; width:100%; margin-top:10px; background:rgba(255,255,255,0.05); border:1px dashed var(--border-color);">+
-                            ボタンを追加</button>
+                            <%= t("add_btn_label") %>
+                        </button>
                     </div>
 
                     <div style="display:flex; gap:10px; margin-top:20px;">
-                        <button type="button" onclick="saveButtonRole()" class="btn btn-primary"
-                            style="flex:2; padding:10px;">🚀 Discordに送信・保存</button>
-                        <button type="button" onclick="resetBrForm()" class="btn"
-                            style="flex:1; padding:10px;">リセット</button>
+                        <button class="btn btn-primary" onclick="deployBrPanel()">
+                            <%= t("send_to_discord_btn") %>
+                        </button>
+                        <button class="btn btn-secondary" onclick="resetBrForm()">
+                            <%= t("reset_btn") %>
+                        </button>
                     </div>
                 </div>
 

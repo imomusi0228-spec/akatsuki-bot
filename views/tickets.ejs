@@ -1,13 +1,23 @@
 <div class="card" style="max-width: 1100px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <h3 style="margin:0;">🎫 チケット管理 ＆ 設定</h3>
+        <h3 style="margin:0;">
+            <%= t("ticket_mgmt_title") %>
+        </h3>
         <div style="display:flex; gap:10px;">
             <select id="statusFilter" style="font-size:12px;">
-                <option value="all">すべて</option>
-                <option value="open" selected>進行中</option>
-                <option value="closed">解決済</option>
+                <option value="all">
+                    <%= t("status_all") %>
+                </option>
+                <option value="open" selected>
+                    <%= t("status_open") %>
+                </option>
+                <option value="closed">
+                    <%= t("status_closed") %>
+                </option>
             </select>
-            <button id="refreshTickets" class="btn btn-primary" style="padding:4px 12px; font-size:12px;">更新</button>
+            <button id="refreshTickets" class="btn btn-primary" style="padding:4px 12px; font-size:12px;">
+                <%= t("refresh_btn") %>
+            </button>
         </div>
     </div>
 
@@ -17,32 +27,50 @@
         style="margin-bottom:24px; background:rgba(255,255,255,0.02); padding:20px; border-radius:8px; border:1px solid var(--border-color);">
         <h4
             style="margin-top:0; margin-bottom:15px; font-size:14px; color:var(--text-primary); border-left: 4px solid var(--accent-color); padding-left: 10px;">
-            ⚙️ チケット基本設定</h4>
+            <%= t("ticket_basic_settings") %>
+        </h4>
         <div style="margin-bottom:20px;">
-            <label class="muted" style="font-size:12px;">🛡️ モデレーターロール（対応可能なスタッフ）</label><br />
+            <label class="muted" style="font-size:12px;">
+                <%= t("mod_role_label") %>
+            </label><br />
             <select id="ticketStaffRole" style="width:100%; margin-top:8px; padding:10px; border-radius:8px;">
-                <option value="">ロード中...</option>
+                <option value="">
+                    <%= t("loading_dots") %>
+                </option>
             </select>
-            <p class="muted" style="font-size:11px; margin-top:8px;">※ ここで設定したロールを持つメンバーを、チケットの担当者として割り当てることができます。</p>
+            <p class="muted" style="font-size:11px; margin-top:8px;">
+                <%= t("mod_role_help") %>
+            </p>
         </div>
         <div style="margin-bottom:20px;">
-            <label class="muted" style="font-size:12px;">📜 チケットログ送信先チャンネル</label><br />
+            <label class="muted" style="font-size:12px;">
+                <%= t("ticket_log_ch_label") %>
+            </label><br />
             <select id="ticketLogCh" style="width:100%; margin-top:8px; padding:10px; border-radius:8px;">
-                <option value="">ロード中...</option>
+                <option value="">
+                    <%= t("loading_dots") %>
+                </option>
             </select>
-            <p class="muted" style="font-size:11px; margin-top:8px;">※ チケットがクローズされた際に、会話履歴（HTML）がこのチャンネルに送信されます。</p>
+            <p class="muted" style="font-size:11px; margin-top:8px;">
+                <%= t("ticket_log_ch_help") %>
+            </p>
         </div>
         <div style="margin-bottom:20px;">
-            <label class="muted" style="font-size:12px;">📦 チケット作成時の初期メッセージ（お嬢の言葉）</label><br />
+            <label class="muted" style="font-size:12px;">
+                <%= t("ticket_welcome_msg_label") %>
+            </label><br />
             <textarea id="ticketWelcomeMsg"
                 style="width:100%; height:80px; margin-top:8px; padding:12px; border-radius:8px; border:1px solid var(--border-color); background:rgba(0,0,0,0.2); color:white; font-size:13px;"
-                placeholder="スタッフが対応するまで、相談内容を記入してお待ちください..."></textarea>
-            <p class="muted" style="font-size:11px; margin-top:8px;">※ 空欄の場合はボット標準のメッセージが使用されます。</p>
+                placeholder="<%= t(" ticket_welcome_msg_placeholder") %>"></textarea>
+            <p class="muted" style="font-size:11px; margin-top:8px;">
+                <%= t("ticket_welcome_msg_help") %>
+            </p>
         </div>
         <div style="display:flex; justify-content:flex-end; gap:10px; align-items:center;">
             <span id="saveStatus" style="font-size:12px;"></span>
-            <button id="saveTicketSettings" class="btn btn-primary"
-                style="padding:6px 20px; font-size:13px;">設定を保存</button>
+            <button id="saveTicketSettings" class="btn btn-primary" style="padding:6px 20px; font-size:13px;">
+                <%= t("save_settings") %>
+            </button>
         </div>
     </div>
 
@@ -51,20 +79,24 @@
         style="margin-bottom:24px; background:rgba(255,255,255,0.02); padding:20px; border-radius:8px; border:1px solid var(--border-color);">
         <h4
             style="margin-top:0; margin-bottom:15px; font-size:14px; color:var(--text-primary); border-left: 4px solid #FFAD1F; padding-left: 10px;">
-            🏷️ チケットカテゴリ設定
+            <%= t("ticket_cat_settings") %>
         </h4>
         <p class="muted" style="font-size:12px; margin-bottom:15px;">
-            チケット作成時に表示するカテゴリを設定します。ユーザーはチケット作成前に相談内容のカテゴリを選択します。
+            <%= t("ticket_cat_desc") %>
         </p>
         <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap: wrap;">
             <input id="newCategoryEmoji" type="text" placeholder="🎫" style="width:60px; text-align:center;">
-            <input id="newCategoryName" type="text" placeholder="カテゴリ名（例: 不具合報告）" style="flex:1; min-width:180px;">
-            <input id="newCategoryDesc" type="text" placeholder="説明（任意）" style="flex:2; min-width:200px;">
+            <input id="newCategoryName" type="text" placeholder="<%= t(" cat_name_placeholder") %>" style="flex:1;
+            min-width:180px;">
+            <input id="newCategoryDesc" type="text" placeholder="<%= t(" cat_desc_placeholder") %>" style="flex:2;
+            min-width:200px;">
             <button onclick="addTicketCategory()" class="btn btn-primary"
-                style="padding:6px 16px; white-space:nowrap;">＋ 追加</button>
+                style="padding:6px 16px; white-space:nowrap;">＋ <%= t("add_btn") %></button>
         </div>
         <div id="categoryList" style="display:flex; flex-direction:column; gap:8px;">
-            <div class="muted" style="text-align:center; padding:15px;">読み込み中...</div>
+            <div class="muted" style="text-align:center; padding:15px;">
+                <%= t("loading_dots") %>
+            </div>
         </div>
     </div>
     <!-- /B-10 -->
@@ -73,12 +105,24 @@
         <table style="width:100%; min-width:800px;">
             <thead>
                 <tr>
-                    <th style="width:80px;">ID</th>
-                    <th>起票者</th>
-                    <th>担当スタッフ</th>
-                    <th style="width:120px;">ステータス</th>
-                    <th style="width:180px;">作成日時</th>
-                    <th style="width:160px; text-align:right;">アクション</th>
+                    <th style="width:80px;">
+                        <%= t("ticket_id") %>
+                    </th>
+                    <th>
+                        <%= t("ticket_creator") %>
+                    </th>
+                    <th>
+                        <%= t("ticket_staff") %>
+                    </th>
+                    <th style="width:120px;">
+                        <%= t("ticket_status") %>
+                    </th>
+                    <th style="width:180px;">
+                        <%= t("ticket_created") %>
+                    </th>
+                    <th style="width:160px; text-align:right;">
+                        <%= t("ticket_action") %>
+                    </th>
                 </tr>
             </thead>
             <tbody id="ticketList">
@@ -97,15 +141,21 @@
     style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; justify-content:center; align-items:center; padding:20px;">
     <div class="card"
         style="width:100%; max-width:400px; padding:20px; border:1px solid var(--accent-color); position:relative;">
-        <h4 style="margin-top:0; color:var(--accent-color);">👥 担当をアサイン</h4>
-        <p class="muted" style="font-size:12px; margin-bottom:15px;">このチケットを担当するモデレーターを選択してください。</p>
+        <h4 style="margin-top:0; color:var(--accent-color);">
+            <%= t("assign_staff_title") %>
+        </h4>
+        <p class="muted" style="font-size:12px; margin-bottom:15px;">
+            <%= t("assign_staff_desc") %>
+        </p>
         <div id="memberList"
             style="max-height:300px; overflow-y:auto; margin-bottom:20px; display:flex; flex-direction:column; gap:8px;">
             <!-- Members will be loaded here -->
         </div>
         <div style="display:flex; justify-content:flex-end;">
             <button onclick="$('assignModal').style.display='none'" class="btn"
-                style="padding:4px 12px; font-size:12px;">キャンセル</button>
+                style="padding:4px 12px; font-size:12px;">
+                <%= t("cancel_btn") %>
+            </button>
         </div>
     </div>
 </div>
@@ -217,7 +267,7 @@
                 };
                 const r = await api("/api/settings/update", body);
                 const st = document.getElementById("saveStatus");
-                if (st) st.textContent = r.ok ? "✅ 保存しました" : "❌ " + r.error;
+                if (st) st.textContent = r.ok ? "✅ " + t("save_success") : "❌ " + r.error;
                 setTimeout(() => { if (st) st.textContent = ""; }, 3000);
             };
         }
@@ -229,9 +279,9 @@
         const list = document.getElementById("categoryList");
         if (!gid || !list) return;
         const r = await api(`/api/ticket-categories?guild=${gid}`);
-        if (!r.ok) { list.innerHTML = '<div class="muted" style="text-align:center; padding:15px;">読み込み失敗</div>'; return; }
+        if (!r.ok) { list.innerHTML = `<div class="muted" style="text-align:center; padding:15px;">${t("loading_failed")}</div>`; return; }
         if (r.categories.length === 0) {
-            list.innerHTML = '<div class="muted" style="text-align:center; padding:15px;">カテゴリが登録されていません。追加してください。</div>';
+            list.innerHTML = `<div class="muted" style="text-align:center; padding:15px;">${t("no_categories")}</div>`;
         } else {
             list.innerHTML = r.categories.map(c => `
                 <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid var(--border-color);">
@@ -240,7 +290,7 @@
                         <div style="font-weight:600; font-size:13px;">${escapeHTML(c.name)}</div>
                         <div class="muted" style="font-size:11px;">${escapeHTML(c.description || '')}</div>
                     </div>
-                    <button onclick="deleteCategory(${c.id})" class="btn" style="padding:3px 10px; font-size:11px; background:rgba(244,33,46,0.1); color:#f4212e; border-color:rgba(244,33,46,0.3);">削除</button>
+                    <button onclick="deleteCategory(${c.id})" class="btn" style="padding:3px 10px; font-size:11px; background:rgba(244,33,46,0.1); color:#f4212e; border-color:rgba(244,33,46,0.3);">${t("delete_btn")}</button>
                 </div>
             `).join('');
         }
@@ -250,7 +300,7 @@
     async function addTicketCategory() {
         const gid = getGuildId();
         const name = document.getElementById("newCategoryName")?.value?.trim();
-        if (!gid || !name) return alert("カテゴリ名を入力してください。");
+        if (!gid || !name) return alert(t("category_name_required"));
         const r = await api("/api/ticket-categories", {
             guild: gid,
             name,
@@ -267,7 +317,7 @@
     // B-10: カテゴリ削除
     async function deleteCategory(id) {
         const gid = getGuildId();
-        if (!confirm("このカテゴリを削除しますか？")) return;
+        if (!confirm(t("confirm_delete_category"))) return;
         const r = await api("/api/ticket-categories", { guild: gid, id }, "DELETE");
         if (r.ok) loadCategories(); else alert("Error: " + r.error);
     }
@@ -283,7 +333,7 @@
         tbody.innerHTML = `
         <tr>
             <td colspan="6" style="text-align:center; padding:20px;">
-                読み込み中...
+                ${t("loading_dots")}
             </td>
         </tr>
     `;
@@ -301,7 +351,7 @@
                 tbody.innerHTML = `
                 <tr>
                     <td colspan="6" style="text-align:center; padding:20px;">
-                        チケットはありません。
+                        ${t("no_tickets")}
                     </td>
                 </tr>
             `;
@@ -320,7 +370,7 @@
                 tr.innerHTML = `
                 <td>${t.id}</td>
                 <td>${t.user_id}</td>
-                <td>${t.assigned_to || "未割当"}</td>
+                <td>${t.assigned_to || t("unassigned")}</td>
                 <td>
                     <span class="status-badge status-${t.status}">
                         ${t.status}
@@ -339,7 +389,7 @@
             tbody.innerHTML = `
             <tr>
                 <td colspan="6" style="text-align:center; padding:20px;">
-                    読み込み失敗
+                    ${t("loading_failed")}
                 </td>
             </tr>
         `;

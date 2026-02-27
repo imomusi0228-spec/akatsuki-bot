@@ -55,7 +55,7 @@
                     <%= t("audit_status") %>
                 </th>
                 <th style="text-align:center;">
-                    ⚖️ 操作
+                    <%= t("ticket_action") %>
                 </th>
             </tr>
         </thead>
@@ -67,26 +67,34 @@
         style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; justify-content:center; align-items:center; padding:20px;">
         <div class="card"
             style="width:100%; max-width:500px; padding:20px; border:1px solid var(--accent-color); position:relative;">
-            <h4 id="warnUserTitle" style="margin-top:0; color:var(--accent-color);">⚠️ 警告管理</h4>
+            <h4 id="warnUserTitle" style="margin-top:0; color:var(--accent-color);">⚠️ <%= t("warn_mgmt_title") %>
+            </h4>
             <div id="warnHistory"
                 style="max-height:200px; overflow-y:auto; margin-bottom:20px; padding:10px; background:rgba(0,0,0,0.2); border-radius:8px;">
                 <!-- Warnings loaded via JS -->
             </div>
 
             <div style="margin-bottom:15px;">
-                <label class="muted" style="font-size:12px;">新しい警告を発行</label>
+                <label class="muted" style="font-size:12px;">
+                    <%= t("warn_action_label") %>
+                </label>
                 <textarea id="warnReason"
                     style="width:100%; height:60px; margin-top:5px; padding:10px; border-radius:8px; border:1px solid var(--border-color); background:rgba(0,0,0,0.2); color:white; font-size:13px;"
-                    placeholder="警告理由を記入してください..."></textarea>
+                    placeholder="<%= t('ticket_welcome_msg_placeholder') %>"></textarea>
             </div>
 
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <button id="clearWarnBtn" class="btn"
-                    style="background:rgba(244, 33, 46, 0.1); border-color:#f4212e; color:#f4212e; font-size:12px;">履歴をリセット</button>
+                    style="background:rgba(244, 33, 46, 0.1); border-color:#f4212e; color:#f4212e; font-size:12px;">
+                    <%= t("reset_btn") %>
+                </button>
                 <div style="display:flex; gap:10px;">
-                    <button onclick="$('warnModal').style.display='none'" class="btn"
-                        style="font-size:12px;">閉じる</button>
-                    <button id="submitWarnBtn" class="btn btn-primary" style="font-size:12px;">警告を発行</button>
+                    <button onclick="$('warnModal').style.display='none'" class="btn" style="font-size:12px;">
+                        <%= t("cancel_btn") %>
+                    </button>
+                    <button id="submitWarnBtn" class="btn btn-primary" style="font-size:12px;">
+                        <%= t("warn_action_label") %>
+                    </button>
                 </div>
             </div>
         </div>
