@@ -7,7 +7,7 @@ import { getFeatures } from "../core/tiers.js";
  * 自己紹介ゲート: 参加後 intro_reminder_hours 経過しても未投稿のメンバーにDMを送信
  */
 export async function runIntroReminder() {
-    console.log("[INTRO-REMINDER] Checking for members without self-intro...");
+    // console.log("[INTRO-REMINDER] Checking...");
 
     const guildsRes = await dbQuery(
         "SELECT * FROM settings WHERE self_intro_enabled = TRUE AND intro_channel_id IS NOT NULL AND self_intro_role_id IS NOT NULL"

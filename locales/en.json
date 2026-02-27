@@ -1,7 +1,8 @@
 {
-    "title": "Akatsuki Bot",
-    "admin_title": "Akatsuki Bot Admin",
+    "title": "AkatsukiBot",
+    "admin_title": "AkatsukiBot Admin",
     "subtitle": "The New Standard for Discord Management",
+    "app_desc": "AkatsukiBot provides advanced security, AI-powered analytics, and sophisticated management features for modern Discord communities.",
     "login": "Login with Discord",
     "logout": "Logout",
     "dashboard": "Dashboard",
@@ -50,6 +51,7 @@
     "ng_log_channel": "NG Log Channel",
     "scan_btn": "Start Audit",
     "header_joined_at": "Joined",
+    "header_count": "Count",
     "header_user": "User",
     "last_vc": "Last VC",
     "last_msg": "Intro",
@@ -73,6 +75,13 @@
     "roadmap_tag": "Soon",
     "status_soon": "Coming Soon",
     "help_growth_trend": "A graph showing the trend of server joins and leaves aggregated by day.",
+    "last_updated_label": "Last Updated",
+    "error_title_proun": "Pardon me, an error occurred",
+    "btn_retry": "Retry",
+    "btn_to_dashboard": "To Dashboard",
+    "no_data_available": "No data available yet.",
+    "unknown_user": "Unknown User",
+    "error_label": "Error:",
     "help_heatmap": "Aggregates voice channel activity by hour of day to identify active periods.",
     "messages_count": "Messages",
     "help_ng_limit": "Define specific keywords to be detected and restricted in messages.",
@@ -214,7 +223,6 @@
     "ai_insight_enabled_label": "Enable Admin Advice",
     "ai_insight_ch_label_admin": "Advice Destination (Admin Recommended)",
     "insight_sections_title": "Report Sections",
-    "section_growth_label": "Member Growth (Growth Analysis)",
     "section_toxicity_label": "NG Words (Order Analysis)",
     "section_vc_label": "VC Usage (Activity Analysis)",
     "insight_sections_help": "Sections unchecked will be excluded from the report. If all are disabled, no report will be sent.",
@@ -374,5 +382,6 @@
     "reset_btn": "Reset",
     "br_list_title": "Created Panels",
     "branding": "Branding",
-    "ticket_mgmt": "Tickets"
+    "ticket_mgmt": "Tickets",
+    "wisdom": "Insights"
 }

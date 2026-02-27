@@ -123,7 +123,7 @@ export async function handleApiRoute(req, res, pathname, url) {
                 return null;
             }))).filter(Boolean);
 
-            console.log(`[API INFO] /api/guilds: Found ${availableGuilds.length} available guilds for user ${session.user.id}`);
+            // console.log(`[API INFO] /api/guilds: Found ${availableGuilds.length} available guilds`);
             resJson({ ok: true, guilds: availableGuilds });
         } catch (e) {
             console.error(`[API ERROR] /api/guilds:`, e.message);
@@ -533,7 +533,7 @@ export async function handleApiRoute(req, res, pathname, url) {
                                 const member = await guild.members.fetch(userId).catch(() => null);
                                 if (member && member.isCommunicationDisabled()) {
                                     await member.timeout(null, `NG Word "${body.word}" deleted by admin`);
-                                    console.log(`[Auto-Release] Removed timeout for ${member.user.tag} in ${guild.name}`);
+                                    // console.log(`[Auto-Release] Removed timeout...`);
                                 }
                             } catch (e) {
                                 console.error(`[Auto-Release] Failed for user ${userId}:`, e.message);
@@ -542,7 +542,7 @@ export async function handleApiRoute(req, res, pathname, url) {
                     }
                 }
             } else {
-                console.log(`[Auto-Release] Skipped for guild ${body.guild} (Tier: ${tier}) - Feature disabled for this tier`);
+                // console.log(`[Auto-Release] Skipped...`);
             }
 
             await dbQuery("DELETE FROM ng_words WHERE guild_id = $1 AND word = $2", [body.guild, body.word]);
@@ -749,7 +749,7 @@ export async function handleApiRoute(req, res, pathname, url) {
                                 type: ChannelType.GuildVoice,
                                 parent: category.id
                             });
-                            console.log(`[AUTO-VC] Created missing trigger in category ${category.name} for guild ${guild.name}`);
+                            // console.log(`[AUTO-VC] Created missing trigger...`);
                         }
                     }
                 }

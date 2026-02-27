@@ -13,17 +13,8 @@ export const pool = new Pool(poolConfig);
 export const dbQuery = (text, params) => pool.query(text, params);
 
 export async function initDb() {
-    if (!ENV.DATABASE_URL) {
-        console.error("❌ DATABASE_URL is EMPTY");
-        return false;
-    }
-
-    try {
-        const url = new URL(ENV.DATABASE_URL);
-        console.log(`📡 Database attempt: protocol=${url.protocol}, host=${url.hostname}, port=${url.port}, db=${url.pathname.substring(1)}`);
-    } catch (e) {
-        console.log(`📡 Database attempt (manual parse): ${ENV.DATABASE_URL.substring(0, 15)}...`);
-    }
+    // Minimal log for production
+    console.log(`📡 Initializing Database Connection...`);
 
     const coreTables = [
         `CREATE TABLE IF NOT EXISTS settings (

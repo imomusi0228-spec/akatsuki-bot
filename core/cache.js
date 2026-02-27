@@ -13,7 +13,7 @@ class CacheManager {
         this.joinCounts = new Map();     // guildId -> [{ts: number}]
         this.userGuilds = new Map();     // userId -> { data: guilds, expires: number }
 
-        this.ttl = 10 * 60 * 1000;    // Default 10 minutes TTL
+        this.ttl = 1 * 60 * 1000;     // Reduced to 1 minute for faster tier updates
         this.maxSize = 2000;          // Max guilds to keep in memory (LRU-ish)
     }
 

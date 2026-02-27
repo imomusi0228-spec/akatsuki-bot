@@ -65,17 +65,16 @@ export async function startServer() {
             }
 
             // 6. Debug Status (Diagnostic)
-            if (pathname === "/debug/status") {
+            if (pathname === "/debug/status" && ENV.DEBUG_MODE === "true") {
                 const status = {
                     wsStatus: client.ws.status,
                     ping: client.ws.ping,
                     uptime: client.uptime,
                     user: client.user ? { tag: client.user.tag, id: client.user.id } : null,
                     guilds: client.guilds.cache.size,
-                    readyAt: client.readyAt,
                 };
                 res.writeHead(200, { "Content-Type": "application/json" });
-                res.end(JSON.stringify(status, null, 2));
+                res.end(JSON.stringify(status));
                 return;
             }
 

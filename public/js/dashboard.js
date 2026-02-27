@@ -36,15 +36,15 @@ const showPageError = (msg) => {
     errDiv.innerHTML = `
         <h3 style="color: var(--danger-color); display: flex; align-items: center; gap: 10px;">
             <i class="fas fa-exclamation-triangle"></i> 
-            お嬢、エラーが発生したぞ
+            ${t("error_title_proun")}
         </h3>
         <p style="margin: 1rem 0; opacity: 0.9;">${escapeHTML(msg)}</p>
         <div style="display: flex; gap: 1rem;">
             <button class="btn btn-primary" onclick="location.reload()" style="background: var(--danger-color); border: none;">
-                <i class="fas fa-sync-alt"></i> 再試行
+                <i class="fas fa-sync-alt"></i> ${t("btn_retry")}
             </button>
-            <a href="/dashboard" class="btn btn-secondary">
-                <i class="fas fa-home"></i> ダッシュボードへ
+            <a href="/admin/dashboard" class="btn btn-secondary">
+                <i class="fas fa-home"></i> ${t("btn_to_dashboard")}
             </a>
         </div>
     `;
@@ -329,7 +329,7 @@ async function initDashboard() {
                 const lbBody = $("leaderboard-body");
                 if (lbBody && lbRes.ok) {
                     if (lbRes.leaderboard.length === 0) {
-                        lbBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;" class="muted">No data available yet.</td></tr>';
+                        lbBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px;" class="muted">${t("no_data_available")}</td></tr>`;
                     } else {
                         lbBody.innerHTML = lbRes.leaderboard.map((u, i) => `
                             <tr>
@@ -353,14 +353,14 @@ async function initDashboard() {
                     (res.stats.topNgUsers || []).forEach(u => {
                         const av = u.avatar_url ? '<img src="' + u.avatar_url + '" style="width:24px; height:24px; border-radius:50%; vertical-align:middle; margin-right:8px;">' : '';
                         const releaseBtn = u.is_timed_out ? '<button onclick="releaseNgTimeout(\'' + u.user_id + '\', \'' + gid + '\')" class="btn" style="padding:2px 8px; font-size:10px; background:var(--danger-color); color:white; border:none; margin-left:8px;">' + t("btn_release") + '</button>' : '';
-                        rows += `<tr><td>${av}${escapeHTML(u.display_name || 'Unknown')}</td><td style="text-align:right">${u.cnt}</td><td style="text-align:right">${releaseBtn}</td></tr>`;
+                        rows += `<tr><td>${av}${escapeHTML(u.display_name || t('unknown_user'))}</td><td style="text-align:right">${u.cnt}</td><td style="text-align:right">${releaseBtn}</td></tr>`;
                     });
                     topNgEl.innerHTML = rows || `<tr><td colspan="3" class="muted" style="text-align:center; padding:10px;">${t("ng_none")}</td></tr>`;
                 }
 
                 await updateCharts(gid, sub.tier, mon);
             } else {
-                if (summaryEl) summaryEl.innerText = "Error: " + res.error;
+                if (summaryEl) summaryEl.innerText = t("error_label") + " " + (res.error || "Unknown");
             }
         } catch (e) {
             console.error("Reload Error:", e);
@@ -402,7 +402,7 @@ async function initDashboard() {
                 setRtNum("rt-week-ng", rt.week_ng);
                 setRtNum("rt-week-timeout", rt.week_timeouts);
                 const updEl = $("rt-last-updated");
-                if (updEl) updEl.textContent = "最終更新: " + new Date(rt.fetched_at).toLocaleTimeString("ja-JP");
+                if (updEl) updEl.textContent = t("last_updated_label") + ": " + new Date(rt.fetched_at).toLocaleTimeString(window.lang === 'ja' ? "ja-JP" : "en-US");
                 const dot = $("rt-status-dot");
                 if (dot) { dot.style.background = "#00BA7C"; dot.style.boxShadow = "0 0 6px #00BA7C"; }
             } else {

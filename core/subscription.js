@@ -67,23 +67,29 @@ export async function getTier(guildId) {
 
         // Get all guilds for this user
         const listRes = await dbQuery(
-            "SELECT guild_id, tier FROM subscriptions WHERE user_id = $1 ORDER BY updated_at ASC",
+            "SELECT guild_id, tier FROM subscriptions WHERE user_id = $1 ORDER BY updated_at DESC",
             [sub.user_id]
         );
 
-        // Filter in JS to safely handle mixed VARCHAR/INT tiers
-        const activeIds = listRes.rows.filter(r => {
+        // Filter and sort to prioritize current guild
+        let activeRows = listRes.rows.filter(r => {
             let t = parseInt(r.tier, 10);
             if (isNaN(t)) {
-                // Handle legacy string tiers
                 if (r.tier === "Trial Pro+") t = TIERS.TRIAL_PRO_PLUS;
                 else if (r.tier === "Trial Pro") t = TIERS.TRIAL_PRO;
                 else return false;
             }
             return t >= sub.tier;
-        }).map(r => r.guild_id);
+        });
 
-        const allowedIds = activeIds.slice(0, limit);
+        // Ensure current guild is at the top to be counted in limit
+        const currentIdx = activeRows.findIndex(r => r.guild_id === guildId);
+        if (currentIdx > 0) {
+            const [current] = activeRows.splice(currentIdx, 1);
+            activeRows.unshift(current);
+        }
+
+        const allowedIds = activeRows.slice(0, limit).map(r => r.guild_id);
 
         if (!allowedIds.includes(guildId)) {
             tier = TIERS.FREE; // Restricted due to limit

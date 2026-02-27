@@ -121,7 +121,7 @@ export async function renderAdminAntiraidHTML({ user, req }) {
 export async function renderAdminTicketsHTML({ user, req }) {
     const lang = getLang(req);
     return await renderView("tickets", {
-        title: "チケット管理",
+        title: t("ticket_mgmt", lang),
         user,
         oauth: true,
         activeTab: "tickets",
@@ -132,7 +132,7 @@ export async function renderAdminTicketsHTML({ user, req }) {
 export async function renderAdminBrandingHTML({ user, req }) {
     const lang = getLang(req);
     return await renderView("branding", {
-        title: "ブランディング ＆ テーマ",
+        title: t("branding", lang),
         user,
         oauth: true,
         activeTab: "branding",
@@ -143,7 +143,7 @@ export async function renderAdminBrandingHTML({ user, req }) {
 export async function renderAdminAiHTML({ user, req }) {
     const lang = getLang(req);
     return await renderView("ai", {
-        title: "AI 分析 & インサイト",
+        title: t("ai_insight_title", lang),
         user,
         oauth: true,
         activeTab: "ai",

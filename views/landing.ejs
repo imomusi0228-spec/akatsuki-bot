@@ -1,20 +1,156 @@
-<div style="text-align:center; padding: 100px 20px;">
-    <h1 style="font-size: 56px; margin-bottom: 20px;">☾ <%= t("title") %>
-    </h1>
-    <p
-        style="font-size: 20px; color: #fff; font-weight:bold; margin-bottom: 20px; max-width: 800px; margin-left: auto; margin-right: auto;">
-        <%= t("subtitle") %>
-    </p>
-    <p
-        style="font-size: 16px; color: #8899a6; margin-bottom: 50px; max-width: 600px; margin-left: auto; margin-right: auto; line-height: 1.8;">
-        <%= t("app_desc") %>
-    </p>
-    <div style="display:flex; justify-content:center; gap:20px; flex-wrap: wrap;">
-        <a href="/login" class="btn btn-primary" style="padding:16px 48px; font-size:18px;">
-            <%= t("login") %>
-        </a>
-        <a href="/features" class="btn" style="padding:16px 48px; font-size:18px;">
-            <%= t("view_features") %>
-        </a>
+<style>
+    .hero-section {
+        min-height: 80vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: 40px 20px;
+        position: relative;
+        overflow: hidden;
+        background: radial-gradient(circle at top right, rgba(29, 155, 240, 0.1), transparent),
+            radial-gradient(circle at bottom left, rgba(249, 24, 128, 0.1), transparent);
+    }
+
+    .glass-card {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 40px;
+        padding: 80px 40px;
+        max-width: 900px;
+        width: 100%;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        animation: cardAppear 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes cardAppear {
+        from {
+            opacity: 0;
+            transform: translateY(40px) scale(0.98);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .hero-title {
+        font-size: clamp(48px, 8vw, 84px);
+        font-weight: 900;
+        margin-bottom: 24px;
+        letter-spacing: -3px;
+        line-height: 0.95;
+        background: linear-gradient(135deg, #fff 30%, rgba(255, 255, 255, 0.4) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+        font-size: clamp(18px, 3vw, 24px);
+        color: #fff;
+        font-weight: 600;
+        margin-bottom: 24px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        opacity: 0.9;
+    }
+
+    .hero-desc {
+        font-size: 18px;
+        color: #8899a6;
+        margin-bottom: 60px;
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
+        line-height: 1.8;
+    }
+
+    .cta-group {
+        display: flex;
+        justify-content: center;
+        gap: 24px;
+        flex-wrap: wrap;
+    }
+
+    .btn-premium {
+        padding: 20px 48px;
+        font-size: 18px;
+        font-weight: 800;
+        border-radius: 100px;
+        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .btn-login {
+        background: #fff;
+        color: #000;
+        border: none;
+    }
+
+    .btn-login:hover {
+        transform: translateY(-5px) scale(1.05);
+        box-shadow: 0 15px 30px rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-ghost {
+        background: rgba(255, 255, 255, 0.05);
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-ghost:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.3);
+        transform: translateY(-5px);
+    }
+
+    .bg-blur {
+        position: absolute;
+        width: 500px;
+        height: 500px;
+        border-radius: 50%;
+        filter: blur(120px);
+        z-index: -1;
+        opacity: 0.15;
+        animation: float 20s infinite alternate;
+    }
+
+    @keyframes float {
+        0% {
+            transform: translate(0, 0);
+        }
+
+        100% {
+            transform: translate(100px, 50px);
+        }
+    }
+</style>
+
+<div class="hero-section">
+    <div class="bg-blur" style="top: -10%; right: -5%; background: #1DA1F2;"></div>
+    <div class="bg-blur" style="bottom: -10%; left: -5%; background: #f91880;"></div>
+
+    <div class="glass-card">
+        <div class="hero-subtitle">
+            <%= t("subtitle") %>
+        </div>
+        <h1 class="hero-title">AkatsukiBot</h1>
+        <p class="hero-desc">
+            <%= t("app_desc") %>
+        </p>
+
+        <div class="cta-group">
+            <a href="/login" class="btn-premium btn-login">
+                <%= t("login") %>
+            </a>
+            <a href="/features" class="btn-premium btn-ghost">
+                <%= t("view_features") %>
+            </a>
+        </div>
     </div>
 </div>
