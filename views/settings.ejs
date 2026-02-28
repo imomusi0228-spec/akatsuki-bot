@@ -179,57 +179,6 @@
             </div>
         </div>
 
-        <!-- B-9. 手動警告管理 -->
-        <div class="accordion-item" id="sec-warn">
-            <div class="accordion-header" onclick="toggleAccordion('sec-warn')">
-                <span>⚠️ <%= t("warn_mgmt_title") %><span class="help-tip"
-                            data-tip="<%= t('help_warn_mgmt') %>">?</span></span>
-                <span>▼</span>
-            </div>
-            <div class="accordion-content">
-                <p class="muted" style="font-size:12px; margin-bottom:15px;">
-                    <%= t("warn_mgmt_desc") %>
-                </p>
-                <label style="display:flex; align-items:center; cursor:pointer; margin-bottom:20px;">
-                    <input type="checkbox" id="autoActionOnWarns" style="width:18px; height:18px; margin-right:10px;">
-                    <span style="font-weight:bold;">
-                        <%= t("warn_auto_action_enabled") %>
-                    </span>
-                </label>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-                    <div>
-                        <label class="muted" style="font-size:12px;">
-                            <%= t("warn_threshold_label") %>
-                        </label><br />
-                        <input id="warnActionThreshold" type="number" min="1" value="3"
-                            style="width:100%; margin-top:5px;">
-                    </div>
-                    <div>
-                        <label class="muted" style="font-size:12px;">
-                            <%= t("warn_action_label") %>
-                        </label><br />
-                        <select id="warnAction" style="width:100%; margin-top:5px;">
-                            <option value="timeout">
-                                <%= t("action_timeout") %>
-                            </option>
-                            <option value="kick">
-                                <%= t("action_kick") %>
-                            </option>
-                            <option value="ban">
-                                <%= t("action_ban") %>
-                            </option>
-                        </select>
-                    </div>
-                </div>
-                <label class="muted" style="font-size:12px; display:block; margin-top:15px;">
-                    <%= t("btn_settings_label") %>
-                </label>
-                <p class="muted" style="font-size:11px; margin-top:10px;">
-                    <%= t("warn_timeout_help") %>
-                </p>
-            </div>
-        </div>
-
         <!-- A-1 / A-2: XPランキング・レベルアップ設定 -->
         <div class="accordion-item" id="sec-level">
             <div class="accordion-header" onclick="toggleAccordion('sec-level')">

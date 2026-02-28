@@ -14,7 +14,8 @@ export const data = new SlashCommandBuilder()
         ja: "Web管理画面へのリンクを発行します。",
         "en-US": "Generates a link to the Web Admin Dashboard.",
         "en-GB": "Generates a link to the Web Admin Dashboard."
-    });
+    })
+    .setDefaultMemberPermissions(0x0000000000000020); // PermissionFlagsBits.ManageGuild
 
 export async function execute(interaction) {
     const locale = interaction.locale.startsWith("ja") ? "ja" : "en";
