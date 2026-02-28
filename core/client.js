@@ -47,7 +47,7 @@ export async function loadCommands() {
 
                     if (mod?.data) {
                         if (Array.isArray(mod.data)) {
-                            mod.data.forEach(cmd => {
+                            mod.data.forEach((cmd) => {
                                 if (cmd?.name && typeof mod.execute === "function") {
                                     client.commands.set(cmd.name, mod);
                                 }

@@ -44,109 +44,149 @@ async function renderView(viewName, data, lang) {
 
 export async function renderLoginHTML(req) {
     const lang = getLang(req);
-    return await renderView("login", {
-        title: t("login", lang),
-        user: null,
-        oauth: false,
-        activeTab: null,
-        scripts: ""
-    }, lang);
+    return await renderView(
+        "login",
+        {
+            title: t("login", lang),
+            user: null,
+            oauth: false,
+            activeTab: null,
+            scripts: "",
+        },
+        lang
+    );
 }
 
 export async function renderAdminDashboardHTML({ user, req }) {
     const lang = getLang(req);
-    return await renderView("dashboard", {
-        title: t("dashboard", lang),
-        user,
-        oauth: true,
-        activeTab: "dashboard",
-        scripts: ""
-    }, lang);
+    return await renderView(
+        "dashboard",
+        {
+            title: t("dashboard", lang),
+            user,
+            oauth: true,
+            activeTab: "dashboard",
+            scripts: "",
+        },
+        lang
+    );
 }
 
 export async function renderAdminSettingsHTML({ user, req }) {
     const lang = getLang(req);
-    return await renderView("settings", {
-        title: t("settings", lang),
-        user,
-        oauth: true,
-        activeTab: "settings",
-        scripts: ""
-    }, lang);
+    return await renderView(
+        "settings",
+        {
+            title: t("settings", lang),
+            user,
+            oauth: true,
+            activeTab: "settings",
+            scripts: "",
+        },
+        lang
+    );
 }
 
 export async function renderAdminActivityHTML({ user, req }) {
     const lang = getLang(req);
-    return await renderView("activity", {
-        title: t("activity", lang),
-        user,
-        oauth: true,
-        activeTab: "activity",
-        scripts: ""
-    }, lang);
+    return await renderView(
+        "activity",
+        {
+            title: t("activity", lang),
+            user,
+            oauth: true,
+            activeTab: "activity",
+            scripts: "",
+        },
+        lang
+    );
 }
 export async function renderLandingHTML(req) {
     const lang = getLang(req);
-    return await renderView("landing", {
-        title: t("title", lang),
-        user: null,
-        oauth: false,
-        activeTab: null,
-        scripts: ""
-    }, lang);
+    return await renderView(
+        "landing",
+        {
+            title: t("title", lang),
+            user: null,
+            oauth: false,
+            activeTab: null,
+            scripts: "",
+        },
+        lang
+    );
 }
 
 export async function renderFeaturesHTML(req) {
     const lang = getLang(req);
-    return await renderView("features", {
-        title: t("features_title", lang),
-        user: null,
-        oauth: false,
-        activeTab: null,
-        scripts: ""
-    }, lang);
+    return await renderView(
+        "features",
+        {
+            title: t("features_title", lang),
+            user: null,
+            oauth: false,
+            activeTab: null,
+            scripts: "",
+        },
+        lang
+    );
 }
 
 export async function renderAdminAntiraidHTML({ user, req }) {
     const lang = getLang(req);
-    return await renderView("antiraid", {
-        title: t("nav_antiraid", lang),
-        user,
-        oauth: true,
-        activeTab: "antiraid",
-        scripts: ""
-    }, lang);
+    return await renderView(
+        "antiraid",
+        {
+            title: t("nav_antiraid", lang),
+            user,
+            oauth: true,
+            activeTab: "antiraid",
+            scripts: "",
+        },
+        lang
+    );
 }
 
 export async function renderAdminTicketsHTML({ user, req }) {
     const lang = getLang(req);
-    return await renderView("tickets", {
-        title: t("ticket_mgmt", lang),
-        user,
-        oauth: true,
-        activeTab: "tickets",
-        scripts: ""
-    }, lang);
+    return await renderView(
+        "tickets",
+        {
+            title: t("ticket_mgmt", lang),
+            user,
+            oauth: true,
+            activeTab: "tickets",
+            scripts: "",
+        },
+        lang
+    );
 }
 
 export async function renderAdminBrandingHTML({ user, req }) {
     const lang = getLang(req);
-    return await renderView("branding", {
-        title: t("branding", lang),
-        user,
-        oauth: true,
-        activeTab: "branding",
-        scripts: ""
-    }, lang);
+    return await renderView(
+        "branding",
+        {
+            title: t("branding", lang),
+            user,
+            oauth: true,
+            activeTab: "branding",
+            scripts: "",
+        },
+        lang
+    );
 }
 
 export async function renderAdminAiHTML({ user, req }) {
     const lang = getLang(req);
-    return await renderView("ai", {
-        title: t("ai_insight_title", lang),
-        user,
-        oauth: true,
-        activeTab: "ai",
-        scripts: ""
-    }, lang);
+    return await renderView(
+        "ai",
+        {
+            title: t("ai_insight_title", lang),
+            user,
+            oauth: true,
+            activeTab: "ai",
+            scripts: "",
+        },
+        lang
+    );
 }

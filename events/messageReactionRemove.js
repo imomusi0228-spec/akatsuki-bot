@@ -9,7 +9,7 @@ export default {
             try {
                 await reaction.fetch();
             } catch (error) {
-                console.error('Something went wrong when fetching the reaction:', error);
+                console.error("Something went wrong when fetching the reaction:", error);
                 return;
             }
         }
@@ -28,9 +28,12 @@ export default {
                 try {
                     await member.roles.remove(row.role_id);
                 } catch (e) {
-                    console.error(`Failed to remove role ${row.role_id} from ${user.tag}:`, e.message);
+                    console.error(
+                        `Failed to remove role ${row.role_id} from ${user.tag}:`,
+                        e.message
+                    );
                 }
             }
         }
-    }
+    },
 };

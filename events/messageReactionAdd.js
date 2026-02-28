@@ -1,5 +1,14 @@
 import pkg from "discord.js";
-const { Events, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, MessageFlags } = pkg;
+const {
+    Events,
+    EmbedBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    ChannelType,
+    PermissionFlagsBits,
+    MessageFlags,
+} = pkg;
 import { dbQuery } from "../core/db.js";
 
 export default {
@@ -10,7 +19,7 @@ export default {
             try {
                 await reaction.fetch();
             } catch (error) {
-                console.error('Something went wrong when fetching the reaction:', error);
+                console.error("Something went wrong when fetching the reaction:", error);
                 return;
             }
         }
@@ -32,17 +41,21 @@ export default {
             const staffRoleId = settings.ticket_staff_role_id;
             if (member && (!staffRoleId || !member.roles.cache.has(staffRoleId))) {
                 if (member.bannable) {
-                    await member.ban({ reason: "Iron Fortress: Honeypot Trap Triggered (Reaction)" }).catch(() => { });
+                    await member
+                        .ban({ reason: "Iron Fortress: Honeypot Trap Triggered (Reaction)" })
+                        .catch(() => {});
 
                     const { EmbedBuilder } = await import("discord.js");
                     const { sendLog } = await import("../core/logger.js");
                     const embed = new EmbedBuilder()
                         .setAuthor({ name: user.tag, iconURL: user.displayAvatarURL() })
-                        .setColor(0xFF0000)
+                        .setColor(0xff0000)
                         .setTitle("🛡️ Iron Fortress: Honeypot Trap")
-                        .setDescription(`**ユーザー**: <@${user.id}>\n**アクション**: Banned\n**理由**: ハニーポットチャンネルでのリアクション反応`)
+                        .setDescription(
+                            `**ユーザー**: <@${user.id}>\n**アクション**: Banned\n**理由**: ハニーポットチャンネルでのリアクション反応`
+                        )
                         .setTimestamp();
-                    await sendLog(guild, 'ng', embed);
+                    await sendLog(guild, "ng", embed);
                 }
                 return;
             }
@@ -63,5 +76,5 @@ export default {
                 }
             }
         }
-    }
+    },
 };

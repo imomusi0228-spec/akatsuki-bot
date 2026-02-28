@@ -11,7 +11,6 @@ export function setCookie(res, name, value, options = {}) {
     if (options.maxAge) cookie += `; Max-Age=${options.maxAge}`;
     if (options.secure || ENV.PUBLIC_URL?.includes("https")) cookie += `; Secure`;
 
-
     // console.log(`[AUTH DEBUG] setCookie: ${name}=${value} (Opts: ${JSON.stringify(options)}) -> ${cookie}`);
 
     let prev = res.getHeader("Set-Cookie");

@@ -6,15 +6,15 @@ export const TIERS = {
     PRO_PLUS_YEARLY: 4,
     TRIAL_PRO_PLUS: 5,
     TRIAL_PRO: 6,
-    ULTIMATE: 999
+    ULTIMATE: 999,
 };
 
 export const MILESTONES = {
     M1_PROTECTION: 1, // v1.1.1
-    M2_DEFENSE: 2,    // v1.2.0
-    M3_STRATEGY: 3,   // v1.2.1
+    M2_DEFENSE: 2, // v1.2.0
+    M3_STRATEGY: 3, // v1.2.1
     M4_GOVERNANCE: 4, // v1.3.0
-    M5_ULTIMATE: 5    // Pro+ Full
+    M5_ULTIMATE: 5, // Pro+ Full
 };
 
 export const TIER_NAMES = {
@@ -25,7 +25,7 @@ export const TIER_NAMES = {
     [TIERS.PRO_PLUS_YEARLY]: "Pro+",
     [TIERS.TRIAL_PRO_PLUS]: "Trial Pro+",
     [TIERS.TRIAL_PRO]: "Trial Pro",
-    [TIERS.ULTIMATE]: "ULTIMATE"
+    [TIERS.ULTIMATE]: "ULTIMATE",
 };
 
 export const TIER_COLORS = {
@@ -36,7 +36,7 @@ export const TIER_COLORS = {
     [TIERS.PRO_PLUS_YEARLY]: "#fbbf24",
     [TIERS.TRIAL_PRO_PLUS]: "#fbbf24",
     [TIERS.TRIAL_PRO]: "#1d9bf0",
-    [TIERS.ULTIMATE]: "#bb9af7"
+    [TIERS.ULTIMATE]: "#bb9af7",
 };
 
 export const FEATURES = {
@@ -53,7 +53,7 @@ export const FEATURES = {
         audit: false,
         introGate: false,
         longTermStats: false,
-        aura: true
+        aura: true,
     },
     [TIERS.PRO_MONTHLY]: {
         maxNgWords: 20,
@@ -68,7 +68,7 @@ export const FEATURES = {
         audit: false,
         introGate: false,
         longTermStats: false,
-        aura: true
+        aura: true,
     },
     [TIERS.PRO_YEARLY]: {
         maxNgWords: 20,
@@ -83,7 +83,7 @@ export const FEATURES = {
         audit: false,
         introGate: false,
         longTermStats: false,
-        aura: true
+        aura: true,
     },
     [TIERS.PRO_PLUS_MONTHLY]: {
         maxNgWords: 50,
@@ -98,7 +98,7 @@ export const FEATURES = {
         audit: true,
         introGate: true,
         longTermStats: true,
-        aura: true
+        aura: true,
     },
     [TIERS.PRO_PLUS_YEARLY]: {
         maxNgWords: 50,
@@ -113,7 +113,7 @@ export const FEATURES = {
         audit: true,
         introGate: true,
         longTermStats: true,
-        aura: true
+        aura: true,
     },
     [TIERS.TRIAL_PRO_PLUS]: {
         maxNgWords: 50,
@@ -128,7 +128,7 @@ export const FEATURES = {
         audit: true,
         introGate: true,
         longTermStats: true,
-        aura: true
+        aura: true,
     },
     [TIERS.TRIAL_PRO]: {
         maxNgWords: 20,
@@ -143,7 +143,7 @@ export const FEATURES = {
         audit: false,
         introGate: false,
         longTermStats: false,
-        aura: true
+        aura: true,
     },
     [TIERS.ULTIMATE]: {
         maxNgWords: 9999,
@@ -158,8 +158,8 @@ export const FEATURES = {
         audit: true,
         introGate: true,
         longTermStats: true,
-        aura: true
-    }
+        aura: true,
+    },
 };
 
 export function getFeatures(tier, guildId = null, userId = null, isOwner = false) {

@@ -36,7 +36,7 @@ export async function initDb() {
             total_vc_minutes INTEGER DEFAULT 0,
             last_activity_at TIMESTAMPTZ DEFAULT NOW(),
             PRIMARY KEY (guild_id, user_id)
-        );`
+        );`,
     ];
 
     const featureTables = [
@@ -45,7 +45,7 @@ export async function initDb() {
         `CREATE TABLE IF NOT EXISTS ng_logs (id SERIAL PRIMARY KEY, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, word TEXT, created_at TIMESTAMPTZ DEFAULT NOW());`,
         `CREATE TABLE IF NOT EXISTS warnings (id SERIAL PRIMARY KEY, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, reason TEXT, issued_by TEXT, created_at TIMESTAMPTZ DEFAULT NOW());`,
         `CREATE TABLE IF NOT EXISTS tickets (id SERIAL PRIMARY KEY, guild_id TEXT NOT NULL, channel_id TEXT NOT NULL, user_id TEXT NOT NULL, status TEXT DEFAULT 'open', created_at TIMESTAMPTZ DEFAULT NOW());`,
-        `CREATE TABLE IF NOT EXISTS member_events (id SERIAL PRIMARY KEY, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, event_type TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW());`
+        `CREATE TABLE IF NOT EXISTS member_events (id SERIAL PRIMARY KEY, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, event_type TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW());`,
     ];
 
     const migrations = [
@@ -67,7 +67,7 @@ export async function initDb() {
         `ALTER TABLE member_stats ADD COLUMN IF NOT EXISTS intro_reminded BOOLEAN DEFAULT FALSE;`,
         `ALTER TABLE settings ADD COLUMN IF NOT EXISTS update_announce_channel_id TEXT;`,
         `ALTER TABLE settings ADD COLUMN IF NOT EXISTS last_notified_version TEXT;`,
-        `ALTER TABLE settings ADD COLUMN IF NOT EXISTS leaderboard_enabled BOOLEAN DEFAULT TRUE;`
+        `ALTER TABLE settings ADD COLUMN IF NOT EXISTS leaderboard_enabled BOOLEAN DEFAULT TRUE;`,
     ];
 
     const indexes = [
@@ -77,7 +77,7 @@ export async function initDb() {
         `CREATE INDEX IF NOT EXISTS idx_ng_logs_guild_created ON ng_logs(guild_id, created_at DESC);`,
         `CREATE INDEX IF NOT EXISTS idx_subscriptions_guild_id ON subscriptions(guild_id);`,
         `CREATE INDEX IF NOT EXISTS idx_warnings_guild_user ON warnings(guild_id, user_id);`,
-        `CREATE INDEX IF NOT EXISTS idx_tickets_guild_status ON tickets(guild_id, status, created_at DESC);`
+        `CREATE INDEX IF NOT EXISTS idx_tickets_guild_status ON tickets(guild_id, status, created_at DESC);`,
     ];
 
     try {
@@ -100,11 +100,19 @@ export async function cleanupOldData() {
     try {
         console.log("[DB] Starting periodic cleanup (Optimized)...");
         // Using batching if necessary, but these are simple date-based deletes which hit indexes
-        const ngRes = await dbQuery("DELETE FROM ng_logs WHERE created_at < NOW() - INTERVAL '30 days'");
-        const memRes = await dbQuery("DELETE FROM member_events WHERE created_at < NOW() - INTERVAL '30 days'");
-        const vcRes = await dbQuery("DELETE FROM vc_sessions WHERE join_time < NOW() - INTERVAL '60 days'");
+        const ngRes = await dbQuery(
+            "DELETE FROM ng_logs WHERE created_at < NOW() - INTERVAL '30 days'"
+        );
+        const memRes = await dbQuery(
+            "DELETE FROM member_events WHERE created_at < NOW() - INTERVAL '30 days'"
+        );
+        const vcRes = await dbQuery(
+            "DELETE FROM vc_sessions WHERE join_time < NOW() - INTERVAL '60 days'"
+        );
 
-        console.log(`[DB] Cleanup finished. Deleted logs: NG(${ngRes.rowCount}), Events(${memRes.rowCount}), VC(${vcRes.rowCount})`);
+        console.log(
+            `[DB] Cleanup finished. Deleted logs: NG(${ngRes.rowCount}), Events(${memRes.rowCount}), VC(${vcRes.rowCount})`
+        );
     } catch (e) {
         console.error("[DB ERROR] Maintenance failed:", e.message);
     }

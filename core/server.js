@@ -15,7 +15,12 @@ export async function startServer() {
             const pathname = url.pathname;
 
             // 1. OAuth & Auth Routes
-            if (pathname.startsWith("/auth/") || pathname.startsWith("/login") || pathname.startsWith("/logout") || pathname.startsWith("/oauth/")) {
+            if (
+                pathname.startsWith("/auth/") ||
+                pathname.startsWith("/login") ||
+                pathname.startsWith("/logout") ||
+                pathname.startsWith("/oauth/")
+            ) {
                 return await handleAuthRoute(req, res, pathname, url);
             }
 
@@ -46,13 +51,19 @@ export async function startServer() {
             if (pathname.startsWith("/transcripts/")) {
                 const transcriptId = pathname.replace("/transcripts/", "");
                 const safeId = transcriptId.replace(/[^a-zA-Z0-9-]/g, ""); // Security
-                const filePath = path.join(process.cwd(), "public", "transcripts", `${safeId}.html`);
+                const filePath = path.join(
+                    process.cwd(),
+                    "public",
+                    "transcripts",
+                    `${safeId}.html`
+                );
 
                 if (fs.existsSync(filePath)) {
                     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
                     fs.createReadStream(filePath).pipe(res);
                 } else {
-                    res.writeHead(404); res.end("Transcript Not Found");
+                    res.writeHead(404);
+                    res.end("Transcript Not Found");
                 }
                 return;
             }
@@ -80,12 +91,14 @@ export async function startServer() {
 
             // 7. Static Files (JS)
             if (pathname.startsWith("/js/")) {
-                const safePath = path.normalize(pathname).replace(/^(\.\.[\/\\])+/, '');
+                const safePath = path.normalize(pathname).replace(/^(\.\.[\/\\])+/, "");
                 const filePath = path.join(process.cwd(), "public", safePath);
 
                 // Simple security check to prevent directory traversal
                 if (!filePath.startsWith(path.join(process.cwd(), "public"))) {
-                    res.writeHead(403); res.end("Forbidden"); return;
+                    res.writeHead(403);
+                    res.end("Forbidden");
+                    return;
                 }
 
                 if (fs.existsSync(filePath)) {
@@ -98,7 +111,6 @@ export async function startServer() {
             // 404
             res.writeHead(404, { "Content-Type": "text/plain" });
             res.end("Not Found");
-
         } catch (e) {
             console.error("Server Error:", e);
             if (!res.headersSent) {
@@ -114,7 +126,9 @@ export async function startServer() {
             if (ENV.PUBLIC_URL) {
                 console.log(`   Public URL: ${ENV.PUBLIC_URL}`);
                 console.log(`   OAuth Redirect URI: ${BASE_REDIRECT_URI}`);
-                console.log(`   (IMPORTANT: Add this URI to Discord Developer Portal > OAuth2 > Redirects)`);
+                console.log(
+                    `   (IMPORTANT: Add this URI to Discord Developer Portal > OAuth2 > Redirects)`
+                );
             }
             resolve();
         });

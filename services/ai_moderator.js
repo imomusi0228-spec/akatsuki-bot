@@ -11,21 +11,27 @@ export async function runAtmosphereCheck(guild, settings) {
     const now = new Date();
 
     // 1. 直近5分間のデータを収集
-    const interval = '5 minutes';
+    const interval = "5 minutes";
 
     // a. メッセージ密度
-    const msgRes = await dbQuery(`
+    const msgRes = await dbQuery(
+        `
         SELECT COUNT(*) as count 
         FROM member_events 
         WHERE guild_id = $1 AND event_type = 'message' AND created_at > NOW() - INTERVAL '${interval}'
-    `, [guildId]).catch(() => ({ rows: [{ count: 0 }] }));
+    `,
+        [guildId]
+    ).catch(() => ({ rows: [{ count: 0 }] }));
 
     // b. NGワード頻度
-    const ngRes = await dbQuery(`
+    const ngRes = await dbQuery(
+        `
         SELECT COUNT(*) as count, ARRAY_AGG(DISTINCT word) as words
         FROM ng_logs
         WHERE guild_id = $1 AND created_at > NOW() - INTERVAL '${interval}'
-    `, [guildId]).catch(() => ({ rows: [{ count: 0, words: [] }] }));
+    `,
+        [guildId]
+    ).catch(() => ({ rows: [{ count: 0, words: [] }] }));
 
     const msgCount = parseInt(msgRes.rows[0]?.count || 0);
     const ngCount = parseInt(ngRes.rows[0]?.count || 0);
@@ -36,7 +42,7 @@ export async function runAtmosphereCheck(guild, settings) {
     let reasons = [];
 
     // NGワード率が高い場合
-    if (msgCount > 0 && (ngCount / msgCount) > 0.15) {
+    if (msgCount > 0 && ngCount / msgCount > 0.15) {
         unsettlingFactor += 40;
         reasons.push("高いNGワード検知率（暴言・禁止事項の頻発）");
     }
@@ -55,19 +61,28 @@ export async function runAtmosphereCheck(guild, settings) {
 
     // 3. アラート送信 (しきい値: 50)
     if (unsettlingFactor >= 50) {
-        const channel = await guild.channels.fetch(settings.ai_insight_channel_id).catch(() => null);
+        const channel = await guild.channels
+            .fetch(settings.ai_insight_channel_id)
+            .catch(() => null);
         if (!channel) return;
 
         const footerText = settings.branding_footer_text || "Akatsuki AI Atmosphere Monitor";
-        const embedColor = settings.color_log ? parseInt(settings.color_log.replace('#', ''), 16) : 0xFFAA00;
+        const embedColor = settings.color_log
+            ? parseInt(settings.color_log.replace("#", ""), 16)
+            : 0xffaa00;
 
         const embed = new EmbedBuilder()
             .setTitle("🧠 AI予兆検知アラート")
-            .setDescription(`サーバー内で不穏な空気の「予兆」を検知しました。介入の検討をお勧めします。`)
+            .setDescription(
+                `サーバー内で不穏な空気の「予兆」を検知しました。介入の検討をお勧めします。`
+            )
             .addFields(
                 { name: "不穏指数", value: `**${unsettlingFactor}%**`, inline: true },
-                { name: "主な要因", value: reasons.join('\n') || "複合的な要因" },
-                { name: "直近5分の状況", value: `メッセージ数: ${msgCount}件 / NG検知: ${ngCount}件` }
+                { name: "主な要因", value: reasons.join("\n") || "複合的な要因" },
+                {
+                    name: "直近5分の状況",
+                    value: `メッセージ数: ${msgCount}件 / NG検知: ${ngCount}件`,
+                }
             )
             .setColor(embedColor)
             .setFooter({ text: footerText })

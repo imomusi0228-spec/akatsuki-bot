@@ -3,7 +3,8 @@
  */
 function levenshteinDistance(s1, s2) {
     if (s1.length < s2.length) [s1, s2] = [s2, s1];
-    let n = s1.length, m = s2.length;
+    let n = s1.length,
+        m = s2.length;
     let prev = Array.from({ length: m + 1 }, (_, i) => i);
     let curr = new Array(m + 1);
 
@@ -115,7 +116,7 @@ export function checkMentionSpam(guildId, userId, mentionCount) {
     const now = Date.now();
     const entry = guildMap.get(userId);
 
-    if (entry && (now - entry.timestamp < 30000)) {
+    if (entry && now - entry.timestamp < 30000) {
         entry.count += mentionCount;
         entry.timestamp = now;
         return { isSpam: entry.count >= 8, count: entry.count };
@@ -207,7 +208,8 @@ export function checkSuspiciousContent(content, domainBlacklist = []) {
     if (inviteRegex.test(content)) return { isSuspicious: true, reason: "Discord Invite" };
 
     // 2. Shortened URL Check
-    const shortenerRegex = /(bit\.ly|t\.co|goo\.gl|tinyurl\.com|ow\.ly|is\.gd|buff\.ly|rebrand\.ly)/i;
+    const shortenerRegex =
+        /(bit\.ly|t\.co|goo\.gl|tinyurl\.com|ow\.ly|is\.gd|buff\.ly|rebrand\.ly)/i;
     if (shortenerRegex.test(content)) return { isSuspicious: true, reason: "Shortened URL" };
 
     // 3. Blacklisted Domains
@@ -218,7 +220,9 @@ export function checkSuspiciousContent(content, domainBlacklist = []) {
     }
 
     // 4. Emoji/URL Density (Advanced)
-    const emojiCount = (content.match(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu) || []).length;
+    const emojiCount = (
+        content.match(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu) || []
+    ).length;
     if (emojiCount >= 15) return { isSuspicious: true, reason: "Emoji Spam" };
 
     const urlCount = (content.match(/https?:\/\/[^\s]+/g) || []).length;
@@ -283,7 +287,7 @@ export function checkCrossUserMentionSpam(guildId, mentionedUserIds) {
         entry.users = new Set(mentionedUserIds);
         entry.timestamp = now;
     } else {
-        mentionedUserIds.forEach(id => entry.users.add(id));
+        mentionedUserIds.forEach((id) => entry.users.add(id));
     }
 
     // Threshold: 15 unique users mentioned across the server in 5 minutes by potentially many attackers
@@ -316,4 +320,3 @@ export function recordAvatarJoin(guildId) {
 
     return entry.count >= 3;
 }
-

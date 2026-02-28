@@ -1,6 +1,13 @@
 import { ENV } from "../config/env.js";
 import { getSession } from "../middleware/auth.js";
-import { renderLoginHTML, renderAdminDashboardHTML, renderAdminSettingsHTML, renderAdminActivityHTML, renderAdminAntiraidHTML, renderAdminTicketsHTML } from "../services/views.js";
+import {
+    renderLoginHTML,
+    renderAdminDashboardHTML,
+    renderAdminSettingsHTML,
+    renderAdminActivityHTML,
+    renderAdminAntiraidHTML,
+    renderAdminTicketsHTML,
+} from "../services/views.js";
 import { getTier } from "../core/subscription.js";
 import { getFeatures } from "../core/tiers.js";
 
@@ -14,7 +21,12 @@ export async function handleAdminRoute(req, res, pathname, url) {
 
         sessions.set(sid, {
             accessToken: "mock_token",
-            user: { id: "admin", username: "Admin", discriminator: "0000", global_name: "Administrator" },
+            user: {
+                id: "admin",
+                username: "Admin",
+                discriminator: "0000",
+                global_name: "Administrator",
+            },
             expiresAt: Date.now() + 3600000,
             guilds: [], // Empty guilds for mock
         });

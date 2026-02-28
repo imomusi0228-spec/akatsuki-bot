@@ -28,7 +28,8 @@ export async function runAutoUpdateCheck() {
             []
         );
 
-        const lastVersion = globalRes.rows.length > 0 ? globalRes.rows[0].last_notified_version : null;
+        const lastVersion =
+            globalRes.rows.length > 0 ? globalRes.rows[0].last_notified_version : null;
 
         if (lastVersion === version) {
             console.log(`[AutoUpdate] Version ${version} is already notified. Skipping.`);
@@ -41,7 +42,7 @@ export async function runAutoUpdateCheck() {
             ? `システム修正のお知らせ（v${version}）`
             : `システムアップデートのお知らせ（v${version}）`;
 
-        const color = isFix ? 0xF1C40F : 0x2ECC71; // 修正なら黄、アップデートなら緑
+        const color = isFix ? 0xf1c40f : 0x2ecc71; // 修正なら黄、アップデートなら緑
 
         const bodyContent = latestSection.replace(/^## .*?\n/, "").trim();
 
@@ -64,8 +65,8 @@ export async function runAutoUpdateCheck() {
                     title,
                     content: bodyContent,
                     color,
-                    token: adminToken
-                })
+                    token: adminToken,
+                }),
             });
             sendOk = response.ok;
             if (response.ok) {
@@ -80,12 +81,15 @@ export async function runAutoUpdateCheck() {
 
         // 送信試行後は必ずバージョンを記録して重複送信を防ぐ
         try {
-            await dbQuery(`
+            await dbQuery(
+                `
                 INSERT INTO settings (guild_id, last_notified_version)
                 VALUES ('GLOBAL', $1)
                 ON CONFLICT (guild_id)
                 DO UPDATE SET last_notified_version = EXCLUDED.last_notified_version, updated_at = NOW();
-            `, [version]);
+            `,
+                [version]
+            );
             console.log(`[AutoUpdate] Recorded version ${version} as notified (sent: ${sendOk}).`);
         } catch (dbErr) {
             console.error(`❌ [AutoUpdate] DB record failed: ${dbErr.message}`);

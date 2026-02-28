@@ -6,7 +6,9 @@ const args = process.argv.slice(2);
 const [guildId, tierInput, daysInput, userId] = args;
 
 if (!guildId || !tierInput || !daysInput) {
-    console.log("Usage: node scripts/manage-license.js <GUILD_ID> <TIER_ID_OR_NAME> <DAYS> [USER_ID]");
+    console.log(
+        "Usage: node scripts/manage-license.js <GUILD_ID> <TIER_ID_OR_NAME> <DAYS> [USER_ID]"
+    );
     console.log("Tiers:");
     Object.entries(TIERS).forEach(([name, id]) => console.log(`  ${id}: ${name}`));
     process.exit(1);
@@ -42,15 +44,18 @@ const tierDisplayName = TIER_NAMES[tier] || `Tier ${tier}`;
                 "INSERT INTO subscriptions (guild_id, tier, user_id, valid_until) VALUES ($1, $2, $3, $4)",
                 [guildId, tier, userId || null, validUntil]
             );
-            console.log(`   ✅ Created new subscription valid until ${validUntil.toISOString().split('T')[0]}`);
+            console.log(
+                `   ✅ Created new subscription valid until ${validUntil.toISOString().split("T")[0]}`
+            );
         } else {
             await dbQuery(
                 "UPDATE subscriptions SET tier = $1, user_id = COALESCE($2, user_id), valid_until = $3, updated_at = NOW() WHERE guild_id = $4",
                 [tier, userId || null, validUntil, guildId]
             );
-            console.log(`   ✅ Updated existing subscription valid until ${validUntil.toISOString().split('T')[0]}`);
+            console.log(
+                `   ✅ Updated existing subscription valid until ${validUntil.toISOString().split("T")[0]}`
+            );
         }
-
     } catch (e) {
         console.error("❌ Error:", e.message);
     } finally {

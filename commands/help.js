@@ -6,13 +6,13 @@ export const data = new SlashCommandBuilder()
     .setNameLocalizations({
         ja: "ヘルプ",
         "en-US": "help",
-        "en-GB": "help"
+        "en-GB": "help",
     })
     .setDescription("Displays the command list.")
     .setDescriptionLocalizations({
         ja: "コマンド一覧を表示します。",
         "en-US": "Displays the command list.",
-        "en-GB": "Displays the command list."
+        "en-GB": "Displays the command list.",
     });
 
 export async function execute(interaction) {

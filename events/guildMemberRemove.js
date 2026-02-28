@@ -10,7 +10,11 @@ export default {
 
         try {
             // Batched Insert
-            batcher.push('member_events', { guild_id: member.guild.id, user_id: member.user.id, event_type: 'leave' });
+            batcher.push("member_events", {
+                guild_id: member.guild.id,
+                user_id: member.user.id,
+                event_type: "leave",
+            });
             console.log(`[EVENT] Member Left: ${member.user.tag} from ${member.guild.name}`);
         } catch (e) {
             console.error("[EVENT ERROR] GuildMemberRemove:", e.message);
@@ -20,7 +24,9 @@ export default {
         try {
             let settings = cache.getSettings(member.guild.id);
             if (!settings) {
-                const r = await dbQuery("SELECT * FROM settings WHERE guild_id = $1", [member.guild.id]);
+                const r = await dbQuery("SELECT * FROM settings WHERE guild_id = $1", [
+                    member.guild.id,
+                ]);
                 settings = r.rows[0] || {};
                 cache.setSettings(member.guild.id, settings);
             }
@@ -33,7 +39,7 @@ export default {
                         .replace(/{username}/g, member.user.username)
                         .replace(/{server}/g, member.guild.name)
                         .replace(/{count}/g, String(member.guild.memberCount));
-                    await channel.send(msg).catch(() => { });
+                    await channel.send(msg).catch(() => {});
                 }
             }
         } catch (e) {

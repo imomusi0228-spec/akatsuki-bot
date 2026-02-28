@@ -15,26 +15,33 @@ export async function runEngagementCheck() {
     let offset = 0;
 
     while (true) {
-        const guildsRes = await dbQuery("SELECT * FROM settings LIMIT $1 OFFSET $2", [CHUNK_SIZE, offset]);
+        const guildsRes = await dbQuery("SELECT * FROM settings LIMIT $1 OFFSET $2", [
+            CHUNK_SIZE,
+            offset,
+        ]);
         if (guildsRes.rows.length === 0) break;
 
         const rows = guildsRes.rows;
         for (let i = 0; i < rows.length; i += CONCURRENCY) {
             const batch = rows.slice(i, i + CONCURRENCY);
-            await Promise.all(batch.map(async (settings) => {
-                try {
-                    const guild = client.guilds.cache.get(settings.guild_id) || await client.guilds.fetch(settings.guild_id).catch(() => null);
-                    if (!guild) return;
+            await Promise.all(
+                batch.map(async (settings) => {
+                    try {
+                        const guild =
+                            client.guilds.cache.get(settings.guild_id) ||
+                            (await client.guilds.fetch(settings.guild_id).catch(() => null));
+                        if (!guild) return;
 
-                    // Execute checks for each guild
-                    await processVCReport(guild, settings);
-                    await processVCRoles(guild, settings);
-                    await processAIAdvice(guild, settings);
-                    await runAtmosphereCheck(guild, settings);
-                } catch (e) {
-                    console.error(`[ENGAGEMENT ERROR] Guild ${settings.guild_id}:`, e.message);
-                }
-            }));
+                        // Execute checks for each guild
+                        await processVCReport(guild, settings);
+                        await processVCRoles(guild, settings);
+                        await processAIAdvice(guild, settings);
+                        await runAtmosphereCheck(guild, settings);
+                    } catch (e) {
+                        console.error(`[ENGAGEMENT ERROR] Guild ${settings.guild_id}:`, e.message);
+                    }
+                })
+            );
         }
 
         offset += CHUNK_SIZE;
@@ -46,24 +53,27 @@ export async function runEngagementCheck() {
 async function processVCReport(guild, settings) {
     if (!settings.vc_report_enabled || !settings.vc_report_channel_id) return;
 
-    const interval = settings.vc_report_interval || 'weekly';
-    const lastSent = settings.vc_report_last_sent ? new Date(settings.vc_report_last_sent) : new Date(0);
+    const interval = settings.vc_report_interval || "weekly";
+    const lastSent = settings.vc_report_last_sent
+        ? new Date(settings.vc_report_last_sent)
+        : new Date(0);
     const now = new Date();
 
     let shouldSend = false;
     let periodText = "";
     let dateFilter = "";
 
-    if (interval === 'daily') {
-        shouldSend = (now - lastSent) > 24 * 60 * 60 * 1000;
+    if (interval === "daily") {
+        shouldSend = now - lastSent > 24 * 60 * 60 * 1000;
         periodText = "本日";
         dateFilter = "CURRENT_DATE";
-    } else if (interval === 'weekly') {
-        shouldSend = (now - lastSent) > 7 * 24 * 60 * 60 * 1000;
+    } else if (interval === "weekly") {
+        shouldSend = now - lastSent > 7 * 24 * 60 * 60 * 1000;
         periodText = "今週";
         dateFilter = "date_trunc('week', CURRENT_DATE)";
-    } else { // monthly
-        shouldSend = (now - lastSent) > 28 * 24 * 60 * 60 * 1000; // Simplified
+    } else {
+        // monthly
+        shouldSend = now - lastSent > 28 * 24 * 60 * 60 * 1000; // Simplified
         periodText = "今月";
         dateFilter = "date_trunc('month', CURRENT_DATE)";
     }
@@ -71,31 +81,42 @@ async function processVCReport(guild, settings) {
     if (!shouldSend) return;
 
     // Get Top 10
-    const res = await dbQuery(`
+    const res = await dbQuery(
+        `
         SELECT user_id, SUM(duration_seconds) as total
         FROM vc_sessions
         WHERE guild_id = $1 AND join_time >= ${dateFilter}
         GROUP BY user_id
         ORDER BY total DESC
         LIMIT 10
-    `, [guild.id]);
+    `,
+        [guild.id]
+    );
 
     if (res.rows.length === 0) return;
 
-    const embedColor = settings.color_log ? parseInt(settings.color_log.replace('#', ''), 16) : 0x1DA1F2;
+    const embedColor = settings.color_log
+        ? parseInt(settings.color_log.replace("#", ""), 16)
+        : 0x1da1f2;
     const footerText = "Akatsuki Engagement Report";
 
     const embed = new EmbedBuilder()
         .setTitle(`📊 VC活動ランキング (${periodText})`)
         .setColor(embedColor)
-        .setDescription(res.rows.map((r, i) => `${i + 1}. <@${r.user_id}>: **${(r.total / 3600).toFixed(1)}** 時間`).join('\n'))
+        .setDescription(
+            res.rows
+                .map((r, i) => `${i + 1}. <@${r.user_id}>: **${(r.total / 3600).toFixed(1)}** 時間`)
+                .join("\n")
+        )
         .setFooter({ text: footerText })
         .setTimestamp();
 
     const channel = await guild.channels.fetch(settings.vc_report_channel_id).catch(() => null);
     if (channel) {
         await channel.send({ embeds: [embed] });
-        await dbQuery("UPDATE settings SET vc_report_last_sent = NOW() WHERE guild_id = $1", [guild.id]);
+        await dbQuery("UPDATE settings SET vc_report_last_sent = NOW() WHERE guild_id = $1", [
+            guild.id,
+        ]);
         console.log(`[ENGAGEMENT] Report sent for ${guild.name}`);
     }
 }
@@ -104,40 +125,43 @@ async function processVCRoles(guild, settings) {
     const rules = settings.vc_role_rules;
     if (!rules || !Array.isArray(rules) || rules.length === 0) return;
 
-    const vcRules = rules.filter(r => !r.trigger || r.trigger === 'vc_hours');
+    const vcRules = rules.filter((r) => !r.trigger || r.trigger === "vc_hours");
     if (vcRules.length === 0) return;
 
-    const roleIds = vcRules.map(r => r.role_id);
-    const minHours = Math.min(...vcRules.map(r => r.hours));
+    const roleIds = vcRules.map((r) => r.role_id);
+    const minHours = Math.min(...vcRules.map((r) => r.hours));
 
     // 1. Find potential members from DB (those who meet at least the minimum threshold)
-    const potentialRes = await dbQuery(`
+    const potentialRes = await dbQuery(
+        `
         SELECT user_id, total_vc_minutes
         FROM member_stats
         WHERE guild_id = $1 AND total_vc_minutes >= $2
-    `, [guild.id, minHours * 60]);
+    `,
+        [guild.id, minHours * 60]
+    );
 
     // 2. Fetch required members efficiently
-    const targetUserIds = new Set(potentialRes.rows.map(r => r.user_id));
+    const targetUserIds = new Set(potentialRes.rows.map((r) => r.user_id));
 
     // Also include those who already have the relevant roles to check for removal
-    roleIds.forEach(roleId => {
+    roleIds.forEach((roleId) => {
         const role = guild.roles.cache.get(roleId);
         if (role) {
-            role.members.forEach(m => targetUserIds.add(m.id));
+            role.members.forEach((m) => targetUserIds.add(m.id));
         }
     });
 
     if (targetUserIds.size === 0) return;
 
     // Filter out users already in cache to minimize API calls
-    const idsToFetch = Array.from(targetUserIds).filter(id => !guild.members.cache.has(id));
+    const idsToFetch = Array.from(targetUserIds).filter((id) => !guild.members.cache.has(id));
     if (idsToFetch.length > 0) {
         await guild.members.fetch({ user: idsToFetch }).catch(() => null);
     }
 
     const stats = {};
-    potentialRes.rows.forEach(r => stats[r.user_id] = r.total_vc_minutes / 60);
+    potentialRes.rows.forEach((r) => (stats[r.user_id] = r.total_vc_minutes / 60));
 
     const sortedRules = [...vcRules].sort((a, b) => b.hours - a.hours);
 
@@ -159,11 +183,15 @@ async function processVCRoles(guild, settings) {
             const hasRole = member.roles.cache.has(rule.role_id);
             if (targetRule && rule.role_id === targetRule.role_id) {
                 if (!hasRole) {
-                    await member.roles.add(rule.role_id, "Aura System: Automated assignment").catch(() => null);
+                    await member.roles
+                        .add(rule.role_id, "Aura System: Automated assignment")
+                        .catch(() => null);
                 }
             } else {
                 if (hasRole) {
-                    await member.roles.remove(rule.role_id, "Aura System: Automated removal").catch(() => null);
+                    await member.roles
+                        .remove(rule.role_id, "Aura System: Automated removal")
+                        .catch(() => null);
                 }
             }
         }
@@ -175,11 +203,14 @@ async function processAIAdvice(guild, settings) {
     const adviceDays = settings.ai_advice_days || 14;
 
     // Find members who haven't been active for 'adviceDays'
-    const res = await dbQuery(`
+    const res = await dbQuery(
+        `
         SELECT user_id, last_activity_at, total_vc_minutes
         FROM member_stats
         WHERE guild_id = $1 AND last_activity_at < NOW() - ($2 || ' days')::INTERVAL
-    `, [guild.id, adviceDays]);
+    `,
+        [guild.id, adviceDays]
+    );
 
     if (res.rows.length === 0) return;
 
@@ -188,7 +219,9 @@ async function processAIAdvice(guild, settings) {
 
     const advicePromises = res.rows.map(async (row) => {
         try {
-            const member = guild.members.cache.get(row.user_id) || await guild.members.fetch(row.user_id).catch(() => null);
+            const member =
+                guild.members.cache.get(row.user_id) ||
+                (await guild.members.fetch(row.user_id).catch(() => null));
             if (!member || member.user.bot) return;
 
             const lastAct = new Date(row.last_activity_at).toLocaleDateString();
@@ -203,14 +236,17 @@ ${member.displayName}様は、${lastAct}以降活動が確認できておりま�
             const embed = new EmbedBuilder()
                 .setTitle("🛡️ メンバーケア・アドバイス")
                 .setDescription(advice)
-                .setColor(0x00AE86)
+                .setColor(0x00ae86)
                 .setThumbnail(member.user.displayAvatarURL())
                 .setFooter({ text: footerText })
                 .setTimestamp();
 
             await channel.send({ embeds: [embed] });
 
-            await dbQuery("UPDATE member_stats SET last_activity_at = NOW() WHERE guild_id = $1 AND user_id = $2", [guild.id, row.user_id]);
+            await dbQuery(
+                "UPDATE member_stats SET last_activity_at = NOW() WHERE guild_id = $1 AND user_id = $2",
+                [guild.id, row.user_id]
+            );
         } catch (e) {
             console.error("[AI ADVICE ERROR]:", e.message);
         }
@@ -218,4 +254,3 @@ ${member.displayName}様は、${lastAct}以降活動が確認できておりま�
 
     await Promise.all(advicePromises);
 }
-

@@ -54,12 +54,14 @@ export async function runIntroReminder() {
                 try {
                     await member.user.send(
                         `👋 **${guild.name}** へようこそ！\n\n` +
-                        `サーバーに参加されてから${reminderHours}時間以上が経ちましたが、まだ自己紹介が確認できていません。\n` +
-                        `<#${settings.intro_channel_id}> チャンネルにて自己紹介を投稿していただけると、サーバーの全機能をご利用いただけます。\n\n` +
-                        `*このメッセージはシステムから自動送信されました。*`
+                            `サーバーに参加されてから${reminderHours}時間以上が経ちましたが、まだ自己紹介が確認できていません。\n` +
+                            `<#${settings.intro_channel_id}> チャンネルにて自己紹介を投稿していただけると、サーバーの全機能をご利用いただけます。\n\n` +
+                            `*このメッセージはシステムから自動送信されました。*`
                     );
                     console.log(`[INTRO-REMINDER] DM sent to ${member.user.tag} in ${guild.name}`);
-                } catch (_) { /* DM拒否は無視 */ }
+                } catch (_) {
+                    /* DM拒否は無視 */
+                }
 
                 // 送信済みフラグを更新
                 await dbQuery(

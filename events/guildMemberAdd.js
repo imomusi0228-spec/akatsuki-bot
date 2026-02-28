@@ -13,7 +13,11 @@ export default {
 
         try {
             // 1. Record Join Event (Batched)
-            batcher.push('member_events', { guild_id: member.guild.id, user_id: member.user.id, event_type: 'join' });
+            batcher.push("member_events", {
+                guild_id: member.guild.id,
+                user_id: member.user.id,
+                event_type: "join",
+            });
             console.log(`[EVENT] Member Joined: ${member.user.tag} in ${member.guild.name}`);
 
             // 2. Anti-Raid Detection (Pro/Pro+)
@@ -23,7 +27,10 @@ export default {
             if (features.antiraid) {
                 let settings = cache.getSettings(member.guild.id);
                 if (!settings) {
-                    const settingsRes = await dbQuery("SELECT * FROM settings WHERE guild_id = $1", [member.guild.id]);
+                    const settingsRes = await dbQuery(
+                        "SELECT * FROM settings WHERE guild_id = $1",
+                        [member.guild.id]
+                    );
                     settings = settingsRes.rows[0] || {};
                     cache.setSettings(member.guild.id, settings);
                 }
@@ -42,10 +49,14 @@ export default {
 
                 // 2.1 Rapid Join Detection & Auto-Lockdown
                 // If suspicious burst (avatar-less), lower threshold by 50%
-                const effectiveThreshold = suspiciousBurst ? Math.max(2, Math.floor(raidThreshold / 2)) : raidThreshold;
+                const effectiveThreshold = suspiciousBurst
+                    ? Math.max(2, Math.floor(raidThreshold / 2))
+                    : raidThreshold;
 
                 if (joinCount >= effectiveThreshold) {
-                    console.warn(`[ANTI-RAID] Raid detected in ${member.guild.name}! (${joinCount} joins/min, Audit: ${suspiciousBurst ? 'Avatar-less Burst' : 'Regular Rate'})`);
+                    console.warn(
+                        `[ANTI-RAID] Raid detected in ${member.guild.name}! (${joinCount} joins/min, Audit: ${suspiciousBurst ? "Avatar-less Burst" : "Regular Rate"})`
+                    );
 
                     const { EmbedBuilder, VerificationLevel } = await import("discord.js");
                     const { sendLog } = await import("../core/logger.js");
@@ -56,33 +67,56 @@ export default {
                     if (guardLevel >= 1 || joinCount >= raidThreshold * 2) {
                         try {
                             if (member.guild.verificationLevel !== VerificationLevel.VeryHigh) {
-                                await member.guild.setVerificationLevel(VerificationLevel.VeryHigh, "Anti-Raid Auto-Lockdown Triggered");
+                                await member.guild.setVerificationLevel(
+                                    VerificationLevel.VeryHigh,
+                                    "Anti-Raid Auto-Lockdown Triggered"
+                                );
                                 actionTaken = "Lockdown (Highest Verification Level)";
 
                                 // Auto-upgrade mode to Red internally if it was lower
                                 if (guardLevel < 2) {
-                                    await dbQuery("UPDATE settings SET antiraid_guard_level = 2, updated_at = NOW(), last_raid_at = NOW() WHERE guild_id = $1", [member.guild.id]);
-                                    cache.setSettings(member.guild.id, { ...settings, antiraid_guard_level: 2, last_raid_at: new Date() });
+                                    await dbQuery(
+                                        "UPDATE settings SET antiraid_guard_level = 2, updated_at = NOW(), last_raid_at = NOW() WHERE guild_id = $1",
+                                        [member.guild.id]
+                                    );
+                                    cache.setSettings(member.guild.id, {
+                                        ...settings,
+                                        antiraid_guard_level: 2,
+                                        last_raid_at: new Date(),
+                                    });
                                 } else {
-                                    await dbQuery("UPDATE settings SET last_raid_at = NOW() WHERE guild_id = $1", [member.guild.id]);
+                                    await dbQuery(
+                                        "UPDATE settings SET last_raid_at = NOW() WHERE guild_id = $1",
+                                        [member.guild.id]
+                                    );
                                 }
                             } else {
-                                await dbQuery("UPDATE settings SET last_raid_at = NOW() WHERE guild_id = $1", [member.guild.id]);
+                                await dbQuery(
+                                    "UPDATE settings SET last_raid_at = NOW() WHERE guild_id = $1",
+                                    [member.guild.id]
+                                );
                             }
                         } catch (e) {
-                            console.error("[ANTI-RAID] Failed to set verification level:", e.message);
+                            console.error(
+                                "[ANTI-RAID] Failed to set verification level:",
+                                e.message
+                            );
                             actionTaken = "Alert (Lockdown Failed - No Perms?)";
                         }
                     }
 
                     const embed = new EmbedBuilder()
                         .setTitle("🚨 Anti-Raid Alert: Iron Fortress Triggered")
-                        .setColor(0xFF0000)
-                        .setDescription(`短時間に異常な参加（レイド）を検知しました。\n\n**参加状況**: ${joinCount} members / min\n**防衛しきい値**: ${raidThreshold}\n**現在のモード**: ${guardLevel === 0 ? '通常' : (guardLevel === 1 ? '警戒' : '防衛')}\n**実施アクション**: \`${actionTaken}\``)
-                        .setFooter({ text: "自動ロックダウンが発動した場合、Web盤面から解除してください。" })
+                        .setColor(0xff0000)
+                        .setDescription(
+                            `短時間に異常な参加（レイド）を検知しました。\n\n**参加状況**: ${joinCount} members / min\n**防衛しきい値**: ${raidThreshold}\n**現在のモード**: ${guardLevel === 0 ? "通常" : guardLevel === 1 ? "警戒" : "防衛"}\n**実施アクション**: \`${actionTaken}\``
+                        )
+                        .setFooter({
+                            text: "自動ロックダウンが発動した場合、Web盤面から解除してください。",
+                        })
                         .setTimestamp();
 
-                    await sendLog(member.guild, 'ng', embed);
+                    await sendLog(member.guild, "ng", embed);
                 }
 
                 // 2.2 Newcomer Restriction Pre-Check
@@ -96,20 +130,23 @@ export default {
         try {
             let settings = cache.getSettings(member.guild.id);
             if (!settings) {
-                const r = await dbQuery("SELECT * FROM settings WHERE guild_id = $1", [member.guild.id]);
+                const r = await dbQuery("SELECT * FROM settings WHERE guild_id = $1", [
+                    member.guild.id,
+                ]);
                 settings = r.rows[0] || {};
                 cache.setSettings(member.guild.id, settings);
             }
             if (settings.welcome_enabled && settings.welcome_channel_id) {
                 const channel = member.guild.channels.cache.get(settings.welcome_channel_id);
                 if (channel) {
-                    const tmpl = settings.welcome_message || "👋 {user} さん、**{server}** へようこそ！";
+                    const tmpl =
+                        settings.welcome_message || "👋 {user} さん、**{server}** へようこそ！";
                     const msg = tmpl
                         .replace(/{user}/g, `<@${member.id}>`)
                         .replace(/{username}/g, member.user.username)
                         .replace(/{server}/g, member.guild.name)
                         .replace(/{count}/g, String(member.guild.memberCount));
-                    await channel.send(msg).catch(() => { });
+                    await channel.send(msg).catch(() => {});
                 }
             }
         } catch (e) {

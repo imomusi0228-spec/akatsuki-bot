@@ -25,7 +25,9 @@ export async function getTier(guildId) {
     // 2.5 Check if the Special User is an Admin in this guild
     if (ENV.SPECIAL_USER_ID) {
         try {
-            const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
+            const guild =
+                client.guilds.cache.get(guildId) ||
+                (await client.guilds.fetch(guildId).catch(() => null));
             if (guild) {
                 const member = await guild.members.fetch(ENV.SPECIAL_USER_ID).catch(() => null);
                 if (member && member.permissions.has(PermissionFlagsBits.Administrator)) {
@@ -34,7 +36,7 @@ export async function getTier(guildId) {
                     return tier;
                 }
             }
-        } catch (e) { }
+        } catch (e) {}
     }
 
     // 3. Fetch subscription for this guild from DB
@@ -72,7 +74,7 @@ export async function getTier(guildId) {
         );
 
         // Filter and sort to prioritize current guild
-        let activeRows = listRes.rows.filter(r => {
+        let activeRows = listRes.rows.filter((r) => {
             let t = parseInt(r.tier, 10);
             if (isNaN(t)) {
                 if (r.tier === "Trial Pro+") t = TIERS.TRIAL_PRO_PLUS;
@@ -83,13 +85,13 @@ export async function getTier(guildId) {
         });
 
         // Ensure current guild is at the top to be counted in limit
-        const currentIdx = activeRows.findIndex(r => r.guild_id === guildId);
+        const currentIdx = activeRows.findIndex((r) => r.guild_id === guildId);
         if (currentIdx > 0) {
             const [current] = activeRows.splice(currentIdx, 1);
             activeRows.unshift(current);
         }
 
-        const allowedIds = activeRows.slice(0, limit).map(r => r.guild_id);
+        const allowedIds = activeRows.slice(0, limit).map((r) => r.guild_id);
 
         if (!allowedIds.includes(guildId)) {
             tier = TIERS.FREE; // Restricted due to limit
@@ -116,6 +118,6 @@ export async function getSubscriptionInfo(guildId) {
         tier: tier,
         milestone: sub.current_milestone ?? 5,
         auto_unlock: sub.auto_unlock_enabled ?? false,
-        trial_started_at: sub.trial_started_at
+        trial_started_at: sub.trial_started_at,
     };
 }

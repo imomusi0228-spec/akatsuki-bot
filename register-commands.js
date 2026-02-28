@@ -6,16 +6,16 @@ import { pathToFileURL, fileURLToPath } from "node:url";
 
 const commands = [];
 const commandsPath = path.resolve("commands");
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(".js"));
+const commandFiles = fs.readdirSync(commandsPath).filter((file) => file.endsWith(".js"));
 
 export async function registerCommands() {
     for (const file of commandFiles) {
         const filePath = path.join(commandsPath, file);
         const command = await import(pathToFileURL(filePath).href);
 
-        if ('data' in command && 'execute' in command) {
+        if ("data" in command && "execute" in command) {
             if (Array.isArray(command.data)) {
-                command.data.forEach(d => commands.push(d.toJSON()));
+                command.data.forEach((d) => commands.push(d.toJSON()));
             } else {
                 commands.push(command.data.toJSON());
             }
@@ -25,8 +25,8 @@ export async function registerCommands() {
     }
 
     const rest = new REST().setToken(ENV.TOKEN);
-    const isGlobal = process.argv.includes('--global');
-    const isClear = process.argv.includes('--clear');
+    const isGlobal = process.argv.includes("--global");
+    const isClear = process.argv.includes("--clear");
 
     try {
         if (isClear) {
@@ -36,7 +36,10 @@ export async function registerCommands() {
             console.log(`[CLEAR] Global commands cleared.`);
             // Clear Guild
             if (ENV.SUPPORT_GUILD_ID) {
-                await rest.put(Routes.applicationGuildCommands(ENV.CLIENT_ID, ENV.SUPPORT_GUILD_ID), { body: [] });
+                await rest.put(
+                    Routes.applicationGuildCommands(ENV.CLIENT_ID, ENV.SUPPORT_GUILD_ID),
+                    { body: [] }
+                );
                 console.log(`[CLEAR] Guild commands cleared for ${ENV.SUPPORT_GUILD_ID}.`);
             }
             console.log(`[CLEAR] Successfully cleared all commands. Registration skipped.`);
@@ -49,8 +52,13 @@ export async function registerCommands() {
             // GLOBAL REGISTRATION (Production)
             if (ENV.SUPPORT_GUILD_ID) {
                 try {
-                    console.log(`[Global Mode] Clearing Guild commands for ${ENV.SUPPORT_GUILD_ID} to avoid duplicates...`);
-                    await rest.put(Routes.applicationGuildCommands(ENV.CLIENT_ID, ENV.SUPPORT_GUILD_ID), { body: [] });
+                    console.log(
+                        `[Global Mode] Clearing Guild commands for ${ENV.SUPPORT_GUILD_ID} to avoid duplicates...`
+                    );
+                    await rest.put(
+                        Routes.applicationGuildCommands(ENV.CLIENT_ID, ENV.SUPPORT_GUILD_ID),
+                        { body: [] }
+                    );
                     console.log(`[Global Mode] Cleared Guild commands.`);
                 } catch (e) {
                     console.warn(`[WARN] Failed to clear guild commands: ${e.message}`);
@@ -58,32 +66,35 @@ export async function registerCommands() {
             }
 
             console.log(`[PROD] Registering ${commands.length} commands Globally...`);
-            const data = await rest.put(
-                Routes.applicationCommands(ENV.CLIENT_ID),
-                { body: commands },
-            );
+            const data = await rest.put(Routes.applicationCommands(ENV.CLIENT_ID), {
+                body: commands,
+            });
             console.log(`Successfully reloaded ${data.length} application (/) commands (GLOBAL).`);
         } else if (ENV.SUPPORT_GUILD_ID) {
             // GUILD REGISTRATION (Development)
-            console.log(`[DEV] Registering ${commands.length} commands to Guild (${ENV.SUPPORT_GUILD_ID})...`);
-            console.log(`[NOTE] Guild commands update instantly. Global commands take up to 1 hour.`);
+            console.log(
+                `[DEV] Registering ${commands.length} commands to Guild (${ENV.SUPPORT_GUILD_ID})...`
+            );
+            console.log(
+                `[NOTE] Guild commands update instantly. Global commands take up to 1 hour.`
+            );
 
             const data = await rest.put(
                 Routes.applicationGuildCommands(ENV.CLIENT_ID, ENV.SUPPORT_GUILD_ID),
-                { body: commands },
+                { body: commands }
             );
             console.log(`Successfully reloaded ${data.length} application (/) commands (GUILD).`);
         } else {
             // No Guild ID provided, fallback to Global but warn
-            console.warn(`[WARN] No SUPPORT_GUILD_ID found in .env. Falling back to Global registration.`);
-            console.log(`[PROD] Registering ${commands.length} commands Globally...`);
-            const data = await rest.put(
-                Routes.applicationCommands(ENV.CLIENT_ID),
-                { body: commands },
+            console.warn(
+                `[WARN] No SUPPORT_GUILD_ID found in .env. Falling back to Global registration.`
             );
+            console.log(`[PROD] Registering ${commands.length} commands Globally...`);
+            const data = await rest.put(Routes.applicationCommands(ENV.CLIENT_ID), {
+                body: commands,
+            });
             console.log(`Successfully reloaded ${data.length} application (/) commands (GLOBAL).`);
         }
-
     } catch (error) {
         console.error(error);
     }

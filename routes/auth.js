@@ -62,7 +62,9 @@ export async function handleAuthRoute(req, res, pathname, url) {
 
         const storedState = cookies.oauth_state;
         const isStateValid = states.has(state);
-        console.log(`[AUTH DEBUG] /callback: ReceivedState=${state}, StoredState=${storedState}, StatesHas=${isStateValid}`);
+        console.log(
+            `[AUTH DEBUG] /callback: ReceivedState=${state}, StoredState=${storedState}, StatesHas=${isStateValid}`
+        );
 
         // Resilience: We prioritize state-to-URL match. In-memory states Map might be cleared on restart,
         // but it's the primary source of truth. Cookies are secondary and may fail in some environments.
@@ -93,7 +95,10 @@ export async function handleAuthRoute(req, res, pathname, url) {
 
             if (!tokenRes.ok) {
                 const text = await tokenRes.text();
-                console.error(`❌ OAuth Token Error: ${tokenRes.status} ${tokenRes.statusText}`, text);
+                console.error(
+                    `❌ OAuth Token Error: ${tokenRes.status} ${tokenRes.statusText}`,
+                    text
+                );
                 throw new Error(`Token exchange failed: ${tokenRes.status} - ${text}`);
             }
 
@@ -105,28 +110,37 @@ export async function handleAuthRoute(req, res, pathname, url) {
             const sid = rand();
             const csrfSecret = rand(32); // Strong CSRF secret
 
-            console.log(`[AUTH DEBUG] /callback: Creating session SID=${sid} for User=${user.username} (CSRF Secret: ${csrfSecret.substring(0, 8)}...)`);
+            console.log(
+                `[AUTH DEBUG] /callback: Creating session SID=${sid} for User=${user.username} (CSRF Secret: ${csrfSecret.substring(0, 8)}...)`
+            );
 
             sessions.set(sid, {
                 accessToken: tokenData.access_token,
                 refreshToken: tokenData.refresh_token,
-                expiresAt: Date.now() + (tokenData.expires_in * 1000),
+                expiresAt: Date.now() + tokenData.expires_in * 1000,
                 user,
                 csrfSecret,
             });
 
-            setCookie(res, "sid", sid, { maxAge: tokenData.expires_in, httpOnly: true, secure: true });
+            setCookie(res, "sid", sid, {
+                maxAge: tokenData.expires_in,
+                httpOnly: true,
+                secure: true,
+            });
 
             // CSRF cookie is readable by JS so the client can send it in headers
             // We set it to expire with the session
-            setCookie(res, "csrf_token", csrfSecret, { maxAge: tokenData.expires_in, secure: true, httpOnly: false, sameSite: 'Lax' });
-
+            setCookie(res, "csrf_token", csrfSecret, {
+                maxAge: tokenData.expires_in,
+                secure: true,
+                httpOnly: false,
+                sameSite: "Lax",
+            });
 
             delCookie(res, "oauth_state");
 
             res.writeHead(302, { Location: "/admin/dashboard" });
             res.end();
-
         } catch (e) {
             console.error(e);
             res.writeHead(500, { "Content-Type": "text/plain" });

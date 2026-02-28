@@ -5,9 +5,13 @@ import { getFeatures } from "../core/tiers.js";
 import { cache } from "../core/cache.js";
 import { batcher } from "../core/batcher.js";
 import {
-    checkSpam, checkMentionSpam, checkRateLimit,
-    checkGlobalSpam, checkSuspiciousContent, isMemberRestricted,
-    checkCrossUserMentionSpam
+    checkSpam,
+    checkMentionSpam,
+    checkRateLimit,
+    checkGlobalSpam,
+    checkSuspiciousContent,
+    isMemberRestricted,
+    checkCrossUserMentionSpam,
 } from "../core/protection.js";
 import { sendLog } from "../core/logger.js";
 
@@ -32,12 +36,15 @@ export default {
             const features = getFeatures(tier);
 
             // 2. Track activity & Leveling (Optimized)
-            const stats = await dbQuery("SELECT xp, level, message_count, last_xp_gain_at FROM member_stats WHERE guild_id = $1 AND user_id = $2", [guildId, userId]);
+            const stats = await dbQuery(
+                "SELECT xp, level, message_count, last_xp_gain_at FROM member_stats WHERE guild_id = $1 AND user_id = $2",
+                [guildId, userId]
+            );
             const row = stats.rows[0];
             const now = new Date();
 
             let xpToGain = 0;
-            if (!row || !row.last_xp_gain_at || (now - new Date(row.last_xp_gain_at)) > 60000) {
+            if (!row || !row.last_xp_gain_at || now - new Date(row.last_xp_gain_at) > 60000) {
                 xpToGain = Math.floor(Math.random() * 21) + 20;
             }
 
@@ -52,7 +59,8 @@ export default {
             }
 
             // Update stats with Upsert
-            const updateRes = await dbQuery(`
+            const updateRes = await dbQuery(
+                `
                 INSERT INTO member_stats (guild_id, user_id, xp, level, message_count, last_xp_gain_at, last_activity_at)
                 VALUES ($1, $2, $3, $4, 1, CASE WHEN $5 > 0 THEN NOW() ELSE NULL END, NOW())
                 ON CONFLICT (guild_id, user_id) DO UPDATE SET 
@@ -62,25 +70,39 @@ export default {
                     last_xp_gain_at = CASE WHEN EXCLUDED.xp > member_stats.xp THEN NOW() ELSE member_stats.last_xp_gain_at END,
                     last_activity_at = NOW()
                 RETURNING message_count
-            `, [guildId, userId, currentXp, currentLevel, xpToGain]).catch(() => { });
+            `,
+                [guildId, userId, currentXp, currentLevel, xpToGain]
+            ).catch(() => {});
 
             const msgCount = updateRes?.rows[0]?.message_count || (row?.message_count || 0) + 1;
 
             // Log activity to batcher for AI Prediction
-            batcher.push('member_events', { guild_id: guildId, user_id: userId, event_type: 'message' });
+            batcher.push("member_events", {
+                guild_id: guildId,
+                user_id: userId,
+                event_type: "message",
+            });
 
             if (levelUp && settings.levelup_enabled !== false) {
-                const embedColor = settings.color_level ? parseInt(settings.color_level.replace('#', ''), 16) : 0xFFD700;
+                const embedColor = settings.color_level
+                    ? parseInt(settings.color_level.replace("#", ""), 16)
+                    : 0xffd700;
                 const embed = new EmbedBuilder()
                     .setTitle("🎊 Level Up!")
-                    .setDescription(`おめでとうございます <@${userId}> さん！\nレベルが **Level ${currentLevel}** に到達しました！`)
+                    .setDescription(
+                        `おめでとうございます <@${userId}> さん！\nレベルが **Level ${currentLevel}** に到達しました！`
+                    )
                     .setColor(embedColor)
                     .setThumbnail(message.author.displayAvatarURL())
-                    .setFooter({ text: settings.branding_footer_text || "Akatsuki Leveling System" })
+                    .setFooter({
+                        text: settings.branding_footer_text || "Akatsuki Leveling System",
+                    })
                     .setTimestamp();
 
-                const targetChannel = settings.levelup_channel_id ? message.guild.channels.cache.get(settings.levelup_channel_id) : message.channel;
-                if (targetChannel) await targetChannel.send({ embeds: [embed] }).catch(() => { });
+                const targetChannel = settings.levelup_channel_id
+                    ? message.guild.channels.cache.get(settings.levelup_channel_id)
+                    : message.channel;
+                if (targetChannel) await targetChannel.send({ embeds: [embed] }).catch(() => {});
             }
 
             // 3. Spam & Security Protection (Iron Fortress)
@@ -91,8 +113,13 @@ export default {
                 const rateCheck = checkRateLimit(guildId, userId);
                 const globalCheck = checkGlobalSpam(guildId, userId, message.content);
                 const isRestricted = isMemberRestricted(message.member, settings);
-                const suspicious = checkSuspiciousContent(message.content, settings.domain_blacklist || []);
-                const crossMention = checkCrossUserMentionSpam(guildId, [...message.mentions.users.keys()]);
+                const suspicious = checkSuspiciousContent(
+                    message.content,
+                    settings.domain_blacklist || []
+                );
+                const crossMention = checkCrossUserMentionSpam(guildId, [
+                    ...message.mentions.users.keys(),
+                ]);
 
                 let honeypotActive = false;
                 if (settings.antiraid_honeypot_channel_id === message.channel.id) {
@@ -100,10 +127,23 @@ export default {
                     if (!staffId || !message.member.roles.cache.has(staffId)) honeypotActive = true;
                 }
 
-                if (spamCheck.isSpam || mentionCheck.isSpam || rateCheck.isSpam || globalCheck.isSpam || (isRestricted && settings.antiraid_guard_level >= 1) || suspicious.isSuspicious || crossMention.isSpam || honeypotActive) {
+                if (
+                    spamCheck.isSpam ||
+                    mentionCheck.isSpam ||
+                    rateCheck.isSpam ||
+                    globalCheck.isSpam ||
+                    (isRestricted && settings.antiraid_guard_level >= 1) ||
+                    suspicious.isSuspicious ||
+                    crossMention.isSpam ||
+                    honeypotActive
+                ) {
                     let action = "Delete";
                     let reason = "Security Violation";
-                    const isRaid = globalCheck.isSpam || (isRestricted && settings.antiraid_guard_level >= 2) || crossMention.isSpam || honeypotActive;
+                    const isRaid =
+                        globalCheck.isSpam ||
+                        (isRestricted && settings.antiraid_guard_level >= 2) ||
+                        crossMention.isSpam ||
+                        honeypotActive;
 
                     if (spamCheck.isSpam) reason = "Similarity Spam";
                     else if (mentionCheck.isSpam) reason = "Mention Spam";
@@ -114,30 +154,38 @@ export default {
                     else if (crossMention.isSpam) reason = "Mass Mention Raid";
                     else if (honeypotActive) reason = "Honeypot Trap";
 
-                    await message.delete().catch(() => { });
+                    await message.delete().catch(() => {});
 
                     if (isRaid) {
                         const count = Math.max(spamCheck.count || 0, globalCheck.count || 0);
                         if (count >= 5 || honeypotActive) {
                             if (honeypotActive && message.member.bannable) {
-                                await message.member.ban({ reason: "Honeypot Trap" }).catch(() => { });
+                                await message.member
+                                    .ban({ reason: "Honeypot Trap" })
+                                    .catch(() => {});
                                 action = "Banned";
                             } else if (message.member.kickable) {
-                                await message.member.kick("Raid Guard").catch(() => { });
+                                await message.member.kick("Raid Guard").catch(() => {});
                                 action = "Kicked";
                             }
                         }
-                        await dbQuery("UPDATE settings SET last_raid_at = NOW() WHERE guild_id = $1", [guildId]);
+                        await dbQuery(
+                            "UPDATE settings SET last_raid_at = NOW() WHERE guild_id = $1",
+                            [guildId]
+                        );
                     }
 
                     if (features.ngLog) {
                         const logEmbed = new EmbedBuilder()
-                            .setAuthor({ name: message.member.displayName, iconURL: message.author.displayAvatarURL() })
-                            .setColor(isRaid ? 0xFF0000 : 0xFFAA00)
+                            .setAuthor({
+                                name: message.member.displayName,
+                                iconURL: message.author.displayAvatarURL(),
+                            })
+                            .setColor(isRaid ? 0xff0000 : 0xffaa00)
                             .setTitle(`🛡️ Iron Fortress: ${reason}`)
                             .setDescription(`**ユーザー**: <@${userId}>\n**アクション**: ${action}`)
                             .setTimestamp();
-                        await sendLog(message.guild, 'mod', logEmbed);
+                        await sendLog(message.guild, "mod", logEmbed);
                     }
                     return;
                 }
@@ -152,25 +200,49 @@ export default {
             }
 
             if (ngWords.length > 0) {
-                const caught = ngWords.filter(ng => ng.kind === 'regex' ? (ng.compiled && ng.compiled.test(message.content)) : message.content.includes(ng.word));
+                const caught = ngWords.filter((ng) =>
+                    ng.kind === "regex"
+                        ? ng.compiled && ng.compiled.test(message.content)
+                        : message.content.includes(ng.word)
+                );
                 if (caught.length > 0) {
-                    await message.delete().catch(() => { });
-                    caught.forEach(c => batcher.push('ng_logs', { guild_id: guildId, user_id: userId, user_name: message.author.tag, word: c.word }));
+                    await message.delete().catch(() => {});
+                    caught.forEach((c) =>
+                        batcher.push("ng_logs", {
+                            guild_id: guildId,
+                            user_id: userId,
+                            user_name: message.author.tag,
+                            word: c.word,
+                        })
+                    );
 
                     if (settings.ng_warning_enabled !== false) {
-                        await message.author.send(`⚠️ **禁止ワードを検知しました** (${message.guild.name})`).catch(() => { });
+                        await message.author
+                            .send(`⚠️ **禁止ワードを検知しました** (${message.guild.name})`)
+                            .catch(() => {});
                     }
 
-                    const countRes = await dbQuery("SELECT COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 AND user_id = $2 AND created_at > NOW() - INTERVAL '1 hour'", [guildId, userId]);
+                    const countRes = await dbQuery(
+                        "SELECT COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 AND user_id = $2 AND created_at > NOW() - INTERVAL '1 hour'",
+                        [guildId, userId]
+                    );
                     const count = parseInt(countRes.rows[0].cnt);
                     let actionTaken = "Deleted";
 
                     if (count >= (settings.phase2_threshold ?? 3)) {
-                        const action = count >= (settings.phase4_threshold ?? 10) ? settings.phase4_action : (count >= (settings.phase3_threshold ?? 6) ? settings.phase3_action : settings.phase2_action);
-                        if (action === 'timeout' && message.member.moderatable) {
-                            await message.member.timeout((settings.timeout_minutes || 10) * 60000, "NG Word Threshold");
+                        const action =
+                            count >= (settings.phase4_threshold ?? 10)
+                                ? settings.phase4_action
+                                : count >= (settings.phase3_threshold ?? 6)
+                                  ? settings.phase3_action
+                                  : settings.phase2_action;
+                        if (action === "timeout" && message.member.moderatable) {
+                            await message.member.timeout(
+                                (settings.timeout_minutes || 10) * 60000,
+                                "NG Word Threshold"
+                            );
                             actionTaken = "Timeout";
-                        } else if (action === 'kick' && message.member.kickable) {
+                        } else if (action === "kick" && message.member.kickable) {
                             await message.member.kick("NG Word Limit");
                             actionTaken = "Kicked";
                         }
@@ -178,30 +250,50 @@ export default {
 
                     if (features.ngLog) {
                         const embed = new EmbedBuilder()
-                            .setAuthor({ name: message.member.displayName, iconURL: message.author.displayAvatarURL() })
-                            .setColor(0xFF0000).setTitle("🚨 NG Word Detected")
-                            .setDescription(`**ワード**: ||${caught.map(c => c.word).join(", ")}||\n**状況**: ${actionTaken}`)
+                            .setAuthor({
+                                name: message.member.displayName,
+                                iconURL: message.author.displayAvatarURL(),
+                            })
+                            .setColor(0xff0000)
+                            .setTitle("🚨 NG Word Detected")
+                            .setDescription(
+                                `**ワード**: ||${caught.map((c) => c.word).join(", ")}||\n**状況**: ${actionTaken}`
+                            )
                             .setTimestamp();
-                        await sendLog(message.guild, 'ng', embed);
+                        await sendLog(message.guild, "ng", embed);
                     }
                 }
             }
 
             // 5. Self-Intro Gate
-            if (features.introGate && settings.self_intro_enabled && settings.intro_channel_id === message.channel.id) {
-                if (message.content.length >= (settings.self_intro_min_length || 10) && settings.self_intro_role_id) {
+            if (
+                features.introGate &&
+                settings.self_intro_enabled &&
+                settings.intro_channel_id === message.channel.id
+            ) {
+                if (
+                    message.content.length >= (settings.self_intro_min_length || 10) &&
+                    settings.self_intro_role_id
+                ) {
                     if (!message.member.roles.cache.has(settings.self_intro_role_id)) {
-                        await message.member.roles.add(settings.self_intro_role_id, "Auto-Gate Pattern").catch(() => { });
-                        await message.react("✅").catch(() => { });
+                        await message.member.roles
+                            .add(settings.self_intro_role_id, "Auto-Gate Pattern")
+                            .catch(() => {});
+                        await message.react("✅").catch(() => {});
                     }
                 }
             }
 
             // 6. Message-based Aura (Optimized check)
             if (features.aura) {
-                const rules = (settings.vc_role_rules || []).filter(r => r.trigger === 'messages');
+                const rules = (settings.vc_role_rules || []).filter(
+                    (r) => r.trigger === "messages"
+                );
                 for (const rule of rules) {
-                    if (msgCount >= rule.messages && !message.member.roles.cache.has(rule.role_id)) {
+                    if (
+                        msgCount >= rule.messages &&
+                        !message.member.roles.cache.has(rule.role_id)
+                    ) {
                         await message.member.roles.add(rule.role_id).catch(() => null);
                     }
                 }
@@ -209,5 +301,5 @@ export default {
         } catch (e) {
             console.error("[EVENT ERROR] messageCreate:", e.message);
         }
-    }
+    },
 };
