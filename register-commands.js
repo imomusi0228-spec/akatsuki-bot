@@ -25,7 +25,7 @@ export async function registerCommands() {
     }
 
     const rest = new REST().setToken(ENV.TOKEN);
-    const isGlobal = process.argv.includes("--global");
+    const isGlobal = !process.argv.includes("--dev"); // デフォルトでGlobal登録にする
     const isClear = process.argv.includes("--clear");
 
     try {
