@@ -22,6 +22,17 @@ Discord server management bot.
 ### ℹ️ その他
 - `/help` : コマンド一覧を表示
 
+
+## 🚀 Deployment
+
+### Railway / Render
+`Procfile` が同梱されています。環境変数を設定してデプロイしてください。
+
+### Replit
+1. GitHub からインポート。
+2. Secrets に必要な環境変数を設定。
+3. 詳細な手順は [DEPLOYMENT.md](docs/DEPLOYMENT.md) を参照。
+
 ## Scripts
 - `npm start`: Start the bot
 - `npm run register`: Register/Update slash commands

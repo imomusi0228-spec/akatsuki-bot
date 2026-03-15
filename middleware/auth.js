@@ -6,10 +6,17 @@ export const states = new Map(); // OAuth states
 
 export function setCookie(res, name, value, options = {}) {
     const isHttpOnly = options.httpOnly !== false;
+    let isSecure = options.secure;
+    if (isSecure === undefined) {
+        // Force secure if PUBLIC_URL is https
+        isSecure = ENV.PUBLIC_URL?.startsWith("https");
+        // Or if we are explicitly told it's secure via options (handled above)
+    }
+
     let cookie = `${name}=${encodeURIComponent(value)}; Path=/; SameSite=Lax`;
     if (isHttpOnly) cookie += "; HttpOnly";
     if (options.maxAge) cookie += `; Max-Age=${options.maxAge}`;
-    if (options.secure || ENV.PUBLIC_URL?.includes("https")) cookie += `; Secure`;
+    if (isSecure) cookie += `; Secure`;
 
     // console.log(`[AUTH DEBUG] setCookie: ${name}=${value} (Opts: ${JSON.stringify(options)}) -> ${cookie}`);
 

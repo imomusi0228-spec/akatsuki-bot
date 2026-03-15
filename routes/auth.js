@@ -53,28 +53,21 @@ export async function handleAuthRoute(req, res, pathname, url) {
             return;
         }
 
-        // State check
-        const cookies = {};
-        (req.headers.cookie || "").split(";").forEach((c) => {
-            const [k, v] = c.trim().split("=");
-            if (k && v) cookies[k] = decodeURIComponent(v);
-        });
-
-        const storedState = cookies.oauth_state;
+        // State check: More robust cookie parsing
+        const cookieHeader = req.headers.cookie || "";
+        const storedState = cookieHeader.match(/oauth_state=([^;]+)/)?.[1];
         const isStateValid = states.has(state);
-        console.log(
-            `[AUTH DEBUG] /callback: ReceivedState=${state}, StoredState=${storedState}, StatesHas=${isStateValid}`
-        );
 
-        // Resilience: We prioritize state-to-URL match. In-memory states Map might be cleared on restart,
-        // but it's the primary source of truth. Cookies are secondary and may fail in some environments.
+        console.log(`[AUTH DEBUG] /callback: ReceivedState=${state}, StoredState=${storedState}, InMemoryValid=${isStateValid}`);
+
+        // Resilience: Pass if either memory state or cookie state matches
         if (!state || (!isStateValid && state !== storedState)) {
-            console.error(`[AUTH DEBUG] /callback: State mismatch or missing!`);
+            console.error(`[AUTH FATAL] CSRF check failed! Host: ${req.headers.host}, UA: ${req.headers["user-agent"]}`);
             res.writeHead(400, { "Content-Type": "text/plain" });
-            res.end("Invalid State (CSRF check failed). Try /login again.");
+            res.end("Invalid State (CSRF check failed). Please ensure you are using the correct domain and try /login again.");
             return;
         }
-        states.delete(state);
+        if (state) states.delete(state);
 
         // Exchange token
         const tokenUrl = "https://discord.com/api/oauth2/token";
@@ -122,17 +115,19 @@ export async function handleAuthRoute(req, res, pathname, url) {
                 csrfSecret,
             });
 
+            const isSecure = ENV.PUBLIC_URL.startsWith("https");
+            
             setCookie(res, "sid", sid, {
                 maxAge: tokenData.expires_in,
                 httpOnly: true,
-                secure: true,
+                secure: isSecure,
             });
 
             // CSRF cookie is readable by JS so the client can send it in headers
             // We set it to expire with the session
             setCookie(res, "csrf_token", csrfSecret, {
                 maxAge: tokenData.expires_in,
-                secure: true,
+                secure: isSecure,
                 httpOnly: false,
                 sameSite: "Lax",
             });

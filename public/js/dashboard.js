@@ -1191,6 +1191,8 @@ window.initTicketsPage = async () => {
             if ($("ticketStaffRole")) $("ticketStaffRole").value = s.ticket_staff_role_id || "";
             if ($("ticketLogCh")) $("ticketLogCh").value = s.ticket_log_channel_id || "";
             if ($("ticketWelcomeMsg")) $("ticketWelcomeMsg").value = s.ticket_welcome_msg || "";
+            if ($("ticketPanelTitle")) $("ticketPanelTitle").value = s.ticket_panel_title || "";
+            if ($("ticketPanelDesc")) $("ticketPanelDesc").value = s.ticket_panel_desc || "";
         }
 
         if (ticketsRes.ok && list) {
@@ -1232,20 +1234,29 @@ window.initTicketsPage = async () => {
     if ($("refreshTickets")) $("refreshTickets").onclick = window.__pageReload;
     window.__pageReload();
 
-    if ($("saveTicketSettings"))
-        $("saveTicketSettings").onclick = async () => {
+    // カテゴリ読み込み
+    if (typeof loadCategories === "function") loadCategories();
+
+    // チケット設定保存
+    const saveBtn = $("saveTicketSettings");
+    if (saveBtn) {
+        saveBtn.onclick = async () => {
             const gid = $("globalGuildSelect")?.value;
             if (!gid) return;
             const body = {
                 guild: gid,
+                ticket_staff_role_id: $("ticketStaffRole")?.value || "",
+                ticket_log_channel_id: $("ticketLogCh")?.value || "",
                 ticket_welcome_msg: $("ticketWelcomeMsg")?.value || "",
-                ticket_staff_role_id: $("ticketStaffRole")?.value || null,
-                ticket_log_channel_id: $("ticketLogCh")?.value || null,
+                ticket_panel_title: $("ticketPanelTitle")?.value || "",
+                ticket_panel_desc: $("ticketPanelDesc")?.value || "",
             };
             const res = await api("/api/settings/update", body);
-            if (res.ok) alert(t("save_success"));
-            else alert("Error: " + res.error);
+            const st = $("saveStatus");
+            if (st) st.textContent = res.ok ? "✅ " + t("save_success") : "❌ " + res.error;
+            setTimeout(() => { if (st) st.textContent = ""; }, 3000);
         };
+    }
 };
 
 window.openAssignModal = async (ticketId) => {
@@ -1496,18 +1507,13 @@ async function initAiPage() {
                 if (footerDisplay && res.settings.branding_footer_text) {
                     footerDisplay.textContent = res.settings.branding_footer_text;
                 }
-                // Also update localStorage theme if not set yet (first visit)
-                if (
-                    !localStorage.getItem("dashboard_theme_mode") &&
-                    res.settings.dashboard_theme_mode
-                ) {
+
+                // Global Theme Sync: Always honor the guild's branding choice
+                if (res.settings.dashboard_theme_mode) {
                     localStorage.setItem("dashboard_theme_mode", res.settings.dashboard_theme_mode);
                     document.body.className = "theme-" + res.settings.dashboard_theme_mode;
                 }
-                if (
-                    !localStorage.getItem("dashboard_theme_color") &&
-                    res.settings.dashboard_theme_color
-                ) {
+                if (res.settings.dashboard_theme_color) {
                     localStorage.setItem(
                         "dashboard_theme_color",
                         res.settings.dashboard_theme_color

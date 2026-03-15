@@ -700,12 +700,18 @@ export async function handleApiRoute(req, res, pathname, url) {
                 color_log, color_ng, color_vc_join, color_vc_leave,
                 color_level, color_ticket, dashboard_theme_color,
                 dashboard_theme_mode, ai_prediction_enabled,
+                ai_predict_channel_id,
                 auto_vc_creator_id, ticket_staff_role_id,
+                ticket_log_channel_id,
+                antiraid_auto_recovery_enabled,
+                antiraid_honeypot_channel_id,
+                antiraid_avatar_scrutiny_enabled,
                 auto_action_on_warns, warn_action_threshold, warn_action,
                 leaderboard_enabled, levelup_enabled, levelup_channel_id,
                 welcome_enabled, welcome_channel_id, welcome_message,
                 farewell_enabled, farewell_channel_id, farewell_message,
-                mod_log_channel_id, mod_log_flags
+                mod_log_channel_id, mod_log_flags,
+                ticket_panel_title, ticket_panel_desc
             FROM settings 
             WHERE guild_id = $1
         `,
@@ -867,6 +873,8 @@ export async function handleApiRoute(req, res, pathname, url) {
                 "farewell_message",
                 "mod_log_channel_id",
                 "mod_log_flags",
+                "ticket_panel_title",
+                "ticket_panel_desc",
             ];
 
             const keys = Object.keys(body).filter((k) => allowedFields.includes(k));

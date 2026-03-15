@@ -61,10 +61,26 @@
             </label><br />
             <textarea id="ticketWelcomeMsg"
                 style="width:100%; height:80px; margin-top:8px; padding:12px; border-radius:8px; border:1px solid var(--border-color); background:rgba(0,0,0,0.2); color:white; font-size:13px;"
-                placeholder="<%= t(" ticket_welcome_msg_placeholder") %>"></textarea>
+                placeholder="<%= t('ticket_welcome_msg_placeholder') %>"></textarea>
             <p class="muted" style="font-size:11px; margin-top:8px;">
                 <%= t("ticket_welcome_msg_help") %>
             </p>
+        </div>
+        <div style="margin-bottom:20px;">
+            <label class="muted" style="font-size:12px;">
+                パネルのタイトル（設定がない場合はデフォルト）
+            </label><br />
+            <input id="ticketPanelTitle" type="text"
+                style="width:100%; margin-top:8px; padding:12px; border-radius:8px; border:1px solid var(--border-color); background:rgba(0,0,0,0.2); color:white; font-size:13px;"
+                placeholder="🎫 サポートチケット">
+        </div>
+        <div style="margin-bottom:20px;">
+            <label class="muted" style="font-size:12px;">
+                パネルの説明文（設定がない場合はデフォルト）
+            </label><br />
+            <textarea id="ticketPanelDesc"
+                style="width:100%; height:80px; margin-top:8px; padding:12px; border-radius:8px; border:1px solid var(--border-color); background:rgba(0,0,0,0.2); color:white; font-size:13px;"
+                placeholder="お問い合わせや報告がある場合は、下のボタンを押してチケットを作成してください。"></textarea>
         </div>
         <div style="display:flex; justify-content:flex-end; gap:10px; align-items:center;">
             <span id="saveStatus" style="font-size:12px;"></span>
@@ -240,38 +256,10 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        initTicketsPage();
-    });
-
-    async function initTicketsPage() {
-        loadTickets();
-        loadCategories();
-
-        document.getElementById("refreshTickets")
-            .addEventListener("click", loadTickets);
-
-        document.getElementById("statusFilter")
-            .addEventListener("change", loadTickets);
-
-        // B-10: チケット設定保存ボタン
-        const saveBtn = document.getElementById("saveTicketSettings");
-        if (saveBtn) {
-            saveBtn.onclick = async () => {
-                const gid = getGuildId();
-                if (!gid) return;
-                const body = {
-                    guild: gid,
-                    ticket_staff_role_id: document.getElementById("ticketStaffRole")?.value || "",
-                    ticket_log_channel_id: document.getElementById("ticketLogCh")?.value || "",
-                    ticket_welcome_msg: document.getElementById("ticketWelcomeMsg")?.value || ""
-                };
-                const r = await api("/api/settings/update", body);
-                const st = document.getElementById("saveStatus");
-                if (st) st.textContent = r.ok ? "✅ " + t("save_success") : "❌ " + r.error;
-                setTimeout(() => { if (st) st.textContent = ""; }, 3000);
-            };
+        if (typeof window.initTicketsPage === 'function') {
+            window.initTicketsPage();
         }
-    }
+    });
 
     // B-10: カテゴリ一覧読み込み
     async function loadCategories() {
@@ -325,75 +313,4 @@
     function getGuildId() {
         return document.getElementById("globalGuildSelect")?.value || null;
     }
-
-    async function loadTickets() {
-        const tbody = document.getElementById("ticketList");
-        const status = document.getElementById("statusFilter").value;
-
-        tbody.innerHTML = `
-        <tr>
-            <td colspan="6" style="text-align:center; padding:20px;">
-                ${t("loading_dots")}
-            </td>
-        </tr>
-    `;
-
-        try {
-            const gid = getGuildId();
-            const res = await api(`/api/tickets?guild=${gid}`);
-            const tickets = res.ok ? res.tickets : [];
-
-            const filtered = status === "all"
-                ? tickets
-                : tickets.filter(t => t.status === status);
-
-            if (!filtered.length) {
-                tbody.innerHTML = `
-                <tr>
-                    <td colspan="6" style="text-align:center; padding:20px;">
-                        ${t("no_tickets")}
-                    </td>
-                </tr>
-            `;
-                return;
-            }
-
-            tbody.innerHTML = "";
-
-            filtered.forEach(t => {
-                const tr = document.createElement("tr");
-
-                const logBtn = t.transcript_id
-                    ? `<a href="/transcripts/${t.transcript_id}.html" target="_blank" class="staff-assign-btn">${t("ticket_log_btn")}</a>`
-                    : "";
-
-                tr.innerHTML = `
-                <td>${t.id}</td>
-                <td>${t.user_id}</td>
-                <td>${t.assigned_to || t("unassigned")}</td>
-                <td>
-                    <span class="status-badge status-${t.status}">
-                        ${t.status}
-                    </span>
-                </td>
-                <td>${new Date(t.created_at).toLocaleString(window.lang === 'ja' ? 'ja-JP' : 'en-US')}</td>
-                <td style="text-align:right;">
-                    ${logBtn}
-                </td>
-            `;
-
-                tbody.appendChild(tr);
-            });
-
-        } catch (err) {
-            tbody.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align:center; padding:20px;">
-                    ${t("loading_failed")}
-                </td>
-            </tr>
-        `;
-            console.error(err);
-        }
-    }
-</script>
+</script>

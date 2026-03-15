@@ -50,12 +50,12 @@ export async function startServer() {
             // Transcripts (v2.4.8)
             if (pathname.startsWith("/transcripts/")) {
                 const transcriptId = pathname.replace("/transcripts/", "");
-                const safeId = transcriptId.replace(/[^a-zA-Z0-9-]/g, ""); // Security
+                const safeId = transcriptId.replace(/[^a-zA-Z0-9.-]/g, ""); // Allow dots for .html extension
                 const filePath = path.join(
                     process.cwd(),
                     "public",
                     "transcripts",
-                    `${safeId}.html`
+                    safeId.endsWith(".html") ? safeId : `${safeId}.html`
                 );
 
                 if (fs.existsSync(filePath)) {

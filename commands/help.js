@@ -22,18 +22,16 @@ export async function execute(interaction) {
     let helpText = `**🛠️ ${t("help_guide_title", locale)}**\n\n`;
 
     helpText += `**${t("help_cat_analytics", locale)}**\n`;
-    helpText += `\`/vc top\` : ${t("cmd_vc_top_desc", locale)}\n`;
-    helpText += `\`/vc user [target]\` : ${t("cmd_vc_user_desc", locale)}\n`;
-    helpText += `\`/level [target]\` : ${t("cmd_level_desc", locale)}\n`;
-    helpText += `\`/activity\` : ${t("view_features", locale)}\n\n`;
+    helpText += `\`/vc-name\` : ${t("cmd_vc_name_desc", locale) || "VCの名前を変更"}\n`;
+    helpText += `\`/vc-limit\` : ${t("cmd_vc_limit_desc", locale) || "VCの人数制限を変更"}\n`;
+    helpText += `\`/level rank\` : ${t("cmd_level_desc", locale)}\n`;
+    helpText += `\`/admin\` : ${t("view_features", locale)}\n\n`;
 
     helpText += `**${t("help_cat_admin", locale)}**\n`;
     helpText += `\`/admin\` : ${t("cmd_admin_desc", locale)}\n`;
-    helpText += `\`/setlog [channel] [type]\` : ${t("log_settings", locale)}\n`;
-    helpText += `\`/aura\` : ${t("aura_system_desc", locale)}\n\n`;
+    helpText += `*${t("admin_integrated_notice", locale) || "※各種設定（ログ、オーラ、NGワード等）はWeb管理画面に統合されました。"}*\n\n`;
 
     helpText += `**${t("help_cat_mod", locale)}**\n`;
-    helpText += `\`/ngword add/list\` : ${t("ng_word_settings", locale)}\n`;
     helpText += `\`/ticket setup\` : ${t("ticket_basic_settings", locale)}\n`;
     helpText += `\`/scan [type]\` : ${t("cmd_scan_desc", locale)}\n\n`;
 

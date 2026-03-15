@@ -22,13 +22,19 @@ export const client = new Client({
 client.commands = new Collection();
 
 // Error Handling
-client.on(Events.Error, (err) => console.error("❌ Discord Client Error:", err));
-client.on(Events.Warn, (msg) => console.warn("⚠️ Discord Client Warning:", msg));
-client.on(Events.ShardError, (err) => console.error("❌ Discord Shard Error:", err));
-client.on(Events.ShardDisconnect, (event) => console.warn("⚠️ Discord Shard Disconnected:", event));
+client.on(Events.Error, (err) => console.error("❌ [CLIENT ERROR]:", err));
+client.on(Events.Warn, (msg) => console.warn("⚠️ [CLIENT WARN]:", msg));
+client.on(Events.ShardError, (err) => console.error("❌ [SHARD ERROR]:", err));
+client.on(Events.ShardDisconnect, (event) => console.warn("⚠️ [SHARD DISCONNECT]:", event));
+client.on(Events.ShardReconnecting, (id) => console.log(`🔄 [SHARD ${id}] Reconnecting...`));
+client.on(Events.ShardResume, (id, replayed) => console.log(`✅ [SHARD ${id}] Resumed. Replayed ${replayed} events.`));
 client.on(Events.Invalidated, () => {
-    console.error("❌ Discord Session Invalidated. Exiting to trigger restart.");
+    console.error("❌ Discord Session Invalidated. Exiting...");
     process.exit(1);
+});
+client.on(Events.Debug, (info) => {
+    if (info.includes("Heartbeat") || info.includes("Latency")) return;
+    console.log(`[DEBUG]: ${info}`);
 });
 
 async function importFile(filePath) {
@@ -82,7 +88,7 @@ export async function startBot() {
         if (!ENV.TOKEN) throw new Error("DISCORD_TOKEN is missing");
 
         await client.login(ENV.TOKEN);
-        console.log("✅ Discord login OK");
+        console.log(`✅ Discord login OK. Logged in as: ${client.user.tag}`);
     } catch (e) {
         console.error("❌ Discord login FAILED:", e);
         throw e;

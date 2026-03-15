@@ -46,6 +46,7 @@ export async function initDb() {
         `CREATE TABLE IF NOT EXISTS warnings (id SERIAL PRIMARY KEY, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, reason TEXT, issued_by TEXT, created_at TIMESTAMPTZ DEFAULT NOW());`,
         `CREATE TABLE IF NOT EXISTS tickets (id SERIAL PRIMARY KEY, guild_id TEXT NOT NULL, channel_id TEXT NOT NULL, user_id TEXT NOT NULL, status TEXT DEFAULT 'open', created_at TIMESTAMPTZ DEFAULT NOW());`,
         `CREATE TABLE IF NOT EXISTS member_events (id SERIAL PRIMARY KEY, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, event_type TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW());`,
+        `CREATE TABLE IF NOT EXISTS ticket_categories (id SERIAL PRIMARY KEY, guild_id TEXT NOT NULL, name TEXT NOT NULL, emoji TEXT, description TEXT, created_at TIMESTAMPTZ DEFAULT NOW());`,
     ];
 
     const migrations = [
@@ -68,6 +69,13 @@ export async function initDb() {
         `ALTER TABLE settings ADD COLUMN IF NOT EXISTS update_announce_channel_id TEXT;`,
         `ALTER TABLE settings ADD COLUMN IF NOT EXISTS last_notified_version TEXT;`,
         `ALTER TABLE settings ADD COLUMN IF NOT EXISTS leaderboard_enabled BOOLEAN DEFAULT TRUE;`,
+        `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ticket_log_channel_id TEXT;`,
+        `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ticket_welcome_msg TEXT;`,
+        `ALTER TABLE settings ADD COLUMN IF NOT EXISTS color_ticket TEXT;`,
+        `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ticket_staff_role_id TEXT;`,
+        `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS category_id INTEGER;`,
+        `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ticket_panel_title TEXT;`,
+        `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ticket_panel_desc TEXT;`,
     ];
 
     const indexes = [
