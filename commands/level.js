@@ -98,7 +98,7 @@ export async function execute(interaction) {
             .setTitle(`🌟 ${t("level_stats_title", locale)}`)
             .setColor(0x00a2e8)
             .addFields(
-                { name: t("status"), value: `**#${rankNum}**`, inline: true },
+                { name: t("status", locale), value: `**#${rankNum}**`, inline: true },
                 { name: t("plan_badge_std", locale), value: `**Lv. ${level}**`, inline: true },
                 {
                     name: "XP",

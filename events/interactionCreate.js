@@ -13,6 +13,7 @@ import {
 } from "discord.js";
 import { client } from "../core/client.js";
 import { dbQuery } from "../core/db.js";
+import { ENV } from "../config/env.js";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -232,7 +233,7 @@ export default {
                         fs.mkdirSync(transcriptDir, { recursive: true });
                     fs.writeFileSync(path.join(transcriptDir, `${transcriptId}.html`), html);
 
-                    const publicUrl = process.env.PUBLIC_URL || "http://localhost:3000";
+                    const publicUrl = ENV.PUBLIC_URL || `http://localhost:${ENV.PORT}`;
                     const webUrl = `${publicUrl.replace(/\/+$/, "")}/transcripts/${transcriptId}.html`;
                     const logEmbed = new EmbedBuilder()
                         .setTitle("🎫 チケットクローズ")

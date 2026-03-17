@@ -18,7 +18,7 @@ process.on("unhandledRejection", (reason) => {
     console.error("🔥 [FATAL] Unhandled Rejection:", reason);
 });
 
-const VERSION = "2.9.2";
+const VERSION = "3.0.0";
 
 (async () => {
     console.log(`🚀 Booting AkatsukiBot (v${VERSION})...`);
