@@ -71,6 +71,7 @@ export default {
 
                 // Ticket: Create
                 if (interaction.customId === "ticket_create") {
+                    console.log(`[TICKET] ticket_create received from user ${interaction.user.id} in guild ${guildId}`);
                     await interaction.deferReply({ ephemeral: true });
 
                     const catRes = await dbQuery("SELECT id, name, emoji, description FROM ticket_categories WHERE guild_id = $1 ORDER BY id", [guildId]);
