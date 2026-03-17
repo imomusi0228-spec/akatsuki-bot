@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="<%= lang %>">
 
 <head>
@@ -57,6 +57,22 @@
             background-color: var(--bg-color);
             color: var(--text-primary);
             transition: background 0.3s, color 0.3s;
+            min-height: 100vh;
+        }
+
+        body.no-scroll {
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            padding: 0 16px;
+        }
+
+        body.no-scroll #main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
         a {
@@ -289,7 +305,7 @@
     </script>
 </head>
 
-<body>
+<body class="<%= locals.noScroll ? 'no-scroll' : '' %>">
     <script>
         // Apply saved theme immediately before any paint (avoids flash)
         (function () {

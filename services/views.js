@@ -111,6 +111,7 @@ export async function renderLandingHTML(req) {
             oauth: false,
             activeTab: null,
             scripts: "",
+            noScroll: true,
         },
         lang
     );
