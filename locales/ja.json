@@ -391,5 +391,17 @@
     "help_level_stats": "XP（経験値）システムと、レベルアップ時の通知設定です。",
     "help_log_settings": "ボットが送信する一般的なシステム通知やNGワード検知のログ先を設定します。",
     "help_br_mgmt": "ボタンを押すだけで役職が付与される『役職パネル』を作成・管理します。",
-    "vc_role_rules_title": "オーラシステム（VC自動ロール）"
+    "help_guide_title": "AkatsukiBot ヘルプガイド",
+    "help_cat_analytics": "📈 分析・統計コマンド",
+    "cmd_vc_name_desc": "VCの名前を変更します",
+    "cmd_vc_limit_desc": "VCの人数制限を変更します",
+    "cmd_level_desc": "現在のレベルとXPを表示します",
+    "help_cat_admin": "🛡️ サーバー管理コマンド",
+    "cmd_admin_desc": "Web管理画面へのリンクを表示します",
+    "admin_integrated_notice": "※各種設定（ログ、権限、NGワード等）はWeb管理画面に統合されました。",
+    "help_cat_mod": "🛠️ モデレーションコマンド",
+    "cmd_scan_desc": "過去ログのスキャンを実行します（Pro+限定）",
+    "help_cat_info": "ℹ️ 情報コマンド",
+    "cmd_help_desc": "このヘルプメニューを表示します",
+    "help_footer": "各コマンドの詳細は、管理者にお問い合わせくださいわ。"
 }

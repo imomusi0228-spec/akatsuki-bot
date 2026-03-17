@@ -390,5 +390,17 @@
     "help_level_stats": "XP (Experience Points) system and level-up notification settings.",
     "help_log_settings": "Configure destination for system logs and NG word detections.",
     "help_br_mgmt": "Create and manage panels that assign roles via buttons.",
-    "vc_role_rules_title": "Aura System (VC Auto-Roles)"
+    "help_guide_title": "AkatsukiBot Help Guide",
+    "help_cat_analytics": "📈 Analytics & Stats Commands",
+    "cmd_vc_name_desc": "Changes the name of your VC",
+    "cmd_vc_limit_desc": "Changes the member limit for your VC",
+    "cmd_level_desc": "Displays current level and XP",
+    "help_cat_admin": "🛡️ Server Admin Commands",
+    "cmd_admin_desc": "Displays the link to the Web Admin Dashboard",
+    "admin_integrated_notice": "*Settings for logs, roles, and NG words are integrated into the Web Dashboard.*",
+    "help_cat_mod": "🛠️ Moderation Commands",
+    "cmd_scan_desc": "Scans or restores past message logs (Pro+ only)",
+    "help_cat_info": "ℹ️ Information Commands",
+    "cmd_help_desc": "Displays this help menu",
+    "help_footer": "For more details on each command, please contact the administrators."
 }
