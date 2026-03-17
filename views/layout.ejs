@@ -320,7 +320,7 @@
         (function () {
             try {
                 var mode = localStorage.getItem('dashboard_theme_mode') || 'midnight';
-                document.body.className = 'theme-' + mode;
+                document.body.classList.add('theme-' + mode);
                 var color = localStorage.getItem('dashboard_theme_color');
                 if (color) {
                     var r = parseInt(color.slice(1, 3), 16),
