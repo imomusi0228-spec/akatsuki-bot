@@ -133,8 +133,8 @@ export default {
                         .setTimestamp();
 
                     const staffEmbed = new EmbedBuilder()
-                        .setTitle("🛠️ スタッフ管理パネル")
-                        .setDescription("このチケットの対応を担当しますか？")
+                        .setTitle("🎫 チケット管理パネル")
+                        .setDescription("スタッフの方はこのチケットを確認してください。対応が完了したら「チケットを閉じる」を押してください。")
                         .setColor(0x5865f2);
                     const userRow = new ActionRowBuilder().addComponents(
                         new ButtonBuilder()
@@ -341,8 +341,8 @@ export default {
                         .setTimestamp();
 
                     const staffEmbed = new EmbedBuilder()
-                        .setTitle("🛠️ スタッフ管理パネル")
-                        .setDescription("このチケットの対応を担当しますか？")
+                        .setTitle("🎫 チケット管理パネル")
+                        .setDescription("スタッフの方はこのチケットを確認してください。対応が完了したら「チケットを閉じる」を押してください。")
                         .setColor(0x5865f2);
                     const userRow = new ActionRowBuilder().addComponents(
                         new ButtonBuilder()
