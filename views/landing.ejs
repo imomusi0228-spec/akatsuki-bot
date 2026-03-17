@@ -6,24 +6,33 @@
         justify-content: center;
         align-items: center;
         text-align: center;
-        padding: 0 20px;
+        padding: 0;
         position: relative;
         overflow: hidden;
-        background: radial-gradient(circle at top right, rgba(29, 155, 240, 0.1), transparent),
-            radial-gradient(circle at bottom left, rgba(249, 24, 128, 0.1), transparent);
+        background: radial-gradient(circle at 20% 30%, rgba(29, 155, 240, 0.15), transparent 40%),
+                    radial-gradient(circle at 80% 70%, rgba(249, 24, 128, 0.15), transparent 40%),
+                    #000;
     }
 
-    .glass-card {
-        background: rgba(255, 255, 255, 0.03);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 40px;
-        padding: 30px;
-        max-width: 800px;
+    .hero-content {
+        z-index: 10;
+        max-width: 1200px;
         width: 100%;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        animation: cardAppear 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+        padding: 0 40px;
+        animation: contentAppear 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes contentAppear {
+        from {
+            opacity: 0;
+            transform: translateY(30px) scale(0.95);
+            filter: blur(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            filter: blur(0);
+        }
     }
 
     @keyframes cardAppear {
@@ -39,14 +48,15 @@
     }
 
     .hero-title {
-        font-size: clamp(48px, 8vw, 84px);
+        font-size: clamp(60px, 12vw, 120px);
         font-weight: 900;
         margin-bottom: 24px;
-        letter-spacing: -3px;
-        line-height: 0.95;
-        background: linear-gradient(135deg, #fff 30%, rgba(255, 255, 255, 0.4) 100%);
+        letter-spacing: -5px;
+        line-height: 0.85;
+        background: linear-gradient(to bottom, #fff 40%, rgba(255, 255, 255, 0.4) 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
+        filter: drop-shadow(0 0 30px rgba(255, 255, 255, 0.1));
     }
 
     .hero-subtitle {
@@ -60,13 +70,14 @@
     }
 
     .hero-desc {
-        font-size: 18px;
-        color: #8899a6;
-        margin-bottom: 30px;
-        max-width: 600px;
+        font-size: clamp(18px, 2vw, 22px);
+        color: rgba(255, 255, 255, 0.6);
+        margin-bottom: 60px;
+        max-width: 700px;
         margin-left: auto;
         margin-right: auto;
         line-height: 1.6;
+        font-weight: 400;
     }
 
     .cta-group {
@@ -111,31 +122,27 @@
 
     .bg-blur {
         position: absolute;
-        width: 500px;
-        height: 500px;
+        width: 800px;
+        height: 800px;
         border-radius: 50%;
-        filter: blur(120px);
-        z-index: -1;
-        opacity: 0.15;
-        animation: float 20s infinite alternate;
+        filter: blur(150px);
+        z-index: 1;
+        opacity: 0.2;
+        animation: float 25s infinite alternate ease-in-out;
     }
 
     @keyframes float {
-        0% {
-            transform: translate(0, 0);
-        }
-
-        100% {
-            transform: translate(100px, 50px);
-        }
+        0% { transform: translate(-10%, -10%) rotate(0deg) scale(1); }
+        100% { transform: translate(10%, 10%) rotate(180deg) scale(1.2); }
     }
 </style>
 
 <div class="hero-section">
-    <div class="bg-blur" style="top: -10%; right: -5%; background: #1DA1F2;"></div>
-    <div class="bg-blur" style="bottom: -10%; left: -5%; background: #f91880;"></div>
+    <div class="bg-blur" style="top: -20%; left: -10%; background: #1DA1F2;"></div>
+    <div class="bg-blur" style="bottom: -20%; right: -10%; background: #f91880; animation-delay: -5s;"></div>
+    <div class="bg-blur" style="top: 20%; right: 10%; background: #1DA1F2; width: 400px; height: 400px; opacity: 0.1; animation-duration: 15s;"></div>
 
-    <div class="glass-card">
+    <div class="hero-content">
         <div class="hero-subtitle">
             <%= t("subtitle") %>
         </div>
