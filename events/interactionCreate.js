@@ -83,16 +83,24 @@ export default {
                             value: c.id.toString(),
                         })).slice(0, 25);
                         
+                        console.log("[DEBUG] Categories Options:", JSON.stringify(options, null, 2));
+
                         const selectMenu = new StringSelectMenuBuilder()
                             .setCustomId("ticket_category_select")
                             .setPlaceholder("チケットの種類を選択してください")
                             .addOptions(options);
                         
                         const row = new ActionRowBuilder().addComponents(selectMenu);
-                        await interaction.editReply({
-                            content: "作成するチケットのカテゴリを選択してください:",
-                            components: [row],
-                        });
+                        try {
+                            await interaction.editReply({
+                                content: "作成するチケットのカテゴリを選択してください:",
+                                components: [row],
+                            });
+                        } catch (err) {
+                            console.error("[CRITICAL] Failed to send ticket category menu:", err);
+                            if (err.errors) console.error("[CRITICAL] Validation Errors:", JSON.stringify(err.errors, null, 2));
+                            await interaction.editReply("❌ カテゴリメニューの表示に失敗しました。管理者に連絡してください。");
+                        }
                         return;
                     }
                     
