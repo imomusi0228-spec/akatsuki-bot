@@ -74,6 +74,7 @@ export default {
                     await interaction.deferReply({ ephemeral: true });
 
                     const catRes = await dbQuery("SELECT id, name, emoji, description FROM ticket_categories WHERE guild_id = $1 ORDER BY id", [guildId]);
+                    console.log(`[DEBUG] Ticket Create: GuildID=${guildId}, CategoriesFound=${catRes.rowCount}`);
                     if (catRes.rowCount > 0) {
                         const options = catRes.rows.map(c => ({
                             label: c.name.substring(0, 100),
