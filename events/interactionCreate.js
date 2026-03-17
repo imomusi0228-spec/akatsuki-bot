@@ -142,21 +142,6 @@ export default {
                             .setLabel("チケットを閉じる")
                             .setStyle(ButtonStyle.Danger)
                     );
-                    const staffRow = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder()
-                            .setCustomId("ticket_assign_me")
-                            .setLabel("担当を引き受ける")
-                            .setStyle(ButtonStyle.Primary),
-                        new ButtonBuilder()
-                            .setCustomId("ticket_request_expert")
-                            .setLabel("専門家に依頼")
-                            .setStyle(ButtonStyle.Secondary)
-                    );
-                    const assignMenuRow = new ActionRowBuilder().addComponents(
-                        new UserSelectMenuBuilder()
-                            .setCustomId("ticket_assign_menu")
-                            .setPlaceholder("担当を直接指定")
-                    );
 
                     const mention = settings?.ticket_staff_role_id
                         ? `<@&${settings.ticket_staff_role_id}>`
@@ -164,7 +149,7 @@ export default {
                     await channel.send({
                         content: `${mention} <@${interaction.user.id}> さんがチケットを作成しました。`,
                         embeds: [userEmbed, staffEmbed],
-                        components: [userRow, staffRow, assignMenuRow],
+                        components: [userRow],
                     });
                     
                     await interaction.editReply(`✅ チケットを作成しました: <#${channel.id}>`);
@@ -365,21 +350,6 @@ export default {
                             .setLabel("チケットを閉じる")
                             .setStyle(ButtonStyle.Danger)
                     );
-                    const staffRow = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder()
-                            .setCustomId("ticket_assign_me")
-                            .setLabel("担当を引き受ける")
-                            .setStyle(ButtonStyle.Primary),
-                        new ButtonBuilder()
-                            .setCustomId("ticket_request_expert")
-                            .setLabel("専門家に依頼")
-                            .setStyle(ButtonStyle.Secondary)
-                    );
-                    const assignMenuRow = new ActionRowBuilder().addComponents(
-                        new UserSelectMenuBuilder()
-                            .setCustomId("ticket_assign_menu")
-                            .setPlaceholder("担当を直接指定")
-                    );
 
                     const mention = settings?.ticket_staff_role_id
                         ? `<@&${settings.ticket_staff_role_id}>`
@@ -387,7 +357,7 @@ export default {
                     await channel.send({
                         content: `${mention} <@${interaction.user.id}> さんがチケットを作成しました。`,
                         embeds: [userEmbed, staffEmbed],
-                        components: [userRow, staffRow, assignMenuRow],
+                        components: [userRow],
                     });
                     
                     await interaction.followUp({ content: `✅ チケットを作成しました: <#${channel.id}>`, ephemeral: true });
