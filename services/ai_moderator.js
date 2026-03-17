@@ -5,7 +5,7 @@ import { dbQuery } from "../core/db.js";
  * サーバーの「空気」を解析し、予兆があれば警告を送信する
  */
 export async function runAtmosphereCheck(guild, settings) {
-    if (!settings.ai_prediction_enabled || !settings.ai_insight_channel_id) return;
+    if (!settings.ai_prediction_enabled || !settings.ai_predict_channel_id) return;
 
     const guildId = guild.id;
     const now = new Date();
@@ -59,10 +59,21 @@ export async function runAtmosphereCheck(guild, settings) {
         reasons.push("複数の禁止ワードが短時間に集中");
     }
 
+    // [New] 離脱の予兆 (短時間のイベント)
+    const leaveRes = await dbQuery(
+        `SELECT COUNT(*) as count FROM member_events WHERE guild_id = $1 AND event_type = 'leave' AND created_at > NOW() - INTERVAL '30 minutes'`,
+        [guildId]
+    ).catch(() => ({ rows: [{ count: 0 }] }));
+    const leaveCount = parseInt(leaveRes.rows[0]?.count || 0);
+    if (leaveCount >= 3) {
+        unsettlingFactor += 15;
+        reasons.push(`短時間での複数人の離脱検知 (${leaveCount}名)`);
+    }
+
     // 3. アラート送信 (しきい値: 50)
     if (unsettlingFactor >= 50) {
         const channel = await guild.channels
-            .fetch(settings.ai_insight_channel_id)
+            .fetch(settings.ai_predict_channel_id)
             .catch(() => null);
         if (!channel) return;
 

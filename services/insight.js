@@ -36,109 +36,87 @@ export async function runInsightCheck() {
 async function generateAndSendInsight(guild, settings) {
     const guildId = guild.id;
 
-    // 有効セクションを取得（デフォルト: 全て有効）
+    // 有効セクションを取得
     const sections = Array.isArray(settings.insight_sections)
         ? settings.insight_sections
         : ["growth", "toxicity", "vc"];
 
-    // 有効なセクションがゼロなら送信しない
-    if (sections.length === 0) {
-        console.log(`[INSIGHT] Skipped (no sections enabled): ${guild.name}`);
-        return;
+    if (sections.length === 0) return;
+
+    // 1. Data Gathering (Current Week vs Previous Week)
+    const queries = [];
+    
+    // Growth: Current 7 days vs 7-14 days ago
+    if (sections.includes("growth")) {
+        queries.push(dbQuery(
+            `SELECT event_type, COUNT(*) as cnt FROM member_events WHERE guild_id = $1 AND created_at > NOW() - INTERVAL '7 days' GROUP BY event_type`,
+            [guildId]
+        ));
+        queries.push(dbQuery(
+            `SELECT event_type, COUNT(*) as cnt FROM member_events WHERE guild_id = $1 AND created_at BETWEEN NOW() - INTERVAL '14 days' AND NOW() - INTERVAL '7 days' GROUP BY event_type`,
+            [guildId]
+        ));
+    } else {
+        queries.push(Promise.resolve({ rows: [] }), Promise.resolve({ rows: [] }));
     }
 
-    // 1. Data Gathering（必要なデータのみ取得）
-    const queries = [];
-    if (sections.includes("growth"))
-        queries.push(
-            dbQuery(
-                `SELECT event_type, COUNT(*) as cnt FROM member_events WHERE guild_id = $1 AND created_at > NOW() - INTERVAL '7 days' GROUP BY event_type`,
-                [guildId]
-            )
-        );
-    else queries.push(Promise.resolve({ rows: [] }));
+    // Toxicity
+    if (sections.includes("toxicity")) {
+        queries.push(dbQuery(
+            `SELECT COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 AND created_at > NOW() - INTERVAL '7 days'`,
+            [guildId]
+        ));
+        queries.push(dbQuery(
+            `SELECT COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 AND created_at BETWEEN NOW() - INTERVAL '14 days' AND NOW() - INTERVAL '7 days'`,
+            [guildId]
+        ));
+    } else {
+        queries.push(Promise.resolve({ rows: [{ cnt: 0 }] }), Promise.resolve({ rows: [{ cnt: 0 }] }));
+    }
 
-    if (sections.includes("toxicity"))
-        queries.push(
-            dbQuery(
-                `SELECT COUNT(*) as cnt FROM ng_logs WHERE guild_id = $1 AND created_at > NOW() - INTERVAL '7 days'`,
-                [guildId]
-            )
-        );
-    else queries.push(Promise.resolve({ rows: [{ cnt: 0 }] }));
+    const results = await Promise.all(queries);
+    const currGrowth = results[0].rows;
+    const prevGrowth = results[1].rows;
+    const currTox = parseInt(results[2].rows[0]?.cnt || 0);
+    const prevTox = parseInt(results[3].rows[0]?.cnt || 0);
 
-    if (sections.includes("vc"))
-        queries.push(
-            dbQuery(
-                `SELECT COUNT(DISTINCT user_id) as cnt FROM vc_sessions WHERE guild_id = $1 AND join_time > NOW() - INTERVAL '7 days'`,
-                [guildId]
-            )
-        );
-    else queries.push(Promise.resolve({ rows: [{ cnt: 0 }] }));
+    const joins = parseInt(currGrowth.find(r => r.event_type === 'join')?.cnt || 0);
+    const leaves = parseInt(currGrowth.find(r => r.event_type === 'leave')?.cnt || 0);
+    const prevJoins = parseInt(prevGrowth.find(r => r.event_type === 'join')?.cnt || 0);
 
-    const [growthRes, toxicityRes, engageRes] = await Promise.all(queries);
-
-    const joins = parseInt(growthRes.rows.find((r) => r.event_type === "join")?.cnt || 0);
-    const leaves = parseInt(growthRes.rows.find((r) => r.event_type === "leave")?.cnt || 0);
-    const toxicity = parseInt(toxicityRes.rows[0]?.cnt || 0);
-    const activeUsers = parseInt(engageRes.rows[0]?.cnt || 0);
-
-    // 2. Advice Generation（有効セクションのみ）
+    // 2. Advice & Trends
     let advice = "";
     const fields = [];
 
     if (sections.includes("growth")) {
-        if (joins > leaves * 2) {
-            advice +=
-                "📈 **成長傾向**: 素晴らしいですね。新規メンバーが順調に増えています。歓迎の挨拶を欠かさないようにしましょう。\n";
-        } else if (leaves > joins) {
-            advice +=
-                "⚠️ **離脱警告**: 最近、参加者よりも離脱者が多くなっています。サーバーのルールや導入手順に分かりにくい点がないか、一度見直してみるのも良いかもしれません。\n";
-        } else {
-            advice +=
-                "↔️ **安定状態**: メンバー数は安定しています。既存のコミュニティをより深める時期かもしれません。\n";
+        const diff = joins - prevJoins;
+        const trendIcon = diff >= 0 ? "📈" : "📉";
+        const trendText = diff !== 0 ? ` (先週比 ${diff > 0 ? "+" : ""}${diff}名)` : "";
+        
+        advice += `${trendIcon} **成長トレンド**: 今週は ${joins}名が参加されました。${trendText}\n`;
+        if (leaves > joins) {
+            advice += "⚠️ 離脱数が参加数を上回っています。定着率向上の施策（ウェルカムメッセージの見直し等）を推奨します。\n";
         }
-        fields.push({
-            name: "直近7日の参加/離脱",
-            value: `${joins}名 / ${leaves}名`,
-            inline: true,
-        });
+        fields.push({ name: "参加 / 離脱", value: `${joins}名 / ${leaves}名`, inline: true });
     }
 
     if (sections.includes("toxicity")) {
-        if (toxicity > 20) {
-            advice +=
-                "🚫 **秩序の乱れ**: 禁止ワードの検知数が少し多いようです。コミュニティの雰囲気が荒れていないか、注意深く見守ってくださいね。\n";
-        }
-        fields.push({ name: "警告検知数", value: `${toxicity}件`, inline: true });
-    }
-
-    if (sections.includes("vc")) {
-        if (activeUsers < guild.memberCount * 0.1) {
-            advice +=
-                "🎤 **活性化のヒント**: ボイスチャットを利用している方が少し少ないようです。特定の時間帯に「雑談タイム」などを設けてみるのはいかがでしょうか。\n";
-        } else {
-            advice +=
-                "✨ **高い熱量**: 多くの方がアクティブに活動されています。この調子で素敵な場所を守っていきましょう。\n";
-        }
-        fields.push({ name: "アクティブ(VC)", value: `${activeUsers}名`, inline: true });
+        const toxDiff = currTox - prevTox;
+        advice += `🚫 **治安維持**: 禁止ワード検知は ${currTox}件です。${toxDiff > 0 ? `⚠️ 先週より ${toxDiff}件増加しています。` : "✅ 先週より減少しており、良好な状態です。"}\n`;
+        fields.push({ name: "警告検-知数", value: `${currTox}件`, inline: true });
     }
 
     const embed = new EmbedBuilder()
-        .setTitle("📊 サーバー運営レポート")
-        .setDescription(
-            `今週の運営状況を分析しました。今後の運営の参考にしてください。\n\n${advice || "（全セクションが無効です）"}`
-        )
+        .setTitle("📊 戦略的サーバー・インサイト報告")
+        .setDescription(`お嬢様、今週の分析が完了いたしました。ご査収ください。\n\n${advice}`)
         .addFields(...fields)
-        .setColor(0x5865f2)
+        .setColor("#bb9af7")
+        .setFooter({ text: "AkatsukiBot AI Strategy Engine" })
         .setTimestamp();
 
     const channel = await guild.channels.fetch(settings.ai_insight_channel_id).catch(() => null);
     if (channel) {
         await channel.send({ embeds: [embed] });
-        await dbQuery("UPDATE settings SET ai_insight_last_sent = NOW() WHERE guild_id = $1", [
-            guildId,
-        ]);
-        console.log(`[INSIGHT] Report sent to ${guild.name} (sections: ${sections.join(", ")})`);
+        await dbQuery("UPDATE settings SET ai_insight_last_sent = NOW() WHERE guild_id = $1", [guildId]);
     }
 }

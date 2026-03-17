@@ -1,7 +1,5 @@
 import { ENV } from "../config/env.js";
 import { t, DICTIONARY } from "../core/i18n.js";
-import { getTier } from "../core/subscription.js";
-import { TIER_NAMES, TIER_COLORS } from "../core/tiers.js";
 
 import path from "path";
 import ejs from "ejs";
@@ -28,32 +26,10 @@ function getLang(req = {}) {
     return cookies.lang === "en" ? "en" : "ja";
 }
 
-async function renderView(viewName, data, lang, req) {
-    // Determine the active guild to fetch its tier (v3.2.0)
-    let tier = 0; // TIERS.FREE
-    const cookies = {};
-    (req.headers?.cookie || "").split(";").forEach((c) => {
-        const [k, v] = c.trim().split("=");
-        if (k && v) cookies[k] = decodeURIComponent(v);
-    });
-    // Priority: Query param > Cookie (last_guild_id)
-    const url = new URL(req.url, `http://${req.headers.host}`);
-    const guildId = url.searchParams.get("guild") || cookies.last_guild_id;
-
-    if (guildId && guildId.length > 5) {
-        tier = await getTier(guildId);
-    }
-
-    const subscription = {
-        tier: tier,
-        name: TIER_NAMES[tier] || "Free",
-        color: TIER_COLORS[tier] || "#8b9bb4",
-    };
-
+async function renderView(viewName, data, lang) {
     const content = await ejs.renderFile(path.join(VIEWS_DIR, `${viewName}.ejs`), {
         ...data,
         lang,
-        subscription,
         t: (key, params) => t(key, lang, params),
     });
 
@@ -61,7 +37,6 @@ async function renderView(viewName, data, lang, req) {
         ...data,
         content,
         lang,
-        subscription,
         dictionary: JSON.stringify(DICTIONARY),
         t: (key, params) => t(key, lang, params),
     });
@@ -94,8 +69,7 @@ export async function renderAdminDashboardHTML({ user, req }) {
             activeTab: "dashboard",
             scripts: "",
         },
-        lang,
-        req
+        lang
     );
 }
 
@@ -110,8 +84,7 @@ export async function renderAdminSettingsHTML({ user, req }) {
             activeTab: "settings",
             scripts: "",
         },
-        lang,
-        req
+        lang
     );
 }
 
@@ -126,8 +99,7 @@ export async function renderAdminActivityHTML({ user, req }) {
             activeTab: "activity",
             scripts: "",
         },
-        lang,
-        req
+        lang
     );
 }
 export async function renderLandingHTML(req) {
@@ -142,8 +114,7 @@ export async function renderLandingHTML(req) {
             scripts: "",
             noScroll: true,
         },
-        lang,
-        req
+        lang
     );
 }
 
@@ -158,8 +129,7 @@ export async function renderFeaturesHTML(req) {
             activeTab: null,
             scripts: "",
         },
-        lang,
-        req
+        lang
     );
 }
 
@@ -174,8 +144,7 @@ export async function renderAdminAntiraidHTML({ user, req }) {
             activeTab: "antiraid",
             scripts: "",
         },
-        lang,
-        req
+        lang
     );
 }
 
@@ -190,8 +159,7 @@ export async function renderAdminTicketsHTML({ user, req }) {
             activeTab: "tickets",
             scripts: "",
         },
-        lang,
-        req
+        lang
     );
 }
 
@@ -206,8 +174,7 @@ export async function renderAdminBrandingHTML({ user, req }) {
             activeTab: "branding",
             scripts: "",
         },
-        lang,
-        req
+        lang
     );
 }
 
@@ -222,7 +189,6 @@ export async function renderAdminAiHTML({ user, req }) {
             activeTab: "ai",
             scripts: "",
         },
-        lang,
-        req
+        lang
     );
 }
