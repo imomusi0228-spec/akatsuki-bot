@@ -1,12 +1,12 @@
 <style>
     .hero-section {
-        min-height: 80vh;
+        min-height: calc(100vh - 160px);
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
         text-align: center;
-        padding: 40px 20px;
+        padding: 20px;
         position: relative;
         overflow: hidden;
         background: radial-gradient(circle at top right, rgba(29, 155, 240, 0.1), transparent),
@@ -19,8 +19,8 @@
         -webkit-backdrop-filter: blur(20px);
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 40px;
-        padding: 80px 40px;
-        max-width: 900px;
+        padding: 40px 30px;
+        max-width: 800px;
         width: 100%;
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         animation: cardAppear 1.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -62,11 +62,11 @@
     .hero-desc {
         font-size: 18px;
         color: #8899a6;
-        margin-bottom: 60px;
+        margin-bottom: 30px;
         max-width: 600px;
         margin-left: auto;
         margin-right: auto;
-        line-height: 1.8;
+        line-height: 1.6;
     }
 
     .cta-group {
