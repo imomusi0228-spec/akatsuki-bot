@@ -86,13 +86,13 @@ export default {
                         
                         console.log("[DEBUG] Categories Options:", JSON.stringify(options, null, 2));
 
-                        const selectMenu = new StringSelectMenuBuilder()
-                            .setCustomId("ticket_category_select")
-                            .setPlaceholder("チケットの種類を選択してください")
-                            .addOptions(options);
-                        
-                        const row = new ActionRowBuilder().addComponents(selectMenu);
                         try {
+                            const selectMenu = new StringSelectMenuBuilder()
+                                .setCustomId("ticket_category_select")
+                                .setPlaceholder("チケットの種類を選択してください")
+                                .addOptions(options);
+                            
+                            const row = new ActionRowBuilder().addComponents(selectMenu);
                             await interaction.editReply({
                                 content: "作成するチケットのカテゴリを選択してください:",
                                 components: [row],
@@ -100,7 +100,7 @@ export default {
                         } catch (err) {
                             console.error("[CRITICAL] Failed to send ticket category menu:", err);
                             if (err.errors) console.error("[CRITICAL] Validation Errors:", JSON.stringify(err.errors, null, 2));
-                            await interaction.editReply("❌ カテゴリメニューの表示に失敗しました。管理者に連絡してください。");
+                            await interaction.editReply(`❌ カテゴリメニューの表示に失敗しました。原因: ${err.message}`);
                         }
                         return;
                     }
@@ -398,6 +398,16 @@ export default {
             }
         } catch (e) {
             console.error("[CRITICAL INTERACTION ERROR]:", e);
+            try {
+                const errMsg = `⚠️ 致命的なエラーが発生しました: ${e.message}`;
+                if (interaction.replied || interaction.deferred) {
+                    await interaction.followUp({ content: errMsg, ephemeral: true });
+                } else {
+                    await interaction.reply({ content: errMsg, ephemeral: true });
+                }
+            } catch (err) {
+                console.error("[CRITICAL] Failed to notify user about error:", err);
+            }
         }
     },
 };
