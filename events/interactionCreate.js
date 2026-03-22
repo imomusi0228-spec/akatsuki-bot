@@ -83,7 +83,7 @@ export default {
                             if (match) emojiVal = match[1];
                             return {
                                 label: (c.name || "Category").substring(0, 100),
-                                description: c.description ? c.description.substring(0, 100) : "",
+                                description: (c.description && c.description.trim() !== "") ? c.description.substring(0, 100) : "このカテゴリのチケットを作成します",
                                 emoji: emojiVal,
                                 value: c.id.toString(),
                             };
