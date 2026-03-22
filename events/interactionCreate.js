@@ -77,12 +77,17 @@ export default {
                     const catRes = await dbQuery("SELECT id, name, emoji, description FROM ticket_categories WHERE guild_id = $1 ORDER BY id", [guildId]);
                     console.log(`[DEBUG] Ticket Create: GuildID=${guildId}, CategoriesFound=${catRes.rowCount}`);
                     if (catRes.rowCount > 0) {
-                        const options = catRes.rows.map(c => ({
-                            label: c.name.substring(0, 100),
-                            description: c.description ? c.description.substring(0, 100) : "",
-                            emoji: c.emoji || "🎫",
-                            value: c.id.toString(),
-                        })).slice(0, 25);
+                        const options = catRes.rows.map(c => {
+                            let emojiVal = c.emoji || "🎫";
+                            const match = emojiVal.match(/<a?:.+?:(\d+)>/);
+                            if (match) emojiVal = match[1];
+                            return {
+                                label: (c.name || "Category").substring(0, 100),
+                                description: c.description ? c.description.substring(0, 100) : "",
+                                emoji: emojiVal,
+                                value: c.id.toString(),
+                            };
+                        }).slice(0, 25);
                         
                         console.log("[DEBUG] Categories Options:", JSON.stringify(options, null, 2));
 
