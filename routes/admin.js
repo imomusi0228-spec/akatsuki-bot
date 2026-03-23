@@ -45,7 +45,7 @@ export async function handleAdminRoute(req, res, pathname, url) {
     // Not logged in
     if (!session) {
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-        res.end(await renderLoginHTML(req));
+        res.end(await renderLoginHTML(req, url));
         return;
     }
 
@@ -69,32 +69,28 @@ export async function handleAdminRoute(req, res, pathname, url) {
 
     // Router
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    
+    let html;
     if (pathname === "/admin/dashboard") {
-        const html = await renderAdminDashboardHTML(renderData);
-        res.end(html);
+        html = await renderAdminDashboardHTML({ ...renderData, url });
     } else if (pathname === "/admin/settings") {
-        const html = await renderAdminSettingsHTML(renderData);
-        res.end(html);
+        html = await renderAdminSettingsHTML({ ...renderData, url });
     } else if (pathname === "/admin/tickets") {
-        const html = await renderAdminTicketsHTML(renderData);
-        res.end(html);
+        html = await renderAdminTicketsHTML({ ...renderData, url });
     } else if (pathname === "/admin/activity") {
-        const html = await renderAdminActivityHTML(renderData);
-        res.end(html);
+        html = await renderAdminActivityHTML({ ...renderData, url });
     } else if (pathname === "/admin/antiraid") {
-        const html = await renderAdminAntiraidHTML(renderData);
-        res.end(html);
+        html = await renderAdminAntiraidHTML({ ...renderData, url });
     } else if (pathname === "/admin/branding") {
         const { renderAdminBrandingHTML } = await import("../services/views.js");
-        const html = await renderAdminBrandingHTML(renderData);
-        res.end(html);
+        html = await renderAdminBrandingHTML({ ...renderData, url });
     } else if (pathname === "/admin/ai") {
         const { renderAdminAiHTML } = await import("../services/views.js");
-        const html = await renderAdminAiHTML(renderData);
-        res.end(html);
+        html = await renderAdminAiHTML({ ...renderData, url });
     } else {
         // Default: Dashboard if no other path matches
-        const html = await renderAdminDashboardHTML(renderData);
-        res.end(html);
+        html = await renderAdminDashboardHTML({ ...renderData, url });
     }
+    
+    res.end(html);
 }

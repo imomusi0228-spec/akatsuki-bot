@@ -18,7 +18,14 @@ export function escapeHTML(s = "") {
         .replaceAll("'", "&#39;");
 }
 
-function getLang(req = {}) {
+function getLang(req = {}, url) {
+    // 1. Priority: URL Query Parameter
+    if (url && url.searchParams && url.searchParams.get("lang")) {
+        const l = url.searchParams.get("lang");
+        if (l === "en" || l === "ja") return l;
+    }
+
+    // 2. Secondary: Cookie
     const cookies = {};
     (req.headers?.cookie || "").split(";").forEach((c) => {
         const [k, v] = c.trim().split("=");
@@ -47,8 +54,8 @@ async function renderView(viewName, data, lang) {
     });
 }
 
-export async function renderLoginHTML(req) {
-    const lang = getLang(req);
+export async function renderLoginHTML(req, url) {
+    const lang = getLang(req, url);
     return await renderView(
         "login",
         {
@@ -63,8 +70,8 @@ export async function renderLoginHTML(req) {
     );
 }
 
-export async function renderAdminDashboardHTML({ user, req, userTier }) {
-    const lang = getLang(req);
+export async function renderAdminDashboardHTML({ user, req, url, userTier }) {
+    const lang = getLang(req, url);
     return await renderView(
         "dashboard",
         {
@@ -79,8 +86,8 @@ export async function renderAdminDashboardHTML({ user, req, userTier }) {
     );
 }
 
-export async function renderAdminSettingsHTML({ user, req, userTier }) {
-    const lang = getLang(req);
+export async function renderAdminSettingsHTML({ user, req, url, userTier }) {
+    const lang = getLang(req, url);
     return await renderView(
         "settings",
         {
@@ -95,8 +102,8 @@ export async function renderAdminSettingsHTML({ user, req, userTier }) {
     );
 }
 
-export async function renderAdminActivityHTML({ user, req, userTier }) {
-    const lang = getLang(req);
+export async function renderAdminActivityHTML({ user, req, url, userTier }) {
+    const lang = getLang(req, url);
     return await renderView(
         "activity",
         {
@@ -111,8 +118,8 @@ export async function renderAdminActivityHTML({ user, req, userTier }) {
     );
 }
 
-export async function renderLandingHTML(req) {
-    const lang = getLang(req);
+export async function renderLandingHTML(req, url) {
+    const lang = getLang(req, url);
     return await renderView(
         "landing",
         {
@@ -128,8 +135,8 @@ export async function renderLandingHTML(req) {
     );
 }
 
-export async function renderFeaturesHTML(req) {
-    const lang = getLang(req);
+export async function renderFeaturesHTML(req, url) {
+    const lang = getLang(req, url);
     return await renderView(
         "features",
         {
@@ -144,8 +151,8 @@ export async function renderFeaturesHTML(req) {
     );
 }
 
-export async function renderAdminAntiraidHTML({ user, req, userTier }) {
-    const lang = getLang(req);
+export async function renderAdminAntiraidHTML({ user, req, url, userTier }) {
+    const lang = getLang(req, url);
     return await renderView(
         "antiraid",
         {
@@ -160,8 +167,8 @@ export async function renderAdminAntiraidHTML({ user, req, userTier }) {
     );
 }
 
-export async function renderAdminTicketsHTML({ user, req, userTier }) {
-    const lang = getLang(req);
+export async function renderAdminTicketsHTML({ user, req, url, userTier }) {
+    const lang = getLang(req, url);
     return await renderView(
         "tickets",
         {
@@ -176,8 +183,8 @@ export async function renderAdminTicketsHTML({ user, req, userTier }) {
     );
 }
 
-export async function renderAdminBrandingHTML({ user, req, userTier }) {
-    const lang = getLang(req);
+export async function renderAdminBrandingHTML({ user, req, url, userTier }) {
+    const lang = getLang(req, url);
     return await renderView(
         "branding",
         {
@@ -192,8 +199,8 @@ export async function renderAdminBrandingHTML({ user, req, userTier }) {
     );
 }
 
-export async function renderAdminAiHTML({ user, req, userTier }) {
-    const lang = getLang(req);
+export async function renderAdminAiHTML({ user, req, url, userTier }) {
+    const lang = getLang(req, url);
     return await renderView(
         "ai",
         {
