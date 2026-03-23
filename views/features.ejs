@@ -1,4 +1,4 @@
-﻿<style>
+<style>
     .plan-grid {
         display: flex;
         justify-content: center;
@@ -56,6 +56,40 @@
 
     .plan-card.pro-plus .feature-summary li i {
         color: #fbbf24;
+    }
+
+    .plan-card.ultimate {
+        border-color: #bb9af7;
+        background: rgba(187, 154, 247, 0.08);
+        box-shadow: 0 0 20px rgba(187, 154, 247, 0.15);
+    }
+
+    .plan-card.ultimate .plan-badge {
+        background: rgba(187, 154, 247, 0.2);
+        color: #e9d5ff;
+    }
+
+    .plan-card.ultimate .plan-price {
+        color: #d8b4fe;
+    }
+
+    .plan-card.ultimate .feature-summary li i {
+        color: #bb9af7;
+    }
+
+    .plan-card.ultimate::after {
+        content: 'ULTIMATE';
+        position: absolute;
+        top: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #bb9af7;
+        color: #0b1622;
+        font-size: 10px;
+        font-weight: 900;
+        padding: 4px 12px;
+        border-radius: 10px;
+        letter-spacing: 1px;
     }
 
     .plan-card.pro-plus::after {
@@ -255,6 +289,19 @@
         color: #fbbf24;
     }
 
+    .comparison-table .col-ultimate {
+        color: #bb9af7;
+    }
+
+    .comparison-table th.col-ultimate {
+        background: rgba(187, 154, 247, 0.1);
+        border-bottom: 2px solid #bb9af7;
+    }
+
+    .comparison-table td.col-ultimate .active-check {
+        color: #bb9af7;
+    }
+
     @keyframes fadeIn {
         from {
             opacity: 0;
@@ -300,6 +347,16 @@
         box-shadow: 0 5px 15px rgba(251, 191, 36, 0.3);
     }
 
+    .plan-card.ultimate .plan-btn {
+        background: #bb9af7;
+        color: #0b1622;
+    }
+
+    .plan-card.ultimate .plan-btn:hover {
+        background: #a855f7;
+        box-shadow: 0 5px 15px rgba(187, 154, 247, 0.3);
+    }
+
     .comparison-table .category-header {
         background: rgba(29, 161, 242, 0.15) !important;
         text-align: left !important;
@@ -333,7 +390,7 @@
         </h3>
         <div class="plan-price" style="color: #8899a6;">¥0<span
                 style="font-size: 14px; opacity: 0.6; margin-left: 4px;">
-                <%= t("period_forever") %>
+                <%= t("period_trial") %>
             </span></div>
         <ul class="feature-summary">
             <li><%- t("feat_list_free") %></li>
@@ -377,6 +434,24 @@
             <%= t("purchase_btn") %>
         </a>
     </div>
+
+    <!-- ULTIMATE Tier -->
+    <div class="plan-card ultimate">
+        <div class="plan-badge">Ultimate</div>
+        <h3 style="font-size: 24px; margin-bottom: 10px;">
+            <%= t("plan_ultimate") %>
+        </h3>
+        <div class="plan-price">¥39,800<span style="font-size: 14px; opacity: 0.6; margin-left: 4px;">
+                <%= t("period_forever") %>
+            </span>
+        </div>
+        <ul class="feature-summary">
+            <li><%- t("feat_list_ultimate") %></li>
+        </ul>
+        <a href="https://imomusi0213.booth.pm/items/7935721" target="_blank" class="plan-btn">
+            <%= t("purchase_btn") %>
+        </a>
+    </div>
 </div>
 
 <div class="notice-container">
@@ -402,13 +477,16 @@
                     <th class="col-pro-plus">
                         <%= t("plan_pro_plus") %>
                     </th>
+                    <th class="col-ultimate">
+                        <%= t("plan_ultimate") %>
+                    </th>
                 </tr>
             </thead>
             <tbody>
 
                 <!-- ===== 🛡️ セキュリティ & サーバー管理 ===== -->
                 <tr class="category-row">
-                    <td colspan="4" class="category-header">
+                    <td colspan="5" class="category-header">
                         <%= t("cat_security") %>
                     </td>
                 </tr>
@@ -419,6 +497,7 @@
                     <td>10</td>
                     <td class="col-pro">20</td>
                     <td class="col-pro-plus"><strong>50</strong></td>
+                    <td class="col-ultimate"><strong>∞</strong></td>
                 </tr>
                 <tr>
                     <td>
@@ -427,6 +506,7 @@
                     <td>1</td>
                     <td class="col-pro">1</td>
                     <td class="col-pro-plus"><strong>3</strong></td>
+                    <td class="col-ultimate"><strong>99</strong></td>
                 </tr>
                 <tr>
                     <td>
@@ -435,6 +515,7 @@
                     <td class="active-check">✓</td>
                     <td class="active-check col-pro">✓</td>
                     <td class="active-check col-pro-plus">✓</td>
+                    <td class="active-check col-ultimate">✓</td>
                 </tr>
                 <tr>
                     <td>
@@ -443,6 +524,7 @@
                     <td class="active-check">✓</td>
                     <td class="active-check col-pro">✓</td>
                     <td class="active-check col-pro-plus">✓</td>
+                    <td class="active-check col-ultimate">✓</td>
                 </tr>
                 <tr>
                     <td>
@@ -453,6 +535,7 @@
                     </td>
                     <td class="active-check col-pro">✓ Full</td>
                     <td class="active-check col-pro-plus">✓ Full</td>
+                    <td class="active-check col-ultimate">✓ Full</td>
                 </tr>
                 <tr>
                     <td>
@@ -461,6 +544,7 @@
                     <td class="dim-cross">✕</td>
                     <td class="active-check col-pro">✓</td>
                     <td class="active-check col-pro-plus">✓</td>
+                    <td class="active-check col-ultimate">✓</td>
                 </tr>
                 <tr>
                     <td>
@@ -469,6 +553,7 @@
                     <td class="dim-cross">✕</td>
                     <td class="active-check col-pro">✓</td>
                     <td class="active-check col-pro-plus">✓</td>
+                    <td class="active-check col-ultimate">✓</td>
                 </tr>
                 <tr>
                     <td>
@@ -477,11 +562,12 @@
                     <td class="dim-cross">✕</td>
                     <td class="active-check col-pro">✓</td>
                     <td class="active-check col-pro-plus">✓</td>
+                    <td class="active-check col-ultimate">✓</td>
                 </tr>
 
                 <!-- ===== 🧠 AI & データ分析 ===== -->
                 <tr class="category-row">
-                    <td colspan="4" class="category-header" style="padding-top:28px;">
+                    <td colspan="5" class="category-header" style="padding-top:28px;">
                         <%= t("cat_wisdom") %>
                     </td>
                 </tr>
@@ -492,6 +578,7 @@
                     <td class="dim-cross">✕</td>
                     <td class="active-check col-pro">✓</td>
                     <td class="active-check col-pro-plus">✓</td>
+                    <td class="active-check col-ultimate">✓</td>
                 </tr>
                 <tr>
                     <td>
@@ -502,6 +589,7 @@
                     </td>
                     <td class="active-check col-pro">✓</td>
                     <td class="active-check col-pro-plus">✓</td>
+                    <td class="active-check col-ultimate">✓</td>
                 </tr>
                 <tr>
                     <td>
@@ -510,6 +598,7 @@
                     <td class="dim-cross">✕</td>
                     <td class="dim-cross">✕</td>
                     <td class="active-check col-pro-plus">✓</td>
+                    <td class="active-check col-ultimate">✓</td>
                 </tr>
                 <tr>
                     <td>
@@ -518,11 +607,12 @@
                     <td class="dim-cross">✕</td>
                     <td class="dim-cross">✕</td>
                     <td class="active-check col-pro-plus">✓</td>
+                    <td class="active-check col-ultimate">✓</td>
                 </tr>
 
                 <!-- ===== 🎨 デザイン & カスタマイズ ===== -->
                 <tr class="category-row">
-                    <td colspan="4" class="category-header" style="padding-top:28px;">
+                    <td colspan="5" class="category-header" style="padding-top:28px;">
                         <%= t("cat_branding") %>
                     </td>
                 </tr>
@@ -533,6 +623,7 @@
                     <td class="active-check">✓</td>
                     <td class="active-check col-pro">✓</td>
                     <td class="active-check col-pro-plus">✓</td>
+                    <td class="active-check col-ultimate">✓</td>
                 </tr>
                 <tr>
                     <td>
@@ -541,6 +632,7 @@
                     <td class="active-check">✓</td>
                     <td class="active-check col-pro">✓</td>
                     <td class="active-check col-pro-plus">✓</td>
+                    <td class="active-check col-ultimate">✓</td>
                 </tr>
                 <tr>
                     <td>
@@ -549,6 +641,7 @@
                     <td class="active-check">✓</td>
                     <td class="active-check col-pro">✓</td>
                     <td class="active-check col-pro-plus">✓</td>
+                    <td class="active-check col-ultimate">✓</td>
                 </tr>
                 <tr>
                     <td>
@@ -557,6 +650,7 @@
                     <td class="dim-cross">✕</td>
                     <td class="active-check col-pro">✓ Limited</td>
                     <td class="active-check col-pro-plus">✓ Full</td>
+                    <td class="active-check col-ultimate">✓ Full+</td>
                 </tr>
                 <tr>
                     <td>
@@ -565,6 +659,7 @@
                     <td class="dim-cross">✕</td>
                     <td class="dim-cross">✕</td>
                     <td class="active-check col-pro-plus">✓</td>
+                    <td class="active-check col-ultimate">✓</td>
                 </tr>
 
                 <!-- Purchase Buttons -->
@@ -583,6 +678,12 @@
                         </a>
                     </td>
                     <td class="col-pro-plus">
+                        <a href="https://imomusi0213.booth.pm/items/7935721" target="_blank" class="plan-btn"
+                            style="padding: 10px 16px; font-size: 13px; margin-top: 5px;">
+                            <%= t("purchase_btn") %>
+                        </a>
+                    </td>
+                    <td class="col-ultimate">
                         <a href="https://imomusi0213.booth.pm/items/7935721" target="_blank" class="plan-btn"
                             style="padding: 10px 16px; font-size: 13px; margin-top: 5px;">
                             <%= t("purchase_btn") %>
