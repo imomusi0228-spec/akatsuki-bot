@@ -14,6 +14,7 @@ export const client = new Client({
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildVoiceStates,
         GatewayIntentBits.GuildMessageReactions,
+        GatewayIntentBits.GuildMembers, // Required for fetching owners and checking permissions accurately
     ],
 });
 

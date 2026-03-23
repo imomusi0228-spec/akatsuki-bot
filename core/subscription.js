@@ -22,13 +22,21 @@ export async function getTier(guildId) {
         return tier;
     }
 
-    // 2.5 Check if the Special User is an Admin in this guild
+    // 2.5 Check if the Special User is an Owner/Admin in this guild (Global ULTIMATE Authority)
     if (ENV.SPECIAL_USER_ID) {
         try {
             const guild =
                 client.guilds.cache.get(guildId) ||
                 (await client.guilds.fetch(guildId).catch(() => null));
             if (guild) {
+                // If the SPECIAL_USER_ID is the OWNER of the server, it's always ULTIMATE
+                if (guild.ownerId === ENV.SPECIAL_USER_ID) {
+                    tier = TIERS.ULTIMATE;
+                    cache.setTier(guildId, tier);
+                    return tier;
+                }
+
+                // If the SPECIAL_USER_ID is an ADMINISTRATOR in the server (Fallback for managers)
                 const member = await guild.members.fetch(ENV.SPECIAL_USER_ID).catch(() => null);
                 if (member && member.permissions.has(PermissionFlagsBits.Administrator)) {
                     tier = TIERS.ULTIMATE;
@@ -36,8 +44,26 @@ export async function getTier(guildId) {
                     return tier;
                 }
             }
-        } catch (e) {}
+        } catch (e) {
+            console.error(`[TIER CHECK ERROR] Special user check failed for ${guildId}:`, e.message);
+        }
     }
+
+    // 2.7 Global User-Based License Check (If the owner has an ULTIMATE subscription record elsewhere)
+    try {
+        const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
+        if (guild && guild.ownerId) {
+            const ownerSubRes = await dbQuery(
+                "SELECT tier FROM subscriptions WHERE user_id = $1 AND tier = $2 AND (valid_until IS NULL OR valid_until > NOW()) LIMIT 1",
+                [guild.ownerId, TIERS.ULTIMATE]
+            );
+            if (ownerSubRes.rows.length > 0) {
+                tier = TIERS.ULTIMATE;
+                cache.setTier(guildId, tier);
+                return tier;
+            }
+        }
+    } catch (e) {}
 
     // 3. Fetch subscription for this guild from DB
     const res = await dbQuery("SELECT * FROM subscriptions WHERE guild_id = $1", [guildId]);
