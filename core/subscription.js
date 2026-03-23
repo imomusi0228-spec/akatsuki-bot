@@ -1,3 +1,4 @@
+import { PermissionFlagsBits } from "discord.js";
 import { dbQuery } from "./db.js";
 import { TIERS } from "./tiers.js";
 import { cache } from "./cache.js";
@@ -60,14 +61,17 @@ export async function getTier(guildId) {
                     for (const uid of ultimateIds) {
                         try {
                             const member = guild.members.cache.get(uid) || await guild.members.fetch(uid).catch(() => null);
-                            if (member && member.permissions.has("Administrator")) {
+                            if (member && (member.permissions.has(PermissionFlagsBits.Administrator) || member.permissions.has(PermissionFlagsBits.ManageGuild))) {
                                 tier = TIERS.ULTIMATE;
+                                console.log(`[SUBSCRIPTION INFO] Portable ULTIMATE found for gid=${guildId} by user=${uid}`);
                                 break;
                             }
                         } catch (_) {}
                     }
                 }
             }
+        } else {
+            console.warn(`[SUBSCRIPTION WARN] Guild not found in cache/fetch for gid=${guildId}`);
         }
     }
 
