@@ -303,15 +303,11 @@ export async function handleApiRoute(req, res, pathname, url) {
                 })
             );
 
+            const subInfo = await getSubscriptionInfo(guildId, session.user.id);
+
             resJson({
                 ok: true,
-                subscription: {
-                    tier: subData.tier,
-                    name: TIER_NAMES[subData.tier],
-                    color: subData.color,
-                    features,
-                    valid_until: subData.valid_until,
-                },
+                subscription: subInfo,
                 stats: {
                     summary: {
                         joins: vcRes.rows[0]?.cnt || 0,

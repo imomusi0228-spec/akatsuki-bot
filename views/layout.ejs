@@ -304,6 +304,12 @@
             box-shadow: 0 0 10px rgba(187, 154, 247, 0.4);
             vertical-align: middle;
         }
+
+        /* Fix white-on-white dropdown issue */
+        #globalGuildSelect option {
+            background-color: #15202b;
+            color: white;
+        }
     </style>
     <script>
         // Essential Utilities (Defined early to be resilient)
@@ -323,7 +329,7 @@
     <script>
         // Data Loading Block
         window.lang = "<%= lang %>";
-        window.DICTIONARY = <% - dictionary %>;
+        window.DICTIONARY = <%- dictionary %>;
     </script>
 </head>
 
