@@ -3,6 +3,29 @@ import { TIERS } from "./tiers.js";
 import { cache } from "./cache.js";
 import { ENV } from "../config/env.js";
 import { getFeatures, TIER_NAMES, TIER_COLORS } from "./tiers.js";
+import { client } from "./client.js";
+
+// Cache for ULTIMATE user IDs to avoid frequent DB lookups
+let ultimateUsersCache = {
+    ids: new Set(),
+    lastFetch: 0
+};
+
+async function getUltimateUserIds() {
+    const now = Date.now();
+    if (now - ultimateUsersCache.lastFetch < 300000) { // 5 min cache
+        return ultimateUsersCache.ids;
+    }
+    try {
+        const res = await dbQuery("SELECT user_id FROM subscriptions WHERE tier = $1 AND (valid_until IS NULL OR valid_until > NOW())", [TIERS.ULTIMATE]);
+        ultimateUsersCache.ids = new Set(res.rows.map(r => r.user_id));
+        ultimateUsersCache.lastFetch = now;
+        return ultimateUsersCache.ids;
+    } catch (e) {
+        console.error("[SUBSCRIPTION ERROR] Failed to fetch ULTIMATE users:", e.message);
+        return ultimateUsersCache.ids;
+    }
+}
 
 /**
  * Get current tier for a guild (Async)
@@ -22,10 +45,31 @@ export async function getTier(guildId) {
 
     let tier = res.rows[0]?.tier ?? TIERS.FREE;
 
-    // 2. Special User Check (Admin/Owner Bypass)
-    // If the special user ID is set, and THEY own the guild OR managed to set it up,
-    // they get ULTIMATE on any guild they manage (if configured).
-    // Note: getTier is guild-centric. The user-centric portable license is handled via effectiveTier.
+    // 2. Portable ULTIMATE Check (Owner & Managers)
+    if (tier < TIERS.ULTIMATE) {
+        const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
+        if (guild) {
+            // Check Owner
+            const ownerTier = await getUserTier(guild.ownerId);
+            if (ownerTier === TIERS.ULTIMATE) {
+                tier = TIERS.ULTIMATE;
+            } else {
+                // Check if any ULTIMATE user is an administrator
+                const ultimateIds = await getUltimateUserIds();
+                if (ultimateIds.size > 0) {
+                    for (const uid of ultimateIds) {
+                        try {
+                            const member = guild.members.cache.get(uid) || await guild.members.fetch(uid).catch(() => null);
+                            if (member && member.permissions.has("Administrator")) {
+                                tier = TIERS.ULTIMATE;
+                                break;
+                            }
+                        } catch (_) {}
+                    }
+                }
+            }
+        }
+    }
 
     // 3. Multi-Server Limit Logic (For non-ULTIMATE)
     if (tier !== TIERS.ULTIMATE && tier > TIERS.FREE) {
