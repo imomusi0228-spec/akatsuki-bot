@@ -304,7 +304,7 @@ export async function handleApiRoute(req, res, pathname, url) {
             );
 
             const subInfo = await getSubscriptionInfo(guildId, session.user.id);
-            console.log(`[DEBUG] /api/stats SUB INFO for gid=${guildId}:`, JSON.stringify(subInfo));
+            console.log(`[DEBUG] /api/stats SUB INFO for gid=${guildId} uid=${session.user.id}:`, JSON.stringify(subInfo));
 
             resJson({
                 ok: true,
