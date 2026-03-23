@@ -371,13 +371,17 @@ async function initDashboard() {
                 const validUntil = sub.valid_until ? "(" + sub.valid_until.split("T")[0] + ")" : "";
                 const planInfo = $("plan-info");
                 if (planInfo) {
-                    let displayName = sub.name;
-                    if (sub.userTier > sub.guildTier && sub.userTier === 999) {
+                    console.log("[DEBUG] sub:", sub); // Log to browser console to help debug
+                    let displayName = sub.name || (sub.tier === 999 ? "ULTIMATE" : "Basic");
+                    if (sub.userTier && sub.guildTier && sub.userTier > sub.guildTier && sub.userTier === 999) {
                         displayName = `Expert: ULTIMATE`;
                     }
+                    if (sub.tier === 999 || sub.userTier === 999) {
+                        displayName = sub.userTier === 999 && sub.userTier > sub.guildTier ? "Expert: ULTIMATE" : "ULTIMATE";
+                    }
                     planInfo.innerHTML = `${displayName} <span class="muted" style="font-size:10px; font-weight:normal;">${validUntil}</span>`;
-                    planInfo.style.color = sub.color;
-                    planInfo.style.textShadow = `0 0 10px ${sub.color}44`; 
+                    planInfo.style.color = sub.color || "var(--accent-color)";
+                    planInfo.style.textShadow = `0 0 10px ${sub.color || "#1d9bf0"}44`; 
                 }
 
                 if ($("stat-joins")) $("stat-joins").textContent = s.joins;
