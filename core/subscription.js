@@ -110,6 +110,7 @@ export async function getUserTier(userId) {
         [userId]
     );
 
+    console.log(`[DEBUG] getUserTier(${userId}): found ${res.rows.length} rows. First row:`, JSON.stringify(res.rows[0]));
     return res.rows[0]?.tier ?? TIERS.FREE;
 }
 
