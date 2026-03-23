@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import crypto from 'node:crypto';
 import ejs from 'ejs';
 import { ENV } from '../config/env.js';
 
@@ -25,7 +26,8 @@ async function downloadFile(url, dest) {
  * Generates a transcript for a given channel and messages.
  */
 export async function generateTranscript(channel, messages, guildId) {
-    const transcriptId = `${guildId}-${Date.now()}`;
+    const randomSuffix = crypto.randomBytes(8).toString('hex');
+    const transcriptId = `${guildId}-${randomSuffix}`;
     const outputDir = path.join(TRANSCRIPTS_DIR);
     const attachmentOutputDir = path.join(ATTACHMENTS_DIR, transcriptId);
 

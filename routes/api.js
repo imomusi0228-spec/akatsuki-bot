@@ -1360,8 +1360,9 @@ export async function handleApiRoute(req, res, pathname, url) {
 
             const transcriptId = resData.rows[0].transcript_id;
 
-            // 2. Delete Transcript File if exists
+            // 2. Delete Transcript and Attachments
             if (transcriptId) {
+                // 2.a Delete Transcript File
                 const transcriptPath = path.join(
                     process.cwd(),
                     "public",
@@ -1371,6 +1372,19 @@ export async function handleApiRoute(req, res, pathname, url) {
                 if (fs.existsSync(transcriptPath)) {
                     fs.unlinkSync(transcriptPath);
                     console.log(`[TICKET] Deleted transcript file: ${transcriptPath}`);
+                }
+
+                // 2.b Delete Attachments Directory (v2.9.2)
+                const attachmentsPath = path.join(
+                    process.cwd(),
+                    "public",
+                    "transcripts",
+                    "attachments",
+                    transcriptId
+                );
+                if (fs.existsSync(attachmentsPath)) {
+                    fs.rmSync(attachmentsPath, { recursive: true, force: true });
+                    console.log(`[TICKET] Deleted attachments directory: ${attachmentsPath}`);
                 }
             }
 

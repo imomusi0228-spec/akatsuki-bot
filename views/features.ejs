@@ -34,7 +34,7 @@
     }
 
     .plan-card.pro {
-        border-color: var(--primary-color);
+        border-color: #1d9bf0;
         background: rgba(29, 161, 242, 0.08);
         box-shadow: 0 0 20px rgba(29, 161, 242, 0.15);
     }
@@ -77,6 +77,17 @@
         color: #bb9af7;
     }
 
+    .plan-card.ultimate {
+        border: 2px solid #bb9af7;
+        background: linear-gradient(180deg, rgba(187, 154, 247, 0.1) 0%, rgba(21, 32, 43, 0.6) 100%);
+        box-shadow: 0 0 30px rgba(187, 154, 247, 0.2);
+    }
+
+    .plan-card.ultimate:hover {
+        box-shadow: 0 0 50px rgba(187, 154, 247, 0.4);
+        transform: translateY(-12px) scale(1.02);
+    }
+
     .plan-card.ultimate::after {
         content: 'ULTIMATE';
         position: absolute;
@@ -113,7 +124,7 @@
         top: -12px;
         left: 50%;
         transform: translateX(-50%);
-        background: var(--primary-color);
+        background: #1d9bf0;
         color: white;
         font-size: 10px;
         font-weight: 900;
@@ -170,6 +181,10 @@
         color: var(--primary-color);
     }
 
+    .plan-card.pro .plan-price {
+        color: #1d9bf0;
+    }
+
     .plan-badge {
         display: inline-block;
         padding: 4px 12px;
@@ -211,6 +226,10 @@
         margin-top: 2px;
         font-style: normal;
         font-weight: bold;
+    }
+
+    .plan-card.pro .feature-summary li i {
+        color: #1d9bf0;
     }
 
     .feature-list {
@@ -264,7 +283,7 @@
     }
 
     .comparison-table .col-pro {
-        color: var(--primary-color);
+        color: #1d9bf0;
     }
 
     .comparison-table .col-pro-plus {
@@ -273,7 +292,7 @@
 
     .comparison-table th.col-pro {
         background: rgba(29, 161, 242, 0.1);
-        border-bottom: 2px solid var(--primary-color);
+        border-bottom: 2px solid #1d9bf0;
     }
 
     .comparison-table th.col-pro-plus {
@@ -282,7 +301,7 @@
     }
 
     .comparison-table td.col-pro .active-check {
-        color: var(--primary-color);
+        color: #1d9bf0;
     }
 
     .comparison-table td.col-pro-plus .active-check {
