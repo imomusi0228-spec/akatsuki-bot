@@ -10,6 +10,7 @@ class CacheManager {
         this.intros = new Map(); // intro_channel_id -> { data: userIdSet, expires: number }
 
         this.activeSessions = new Map(); // guildId:userId -> session object (VC)
+        this.memberStats = new Map(); // guildId:userId -> {xp, level, lastXpGainAt}
         this.joinCounts = new Map(); // guildId -> [{ts: number}]
         this.userGuilds = new Map(); // userId -> { data: guilds, expires: number }
 
@@ -18,8 +19,8 @@ class CacheManager {
     }
 
     // Size management (Simple LRU: delete oldest if full)
-    _checkSize(map) {
-        if (map.size > this.maxSize) {
+    _checkSize(map, limit = this.maxSize) {
+        if (map.size > limit) {
             const firstKey = map.keys().next().value;
             map.delete(firstKey);
         }
@@ -75,7 +76,17 @@ class CacheManager {
             }
             return ng;
         });
-        this._set(this.ngWords, guildId, processedWords);
+
+        // Optimization: Create a combined regex for non-regex patterns for O(1) matching
+        const normalWords = processedWords
+            .filter((w) => w.kind !== "regex")
+            .map((w) => w.word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+        
+        const combinedPattern = normalWords.length > 0 
+            ? new RegExp(normalWords.join("|"), "i") 
+            : null;
+
+        this._set(this.ngWords, guildId, { words: processedWords, combinedPattern });
     }
     getNgWords(guildId) {
         return this._get(this.ngWords, guildId);
@@ -100,9 +111,9 @@ class CacheManager {
         return this._get(this.intros, channelId);
     }
 
-    // Active VC Sessions (No TTL, managed by events)
+    // Active VC Sessions (Larger limit to prevent dropping active users)
     setActiveSession(guildId, userId, session) {
-        this._checkSize(this.activeSessions);
+        this._checkSize(this.activeSessions, 50000);
         this.activeSessions.set(`${guildId}:${userId}`, session);
     }
     getActiveSession(guildId, userId) {
@@ -110,6 +121,28 @@ class CacheManager {
     }
     clearActiveSession(guildId, userId) {
         this.activeSessions.delete(`${guildId}:${userId}`);
+    }
+
+    // Member Stats Cache
+    setMemberStats(guildId, userId, stats) {
+        this._checkSize(this.memberStats, 10000);
+        this.memberStats.set(`${guildId}:${userId}`, {
+            ...stats,
+            last_activity_at: stats.last_activity_at || Date.now()
+        });
+    }
+    getMemberStats(guildId, userId) {
+        return this.memberStats.get(`${guildId}:${userId}`);
+    }
+    updateMemberStats(guildId, userId, data) {
+        const stats = this.memberStats.get(`${guildId}:${userId}`);
+        if (stats) {
+            stats.xp += data.xp || 0;
+            stats.message_count = (stats.message_count || 0) + (data.message_count || 1);
+            if (data.level) stats.level = data.level;
+            if (data.last_xp_gain_at) stats.last_xp_gain_at = data.last_xp_gain_at;
+            stats.last_activity_at = Date.now();
+        }
     }
 
     // Join Counting for Anti-Raid (Fast memory check)

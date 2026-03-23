@@ -29,8 +29,17 @@ export function calculateSimilarity(s1, s2) {
     if (!s1 || !s2) return 0;
     if (s1 === s2) return 1;
 
-    const longer = s1.length > s2.length ? s1 : s2;
-    const shorter = s1.length > s2.length ? s2 : s1;
+    // Optimization: If length difference is more than 30%, they can't be 85% similar
+    const len1 = s1.length;
+    const len2 = s2.length;
+    if (Math.abs(len1 - len2) / Math.max(len1, len2) > 0.3) return 0;
+
+    // Optimization: Truncate to first 500 chars for extreme speed at scale
+    const str1 = len1 > 500 ? s1.substring(0, 500) : s1;
+    const str2 = len2 > 500 ? s2.substring(0, 500) : s2;
+
+    const longer = str1.length > str2.length ? str1 : str2;
+    const shorter = str1.length > str2.length ? str2 : str1;
     const longerLength = longer.length;
 
     if (longerLength === 0) return 1.0;

@@ -5,6 +5,7 @@ class Batcher {
         this.buffers = {
             ng_logs: [],
             member_events: [],
+            member_stats: new Map(), // guildId:userId -> {xp, message_count, level, last_activity_at}
             vc_sessions: [], // Though VC sessions might need more immediate ID return, basic stats can be batched
         };
         this.interval = 5000; // 5 seconds
@@ -15,6 +16,27 @@ class Batcher {
     push(table, data) {
         if (!this.buffers[table]) {
             console.error(`[BATCHER ERROR] Unknown table: ${table}`);
+            return;
+        }
+
+        if (table === "member_stats") {
+            const key = `${data.guild_id}:${data.user_id}`;
+            const existing = this.buffers.member_stats.get(key) || {
+                xp: 0,
+                message_count: 0,
+                level: data.level,
+                guild_id: data.guild_id,
+                user_id: data.user_id,
+            };
+            existing.xp += data.xp || 0;
+            existing.message_count += data.message_count || 1;
+            existing.level = Math.max(existing.level, data.level);
+            existing.last_activity_at = new Date();
+            this.buffers.member_stats.set(key, existing);
+            
+            if (this.buffers.member_stats.size >= this.maxSize) {
+                this.flush(table);
+            }
             return;
         }
 
@@ -37,10 +59,18 @@ class Batcher {
     }
 
     async flush(table) {
-        const data = this.buffers[table];
-        if (data.length === 0) return;
+        const rawData = this.buffers[table];
+        const isEmpty = table === "member_stats" ? rawData.size === 0 : rawData.length === 0;
+        if (isEmpty) return;
 
-        this.buffers[table] = []; // Clear buffer immediately to avoid duplicates during async await
+        // Clear buffer immediately to avoid duplicates during async await
+        if (table === "member_stats") {
+            this.buffers[table] = new Map();
+        } else {
+            this.buffers[table] = [];
+        }
+
+        const data = table === "member_stats" ? Array.from(rawData.values()) : rawData;
 
         try {
             if (table === "ng_logs") {
@@ -75,6 +105,35 @@ class Batcher {
                 });
                 await dbQuery(
                     `INSERT INTO member_events (guild_id, user_id, event_type, created_at) VALUES ${placeholders.join(", ")}`,
+                    values
+                );
+            } else if (table === "member_stats") {
+                // Table: member_stats UPSERT (guild_id, user_id, xp, level, message_count, last_activity_at)
+                const values = [];
+                const placeholders = [];
+                data.forEach((item, i) => {
+                    const base = i * 6;
+                    placeholders.push(
+                        `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6})`
+                    );
+                    values.push(
+                        item.guild_id,
+                        item.user_id,
+                        item.xp,
+                        item.level,
+                        item.message_count,
+                        item.last_activity_at
+                    );
+                });
+                await dbQuery(
+                    `INSERT INTO member_stats (guild_id, user_id, xp, level, message_count, last_activity_at) 
+                     VALUES ${placeholders.join(", ")} 
+                     ON CONFLICT (guild_id, user_id) DO UPDATE SET 
+                        xp = member_stats.xp + EXCLUDED.xp,
+                        level = GREATEST(member_stats.level, EXCLUDED.level),
+                        message_count = member_stats.message_count + EXCLUDED.message_count,
+                        last_activity_at = EXCLUDED.last_activity_at,
+                        last_xp_gain_at = CASE WHEN EXCLUDED.xp > 0 THEN EXCLUDED.last_activity_at ELSE member_stats.last_xp_gain_at END`,
                     values
                 );
             }

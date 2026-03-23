@@ -8,7 +8,7 @@ description: Oracle Cloud VM (OCI) 上の Bot を更新・再起動する
 1. サーバーにSSHで接続する。
 2. Botのディレクトリに移動する。
    ```bash
-   cd ~/akatsuki-bot
+   cd ~/akatsuki-bot-esm
    ```
 3. 最新のコードをプルする。
    ```bash
@@ -21,7 +21,7 @@ description: Oracle Cloud VM (OCI) 上の Bot を更新・再起動する
 5. Botを再起動する。
 // turbo
    ```bash
-   pm2 restart AkatsukiBot
+   pm2 restart akatsuki-bot
    ```
 6. 状態を確認する。
    ```bash

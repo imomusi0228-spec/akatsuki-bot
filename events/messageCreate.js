@@ -35,21 +35,28 @@ export default {
             const tier = await getTier(guildId);
             const features = getFeatures(tier);
 
-            // 2. Track activity & Leveling (Optimized)
-            const stats = await dbQuery(
-                "SELECT xp, level, message_count, last_xp_gain_at FROM member_stats WHERE guild_id = $1 AND user_id = $2",
-                [guildId, userId]
-            );
-            const row = stats.rows[0];
-            const now = new Date();
+            // 2. Track activity & Leveling (Optimized with Cache & Batcher)
+            const statsKey = `${guildId}:${userId}`;
+            let row = cache.getMemberStats(guildId, userId);
+            if (!row) {
+                const statsRes = await dbQuery(
+                    "SELECT xp, level, message_count, last_xp_gain_at FROM member_stats WHERE guild_id = $1 AND user_id = $2",
+                    [guildId, userId]
+                );
+                row = statsRes.rows[0] || { xp: 0, level: 1, message_count: 0 };
+                cache.setMemberStats(guildId, userId, row);
+            }
 
+            const now = Date.now();
+            const lastGain = row.last_xp_gain_at ? new Date(row.last_xp_gain_at).getTime() : 0;
+            
             let xpToGain = 0;
-            if (!row || !row.last_xp_gain_at || now - new Date(row.last_xp_gain_at) > 60000) {
+            if (now - lastGain > 60000) {
                 xpToGain = Math.floor(Math.random() * 21) + 20;
             }
 
-            let currentLevel = row?.level || 1;
-            let currentXp = (row?.xp || 0) + xpToGain;
+            let currentLevel = row.level || 1;
+            let currentXp = (row.xp || 0) + xpToGain;
             const nextLevelXp = currentLevel * currentLevel * 80;
 
             let levelUp = false;
@@ -58,23 +65,20 @@ export default {
                 levelUp = true;
             }
 
-            // Update stats with Upsert
-            const updateRes = await dbQuery(
-                `
-                INSERT INTO member_stats (guild_id, user_id, xp, level, message_count, last_xp_gain_at, last_activity_at)
-                VALUES ($1, $2, $3, $4, 1, CASE WHEN $5 > 0 THEN NOW() ELSE NULL END, NOW())
-                ON CONFLICT (guild_id, user_id) DO UPDATE SET 
-                    xp = EXCLUDED.xp,
-                    level = EXCLUDED.level,
-                    message_count = member_stats.message_count + 1,
-                    last_xp_gain_at = CASE WHEN EXCLUDED.xp > member_stats.xp THEN NOW() ELSE member_stats.last_xp_gain_at END,
-                    last_activity_at = NOW()
-                RETURNING message_count
-            `,
-                [guildId, userId, currentXp, currentLevel, xpToGain]
-            ).catch(() => {});
+            // Update Cache & Push to Batcher (No direct DB write!)
+            const updateData = {
+                guild_id: guildId,
+                user_id: userId,
+                xp: xpToGain,
+                level: currentLevel,
+                message_count: 1,
+            };
+            if (xpToGain > 0) updateData.last_xp_gain_at = new Date(now);
+            
+            cache.updateMemberStats(guildId, userId, updateData);
+            batcher.push("member_stats", updateData);
 
-            const msgCount = updateRes?.rows[0]?.message_count || (row?.message_count || 0) + 1;
+            const msgCount = (row.message_count || 0) + 1;
 
             // Log activity to batcher for AI Prediction
             batcher.push("member_events", {
@@ -199,12 +203,23 @@ export default {
                 cache.setNgWords(guildId, ngWords);
             }
 
-            if (ngWords.length > 0) {
-                const caught = ngWords.filter((ng) =>
-                    ng.kind === "regex"
-                        ? ng.compiled && ng.compiled.test(message.content)
-                        : message.content.includes(ng.word)
-                );
+            if (ngWords && (ngWords.combinedPattern || ngWords.words.some(w => w.kind === "regex"))) {
+                let caught = [];
+                
+                // Fast combined check for exact words O(1) approx
+                if (ngWords.combinedPattern && ngWords.combinedPattern.test(message.content)) {
+                    // Refine to find which word exactly (for logging)
+                    caught = ngWords.words.filter(w => w.kind !== "regex" && message.content.toLowerCase().includes(w.word.toLowerCase()));
+                }
+                
+                // Regex checks (Pre-compiled)
+                const regexWords = ngWords.words.filter(w => w.kind === "regex");
+                for (const rw of regexWords) {
+                    if (rw.compiled && rw.compiled.test(message.content)) {
+                        caught.push(rw);
+                    }
+                }
+
                 if (caught.length > 0) {
                     await message.delete().catch(() => {});
                     caught.forEach((c) =>

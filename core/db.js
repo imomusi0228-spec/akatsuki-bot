@@ -86,6 +86,7 @@ export async function initDb() {
         `CREATE INDEX IF NOT EXISTS idx_subscriptions_guild_id ON subscriptions(guild_id);`,
         `CREATE INDEX IF NOT EXISTS idx_warnings_guild_user ON warnings(guild_id, user_id);`,
         `CREATE INDEX IF NOT EXISTS idx_tickets_guild_status ON tickets(guild_id, status, created_at DESC);`,
+        `CREATE INDEX IF NOT EXISTS idx_ng_words_guild_id ON ng_words(guild_id);`,
     ];
 
     try {
