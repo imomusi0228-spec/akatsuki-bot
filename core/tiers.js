@@ -46,14 +46,15 @@ export const FEATURES = {
         ngLog: false,
         vcLog: true,
         dashboard: true,
-        activity: true, // Activity stats (basic)
+        activity: true,
         autoRelease: true,
-        antiraid: true, // Alerts only
+        antiraid: true,
         spamProtection: false,
         audit: false,
         introGate: false,
         longTermStats: false,
         aura: true,
+        statsRetentionDays: 7,
     },
     [TIERS.PRO_MONTHLY]: {
         maxNgWords: 20,
@@ -61,14 +62,15 @@ export const FEATURES = {
         ngLog: true,
         vcLog: true,
         dashboard: true,
-        activity: true, // Limited to 7 days
+        activity: true,
         autoRelease: true,
-        antiraid: true, // Full
+        antiraid: true,
         spamProtection: true,
         audit: false,
         introGate: false,
         longTermStats: false,
         aura: true,
+        statsRetentionDays: 30,
     },
     [TIERS.PRO_YEARLY]: {
         maxNgWords: 20,
@@ -76,14 +78,15 @@ export const FEATURES = {
         ngLog: true,
         vcLog: true,
         dashboard: true,
-        activity: true, // Limited to 7 days
+        activity: true,
         autoRelease: true,
-        antiraid: true, // Full
+        antiraid: true,
         spamProtection: true,
         audit: false,
         introGate: false,
         longTermStats: false,
         aura: true,
+        statsRetentionDays: 30,
     },
     [TIERS.PRO_PLUS_MONTHLY]: {
         maxNgWords: 50,
@@ -99,6 +102,7 @@ export const FEATURES = {
         introGate: true,
         longTermStats: true,
         aura: true,
+        statsRetentionDays: 180,
     },
     [TIERS.PRO_PLUS_YEARLY]: {
         maxNgWords: 50,
@@ -114,6 +118,7 @@ export const FEATURES = {
         introGate: true,
         longTermStats: true,
         aura: true,
+        statsRetentionDays: 180,
     },
     [TIERS.TRIAL_PRO_PLUS]: {
         maxNgWords: 50,
@@ -129,6 +134,7 @@ export const FEATURES = {
         introGate: true,
         longTermStats: true,
         aura: true,
+        statsRetentionDays: 7,
     },
     [TIERS.TRIAL_PRO]: {
         maxNgWords: 20,
@@ -144,6 +150,7 @@ export const FEATURES = {
         introGate: false,
         longTermStats: false,
         aura: true,
+        statsRetentionDays: 7,
     },
     [TIERS.ULTIMATE]: {
         maxNgWords: 9999,
@@ -159,6 +166,7 @@ export const FEATURES = {
         introGate: true,
         longTermStats: true,
         aura: true,
+        statsRetentionDays: 365,
     },
 };
 

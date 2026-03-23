@@ -107,20 +107,51 @@ export async function initDb() {
  */
 export async function cleanupOldData() {
     try {
-        console.log("[DB] Starting periodic cleanup (Optimized)...");
-        // Using batching if necessary, but these are simple date-based deletes which hit indexes
-        const ngRes = await dbQuery(
-            "DELETE FROM ng_logs WHERE created_at < NOW() - INTERVAL '30 days'"
-        );
-        const memRes = await dbQuery(
-            "DELETE FROM member_events WHERE created_at < NOW() - INTERVAL '30 days'"
-        );
-        const vcRes = await dbQuery(
-            "DELETE FROM vc_sessions WHERE join_time < NOW() - INTERVAL '60 days'"
-        );
+        console.log("[DB] Starting tiered periodic cleanup...");
+        // 1. NG Logs Cleanup
+        const ngRes = await dbQuery(`
+            DELETE FROM ng_logs l
+            WHERE id IN (
+                SELECT sub_l.id FROM ng_logs sub_l
+                LEFT JOIN subscriptions s ON sub_l.guild_id = s.guild_id
+                WHERE 
+                    (COALESCE(s.tier, 0) = 0 AND sub_l.created_at < NOW() - INTERVAL '7 days') OR
+                    (COALESCE(s.tier, 0) IN (1, 2, 6) AND sub_l.created_at < NOW() - INTERVAL '30 days') OR
+                    (COALESCE(s.tier, 0) IN (3, 4, 5) AND sub_l.created_at < NOW() - INTERVAL '180 days') OR
+                    (COALESCE(s.tier, 0) = 999 AND sub_l.created_at < NOW() - INTERVAL '365 days')
+            )
+        `);
+
+        // 2. Member Events Cleanup
+        const memRes = await dbQuery(`
+            DELETE FROM member_events e
+            WHERE id IN (
+                SELECT sub_e.id FROM member_events sub_e
+                LEFT JOIN subscriptions s ON sub_e.guild_id = s.guild_id
+                WHERE 
+                    (COALESCE(s.tier, 0) = 0 AND sub_e.created_at < NOW() - INTERVAL '7 days') OR
+                    (COALESCE(s.tier, 0) IN (1, 2, 6) AND sub_e.created_at < NOW() - INTERVAL '30 days') OR
+                    (COALESCE(s.tier, 0) IN (3, 4, 5) AND sub_e.created_at < NOW() - INTERVAL '180 days') OR
+                    (COALESCE(s.tier, 0) = 999 AND sub_e.created_at < NOW() - INTERVAL '365 days')
+            )
+        `);
+
+        // 3. VC Sessions Cleanup (Slightly longer grace)
+        const vcRes = await dbQuery(`
+            DELETE FROM vc_sessions v
+            WHERE id IN (
+                SELECT sub_v.id FROM vc_sessions sub_v
+                LEFT JOIN subscriptions s ON sub_v.guild_id = s.guild_id
+                WHERE 
+                    (COALESCE(s.tier, 0) = 0 AND sub_v.join_time < NOW() - INTERVAL '14 days') OR
+                    (COALESCE(s.tier, 0) IN (1, 2, 6) AND sub_v.join_time < NOW() - INTERVAL '60 days') OR
+                    (COALESCE(s.tier, 0) IN (3, 4, 5) AND sub_v.join_time < NOW() - INTERVAL '180 days') OR
+                    (COALESCE(s.tier, 0) = 999 AND sub_v.join_time < NOW() - INTERVAL '400 days')
+            )
+        `);
 
         console.log(
-            `[DB] Cleanup finished. Deleted logs: NG(${ngRes.rowCount}), Events(${memRes.rowCount}), VC(${vcRes.rowCount})`
+            `[DB] Tiered cleanup finished. Deleted: NG(${ngRes.rowCount}), Events(${memRes.rowCount}), VC(${vcRes.rowCount})`
         );
     } catch (e) {
         console.error("[DB ERROR] Maintenance failed:", e.message);
