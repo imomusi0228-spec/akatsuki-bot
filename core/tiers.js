@@ -58,7 +58,7 @@ export const FEATURES = {
     },
     [TIERS.PRO_MONTHLY]: {
         maxNgWords: 20,
-        maxGuilds: 1,
+        maxGuilds: 3,
         ngLog: true,
         vcLog: true,
         dashboard: true,
@@ -74,7 +74,7 @@ export const FEATURES = {
     },
     [TIERS.PRO_YEARLY]: {
         maxNgWords: 20,
-        maxGuilds: 1,
+        maxGuilds: 3,
         ngLog: true,
         vcLog: true,
         dashboard: true,
@@ -90,7 +90,7 @@ export const FEATURES = {
     },
     [TIERS.PRO_PLUS_MONTHLY]: {
         maxNgWords: 50,
-        maxGuilds: 3,
+        maxGuilds: 5,
         ngLog: true,
         vcLog: true,
         dashboard: true,
@@ -106,7 +106,7 @@ export const FEATURES = {
     },
     [TIERS.PRO_PLUS_YEARLY]: {
         maxNgWords: 50,
-        maxGuilds: 3,
+        maxGuilds: 5,
         ngLog: true,
         vcLog: true,
         dashboard: true,
@@ -154,7 +154,7 @@ export const FEATURES = {
     },
     [TIERS.ULTIMATE]: {
         maxNgWords: 9999,
-        maxGuilds: 99,
+        maxGuilds: 10,
         ngLog: true,
         vcLog: true,
         dashboard: true,
