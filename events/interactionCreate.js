@@ -17,6 +17,7 @@ import { ENV } from "../config/env.js";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { generateTranscript } from "../services/transcript.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -218,45 +219,12 @@ export default {
                     );
                     const creatorId = ticketRes.rows[0]?.user_id;
 
-                    // Transcript generation
-                    const messages = await interaction.channel.messages.fetch({ limit: 100 });
-                    const logs = Array.from(messages.values()).reverse();
+                    // Transcript generation (v2.9.2 improved)
+                    const messagesFetch = await interaction.channel.messages.fetch({ limit: 100 });
+                    const logs = Array.from(messagesFetch.values()).reverse();
                     
-                    const escapeHtml = (unsafe) => {
-                        return (unsafe || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-                    };
+                    const { webUrl, filePath, html } = await generateTranscript(interaction.channel, logs, guildId);
 
-                    let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Transcript</title><style>body { background-color: #36393f; color: #dcddde; font-family: sans-serif; padding: 20px; } .msg { display: flex; margin-bottom: 20px; } .author { font-weight: bold; color: #fff; } .text { margin-top: 5px; }</style></head><body><h2>Transcript: ${escapeHtml(interaction.channel.name)}</h2>`;
-                    
-                    for (const m of logs) {
-                        const textContent = escapeHtml(m.cleanContent).replace(/\n/g, "<br>");
-                        const authorName = escapeHtml(m.member?.displayName || m.author.displayName || m.author.username);
-                        
-                        let attachHtml = "";
-                        if (m.attachments.size > 0) {
-                            attachHtml = "<div style='margin-top: 5px;'>";
-                            m.attachments.forEach(att => {
-                                if (att.contentType && att.contentType.startsWith("image/")) {
-                                    attachHtml += `<img src="${att.url}" style="max-width: 400px; max-height: 400px; display: block; margin-bottom: 5px;" />`;
-                                } else {
-                                    attachHtml += `<div>📄 <a href="${att.url}" target="_blank" style="color: #00aff4;">${escapeHtml(att.name)}</a></div>`;
-                                }
-                            });
-                            attachHtml += "</div>";
-                        }
-                        
-                        html += `<div class="msg"><div class="content"><span class="author">${authorName}</span> <span class="time" style="color: #72767d; font-size: 0.8em; margin-left: 5px;">${m.createdAt.toLocaleString()}</span><div class="text">${textContent}${attachHtml}</div></div></div>`;
-                    }
-                    html += "</body></html>";
-
-                    const transcriptId = `${guildId}-${Date.now()}`;
-                    const transcriptDir = path.join(ROOT_DIR, "public", "transcripts");
-                    if (!fs.existsSync(transcriptDir))
-                        fs.mkdirSync(transcriptDir, { recursive: true });
-                    fs.writeFileSync(path.join(transcriptDir, `${transcriptId}.html`), html);
-
-                    const publicUrl = ENV.PUBLIC_URL || `http://localhost:${ENV.PORT}`;
-                    const webUrl = `${publicUrl.replace(/\/+$/, "")}/transcripts/${transcriptId}.html`;
                     const logEmbed = new EmbedBuilder()
                         .setTitle("🎫 チケットクローズ")
                         .setDescription(
@@ -288,7 +256,7 @@ export default {
 
                     await dbQuery(
                         "UPDATE tickets SET status = 'closed', closed_at = NOW(), transcript_id = $1 WHERE channel_id = $2",
-                        [transcriptId, interaction.channel.id]
+                        [path.basename(filePath, ".html"), interaction.channel.id]
                     );
                     await interaction.editReply(
                         "🔒 チケットをクローズしました。5秒後に削除します。"

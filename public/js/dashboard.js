@@ -367,13 +367,17 @@ async function initDashboard() {
             const res = await api(`/api/stats?guild=${gid}&month=${mon}`);
             if (res.ok) {
                 const s = res.stats.summary;
-                const sub = res.subscription;
+                const sub = res.subscription; // res.subscription is from getSubscriptionInfo
                 const validUntil = sub.valid_until ? "(" + sub.valid_until.split("T")[0] + ")" : "";
                 const planInfo = $("plan-info");
                 if (planInfo) {
-                    planInfo.innerHTML = `${sub.name} <span class="muted" style="font-size:10px; font-weight:normal;">${validUntil}</span>`;
+                    let displayName = sub.name;
+                    if (sub.userTier > sub.guildTier && sub.userTier === 999) {
+                        displayName = `Expert: ULTIMATE`;
+                    }
+                    planInfo.innerHTML = `${displayName} <span class="muted" style="font-size:10px; font-weight:normal;">${validUntil}</span>`;
                     planInfo.style.color = sub.color;
-                    planInfo.style.textShadow = `0 0 10px ${sub.color}44`; // 44 is approx 0.25 opacity
+                    planInfo.style.textShadow = `0 0 10px ${sub.color}44`; 
                 }
 
                 if ($("stat-joins")) $("stat-joins").textContent = s.joins;

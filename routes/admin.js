@@ -8,7 +8,7 @@ import {
     renderAdminAntiraidHTML,
     renderAdminTicketsHTML,
 } from "../services/views.js";
-import { getTier } from "../core/subscription.js";
+import { getTier, getUserTier } from "../core/subscription.js";
 import { getFeatures } from "../core/tiers.js";
 
 export async function handleAdminRoute(req, res, pathname, url) {
@@ -50,47 +50,51 @@ export async function handleAdminRoute(req, res, pathname, url) {
     }
 
     const user = session.user;
+    const userTier = await getUserTier(user.id);
 
     const guildId = url.searchParams.get("guild");
     if (guildId) {
-        const tier = await getTier(guildId);
-        const features = getFeatures(tier);
+        const guildTier = await getTier(guildId);
+        const features = getFeatures(guildTier, guildId, userTier);
+        
         if (!features.dashboard) {
-            // Free Tier: Redirect or Show Upgrade
+            // Neither server nor user has dashboard access
             res.writeHead(302, { Location: "/?msg=upgrade_required" });
             res.end();
             return;
         }
     }
 
+    const renderData = { user, req, userTier };
+
     // Router
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     if (pathname === "/admin/dashboard") {
-        const html = await renderAdminDashboardHTML({ user, req });
+        const html = await renderAdminDashboardHTML(renderData);
         res.end(html);
     } else if (pathname === "/admin/settings") {
-        const html = await renderAdminSettingsHTML({ user, req });
+        const html = await renderAdminSettingsHTML(renderData);
         res.end(html);
     } else if (pathname === "/admin/tickets") {
-        const html = await renderAdminTicketsHTML({ user, req });
+        const html = await renderAdminTicketsHTML(renderData);
         res.end(html);
     } else if (pathname === "/admin/activity") {
-        const html = await renderAdminActivityHTML({ user, req });
+        const html = await renderAdminActivityHTML(renderData);
         res.end(html);
     } else if (pathname === "/admin/antiraid") {
-        const html = await renderAdminAntiraidHTML({ user, req });
+        const html = await renderAdminAntiraidHTML(renderData);
         res.end(html);
     } else if (pathname === "/admin/branding") {
         const { renderAdminBrandingHTML } = await import("../services/views.js");
-        const html = await renderAdminBrandingHTML({ user, req });
+        const html = await renderAdminBrandingHTML(renderData);
         res.end(html);
     } else if (pathname === "/admin/ai") {
         const { renderAdminAiHTML } = await import("../services/views.js");
-        const html = await renderAdminAiHTML({ user, req });
+        const html = await renderAdminAiHTML(renderData);
         res.end(html);
     } else {
         // Default: Dashboard if no other path matches
-        const html = await renderAdminDashboardHTML({ user, req });
+        const html = await renderAdminDashboardHTML(renderData);
         res.end(html);
     }
 }

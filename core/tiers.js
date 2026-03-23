@@ -170,20 +170,19 @@ export const FEATURES = {
     },
 };
 
-export function getFeatures(tier, guildId = null, userId = null, isOwner = false) {
-    // Priority: If it's ULTIMATE Tier (Handled by getTier), return its features
-    if (tier === TIERS.ULTIMATE) {
+export function getFeatures(guildTier, guildId = null, userTier = null) {
+    // Effective tier is the highest of guild tier or user's personal tier (Expert License)
+    const effectiveTier = (userTier !== null && userTier > guildTier) ? userTier : guildTier;
+
+    if (effectiveTier === TIERS.ULTIMATE) {
         return { ...FEATURES[TIERS.ULTIMATE], _milestone: 5 };
     }
 
-    const baseFeatures = FEATURES[tier] || FEATURES[TIERS.FREE];
+    const baseFeatures = FEATURES[effectiveTier] || FEATURES[TIERS.FREE];
     const gated = { ...baseFeatures };
 
-    // Milestone Gating Logic (Manual/Sub based)
-    // For ULTIMATE, we skip gating by returning above.
-    // For others, we apply gating if milestone < 5.
-    const milestone = 5; // Default to max for now or fetch if needed
+    // Milestone Gating Logic (Default to full access for now)
+    gated._milestone = 5;
 
-    // ... existing gating logic ...
     return gated;
 }

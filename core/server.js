@@ -49,21 +49,25 @@ export async function startServer() {
 
             // Transcripts (v2.4.8)
             if (pathname.startsWith("/transcripts/")) {
-                const transcriptId = pathname.replace("/transcripts/", "");
-                const safeId = transcriptId.replace(/[^a-zA-Z0-9.-]/g, ""); // Allow dots for .html extension
-                const filePath = path.join(
-                    process.cwd(),
-                    "public",
-                    "transcripts",
-                    safeId.endsWith(".html") ? safeId : `${safeId}.html`
-                );
+                const relPath = pathname.replace("/transcripts/", "").replace(/^\//, "");
+                const safePath = relPath.replace(/\.\./g, ""); // Basic security
+                const filePath = path.join(process.cwd(), "public", "transcripts", safePath.endsWith(".html") || safePath.includes("/") ? safePath : `${safePath}.html`);
 
-                if (fs.existsSync(filePath)) {
-                    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+                if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+                    const ext = path.extname(filePath).toLowerCase();
+                    let contentType = "text/html; charset=utf-8";
+                    if (ext === ".png") contentType = "image/png";
+                    else if (ext === ".jpg" || ext === ".jpeg") contentType = "image/jpeg";
+                    else if (ext === ".gif") contentType = "image/gif";
+                    else if (ext === ".webp") contentType = "image/webp";
+                    else if (ext === ".css") contentType = "text/css";
+                    else if (ext === ".js") contentType = "application/javascript";
+
+                    res.writeHead(200, { "Content-Type": contentType });
                     fs.createReadStream(filePath).pipe(res);
                 } else {
                     res.writeHead(404);
-                    res.end("Transcript Not Found");
+                    res.end("Transcript or Attachment Not Found");
                 }
                 return;
             }

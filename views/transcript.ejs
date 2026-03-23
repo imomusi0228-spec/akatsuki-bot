@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transcript: <%= channelName %></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #313338;
+            --sidebar-bg: #2b2d31;
+            --msg-hover: #2e3035;
+            --text-primary: #f2f3f5;
+            --text-secondary: #b5bac1;
+            --text-muted: #949ba4;
+            --accent: #5865f2;
+            --danger: #fa777c;
+            --border: rgba(255, 255, 255, 0.08);
+            --header-bg: rgba(49, 51, 56, 0.8);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.4;
+            overflow-x: hidden;
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--header-bg);
+            backdrop-filter: blur(12px);
+            padding: 20px 40px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-info h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: white;
+        }
+
+        .header-info p {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .message-group {
+            margin-bottom: 24px;
+            display: flex;
+            gap: 16px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--accent);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: white;
+            overflow: hidden;
+        }
+
+        .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .message-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .message-header {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .author-name {
+            font-weight: 600;
+            font-size: 1rem;
+            color: white;
+        }
+
+        .timestamp {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .text {
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            font-size: 0.9375rem;
+            color: var(--text-primary);
+        }
+
+        .attachments {
+            margin-top: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .attachment-img {
+            max-width: 100%;
+            max-height: 500px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .attachment-img:hover {
+            transform: scale(1.01);
+        }
+
+        .attachment-file {
+            background: var(--sidebar-bg);
+            border: 1px solid var(--border);
+            padding: 12px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            width: fit-content;
+            transition: background 0.2s;
+        }
+
+        .attachment-file:hover {
+            background: var(--msg-hover);
+        }
+
+        .file-icon {
+            font-size: 1.5rem;
+        }
+
+        .file-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .file-name {
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        .file-size {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .embed {
+            margin-top: 8px;
+            border-left: 4px solid var(--accent);
+            background: var(--sidebar-bg);
+            padding: 12px 16px;
+            border-radius: 4px;
+            max-width: 520px;
+        }
+
+        .embed-title {
+            font-weight: 600;
+            font-size: 0.9375rem;
+            margin-bottom: 4px;
+            color: #00a8fc;
+            text-decoration: none;
+        }
+
+        .embed-desc {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            border-top: 1px solid var(--border);
+        }
+
+        @media (max-width: 600px) {
+            header {
+                padding: 15px 20px;
+            }
+            .container {
+                padding: 20px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-info">
+            <h1><%= channelName %></h1>
+            <p>Transcript ID: <%= transcriptId %> • <%= createdDate %></p>
+        </div>
+        <div class="header-actions">
+            <!-- Reserved for future actions like export/search -->
+        </div>
+    </header>
+
+    <div class="container">
+        <% messages.forEach(m => { %>
+            <div class="message-group">
+                <div class="avatar">
+                    <% if (m.authorAvatar) { %>
+                        <img src="<%= m.authorAvatar %>" alt="<%= m.authorName %>">
+                    <% } else { %>
+                        <%= m.authorName.charAt(0).toUpperCase() %>
+                    <% } %>
+                </div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="author-name" style="color: <%= m.authorColor || 'inherit' %>"><%= m.authorName %></span>
+                        <span class="timestamp"><%= m.timestamp %></span>
+                    </div>
+                    <% if (m.content) { %>
+                        <div class="text"><%- m.content %></div>
+                    <% } %>
+
+                    <% if (m.attachments && m.attachments.length > 0) { %>
+                        <div class="attachments">
+                            <% m.attachments.forEach(att => { %>
+                                <% if (att.type === 'image') { %>
+                                    <a href="<%= att.url %>" target="_blank">
+                                        <img src="<%= att.url %>" class="attachment-img" loading="lazy" alt="Attachment">
+                                    </a>
+                                <% } else { %>
+                                    <a href="<%= att.url %>" class="attachment-file" download>
+                                        <span class="file-icon">📄</span>
+                                        <div class="file-info">
+                                            <span class="file-name"><%= att.name %></span>
+                                            <span class="file-size"><%= att.size %></span>
+                                        </div>
+                                    </a>
+                                <% } %>
+                            <% }); %>
+                        </div>
+                    <% } %>
+
+                    <% if (m.embeds && m.embeds.length > 0) { %>
+                        <% m.embeds.forEach(e => { %>
+                            <div class="embed" style="border-left-color: <%= e.color || 'var(--accent)' %>">
+                                <% if (e.title) { %>
+                                    <div class="embed-title"><%= e.title %></div>
+                                <% } %>
+                                <% if (e.description) { %>
+                                    <div class="embed-desc"><%- e.description %></div>
+                                <% } %>
+                            </div>
+                        <% }); %>
+                    <% } %>
+                </div>
+            </div>
+        <% }); %>
+    </div>
+
+    <div class="footer">
+        Generated by AkatsukiBot &bull; <%= new Date().toLocaleString('ja-JP') %>
+    </div>
+</body>
+</html>

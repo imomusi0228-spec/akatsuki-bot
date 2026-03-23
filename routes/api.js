@@ -11,7 +11,7 @@ import {
 } from "discord.js";
 import { client } from "../core/client.js";
 import { TIERS, FEATURES, getFeatures, TIER_NAMES, TIER_COLORS } from "../core/tiers.js";
-import { getTier, getSubscriptionInfo } from "../core/subscription.js";
+import { getTier, getSubscriptionInfo, getUserTier } from "../core/subscription.js";
 import { ENV } from "../config/env.js";
 
 function hasManageGuild(permissions, owner = false) {
@@ -225,12 +225,13 @@ export async function handleApiRoute(req, res, pathname, url) {
 
         try {
             // 1. Fetch Tier & Subscription first to determine stats range
-            const [tier, subRes] = await Promise.all([
+            const [tier, userTier, subRes] = await Promise.all([
                 getTier(guildId),
+                getUserTier(session.user.id),
                 dbQuery("SELECT valid_until FROM subscriptions WHERE guild_id = $1", [guildId]),
             ]);
 
-            const features = getFeatures(tier, guildId, session.user.id);
+            const features = getFeatures(tier, guildId, userTier);
             const statsDays = features.longTermStats ? 30 : 7;
             const periodInterval = `${statsDays} days`;
 
@@ -334,8 +335,11 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (!(await verifyGuild(guildId))) return resJson({ ok: false, error: "Forbidden" }, 403);
 
         try {
-            const tier = await getTier(guildId);
-            const features = getFeatures(tier, guildId, session.user.id);
+            const [tier, userTier] = await Promise.all([
+                getTier(guildId),
+                getUserTier(session.user.id),
+            ]);
+            const features = getFeatures(tier, guildId, userTier);
             const statsDays = features.longTermStats ? 30 : 7;
             const periodInterval = `${statsDays} days`;
 
@@ -440,8 +444,11 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (!guildId) return resJson({ ok: false, error: "Missing guild ID" }, 400);
         if (!(await verifyGuild(guildId))) return resJson({ ok: false, error: "Forbidden" }, 403);
 
-        const tier = await getTier(guildId);
-        const features = getFeatures(tier);
+        const [tier, userTier] = await Promise.all([
+            getTier(guildId),
+            getUserTier(session.user.id),
+        ]);
+        const features = getFeatures(tier, guildId, userTier);
         if (!features.dashboard) {
             return resJson({ ok: false, error: "Pro tier required" }, 403);
         }
@@ -553,8 +560,11 @@ export async function handleApiRoute(req, res, pathname, url) {
         const rawWords = body.word.split(/\s+/).filter((w) => w.trim().length > 0);
         if (rawWords.length === 0) return res.end(JSON.stringify({ ok: false }));
 
-        const tier = await getTier(body.guild);
-        const features = getFeatures(tier);
+        const [tier, userTier] = await Promise.all([
+            getTier(body.guild),
+            getUserTier(session.user.id),
+        ]);
+        const features = getFeatures(tier, body.guild, userTier);
 
         // Get existing words to filter duplicates
         const existingRes = await dbQuery("SELECT word FROM ng_words WHERE guild_id = $1", [
@@ -717,9 +727,8 @@ export async function handleApiRoute(req, res, pathname, url) {
         `,
             [guildId]
         );
-        const subInfo = await getSubscriptionInfo(guildId);
-
         const settings = resDb.rows[0] || {};
+        const subInfo = await getSubscriptionInfo(guildId, session.user.id);
         // Ensure alpha_features is always an array
         if (!settings.alpha_features) settings.alpha_features = [];
 
