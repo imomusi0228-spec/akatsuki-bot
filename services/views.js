@@ -1,6 +1,6 @@
 import { ENV } from "../config/env.js";
 import { t, DICTIONARY } from "../core/i18n.js";
-import { TIERS } from "../core/tiers.js";
+import { TIERS, TIER_NAMES, TIER_COLORS } from "../core/tiers.js";
 
 import path from "path";
 import ejs from "ejs";
@@ -48,6 +48,8 @@ async function renderView(viewName, data, lang) {
         content,
         lang,
         TIERS,
+        TIER_NAMES,
+        TIER_COLORS,
         userTier: data.userTier ?? TIERS.FREE,
         dictionary: JSON.stringify(DICTIONARY),
         t: (key, params) => t(key, lang, params),
