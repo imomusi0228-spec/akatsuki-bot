@@ -35,10 +35,14 @@ async function getUltimateUserIds() {
 export async function getTier(guildId) {
     if (!guildId) return TIERS.FREE;
 
-    // 0. Support Server Check (Special Case)
+    // 0. Cache Check
+    const cachedTier = cache.getTier(guildId);
+    if (cachedTier !== null) return cachedTier;
+
+    // 1. Support Server Check (Special Case)
     if (ENV.SUPPORT_GUILD_ID && guildId === ENV.SUPPORT_GUILD_ID) return TIERS.ULTIMATE;
 
-    // 1. Database Check (Active Subscription)
+    // 2. Database Check (Active Subscription)
     const res = await dbQuery(
         "SELECT tier FROM subscriptions WHERE TRIM(guild_id) = TRIM($1) AND (valid_until IS NULL OR valid_until > NOW()) ORDER BY tier DESC LIMIT 1",
         [guildId]
@@ -46,42 +50,49 @@ export async function getTier(guildId) {
 
     let tier = res.rows[0]?.tier ?? TIERS.FREE;
 
-    // 2. Portable ULTIMATE Check (Owner & Managers)
+    // 3. Portable ULTIMATE Check (Owner & Managers) - "Expert License"
     if (tier < TIERS.ULTIMATE) {
-        const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
-        if (guild) {
-            // Check Owner
-            const ownerTier = await getUserTier(guild.ownerId);
-            if (ownerTier === TIERS.ULTIMATE) {
-                console.log(`[TIER DEBUG] Guild ${guildId} is ULTIMATE via Owner ${guild.ownerId}`);
-                tier = TIERS.ULTIMATE;
-            } else {
-                // Check if any ULTIMATE user is an administrator
-                const ultimateIds = await getUltimateUserIds();
-                if (ultimateIds.size > 0) {
-                    for (const uid of ultimateIds) {
-                        try {
-                            // Ensure uid is trimmed (already is from getUltimateUserIds, but just in case)
-                            const cleanUid = String(uid).trim();
-                            const member = guild.members.cache.get(cleanUid) || await guild.members.fetch(cleanUid).catch(() => null);
-                            if (member && (member.permissions.has(PermissionFlagsBits.Administrator) || member.permissions.has(PermissionFlagsBits.ManageGuild))) {
-                                console.log(`[TIER DEBUG] Guild ${guildId} is ULTIMATE via Admin ${cleanUid}`);
-                                tier = TIERS.ULTIMATE;
-                                break;
-                            }
-                        } catch (_) {}
+        // Check local Expert License cache
+        const expertCached = cache.getExpertLicense(guildId);
+        if (expertCached === true) {
+            tier = TIERS.ULTIMATE;
+        } else {
+            const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
+            if (guild) {
+                // Check Owner
+                const ownerTier = await getUserTier(guild.ownerId);
+                if (ownerTier === TIERS.ULTIMATE) {
+                    console.log(`[TIER DEBUG] Guild ${guildId} is ULTIMATE via Owner ${guild.ownerId}`);
+                    tier = TIERS.ULTIMATE;
+                    cache.setExpertLicense(guildId, true);
+                } else {
+                    // Check if any ULTIMATE user is an administrator
+                    const ultimateIds = await getUltimateUserIds();
+                    if (ultimateIds.size > 0) {
+                        for (const uid of ultimateIds) {
+                            try {
+                                const cleanUid = String(uid).trim();
+                                const member = guild.members.cache.get(cleanUid) || await guild.members.fetch(cleanUid).catch(() => null);
+                                if (member && (member.permissions.has(PermissionFlagsBits.Administrator) || member.permissions.has(PermissionFlagsBits.ManageGuild))) {
+                                    console.log(`[TIER DEBUG] Guild ${guildId} is ULTIMATE via Admin ${cleanUid}`);
+                                    tier = TIERS.ULTIMATE;
+                                    cache.setExpertLicense(guildId, true);
+                                    break;
+                                }
+                            } catch (_) {}
+                        }
                     }
                 }
             }
+            if (tier < TIERS.ULTIMATE) cache.setExpertLicense(guildId, false);
         }
     }
 
-    // 3. Multi-Server Limit Logic (For non-ULTIMATE)
+    // 4. Multi-Server Limit Logic (For non-ULTIMATE)
     if (tier !== TIERS.ULTIMATE && tier > TIERS.FREE) {
         const features = getFeatures(tier);
         const limit = features.maxGuilds || 1;
 
-        // Get all active guilds for the owner of this guild
         const subRes = await dbQuery(
             "SELECT guild_id FROM subscriptions WHERE user_id = (SELECT user_id FROM subscriptions WHERE guild_id = $1 LIMIT 1) AND (valid_until IS NULL OR valid_until > NOW()) ORDER BY created_at ASC",
             [guildId]
@@ -102,27 +113,29 @@ export async function getTier(guildId) {
  */
 export async function getUserTier(userId) {
     const cleanUserId = String(userId).trim();
-    console.log(`[TIER DEBUG] Checking ULTIMATE for user: [${cleanUserId}] (Length: ${cleanUserId.length})`);
+    
+    // Cache Check
+    const cached = cache.getUserTier(cleanUserId);
+    if (cached !== null) return cached;
 
-    // Special User ID Check (Environment Variable)
-    if (ENV.SPECIAL_USER_ID && cleanUserId === ENV.SPECIAL_USER_ID.trim()) {
-        console.log(`[TIER DEBUG] User ${cleanUserId} matches SPECIAL_USER_ID`);
-        return TIERS.ULTIMATE;
-    }
+    console.log(`[TIER DEBUG] Fetching Tier for user: [${cleanUserId}]`);
 
     const res = await dbQuery(
         "SELECT tier, user_id, valid_until FROM subscriptions WHERE TRIM(user_id) = $1 AND (valid_until IS NULL OR valid_until > NOW()) ORDER BY tier DESC LIMIT 1",
         [cleanUserId]
     );
 
+    let tier = TIERS.FREE;
     if (res.rows.length > 0) {
         const row = res.rows[0];
-        console.log(`[TIER DEBUG] Subscription found for ${cleanUserId}: Tier=${row.tier}, DB_UserID=[${row.user_id}]`);
-        return Number(row.tier);
+        console.log(`[TIER DEBUG] Subscription found for ${cleanUserId}: Tier=${row.tier}`);
+        tier = Number(row.tier);
+    } else {
+        console.log(`[TIER DEBUG] No subscription found for ${cleanUserId}`);
     }
 
-    console.log(`[TIER DEBUG] No active subscription found for ${cleanUserId}`);
-    return TIERS.FREE;
+    cache.setUserTier(cleanUserId, tier);
+    return tier;
 }
 
 /**

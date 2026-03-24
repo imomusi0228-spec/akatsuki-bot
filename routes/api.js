@@ -138,6 +138,7 @@ export async function handleApiRoute(req, res, pathname, url) {
 
             // console.log(`[API INFO] /api/guilds: Found ${availableGuilds.length} available guilds`);
             const subInfo = await getSubscriptionInfo(availableGuilds[0]?.id, session.user.id);
+            console.log(`[TIER DEBUG] API Guilds: User=[${session.user.id}], CalculatedTier=${subInfo.tier}, Name=${subInfo.name}`);
             resJson({ 
                 ok: true, 
                 guilds: availableGuilds,

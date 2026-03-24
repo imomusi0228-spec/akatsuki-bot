@@ -13,6 +13,8 @@ class CacheManager {
         this.memberStats = new Map(); // guildId:userId -> {xp, level, lastXpGainAt}
         this.joinCounts = new Map(); // guildId -> [{ts: number}]
         this.userGuilds = new Map(); // userId -> { data: guilds, expires: number }
+        this.userTiers = new Map(); // userId -> { tier: number, expires: number }
+        this.expertLicense = new Map(); // guildId -> { isUltimate: boolean, expires: number }
 
         this.ttl = 1 * 60 * 1000; // Reduced to 1 minute for faster tier updates
         this.maxSize = 2000; // Max guilds to keep in memory (LRU-ish)
@@ -170,12 +172,32 @@ class CacheManager {
         return this._get(this.userGuilds, userId);
     }
 
+    // User Tiers (Performance)
+    setUserTier(userId, tier) {
+        this._set(this.userTiers, userId, tier, 2 * 60 * 1000); // 2 min cache
+    }
+    getUserTier(userId) {
+        return this._get(this.userTiers, userId);
+    }
+    clearUserTier(userId) {
+        this.userTiers.delete(userId);
+    }
+
+    // Expert License (ULTIMATE via Admin)
+    setExpertLicense(guildId, isUltimate) {
+        this._set(this.expertLicense, guildId, isUltimate, 10 * 60 * 1000); // 10 min cache (slow changing)
+    }
+    getExpertLicense(guildId) {
+        return this._get(this.expertLicense, guildId);
+    }
+
     // Global clear for a guild
     clearAll(guildId) {
         this.clearTier(guildId);
         this.clearSettings(guildId);
         this.clearNgWords(guildId);
         this.members.delete(guildId);
+        this.expertLicense.delete(guildId);
     }
 }
 
