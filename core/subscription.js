@@ -102,20 +102,27 @@ export async function getTier(guildId) {
  */
 export async function getUserTier(userId) {
     const cleanUserId = String(userId).trim();
+    console.log(`[TIER DEBUG] Checking ULTIMATE for user: [${cleanUserId}] (Length: ${cleanUserId.length})`);
 
     // Special User ID Check (Environment Variable)
-    if (ENV.SPECIAL_USER_ID && cleanUserId === ENV.SPECIAL_USER_ID.trim()) return TIERS.ULTIMATE;
+    if (ENV.SPECIAL_USER_ID && cleanUserId === ENV.SPECIAL_USER_ID.trim()) {
+        console.log(`[TIER DEBUG] User ${cleanUserId} matches SPECIAL_USER_ID`);
+        return TIERS.ULTIMATE;
+    }
 
     const res = await dbQuery(
-        "SELECT tier FROM subscriptions WHERE TRIM(user_id) = $1 AND (valid_until IS NULL OR valid_until > NOW()) ORDER BY tier DESC LIMIT 1",
+        "SELECT tier, user_id, valid_until FROM subscriptions WHERE TRIM(user_id) = $1 AND (valid_until IS NULL OR valid_until > NOW()) ORDER BY tier DESC LIMIT 1",
         [cleanUserId]
     );
 
-    const tier = res.rows[0]?.tier ?? TIERS.FREE;
-    if (tier === TIERS.ULTIMATE) {
-        console.log(`[TIER DEBUG] User ${cleanUserId} detected as ULTIMATE`);
+    if (res.rows.length > 0) {
+        const row = res.rows[0];
+        console.log(`[TIER DEBUG] Subscription found for ${cleanUserId}: Tier=${row.tier}, DB_UserID=[${row.user_id}]`);
+        return Number(row.tier);
     }
-    return tier;
+
+    console.log(`[TIER DEBUG] No active subscription found for ${cleanUserId}`);
+    return TIERS.FREE;
 }
 
 /**

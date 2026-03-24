@@ -9,12 +9,13 @@
     </title>
     <style>
         :root {
-            /* Default Dark (Legacy fallback) */
             --bg-color: #0b1622;
             --card-bg: #15202b;
             --text-primary: #ffffff;
             --text-secondary: #8b9bb4;
             --border-color: #253341;
+            --input-bg: rgba(0, 0, 0, 0.3);
+            --input-border: #38444d;
             --accent-color: #1d9bf0;
             --accent-rgb: 29, 155, 240;
             --primary-color: #1d9bf0;
@@ -28,6 +29,8 @@
             --text-primary: #0f1419;
             --text-secondary: #536471;
             --border-color: #eff3f4;
+            --input-bg: #ffffff;
+            --input-border: #cfd9de;
         }
 
         body.theme-dark {
@@ -36,6 +39,8 @@
             --text-primary: #e7e9ea;
             --text-secondary: #71767b;
             --border-color: #2f3336;
+            --input-bg: #16181c;
+            --input-border: #333639;
         }
 
         body.theme-midnight {
@@ -44,6 +49,8 @@
             --text-primary: #ffffff;
             --text-secondary: #8b9bb4;
             --border-color: #253341;
+            --input-bg: #0a0f14;
+            --input-border: #38444d;
         }
 
         * {
@@ -145,18 +152,20 @@
         textarea {
             padding: 8px 12px;
             border-radius: 8px;
-            border: 1px solid var(--border-color);
-            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--input-border);
+            background: var(--input-bg);
             color: var(--text-primary);
             font-size: 14px;
             outline: none;
-            transition: border-color 0.2s;
+            transition: all 0.2s;
         }
 
         input:focus,
         select:focus,
         textarea:focus {
             border-color: var(--accent-color);
+            background: var(--card-bg);
+            box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.1);
         }
 
         select option {

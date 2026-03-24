@@ -1074,8 +1074,9 @@ async function initActivity() {
         if (rows) rows.innerHTML = "";
         if (loading) loading.style.display = "block";
 
+        const vw = $("vcWeeks")?.value || "2";
         const res = await api(
-            `/api/activity?guild=${gid}&audit_role_id=${ar}&intro_channel_id=${ic}&refresh=1`
+            `/api/activity?guild=${gid}&audit_role_id=${ar}&intro_channel_id=${ic}&vc_weeks=${vw}&refresh=1`
         );
         if (loading) loading.style.display = "none";
 
