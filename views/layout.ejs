@@ -292,17 +292,21 @@
             visibility: visible;
         }
 
-        .badge-ultimate {
-            background: #bb9af7;
-            color: #000;
+        .badge-tier {
             font-size: 10px;
             font-weight: 800;
             padding: 2px 6px;
             border-radius: 4px;
             margin-left: 6px;
             text-transform: uppercase;
-            box-shadow: 0 0 10px rgba(187, 154, 247, 0.4);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
             vertical-align: middle;
+            color: #000;
+        }
+
+        .badge-ultimate {
+            background: #bb9af7;
+            box-shadow: 0 0 10px rgba(187, 154, 247, 0.4);
         }
 
         /* Fix white-on-white dropdown issue */
@@ -330,6 +334,9 @@
         // Data Loading Block
         window.lang = "<%= lang %>";
         window.DICTIONARY = <%- dictionary %>;
+        window.TIER_COLORS = <%- JSON.stringify(TIER_COLORS) %>;
+        window.TIERS = <%- JSON.stringify(TIERS) %>;
+        window.TIER_NAMES = <%- JSON.stringify(TIER_NAMES) %>;
     </script>
 </head>
 
@@ -379,16 +386,24 @@
                                 style="font-size:12px;">&#26085;&#26412;&#35486;</span>
                             <% } %>
 
-                                <div style="margin-left: auto; display:flex; align-items:center; gap:15px;">
+                                <div style="margin-left: auto; display:flex; align-items:center; gap:12px;">
                                     <% if (oauth && user) { %>
-                                        <span class="muted" style="font-size:12px; display: flex; align-items: center;">
-                                            <%= user.username %>
-                                            <% if (userTier === TIERS.ULTIMATE) { %>
-                                                <span class="badge-ultimate">ULTIMATE</span>
-                                            <% } %>
-                                        </span>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <% const avatarUrl = user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=32` : '/img/default-avatar.png'; %>
+                                            <img src="<%= avatarUrl %>" style="width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1);">
+                                            <div style="display: flex; flex-direction: column; line-height: 1.2;">
+                                                <span style="font-size: 13px; font-weight: 700; color: #fff;">
+                                                    <%= user.global_name || user.username %>
+                                                </span>
+                                                <% if (userTier > 0) { %>
+                                                    <span class="badge-tier" style="background: <%= TIER_COLORS[userTier] %>; margin-left: 0; margin-top: 2px; align-self: flex-start;">
+                                                        <%= TIER_NAMES[userTier] %>
+                                                    </span>
+                                                <% } %>
+                                            </div>
+                                        </div>
                                         <a href="/logout" class="btn"
-                                            style="padding:4px 12px; font-size:11px; border-radius:6px; background:rgba(255,255,255,0.05);">
+                                            style="padding:6px 16px; font-size:12px; font-weight: 700; border-radius:8px; background:rgba(255,255,255,0.08); margin-left:10px;">
                                             <%= t("logout") %>
                                         </a>
                                         <% } else { %>

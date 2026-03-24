@@ -28,32 +28,32 @@ export async function execute(interaction) {
         .addFields(
             {
                 name: `📊 ${t("dashboard", locale)}`,
-                value: `[${t("dashboard_loading", locale)}](${baseUrl}/admin/dashboard)`,
+                value: `[${t("dashboard_loading", locale)}](${baseUrl}/admin/dashboard?guild=${interaction.guildId})`,
                 inline: true,
             },
             {
                 name: `⚙️ ${t("settings", locale)}`,
-                value: `[${t("ng_word_settings", locale)}](${baseUrl}/admin/settings)`,
+                value: `[${t("ng_word_settings", locale)}](${baseUrl}/admin/settings?guild=${interaction.guildId})`,
                 inline: true,
             },
             {
                 name: `🛡️ ${t("nav_antiraid", locale)}`,
-                value: `[${t("ar_title", locale)}](${baseUrl}/admin/antiraid)`,
+                value: `[${t("ar_title", locale)}](${baseUrl}/admin/antiraid?guild=${interaction.guildId})`,
                 inline: true,
             },
             {
                 name: `🎫 ${t("ticket_mgmt", locale)}`,
-                value: `[${t("ticket_mgmt_title", locale)}](${baseUrl}/admin/tickets)`,
+                value: `[${t("ticket_mgmt_title", locale)}](${baseUrl}/admin/tickets?guild=${interaction.guildId})`,
                 inline: true,
             },
             {
                 name: `🤖 ${t("ai_insight_title", locale)}`,
-                value: `[${t("ai_insight_title", locale)}](${baseUrl}/admin/ai)`,
+                value: `[${t("ai_insight_title", locale)}](${baseUrl}/admin/ai?guild=${interaction.guildId})`,
                 inline: true,
             },
             {
                 name: `🎨 ${t("branding", locale)}`,
-                value: `[${t("branding_title", locale)}](${baseUrl}/admin/branding)`,
+                value: `[${t("branding_title", locale)}](${baseUrl}/admin/branding?guild=${interaction.guildId})`,
                 inline: true,
             }
         )

@@ -1,8 +1,10 @@
 import { ENV } from "../config/env.js";
 
-// In-memory session store (Project restart clears sessions, acceptable for now)
-export const sessions = new Map();
-export const states = new Map(); // OAuth states
+import { dbQuery } from "./db.js";
+
+// Persistent session store (PostgreSQL)
+// states Map can remain in-memory as they are short-lived (OAuth flow)
+export const states = new Map();
 
 export function setCookie(res, name, value, options = {}) {
     const isHttpOnly = options.httpOnly !== false;
@@ -17,8 +19,6 @@ export function setCookie(res, name, value, options = {}) {
     if (isHttpOnly) cookie += "; HttpOnly";
     if (options.maxAge) cookie += `; Max-Age=${options.maxAge}`;
     if (isSecure) cookie += `; Secure`;
-
-    // console.log(`[AUTH DEBUG] setCookie: ${name}=${value} (Opts: ${JSON.stringify(options)}) -> ${cookie}`);
 
     let prev = res.getHeader("Set-Cookie");
     if (prev) {
@@ -48,6 +48,9 @@ export function delCookie(res, name) {
     }
 }
 
+/**
+ * Get session from DB
+ */
 export async function getSession(req) {
     const cookies = {};
     (req.headers.cookie || "").split(";").forEach((c) => {
@@ -56,21 +59,27 @@ export async function getSession(req) {
     });
 
     const sid = cookies.sid;
-    // console.log(`[AUTH DEBUG] getSession: CookieSID=${sid}, SessionExists=${sessions.has(sid)}`);
+    if (!sid) return null;
 
-    if (!sid || !sessions.has(sid)) {
-        // console.log(`[AUTH DEBUG] getSession: No session found for SID=${sid}`);
+    try {
+        const res = await dbQuery(
+            "SELECT data, expires_at FROM sessions WHERE sid = $1",
+            [sid]
+        );
+        const sessionRow = res.rows[0];
+
+        if (!sessionRow) return null;
+
+        if (new Date(sessionRow.expires_at) < new Date()) {
+            await dbQuery("DELETE FROM sessions WHERE sid = $1", [sid]);
+            return null;
+        }
+
+        return { ...sessionRow.data, sid };
+    } catch (e) {
+        console.error("[AUTH ERROR] getSession failed:", e.message);
         return null;
     }
-
-    const session = sessions.get(sid);
-    if (session.expiresAt < Date.now()) {
-        // console.log(`[AUTH DEBUG] getSession: Session expired for SID=${sid}`);
-        sessions.delete(sid);
-        return null;
-    }
-    // console.log(`[AUTH DEBUG] getSession: Session OK for SID=${sid}, User=${session.user.username}`);
-    return session;
 }
 
 export async function discordApi(token, endpoint) {

@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { ENV, BASE_REDIRECT_URI } from "../config/env.js";
-import { sessions, states, setCookie, delCookie, discordApi } from "../middleware/auth.js";
+import { states, setCookie, delCookie, discordApi } from "../middleware/auth.js";
+import { dbQuery } from "../core/db.js";
 
 function rand(n = 24) {
     return crypto.randomBytes(n).toString("hex");
@@ -107,13 +108,18 @@ export async function handleAuthRoute(req, res, pathname, url) {
                 `[AUTH DEBUG] /callback: Creating session SID=${sid} for User=${user.username} (CSRF Secret: ${csrfSecret.substring(0, 8)}...)`
             );
 
-            sessions.set(sid, {
+            const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
+            const sessionData = {
                 accessToken: tokenData.access_token,
                 refreshToken: tokenData.refresh_token,
-                expiresAt: Date.now() + tokenData.expires_in * 1000,
                 user,
                 csrfSecret,
-            });
+            };
+
+            await dbQuery(
+                "INSERT INTO sessions (sid, data, expires_at) VALUES ($1, $2, $3)",
+                [sid, JSON.stringify(sessionData), expiresAt]
+            );
 
             const isSecure = ENV.PUBLIC_URL.startsWith("https");
             
@@ -152,7 +158,9 @@ export async function handleAuthRoute(req, res, pathname, url) {
             if (k && v) cookies[k] = decodeURIComponent(v);
         });
         const sid = cookies.sid;
-        if (sid) sessions.delete(sid);
+        if (sid) {
+            await dbQuery("DELETE FROM sessions WHERE sid = $1", [sid]);
+        }
 
         delCookie(res, "sid");
         res.writeHead(302, { Location: "/" });

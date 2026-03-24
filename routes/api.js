@@ -975,8 +975,6 @@ export async function handleApiRoute(req, res, pathname, url) {
         ]);
         const features = getFeatures(tier, guildId, userTier);
 
-        console.log(`[DEBUG] /api/activity: User=${session.user.username} (${session.user.id}), Guild=${guildId}, Tier=${tier}, UserTier=${userTier}, HasAudit=${features.audit}`);
-
         if (!features.audit) {
             res.writeHead(403, { "Content-Type": "application/json" });
             return res.end(

@@ -95,7 +95,8 @@ async function loadGuilds(force = false) {
         sel.disabled = false;
 
         if (d && d.ok && d.guilds && d.guilds.length > 0) {
-            let lastGid = localStorage.getItem("last_guild_id");
+            const urlParams = new URLSearchParams(window.location.search);
+            let targetGid = urlParams.get("guild") || localStorage.getItem("last_guild_id");
             let selectedIndex = 0;
 
             d.guilds.forEach((g, i) => {
@@ -103,14 +104,14 @@ async function loadGuilds(force = false) {
                 o.value = g.id;
                 o.textContent = g.name;
                 sel.appendChild(o);
-                if (lastGid && g.id === lastGid) selectedIndex = i;
+                if (targetGid && g.id === targetGid) selectedIndex = i;
             });
 
             sel.selectedIndex = selectedIndex;
             _guildsLoaded = true;
 
             // If it was the first time or selection changed, save it
-            if (!lastGid || lastGid !== sel.value) {
+            if (!localStorage.getItem("last_guild_id") || localStorage.getItem("last_guild_id") !== sel.value) {
                 saveGuildSelection();
             }
         } else {

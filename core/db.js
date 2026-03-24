@@ -37,6 +37,11 @@ export async function initDb() {
             last_activity_at TIMESTAMPTZ DEFAULT NOW(),
             PRIMARY KEY (guild_id, user_id)
         );`,
+        `CREATE TABLE IF NOT EXISTS sessions (
+            sid TEXT PRIMARY KEY,
+            data JSONB NOT NULL,
+            expires_at TIMESTAMPTZ NOT NULL
+        );`,
     ];
 
     const featureTables = [
