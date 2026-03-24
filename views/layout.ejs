@@ -16,6 +16,8 @@
             --border-color: #253341;
             --input-bg: rgba(0, 0, 0, 0.3);
             --input-border: #38444d;
+            --nav-item-bg: rgba(255, 255, 255, 0.05);
+            --nav-item-border: rgba(255, 255, 255, 0.1);
             --accent-color: #1d9bf0;
             --accent-rgb: 29, 155, 240;
             --primary-color: #1d9bf0;
@@ -31,6 +33,8 @@
             --border-color: #eff3f4;
             --input-bg: #ffffff;
             --input-border: #cfd9de;
+            --nav-item-bg: rgba(15, 20, 25, 0.05);
+            --nav-item-border: rgba(15, 20, 25, 0.1);
         }
 
         body.theme-dark {
@@ -41,6 +45,8 @@
             --border-color: #2f3336;
             --input-bg: #16181c;
             --input-border: #333639;
+            --nav-item-bg: rgba(231, 233, 234, 0.05);
+            --nav-item-border: rgba(231, 233, 234, 0.1);
         }
 
         body.theme-midnight {
@@ -51,6 +57,8 @@
             --border-color: #253341;
             --input-bg: #0a0f14;
             --input-border: #38444d;
+            --nav-item-bg: rgba(255, 255, 255, 0.05);
+            --nav-item-border: rgba(255, 255, 255, 0.1);
         }
 
         * {
@@ -385,16 +393,18 @@
         <div
             style="font-size: 24px; font-weight: bold; display:flex; align-items:center; gap: 15px; flex-wrap: wrap; width: 100%;">
             <div style="display:flex; align-items:center;">
-                <span style="color:#f91880; margin-right:10px;">&#9789;</span>
+                <a href="/features" style="text-decoration:none; display:flex; align-items:center;" title="Features & Plans">
+                    <span style="color:#f91880; margin-right:10px;">&#9789;</span>
+                </a>
                 <%= oauth ? t("admin_title") : t("title") %>
             </div>
 
             <% if (oauth && user) { %>
                 <div class="global-selector-container"
-                    style="display:flex; align-items:center; gap:8px; background: rgba(255,255,255,0.05); padding: 4px 12px; border-radius: 99px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(4px);">
+                    style="display:flex; align-items:center; gap:8px; background: var(--nav-item-bg); padding: 4px 12px; border-radius: 99px; border: 1px solid var(--nav-item-border); backdrop-filter: blur(4px);">
                     <span style="font-size:14px;" title="GLOBAL SERVER SELECT">🌏</span>
                     <select id="globalGuildSelect"
-                        style="background:transparent; border:none; color:white; font-size:13px; font-weight:600; cursor:pointer; outline:none; max-width:200px;"></select>
+                        style="background:transparent; border:none; color:var(--text-primary); font-size:13px; font-weight:600; cursor:pointer; outline:none; max-width:200px;"></select>
                     <button id="globalReload"
                         style="background:transparent; border:none; color:var(--text-secondary); cursor:pointer; font-size:12px; display:flex; align-items:center; padding:0 4px;"
                         title="Reload Data">🔄</button>
@@ -412,9 +422,9 @@
                                     <% if (oauth && user) { %>
                                         <div style="display: flex; align-items: center; gap: 8px;">
                                             <% const avatarUrl = user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=32` : '/img/default-avatar.png'; %>
-                                            <img src="<%= avatarUrl %>" style="width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1);">
+                                            <img src="<%= avatarUrl %>" style="width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--nav-item-border);">
                                             <div style="display: flex; flex-direction: column; line-height: 1.2;">
-                                                <span style="font-size: 13px; font-weight: 700; color: #fff;">
+                                                <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">
                                                     <%= user.global_name || user.username %>
                                                 </span>
                                                 <% if (userTier > 0) { %>
@@ -425,7 +435,7 @@
                                             </div>
                                         </div>
                                         <a href="/logout" class="btn"
-                                            style="padding:6px 16px; font-size:12px; font-weight: 700; border-radius:8px; background:rgba(255,255,255,0.08); margin-left:10px;">
+                                            style="padding:6px 16px; font-size:12px; font-weight: 700; border-radius:8px; background:var(--nav-item-bg); margin-left:10px; border: 1px solid var(--nav-item-border); color: var(--text-primary);">
                                             <%= t("logout") %>
                                         </a>
                                         <% } else { %>
