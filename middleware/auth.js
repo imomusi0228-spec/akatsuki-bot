@@ -48,6 +48,9 @@ export function delCookie(res, name) {
     }
 }
 
+// Small in-memory cache for DB sessions to reduce Supabase load on frequent API calls
+const sessionCache = new Map();
+
 /**
  * Get session from DB
  */
@@ -61,6 +64,12 @@ export async function getSession(req) {
     const sid = cookies.sid;
     if (!sid) return null;
 
+    // Check memory cache first (10s TTL)
+    const cached = sessionCache.get(sid);
+    if (cached && cached.expires > Date.now()) {
+        return cached.data;
+    }
+
     try {
         const res = await dbQuery(
             "SELECT data, expires_at FROM sessions WHERE sid = $1",
@@ -70,12 +79,18 @@ export async function getSession(req) {
 
         if (!sessionRow) return null;
 
-        if (new Date(sessionRow.expires_at) < new Date()) {
+        const expiresAt = new Date(sessionRow.expires_at);
+        if (expiresAt < new Date()) {
             await dbQuery("DELETE FROM sessions WHERE sid = $1", [sid]);
+            sessionCache.delete(sid);
             return null;
         }
 
-        return { ...sessionRow.data, sid };
+        const data = { ...sessionRow.data, sid };
+        // Update memory cache
+        sessionCache.set(sid, { data, expires: Date.now() + 10000 });
+        
+        return data;
     } catch (e) {
         console.error("[AUTH ERROR] getSession failed:", e.message);
         return null;

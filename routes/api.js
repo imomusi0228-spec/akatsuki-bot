@@ -132,20 +132,9 @@ export async function handleApiRoute(req, res, pathname, url) {
 
             const managedGuilds = userGuilds.filter((g) => hasManageGuild(g.permissions, g.owner));
 
-            // bot のキャッシュにあるか確認。なければ Discord API から fetch してチェック
-            const availableGuilds = (
-                await Promise.all(
-                    managedGuilds.map(async (g) => {
-                        if (client.guilds.cache.has(g.id))
-                            return { id: g.id, name: g.name, icon: g.icon };
-                        try {
-                            const fetched = await client.guilds.fetch(g.id).catch(() => null);
-                            if (fetched) return { id: g.id, name: g.name, icon: g.icon };
-                        } catch (_) {}
-                        return null;
-                    })
-                )
-            ).filter(Boolean);
+            const availableGuilds = managedGuilds
+                .filter((g) => client.guilds.cache.has(g.id))
+                .map((g) => ({ id: g.id, name: g.name, icon: g.icon }));
 
             // console.log(`[API INFO] /api/guilds: Found ${availableGuilds.length} available guilds`);
             const subInfo = await getSubscriptionInfo(availableGuilds[0]?.id, session.user.id);
@@ -288,11 +277,11 @@ export async function handleApiRoute(req, res, pathname, url) {
                             ]);
                         } catch (e) {}
                     }
-                    // Fetch member to check timeout status
+                    // Fetch member to check timeout status (Try cache first)
                     let member = null;
                     if (guild) {
                         try {
-                            member = await guild.members.fetch(row.user_id).catch(() => null);
+                            member = guild.members.cache.get(row.user_id) || await guild.members.fetch(row.user_id).catch(() => null);
                         } catch (e) {}
                     }
 
@@ -519,7 +508,7 @@ export async function handleApiRoute(req, res, pathname, url) {
                             user = await Promise.race([
                                 client.users.fetch(row.user_id),
                                 new Promise((_, reject) =>
-                                    setTimeout(() => reject(new Error("Timeout")), 500)
+                                    setTimeout(() => reject(new Error("Timeout")), 300)
                                 ),
                             ]);
                         } catch (e) {}
