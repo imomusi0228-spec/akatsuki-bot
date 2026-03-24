@@ -170,11 +170,38 @@ export const FEATURES = {
     },
 };
 
+/**
+ * Normalize tier value from database (handles both numeric IDs and string names)
+ */
+export function normalizeTier(tier) {
+    if (tier === null || tier === undefined) return TIERS.FREE;
+    if (typeof tier === 'number') return tier;
+    
+    const s = String(tier).trim();
+    if (!s) return TIERS.FREE;
+
+    // Direct mapping for common string names found in DB
+    const upper = s.toUpperCase();
+    if (upper === 'ULTIMATE') return TIERS.ULTIMATE;
+    if (upper === 'FREE') return TIERS.FREE;
+    if (upper === 'PRO' || upper === 'PRO_MONTHLY') return TIERS.PRO_MONTHLY;
+    if (upper === 'PRO_YEARLY') return TIERS.PRO_YEARLY;
+    if (upper === 'PRO+' || upper === 'PRO_PLUS_MONTHLY') return TIERS.PRO_PLUS_MONTHLY;
+    if (upper === 'PRO_PLUS_YEARLY') return TIERS.PRO_PLUS_YEARLY;
+    if (upper.includes('TRIAL')) {
+        if (upper.includes('PRO+')) return TIERS.TRIAL_PRO_PLUS;
+        return TIERS.TRIAL_PRO;
+    }
+
+    const n = parseInt(s, 10);
+    return isNaN(n) ? TIERS.FREE : n;
+}
+
 export function getFeatures(guildTier, guildId = null, userTier = null) {
     // Effective tier is the highest of guild tier or user's personal tier (Expert License)
-    // Ensure both are treated as numbers
-    const gTier = Number(guildTier) || 0;
-    const uTier = userTier !== null ? (Number(userTier) || 0) : null;
+    // Ensure both are treated as normalized numbers
+    const gTier = normalizeTier(guildTier);
+    const uTier = userTier !== null ? normalizeTier(userTier) : null;
     
     const effectiveTier = (uTier !== null && uTier > gTier) ? uTier : gTier;
 

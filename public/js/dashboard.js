@@ -396,8 +396,9 @@ async function initDashboard() {
                     if (sub.userTier && sub.guildTier && sub.userTier > sub.guildTier && sub.userTier === 999) {
                         displayName = `Expert: ULTIMATE`;
                     }
+                    // Force ULTIMATE display if tier is 999 regardless of name
                     if (sub.tier === 999 || sub.userTier === 999) {
-                        displayName = sub.userTier === 999 && sub.userTier > sub.guildTier ? "Expert: ULTIMATE" : "ULTIMATE";
+                        displayName = (sub.userTier === 999 && sub.userTier > sub.guildTier) ? "Expert: ULTIMATE" : "ULTIMATE";
                     }
                     planInfo.innerHTML = `${displayName} <span class="muted" style="font-size:10px; font-weight:normal;">${validUntil}</span>`;
                     planInfo.style.color = sub.color || "var(--accent-color)";

@@ -3,7 +3,7 @@ import { dbQuery } from "./db.js";
 import { TIERS } from "./tiers.js";
 import { cache } from "./cache.js";
 import { ENV } from "../config/env.js";
-import { getFeatures, TIER_NAMES, TIER_COLORS } from "./tiers.js";
+import { getFeatures, TIER_NAMES, TIER_COLORS, normalizeTier } from "./tiers.js";
 import { client } from "./client.js";
 
 // Cache for ULTIMATE user IDs to avoid frequent DB lookups
@@ -18,7 +18,7 @@ async function getUltimateUserIds() {
         return ultimateUsersCache.ids;
     }
     try {
-        const res = await dbQuery("SELECT TRIM(user_id) as user_id FROM subscriptions WHERE tier = $1 AND (valid_until IS NULL OR valid_until > NOW())", [TIERS.ULTIMATE]);
+        const res = await dbQuery("SELECT TRIM(user_id) as user_id FROM subscriptions WHERE (tier = $1 OR tier = 'ULTIMATE') AND (valid_until IS NULL OR valid_until > NOW())", [TIERS.ULTIMATE]);
         ultimateUsersCache.ids = new Set(res.rows.map(r => r.user_id));
         ultimateUsersCache.lastFetch = now;
         return ultimateUsersCache.ids;
@@ -48,7 +48,7 @@ export async function getTier(guildId) {
         [guildId]
     );
 
-    let tier = res.rows[0]?.tier ?? TIERS.FREE;
+    let tier = normalizeTier(res.rows[0]?.tier);
 
     // 3. Portable ULTIMATE Check (Owner & Managers) - "Expert License"
     if (tier < TIERS.ULTIMATE) {
@@ -129,7 +129,7 @@ export async function getUserTier(userId) {
     if (res.rows.length > 0) {
         const row = res.rows[0];
         console.log(`[TIER DEBUG] Subscription found for ${cleanUserId}: Tier=${row.tier}`);
-        tier = Number(row.tier);
+        tier = normalizeTier(row.tier);
     } else {
         console.log(`[TIER DEBUG] No subscription found for ${cleanUserId}`);
     }
