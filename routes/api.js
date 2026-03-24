@@ -148,7 +148,13 @@ export async function handleApiRoute(req, res, pathname, url) {
             ).filter(Boolean);
 
             // console.log(`[API INFO] /api/guilds: Found ${availableGuilds.length} available guilds`);
-            resJson({ ok: true, guilds: availableGuilds });
+            const subInfo = await getSubscriptionInfo(availableGuilds[0]?.id, session.user.id);
+            resJson({ 
+                ok: true, 
+                guilds: availableGuilds,
+                planName: subInfo.name,
+                planColor: subInfo.color
+            });
         } catch (e) {
             console.error(`[API ERROR] /api/guilds:`, e.message);
             resJson({ ok: false, error: e.message }, 500);
@@ -304,11 +310,12 @@ export async function handleApiRoute(req, res, pathname, url) {
             );
 
             const subInfo = await getSubscriptionInfo(guildId, session.user.id);
-            console.log(`[DEBUG] /api/stats SUB INFO for gid=${guildId} uid=${session.user.id}:`, JSON.stringify(subInfo));
 
             resJson({
                 ok: true,
                 subscription: subInfo,
+                planName: subInfo.name,
+                planColor: subInfo.color,
                 stats: {
                     summary: {
                         joins: vcRes.rows[0]?.cnt || 0,
@@ -609,8 +616,11 @@ export async function handleApiRoute(req, res, pathname, url) {
 
         try {
             // Automatic Timeout Release Logic
-            const tier = await getTier(body.guild);
-            const features = getFeatures(tier);
+            const [tier, userTier] = await Promise.all([
+                getTier(body.guild),
+                getUserTier(session.user.id)
+            ]);
+            const features = getFeatures(tier, body.guild, userTier);
 
             if (features.autoRelease) {
                 // 1. Find users who were logged for this specific word
@@ -959,8 +969,13 @@ export async function handleApiRoute(req, res, pathname, url) {
         if (!(await verifyGuild(guildId))) return resJson({ ok: false, error: "Forbidden" }, 403);
 
         // Check Tier
-        const tier = await getTier(guildId);
-        const features = getFeatures(tier);
+        const [tier, userTier] = await Promise.all([
+            getTier(guildId),
+            getUserTier(session.user.id)
+        ]);
+        const features = getFeatures(tier, guildId, userTier);
+
+        console.log(`[DEBUG] /api/activity: User=${session.user.username} (${session.user.id}), Guild=${guildId}, Tier=${tier}, UserTier=${userTier}, HasAudit=${features.audit}`);
 
         if (!features.audit) {
             res.writeHead(403, { "Content-Type": "application/json" });

@@ -172,7 +172,11 @@ export const FEATURES = {
 
 export function getFeatures(guildTier, guildId = null, userTier = null) {
     // Effective tier is the highest of guild tier or user's personal tier (Expert License)
-    const effectiveTier = (userTier !== null && userTier > guildTier) ? userTier : guildTier;
+    // Ensure both are treated as numbers
+    const gTier = Number(guildTier) || 0;
+    const uTier = userTier !== null ? (Number(userTier) || 0) : null;
+    
+    const effectiveTier = (uTier !== null && uTier > gTier) ? uTier : gTier;
 
     if (effectiveTier === TIERS.ULTIMATE) {
         return { ...FEATURES[TIERS.ULTIMATE], _milestone: 5 };

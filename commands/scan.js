@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags } from "discord.js";
 import { dbQuery } from "../core/db.js";
 import { sendLog } from "../core/logger.js";
-import { getTier } from "../core/subscription.js";
+import { getTier, getUserTier } from "../core/subscription.js";
 import { getFeatures } from "../core/tiers.js";
 import { t } from "../core/i18n.js";
 
@@ -51,7 +51,8 @@ export async function execute(interaction) {
     const guildId = interaction.guild.id;
 
     const tier = await getTier(guildId);
-    const features = getFeatures(tier, guildId, interaction.user.id);
+    const userTier = await getUserTier(interaction.user.id);
+    const features = getFeatures(tier, guildId, userTier);
     if (!features.audit) {
         return interaction.reply({
             content: `❌ ${t("feat_list_pro_plus", locale).replace(/<\/?[^>]+(>|$)/g, "")}\n${t("help_footer", locale)}`,

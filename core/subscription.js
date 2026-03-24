@@ -18,7 +18,7 @@ async function getUltimateUserIds() {
         return ultimateUsersCache.ids;
     }
     try {
-        const res = await dbQuery("SELECT user_id FROM subscriptions WHERE tier = $1 AND (valid_until IS NULL OR valid_until > NOW())", [TIERS.ULTIMATE]);
+        const res = await dbQuery("SELECT TRIM(user_id) as user_id FROM subscriptions WHERE tier = $1 AND (valid_until IS NULL OR valid_until > NOW())", [TIERS.ULTIMATE]);
         ultimateUsersCache.ids = new Set(res.rows.map(r => r.user_id));
         ultimateUsersCache.lastFetch = now;
         return ultimateUsersCache.ids;
@@ -63,15 +63,12 @@ export async function getTier(guildId) {
                             const member = guild.members.cache.get(uid) || await guild.members.fetch(uid).catch(() => null);
                             if (member && (member.permissions.has(PermissionFlagsBits.Administrator) || member.permissions.has(PermissionFlagsBits.ManageGuild))) {
                                 tier = TIERS.ULTIMATE;
-                                console.log(`[SUBSCRIPTION INFO] Portable ULTIMATE found for gid=${guildId} by user=${uid}`);
                                 break;
                             }
                         } catch (_) {}
                     }
                 }
             }
-        } else {
-            console.warn(`[SUBSCRIPTION WARN] Guild not found in cache/fetch for gid=${guildId}`);
         }
     }
 
@@ -103,14 +100,13 @@ export async function getUserTier(userId) {
     if (!userId) return TIERS.FREE;
 
     // Special User ID Check (Environment Variable)
-    if (ENV.SPECIAL_USER_ID && userId === ENV.SPECIAL_USER_ID) return TIERS.ULTIMATE;
+    if (ENV.SPECIAL_USER_ID && userId === ENV.SPECIAL_USER_ID.trim()) return TIERS.ULTIMATE;
 
     const res = await dbQuery(
-        "SELECT tier FROM subscriptions WHERE user_id = $1 AND (valid_until IS NULL OR valid_until > NOW()) ORDER BY tier DESC LIMIT 1",
+        "SELECT tier FROM subscriptions WHERE TRIM(user_id) = $1 AND (valid_until IS NULL OR valid_until > NOW()) ORDER BY tier DESC LIMIT 1",
         [userId]
     );
 
-    console.log(`[DEBUG] getUserTier(${userId}): found ${res.rows.length} rows. First row:`, JSON.stringify(res.rows[0]));
     return res.rows[0]?.tier ?? TIERS.FREE;
 }
 
