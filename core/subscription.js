@@ -40,7 +40,7 @@ export async function getTier(guildId) {
 
     // 1. Database Check (Active Subscription)
     const res = await dbQuery(
-        "SELECT tier FROM subscriptions WHERE guild_id = $1 AND (valid_until IS NULL OR valid_until > NOW()) ORDER BY tier DESC LIMIT 1",
+        "SELECT tier FROM subscriptions WHERE TRIM(guild_id) = TRIM($1) AND (valid_until IS NULL OR valid_until > NOW()) ORDER BY tier DESC LIMIT 1",
         [guildId]
     );
 
@@ -53,6 +53,7 @@ export async function getTier(guildId) {
             // Check Owner
             const ownerTier = await getUserTier(guild.ownerId);
             if (ownerTier === TIERS.ULTIMATE) {
+                console.log(`[TIER DEBUG] Guild ${guildId} is ULTIMATE via Owner ${guild.ownerId}`);
                 tier = TIERS.ULTIMATE;
             } else {
                 // Check if any ULTIMATE user is an administrator
@@ -60,8 +61,11 @@ export async function getTier(guildId) {
                 if (ultimateIds.size > 0) {
                     for (const uid of ultimateIds) {
                         try {
-                            const member = guild.members.cache.get(uid) || await guild.members.fetch(uid).catch(() => null);
+                            // Ensure uid is trimmed (already is from getUltimateUserIds, but just in case)
+                            const cleanUid = String(uid).trim();
+                            const member = guild.members.cache.get(cleanUid) || await guild.members.fetch(cleanUid).catch(() => null);
                             if (member && (member.permissions.has(PermissionFlagsBits.Administrator) || member.permissions.has(PermissionFlagsBits.ManageGuild))) {
+                                console.log(`[TIER DEBUG] Guild ${guildId} is ULTIMATE via Admin ${cleanUid}`);
                                 tier = TIERS.ULTIMATE;
                                 break;
                             }
@@ -97,17 +101,21 @@ export async function getTier(guildId) {
  * Get highest tier associated with a user globally
  */
 export async function getUserTier(userId) {
-    if (!userId) return TIERS.FREE;
+    const cleanUserId = String(userId).trim();
 
     // Special User ID Check (Environment Variable)
-    if (ENV.SPECIAL_USER_ID && userId === ENV.SPECIAL_USER_ID.trim()) return TIERS.ULTIMATE;
+    if (ENV.SPECIAL_USER_ID && cleanUserId === ENV.SPECIAL_USER_ID.trim()) return TIERS.ULTIMATE;
 
     const res = await dbQuery(
         "SELECT tier FROM subscriptions WHERE TRIM(user_id) = $1 AND (valid_until IS NULL OR valid_until > NOW()) ORDER BY tier DESC LIMIT 1",
-        [userId]
+        [cleanUserId]
     );
 
-    return res.rows[0]?.tier ?? TIERS.FREE;
+    const tier = res.rows[0]?.tier ?? TIERS.FREE;
+    if (tier === TIERS.ULTIMATE) {
+        console.log(`[TIER DEBUG] User ${cleanUserId} detected as ULTIMATE`);
+    }
+    return tier;
 }
 
 /**
