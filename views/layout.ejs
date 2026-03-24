@@ -144,11 +144,24 @@
         select,
         textarea {
             padding: 8px 12px;
-            border-radius: 6px;
+            border-radius: 8px;
             border: 1px solid var(--border-color);
-            background: rgba(0, 0, 0, 0.2);
+            background: rgba(0, 0, 0, 0.4);
             color: var(--text-primary);
             font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: var(--accent-color);
+        }
+
+        select option {
+            background-color: var(--card-bg);
+            color: var(--text-primary);
         }
 
         h1,

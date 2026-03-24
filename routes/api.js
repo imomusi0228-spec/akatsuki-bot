@@ -993,15 +993,32 @@ export async function handleApiRoute(req, res, pathname, url) {
 
         // 2. Fetch Activity from member_stats for ALL members
         const activityMap = {};
-        const statsRes = await dbQuery(
-            "SELECT user_id, last_activity_at, total_vc_minutes FROM member_stats WHERE guild_id = $1",
-            [guildId]
-        );
+        const [statsRes, vcJoinRes] = await Promise.all([
+            dbQuery(
+                "SELECT user_id, last_activity_at, total_vc_minutes FROM member_stats WHERE guild_id = $1",
+                [guildId]
+            ),
+            dbQuery(
+                "SELECT user_id, MAX(join_time) as last_vc FROM vc_sessions WHERE guild_id = $1 GROUP BY user_id",
+                [guildId]
+            )
+        ]);
+
         statsRes.rows.forEach((r) => {
             activityMap[r.user_id] = {
                 last_act: r.last_activity_at,
                 total_min: r.total_vc_minutes,
+                last_vc: null
             };
+        });
+
+        // Merge VC Join data
+        vcJoinRes.rows.forEach((r) => {
+            if (!activityMap[r.user_id]) {
+                activityMap[r.user_id] = { last_act: null, total_min: 0, last_vc: r.last_vc };
+            } else {
+                activityMap[r.user_id].last_vc = r.last_vc;
+            }
         });
 
         const introSet = new Set();
@@ -1091,23 +1108,23 @@ export async function handleApiRoute(req, res, pathname, url) {
                 if (m.user.bot) return;
 
                 const inVcNow = m.voice?.channelId;
-                const userStats = activityMap[m.id] || { last_act: null, total_min: 0 };
-                let lastActDate = userStats.last_act;
+                const userStats = activityMap[m.id] || { last_act: null, total_min: 0, last_vc: null };
+                let lastVcDate = userStats.last_vc;
 
                 // If currently in VC, treat as NOW (overrides DB null)
-                if (inVcNow) lastActDate = new Date();
+                if (inVcNow) lastVcDate = new Date();
 
                 const hasRole = settings.audit_role_id
                     ? m.roles.cache.has(settings.audit_role_id)
                     : true;
                 const hasIntro = settings.intro_channel_id ? introSet.has(m.user.id) : true;
 
-                // VC Threshold Check (using last_activity_at as a proxy for 'active')
-                let vcOk = !!(lastActDate || inVcNow);
-                if (vcWeeks > 0 && lastActDate) {
+                // VC Threshold Check (using server-specific VC join time)
+                let vcOk = !!(lastVcDate || inVcNow);
+                if (vcWeeks > 0 && lastVcDate) {
                     const thresholdDate = new Date();
                     thresholdDate.setDate(thresholdDate.getDate() - vcWeeks * 7);
-                    if (new Date(lastActDate) < thresholdDate) vcOk = false;
+                    if (new Date(lastVcDate) < thresholdDate) vcOk = false;
                 }
 
                 // Audit Status Logic:
@@ -1126,7 +1143,7 @@ export async function handleApiRoute(req, res, pathname, url) {
                     avatar_url: m.user.displayAvatarURL(),
                     has_role: hasRole,
                     has_intro: hasIntro,
-                    last_vc: fmtDate(lastActDate),
+                    last_vc: fmtDate(lastVcDate),
                     total_vc_hours: (userStats.total_min / 60).toFixed(1),
                     joined_at: m.joinedAt ? m.joinedAt.toISOString().split("T")[0] : "Unknown",
                     status: status,
