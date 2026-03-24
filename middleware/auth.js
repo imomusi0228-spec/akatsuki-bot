@@ -1,6 +1,6 @@
 import { ENV } from "../config/env.js";
 
-import { dbQuery } from "./db.js";
+import { dbQuery } from "../core/db.js";
 
 // Persistent session store (PostgreSQL)
 // states Map can remain in-memory as they are short-lived (OAuth flow)
