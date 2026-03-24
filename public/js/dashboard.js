@@ -110,6 +110,25 @@ async function loadGuilds(force = false) {
             sel.selectedIndex = selectedIndex;
             _guildsLoaded = true;
 
+            // Dynamic Tier Badge Update
+            const planBadge = document.querySelector(".badge-tier");
+            if (planBadge && d.planName) {
+                planBadge.textContent = d.planName;
+                if (d.planColor) planBadge.style.background = d.planColor;
+                planBadge.style.display = "inline-block";
+            } else if (!planBadge && d.planName && d.planName !== "Free") {
+                // If badge doesn't exist but user has a plan, try to inject it near the username
+                const nameLink = document.querySelector(".username-container") || document.querySelector("span[style*='font-weight: 700']");
+                if (nameLink) {
+                    const badge = document.createElement("span");
+                    badge.className = "badge-tier";
+                    badge.style.background = d.planColor || "var(--primary-color)";
+                    badge.style.marginLeft = "8px";
+                    badge.textContent = d.planName;
+                    nameLink.parentNode.appendChild(badge);
+                }
+            }
+
             // If it was the first time or selection changed, save it
             if (!localStorage.getItem("last_guild_id") || localStorage.getItem("last_guild_id") !== sel.value) {
                 saveGuildSelection();
