@@ -166,7 +166,7 @@ export const FEATURES = {
         introGate: true,
         longTermStats: true,
         aura: true,
-        statsRetentionDays: 9999, // 実質無制限
+        statsRetentionDays: 365,
     },
 };
 
