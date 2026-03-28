@@ -407,5 +407,6 @@
     "cmd_scan_desc": "過去ログのスキャンを実行します（Pro+限定）",
     "help_cat_info": "ℹ️ 情報コマンド",
     "cmd_help_desc": "このヘルプメニューを表示します",
-    "help_footer": "各コマンドの詳細は、管理者にお問い合わせくださいわ。"
+    "help_footer": "各コマンドの詳細は、管理者にお問い合わせくださいわ。",
+    "ai_slowmode_restore_label": "自動復旧時間 (分)"
 }

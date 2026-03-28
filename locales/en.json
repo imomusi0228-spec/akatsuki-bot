@@ -405,5 +405,6 @@
     "cmd_scan_desc": "Scans or restores past message logs (Pro+ only)",
     "help_cat_info": "ℹ️ Information Commands",
     "cmd_help_desc": "Displays this help menu",
-    "help_footer": "For more details on each command, please contact the administrators."
+    "help_footer": "For more details on each command, please contact the administrators.",
+    "ai_slowmode_restore_label": "Auto Restoration Time (min)"
 }
