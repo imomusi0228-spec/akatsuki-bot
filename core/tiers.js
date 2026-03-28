@@ -19,8 +19,8 @@ export const MILESTONES = {
 
 export const TIER_NAMES = {
     [TIERS.FREE]: "Free",
-    [TIERS.PRO_MONTHLY]: "Pro",
-    [TIERS.PRO_YEARLY]: "Pro",
+    [TIERS.PRO_MONTHLY]: "Pro (月額)",
+    [TIERS.PRO_YEARLY]: "Pro (年額)",
     [TIERS.PRO_PLUS_MONTHLY]: "Pro+",
     [TIERS.PRO_PLUS_YEARLY]: "Pro+",
     [TIERS.TRIAL_PRO_PLUS]: "Trial Pro+",
@@ -166,7 +166,7 @@ export const FEATURES = {
         introGate: true,
         longTermStats: true,
         aura: true,
-        statsRetentionDays: 365,
+        statsRetentionDays: 9999, // 実質無制限
     },
 };
 

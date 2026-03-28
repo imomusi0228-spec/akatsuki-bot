@@ -329,3 +329,43 @@ export function recordAvatarJoin(guildId) {
 
     return entry.count >= 3;
 }
+
+// v2.5.0: AI-Driven Auto-Moderation (Slowmode)
+const slowmodeTimers = new Map();
+
+/**
+ * Applies AI-driven slowmode to a channel.
+ * @param {TextChannel} channel 
+ * @param {number} seconds Lowmode duration (e.g., 10s)
+ * @param {number} restoreAfter Restores back to 0/original after X minutes
+ */
+export async function applyAIslowmode(channel, seconds, restoreAfter = 5) {
+    if (!channel || typeof channel.setRateLimitPerUser !== 'function') return;
+
+    try {
+        const original = channel.rateLimitPerUser;
+        if (original >= seconds) return; // Don't lower it if already high
+
+        await channel.setRateLimitPerUser(seconds, "AI Atmosphere Intervention (Heated Discussion detected)");
+        
+        // Clear existing timer if any
+        if (slowmodeTimers.has(channel.id)) {
+            clearTimeout(slowmodeTimers.get(channel.id));
+        }
+
+        const timer = setTimeout(async () => {
+            try {
+                await channel.setRateLimitPerUser(original, "Atmosphere restored (Cool down complete)");
+                slowmodeTimers.delete(channel.id);
+            } catch (e) {
+                console.error(`[PROTECTION] Failed to restore slowmode for ${channel.id}:`, e.message);
+            }
+        }, restoreAfter * 60 * 1000);
+
+        slowmodeTimers.set(channel.id, timer);
+        return true;
+    } catch (e) {
+        console.error(`[PROTECTION] Failed to set slowmode for ${channel.id}:`, e.message);
+        return false;
+    }
+}

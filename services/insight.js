@@ -1,6 +1,8 @@
-import { EmbedBuilder } from "discord.js";
+import { EmbedBuilder, TextChannel } from "discord.js";
 import { dbQuery } from "../core/db.js";
 import { client } from "../core/client.js";
+import { getChannelAtmosphere } from "./sentiment.js";
+import { applyAIslowmode } from "../core/protection.js";
 
 /**
  * サーバー運営アドバイス（インサイト）の定期配信
@@ -118,5 +120,49 @@ async function generateAndSendInsight(guild, settings) {
     if (channel) {
         await channel.send({ embeds: [embed] });
         await dbQuery("UPDATE settings SET ai_insight_last_sent = NOW() WHERE guild_id = $1", [guildId]);
+    }
+}
+
+/**
+ * Real-time Atmosphere Analysis and Automatic Alerting
+ * Detects negative sentiment and triggers intervention.
+ */
+export async function analyzeAtmosphereAndAlert(guildId, channelId) {
+    const res = await dbQuery(
+        "SELECT * FROM settings WHERE guild_id = $1 AND ai_prediction_enabled = TRUE",
+        [guildId]
+    );
+    const settings = res.rows[0];
+    if (!settings) return;
+
+    const score = await getChannelAtmosphere(guildId, channelId);
+    
+    // Threshold: Sentiment score below -0.4 is considered "Heated"
+    if (score <= -0.4) {
+        const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
+        const channel = await guild?.channels.fetch(channelId).catch(() => null);
+        const alertChannelId = settings.ai_predict_channel_id || settings.ai_insight_channel_id;
+
+        if (guild && channel && alertChannelId) {
+            const alertChannel = await guild.channels.fetch(alertChannelId).catch(() => null);
+            
+            // System-style concise alert message
+            const alertEmbed = new EmbedBuilder()
+                .setTitle("[SYSTEM] ATMOSPHERE ALERT")
+                .setDescription(`Extreme negative sentiment detected in <#${channelId}>.\nScore: ${score.toFixed(2)}`)
+                .setColor("#ff5555")
+                .setTimestamp();
+
+            if (alertChannel) {
+                await alertChannel.send({ embeds: [alertEmbed] });
+            }
+
+            // Automatic Intervention (Slowmode)
+            // Default to 10s slowmode, 5m restore if not configured
+            const slowmodeSeconds = 10;
+            const restoreMinutes = settings.ai_slowmode_restore_mins || 5;
+            
+            await applyAIslowmode(channel, slowmodeSeconds, restoreMinutes);
+        }
     }
 }

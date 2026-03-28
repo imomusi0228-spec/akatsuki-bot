@@ -14,7 +14,7 @@ let ultimateUsersCache = {
 
 async function getUltimateUserIds() {
     const now = Date.now();
-    if (now - ultimateUsersCache.lastFetch < 300000) { // 5 min cache
+    if (now - ultimateUsersCache.lastFetch < 600000) { // 10 min cache
         return ultimateUsersCache.ids;
     }
     try {
@@ -69,17 +69,21 @@ export async function getTier(guildId) {
                     // Check if any ULTIMATE user is an administrator
                     const ultimateIds = await getUltimateUserIds();
                     if (ultimateIds.size > 0) {
-                        for (const uid of ultimateIds) {
-                            try {
+                        // Parallel check for performance
+                        const members = await Promise.all(
+                            Array.from(ultimateIds).map(async (uid) => {
                                 const cleanUid = String(uid).trim();
-                                const member = guild.members.cache.get(cleanUid) || await guild.members.fetch(cleanUid).catch(() => null);
-                                if (member && (member.permissions.has(PermissionFlagsBits.Administrator) || member.permissions.has(PermissionFlagsBits.ManageGuild))) {
-                                    console.log(`[TIER DEBUG] Guild ${guildId} is ULTIMATE via Admin ${cleanUid}`);
-                                    tier = TIERS.ULTIMATE;
-                                    cache.setExpertLicense(guildId, true);
-                                    break;
-                                }
-                            } catch (_) {}
+                                return guild.members.fetch(cleanUid).catch(() => null);
+                            })
+                        );
+
+                        for (const member of members) {
+                            if (member && (member.permissions.has(PermissionFlagsBits.Administrator) || member.permissions.has(PermissionFlagsBits.ManageGuild))) {
+                                console.log(`[TIER DEBUG] Guild ${guildId} is ULTIMATE via Admin ${member.id}`);
+                                tier = TIERS.ULTIMATE;
+                                cache.setExpertLicense(guildId, true);
+                                break;
+                            }
                         }
                     }
                 }

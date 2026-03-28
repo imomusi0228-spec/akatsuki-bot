@@ -1486,6 +1486,7 @@ async function initAiPage() {
                 if ($("aiPredictionEnabled"))
                     $("aiPredictionEnabled").checked = !!s.ai_prediction_enabled;
                 if ($("aiPredictCh")) $("aiPredictCh").value = s.ai_predict_channel_id || "";
+                if ($("aiSlowmodeRestore")) $("aiSlowmodeRestore").value = s.ai_slowmode_restore_mins || 5;
             } else if (res.error) {
                 showPageError(res.error);
             }
@@ -1513,9 +1514,10 @@ async function initAiPage() {
                 ai_insight_enabled: $("aiInsightEnabled")?.checked || false,
                 ai_insight_channel_id: $("aiInsightCh")?.value || "",
                 insight_sections: sections,
-                ai_prediction_enabled: $("aiPredictionEnabled")?.checked || false,
-                ai_predict_channel_id: $("aiPredictCh")?.value || "",
-            };
+                 ai_prediction_enabled: $("aiPredictionEnabled")?.checked || false,
+                 ai_predict_channel_id: $("aiPredictCh")?.value || "",
+                 ai_slowmode_restore_mins: parseInt($("aiSlowmodeRestore")?.value || 5),
+             };
             const res = await api("/api/settings/update", body);
             if (res.ok) alert(t("save_success"));
             else alert("Error: " + res.error);

@@ -14,6 +14,7 @@ import {
     checkCrossUserMentionSpam,
 } from "../core/protection.js";
 import { sendLog } from "../core/logger.js";
+import { analyzeAtmosphereAndAlert } from "../services/insight.js";
 
 export default {
     name: Events.MessageCreate,
@@ -312,6 +313,14 @@ export default {
                         await message.member.roles.add(rule.role_id).catch(() => null);
                     }
                 }
+            }
+
+            // 7. AI Atmosphere Analysis (Async Background)
+            if (settings.ai_prediction_enabled) {
+                // Don't await this to keep the bot responsive
+                analyzeAtmosphereAndAlert(guildId, message.channel.id).catch(e => {
+                    console.error("[AI] Background analysis failed:", e.message);
+                });
             }
         } catch (e) {
             console.error("[EVENT ERROR] messageCreate:", e.message);
