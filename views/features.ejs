@@ -386,6 +386,81 @@
         padding: 12px 24px;
         border-bottom: 2px solid var(--border-color);
     }
+
+    /* Toggle Switch Style */
+    .billing-toggle-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 15px;
+        margin-bottom: 40px;
+        font-weight: bold;
+    }
+
+    .toggle-label {
+        color: #8899a6;
+        transition: 0.3s;
+        cursor: pointer;
+    }
+
+    .toggle-label.active {
+        color: #fff;
+    }
+
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 26px;
+    }
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(136, 153, 166, 0.3);
+        transition: .4s;
+        border-radius: 34px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+    input:checked + .slider {
+        background-color: var(--primary-color);
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(24px);
+    }
+
+    .save-badge {
+        background: rgba(22, 163, 74, 0.2);
+        color: #4ade80;
+        font-size: 12px;
+        padding: 2px 8px;
+        border-radius: 10px;
+        margin-left: 8px;
+        vertical-align: middle;
+    }
 </style>
 
 <div style="text-align:center; padding: 60px 20px 20px;">
@@ -394,12 +469,25 @@
         <%= t("features_title") %>
     </h1>
     <p
-        style="font-size: 18px; color: #8899a6; margin-bottom: 50px; max-width: 650px; margin-left: auto; margin-right: auto; line-height: 1.6;">
+        style="font-size: 18px; color: #8899a6; margin-bottom: 30px; max-width: 650px; margin-left: auto; margin-right: auto; line-height: 1.6;">
         <%= t("features_subtitle") %>
     </p>
+
+    <!-- Pricing Toggle -->
+    <div class="billing-toggle-container">
+        <span id="label-monthly" class="toggle-label active"><%= t("billing_monthly") %></span>
+        <label class="switch">
+            <input type="checkbox" id="billing-toggle">
+            <span class="slider"></span>
+        </label>
+        <span id="label-yearly" class="toggle-label">
+            <%= t("billing_yearly") %>
+            <span class="save-badge"><%= t("save_two_months") %></span>
+        </span>
+    </div>
 </div>
 
-<!-- ===== プラン比較カード (v2.9.1) ===== -->
+<!-- ===== プラン比較カード (v3.0.0) ===== -->
 <div class="plan-grid">
     <!-- Free Tier -->
     <div class="plan-card">
@@ -425,7 +513,8 @@
         <h3 style="font-size: 24px; margin-bottom: 10px;">
             <%= t("plan_pro") %>
         </h3>
-        <div class="plan-price">¥680<span style="font-size: 14px; opacity: 0.6; margin-left: 4px;">
+        <div class="plan-price">
+            <span class="price-val" data-monthly="<%= t("price_pro_monthly") %>" data-yearly="<%= t("price_pro_yearly") %>"><%= t("price_pro_monthly") %></span><span class="period-label" style="font-size: 14px; opacity: 0.6; margin-left: 4px;">
                 <%= t("period_month") %>
             </span></div>
         <ul class="feature-summary">
@@ -442,7 +531,8 @@
         <h3 style="font-size: 24px; margin-bottom: 10px;">
             <%= t("plan_pro_plus") %>
         </h3>
-        <div class="plan-price">¥1,800<span style="font-size: 14px; opacity: 0.6; margin-left: 4px;">
+        <div class="plan-price">
+            <span class="price-val" data-monthly="<%= t("price_pro_plus_monthly") %>" data-yearly="<%= t("price_pro_plus_yearly") %>"><%= t("price_pro_plus_monthly") %></span><span class="period-label" style="font-size: 14px; opacity: 0.6; margin-left: 4px;">
                 <%= t("period_month") %>
             </span>
         </div>
@@ -472,6 +562,32 @@
         </a>
     </div>
 </div>
+
+<script>
+    document.getElementById('billing-toggle').addEventListener('change', function(e) {
+        const isYearly = e.target.checked;
+        const prices = document.querySelectorAll('.price-val');
+        const periods = document.querySelectorAll('.period-label');
+        const labelMonthly = document.getElementById('label-monthly');
+        const labelYearly = document.getElementById('label-yearly');
+
+        if (isYearly) {
+            labelMonthly.classList.remove('active');
+            labelYearly.classList.add('active');
+        } else {
+            labelMonthly.classList.add('active');
+            labelYearly.classList.remove('active');
+        }
+
+        prices.forEach(p => {
+            p.innerText = isYearly ? p.getAttribute('data-yearly') : p.getAttribute('data-monthly');
+        });
+
+        periods.forEach(p => {
+            p.innerText = isYearly ? '<%= t("period_year") %>' : '<%= t("period_month") %>';
+        });
+    });
+</script>
 
 <div class="notice-container">
     <h2

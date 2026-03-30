@@ -1,13 +1,13 @@
 # Replit デプロイ & 常時稼働ガイド
 
-このボットを Replit で 24時間稼働させるための手順書だ。
+このボットを Replit で 24時間稼働させるための手順書です。
 
 ## 1. Replit へのインポート
-1. Replit にログインし、**Create Repl** > **Import from GitHub** を選択する。
-2. このリポジトリの URL を入力してインポートしろ。
+1. Replit にログインし、**Create Repl** > **Import from GitHub** を選択します。
+2. このリポジトリの URL を入力してインポートしてください。
 
 ## 2. 環境変数（Secrets）の設定
-Replit の **Tools** > **Secrets** から、以下の変数を設定するんだ。
+Replit の **Tools** > **Secrets** から、以下の変数を設定してください。
 - `CLIENT_SECRET`: Discord OAuth2 Client Secret
 - `PUBLIC_URL`: 外部アクセスのための完全なURL (例: `https://akatsukibot.duckdns.org`)
 - `MANAGEMENT_API_URL`: 管理用APIのURL
@@ -17,12 +17,12 @@ Replit の **Tools** > **Secrets** から、以下の変数を設定するんだ
 ## 🚀 構成別デプロイガイド
 
 ### 1. Oracle Cloud VM (OCI) + PM2 [推奨]
-お嬢が提供してくれた「完全手順」に基づいた、最も安定した運用方法だ。
+安定した運用環境として推奨される構成です。
 
 #### サーバー接続
 ```bash
-# お嬢の環境でのキーの場所はここだ: "C:\Users\dansy\Downloads\ssh-key-2026-03-13.key"
-ssh -i "C:\Users\dansy\Downloads\ssh-key-2026-03-13.key" ubuntu@138.2.24.2
+# SSHキーの場所を指定して接続:
+ssh -i "path/to/your/ssh-key.key" ubuntu@your-server-ip
 ```
 
 #### 環境構築 (Node.js 20.x)
@@ -43,14 +43,14 @@ pm2 startup
 pm2 save
 ```
 
-#### 更新手順（お嬢専用・コピペ用）
-このコマンドを自分のPCのターミナルで叩けば、一発で更新が終わるようにしておいたよ。
+#### 更新手順（コマンドライン用）
+以下のコマンドを実行することで、サーバー上のボットを最新の状態に更新し、再起動できます。
 ```bash
-# ファイルの転送（必要なら）
-scp -i "C:\Users\dansy\Downloads\ssh-key-2026-03-13.key" .env ubuntu@138.2.24.2:~/akatsuki-bot/.env
+# ファイルの転送（必要に応じて）
+scp -i "path/to/your/ssh-key.key" .env ubuntu@your-server-ip:~/akatsuki-bot/.env
 
 # サーバーでの更新と再起動
-ssh -i "C:\Users\dansy\Downloads\ssh-key-2026-03-13.key" ubuntu@138.2.24.2 "cd ~/akatsuki-bot && git pull && npm install && pm2 restart all"
+ssh -i "path/to/your/ssh-key.key" ubuntu@your-server-ip "cd ~/akatsuki-bot && git pull && npm install && pm2 restart all"
 ```
 
 ### 2. Replit
@@ -59,4 +59,4 @@ ssh -i "C:\Users\dansy\Downloads\ssh-key-2026-03-13.key" ubuntu@138.2.24.2 "cd ~
 3. `Run` ボタンで起動。
 
 ### 3. Railway / Render
-`Procfile` を使用してデプロイされる。管理画面で環境変数を設定しろ。
+`Procfile` を使用してデプロイされます。各サービスの管理画面で環境変数を設定してください。

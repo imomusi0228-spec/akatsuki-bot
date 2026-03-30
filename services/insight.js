@@ -110,7 +110,7 @@ async function generateAndSendInsight(guild, settings) {
 
     const embed = new EmbedBuilder()
         .setTitle("📊 戦略的サーバー・インサイト報告")
-        .setDescription(`お嬢様、今週の分析が完了いたしました。ご査収ください。\n\n${advice}`)
+        .setDescription(`今週のサーバー分析レポートが完了しました。以下の内容をご確認ください。\n\n${advice}`)
         .addFields(...fields)
         .setColor("#bb9af7")
         .setFooter({ text: "AkatsukiBot AI Strategy Engine" })

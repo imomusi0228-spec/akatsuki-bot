@@ -60,7 +60,7 @@ export async function execute(interaction) {
         .setFooter({
             text:
                 locale === "ja"
-                    ? "※お嬢の指示により、管理コマンドはこちらに統合されました。"
+                    ? "※管理機能の統合に伴い、各種設定コマンドはこちらに集約されました。"
                     : "Admin features are unified here as per instructions.",
         });
 

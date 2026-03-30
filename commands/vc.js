@@ -79,7 +79,7 @@ export async function execute(interaction) {
         return interaction.reply({
             content:
                 locale === "ja"
-                    ? "❌ VCに入室した状態で実行してくださいわ。"
+                    ? "❌ ボイスチャンネルに入室した状態で実行してください。"
                     : "❌ Please execute this command while you are in a voice channel.",
             ephemeral: true,
         });
@@ -90,7 +90,7 @@ export async function execute(interaction) {
         return interaction.reply({
             content:
                 locale === "ja"
-                    ? "❌ このVCは自動生成されたものではないため、操作できませんわ。"
+                    ? "❌ このVCは自動生成されたものではないため、操作できません。"
                     : "❌ This channel is not an auto-generated VC and cannot be modified.",
             ephemeral: true,
         });
@@ -103,7 +103,7 @@ export async function execute(interaction) {
         return interaction.reply({
             content:
                 locale === "ja"
-                    ? "❌ お嬢様の許可なく、他人の部屋を弄ろうとするなんて……あなたはここの「主（オーナー）」ではありませんわ。"
+                    ? "❌ あなたはこの部屋のオーナー（作成者）ではないため、設定を変更できません。"
                     : "❌ You are not the owner of this room. Only the owner or staff can modify it.",
             ephemeral: true,
         });
@@ -118,7 +118,7 @@ export async function execute(interaction) {
             return interaction.reply({
                 content:
                     locale === "ja"
-                        ? `✅ チャンネル名を **${newName}** に変更しましたわ。`
+                        ? `✅ チャンネル名を **${newName}** に変更しました。`
                         : `✅ Changed channel name to **${newName}**.`,
                 ephemeral: true,
             });
@@ -138,7 +138,7 @@ export async function execute(interaction) {
             return interaction.reply({
                 content:
                     locale === "ja"
-                        ? `✅ 人数制限を **${limitTxt}** に変更しましたわ。`
+                        ? `✅ 人数制限を **${limitTxt}** に変更しました。`
                         : `✅ Changed user limit to **${limitTxt}**.`,
                 ephemeral: true,
             });
@@ -150,7 +150,7 @@ export async function execute(interaction) {
                 return interaction.reply({
                     content:
                         locale === "ja"
-                            ? "❌ ロボットに主の座を譲るなんて、正気ですか？"
+                            ? "❌ ボットにオーナー権限を譲渡することはできません。"
                             : "❌ Are you seriously planning to transfer ownership to a bot?",
                     ephemeral: true,
                 });
@@ -164,7 +164,7 @@ export async function execute(interaction) {
             return interaction.reply({
                 content:
                     locale === "ja"
-                        ? `👑 <@${targetUser.id}> さんにこの部屋の主（オーナー）権限を譲渡しましたわ。`
+                        ? `👑 <@${targetUser.id}> さんにこの部屋のオーナー権限を譲渡しました。`
                         : `👑 Transferred ownership to <@${targetUser.id}>.`,
             });
         }
@@ -173,7 +173,7 @@ export async function execute(interaction) {
         return interaction.reply({
             content:
                 locale === "ja"
-                    ? "❌ 申し訳ありません。技術的な問題で操作に失敗しましたわ。"
+                    ? "❌ 申し訳ありません。技術的な問題で操作に失敗しました。"
                     : "❌ Sorry, an error occurred while processing your request.",
             ephemeral: true,
         });
