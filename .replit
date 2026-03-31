@@ -1,8 +1,0 @@
-run = "npm start"
-entrypoint = "index.js"
-
-[nix]
-channel = "stable-23_11"
-
-[interpreter]
-py3 = "python3"
