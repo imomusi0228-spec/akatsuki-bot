@@ -91,6 +91,7 @@ export async function initDb() {
         `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ticket_panel_title TEXT;`,
         `ALTER TABLE settings ADD COLUMN IF NOT EXISTS ticket_panel_desc TEXT;`,
         `ALTER TABLE settings ADD COLUMN IF NOT EXISTS antinuke_flags JSONB DEFAULT '{"ban":true,"kick":true,"channel_delete":true,"role_delete":true,"guild_update":true,"bot_add":true,"webhook_create":true}';`,
+        `ALTER TABLE settings ADD COLUMN IF NOT EXISTS antinuke_threshold INTEGER DEFAULT 5;`,
     ];
 
     const indexes = [

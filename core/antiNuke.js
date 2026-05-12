@@ -45,7 +45,7 @@ export async function checkAntiNuke(guild, entry) {
     const flags = settings.antinuke_flags || {};
     if (flags[actionKey] === false) return false;
 
-    const threshold = 5; // 5回
+    const threshold = settings.antinuke_threshold || 5; // 設定値またはデフォルト5回
     const timeWindow = 10000; // 10秒
 
     if (!antiNukeCache.has(guildId)) {

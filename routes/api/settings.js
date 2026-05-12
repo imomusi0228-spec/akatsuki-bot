@@ -41,7 +41,8 @@ export async function handleSettingsRoutes(req, res, pathname, url, session) {
                     welcome_enabled, welcome_channel_id, welcome_message,
                     farewell_enabled, farewell_channel_id, farewell_message,
                     mod_log_channel_id, mod_log_flags,
-                    ticket_panel_title, ticket_panel_desc, antinuke_flags
+                    ticket_panel_title, ticket_panel_desc, antinuke_flags,
+                    antinuke_threshold
                 FROM settings 
                 WHERE guild_id = $1
             `, [guildId]);
@@ -82,7 +83,7 @@ export async function handleSettingsRoutes(req, res, pathname, url, session) {
                 "warn_action", "leaderboard_enabled", "levelup_enabled", "levelup_channel_id",
                 "welcome_enabled", "welcome_channel_id", "welcome_message", "farewell_enabled",
                 "farewell_channel_id", "farewell_message", "mod_log_channel_id", "mod_log_flags",
-                "ticket_panel_title", "ticket_panel_desc", "antinuke_flags"
+                "ticket_panel_title", "ticket_panel_desc", "antinuke_flags", "antinuke_threshold"
             ];
 
             const keys = Object.keys(body).filter((k) => allowedFields.includes(k));
