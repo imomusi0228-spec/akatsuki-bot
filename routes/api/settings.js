@@ -41,7 +41,7 @@ export async function handleSettingsRoutes(req, res, pathname, url, session) {
                     welcome_enabled, welcome_channel_id, welcome_message,
                     farewell_enabled, farewell_channel_id, farewell_message,
                     mod_log_channel_id, mod_log_flags,
-                    ticket_panel_title, ticket_panel_desc
+                    ticket_panel_title, ticket_panel_desc, antinuke_flags
                 FROM settings 
                 WHERE guild_id = $1
             `, [guildId]);
@@ -82,7 +82,7 @@ export async function handleSettingsRoutes(req, res, pathname, url, session) {
                 "warn_action", "leaderboard_enabled", "levelup_enabled", "levelup_channel_id",
                 "welcome_enabled", "welcome_channel_id", "welcome_message", "farewell_enabled",
                 "farewell_channel_id", "farewell_message", "mod_log_channel_id", "mod_log_flags",
-                "ticket_panel_title", "ticket_panel_desc"
+                "ticket_panel_title", "ticket_panel_desc", "antinuke_flags"
             ];
 
             const keys = Object.keys(body).filter((k) => allowedFields.includes(k));
@@ -90,8 +90,8 @@ export async function handleSettingsRoutes(req, res, pathname, url, session) {
 
             const values = keys.map((k) => {
                 const val = body[k];
-                if (["vc_role_rules", "domain_blacklist", "insight_sections", "mod_log_flags"].includes(k)) {
-                    return JSON.stringify(val || []);
+                if (["vc_role_rules", "domain_blacklist", "insight_sections", "mod_log_flags", "antinuke_flags"].includes(k)) {
+                    return JSON.stringify(val || {});
                 }
                 return val;
             });

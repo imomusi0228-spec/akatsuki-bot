@@ -13,12 +13,23 @@ const DESTRUCTIVE_ACTIONS = [
     AuditLogEvent.WebhookCreate
 ];
 
+const ACTION_MAP = {
+    [AuditLogEvent.MemberBanAdd]: "ban",
+    [AuditLogEvent.MemberKick]: "kick",
+    [AuditLogEvent.ChannelDelete]: "channel_delete",
+    [AuditLogEvent.RoleDelete]: "role_delete",
+    [AuditLogEvent.GuildUpdate]: "guild_update",
+    [AuditLogEvent.BotAdd]: "bot_add",
+    [AuditLogEvent.WebhookCreate]: "webhook_create"
+};
+
 /**
  * サーバー破壊対策モジュール (Anti-Nuke)
  * 指定時間内に一定回数以上の破壊的アクションを行ったユーザーから権限を剥奪する。
  */
 export async function checkAntiNuke(guild, entry) {
-    if (!DESTRUCTIVE_ACTIONS.includes(entry.action)) return false;
+    const actionKey = ACTION_MAP[entry.action];
+    if (!actionKey) return false;
 
     // Bot自身のアクションは無視
     if (entry.executor.id === guild.client.user.id) return false;
@@ -28,8 +39,11 @@ export async function checkAntiNuke(guild, entry) {
 
     // 設定チェック
     let settings = cache.getSettings(guildId) || {};
-    // デフォルトで無効の場合は早期リターン (antiraid_enabled などと連携するか、独自のフラグを設ける)
     if (!settings.antiraid_enabled) return false;
+
+    // 特定のアクションが有効かチェック
+    const flags = settings.antinuke_flags || {};
+    if (flags[actionKey] === false) return false;
 
     const threshold = 5; // 5回
     const timeWindow = 10000; // 10秒
