@@ -1198,8 +1198,73 @@ window.addNg = async () => {
     }
 };
 
-// Tickets Page Logic
-window.initTicketsPage = async () => {
+    // B-10: カテゴリ一覧読み込み
+    window.loadCategories = async () => {
+        const gid = window.getGuildId();
+        const list = document.getElementById("categoryList");
+        if (!gid || !list) return;
+        const r = await api(`/api/ticket-categories?guild=${gid}`);
+        if (!r.ok) {
+            list.innerHTML = `<div class="muted" style="text-align:center; padding:15px;">履歴を読み込めませんでした</div>`;
+            return;
+        }
+        if (r.categories.length === 0) {
+            list.innerHTML = `<div class="muted" style="text-align:center; padding:15px;">カテゴリが設定されていません</div>`;
+        } else {
+            list.innerHTML = r.categories
+                .map(
+                    (c) => `
+                <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid var(--border-color);">
+                    <span style="font-size:22px;">${escapeHTML(c.emoji || "🎫")}</span>
+                    <div style="flex:1;">
+                        <div style="font-weight:600; font-size:13px;">${escapeHTML(c.name)}</div>
+                        <div class="muted" style="font-size:11px;">${escapeHTML(c.description || "")}</div>
+                    </div>
+                    <button onclick="deleteCategory(${c.id})" class="btn" style="padding:3px 10px; font-size:11px; background:rgba(244,33,46,0.1); color:#f4212e; border-color:rgba(244,33,46,0.3);">削除</button>
+                </div>
+            `
+                )
+                .join("");
+        }
+    };
+
+    // B-10: カテゴリ追加
+    window.addTicketCategory = async () => {
+        const gid = window.getGuildId();
+        const name = document.getElementById("newCategoryName")?.value?.trim();
+        if (!gid || !name) return alert("カテゴリ名を入力してください");
+        const r = await api(
+            "/api/ticket-categories",
+            {
+                guild: gid,
+                name,
+                emoji: document.getElementById("newCategoryEmoji")?.value?.trim() || "🎫",
+                description: document.getElementById("newCategoryDesc")?.value?.trim() || "",
+            },
+            "POST"
+        );
+        if (r.ok) {
+            document.getElementById("newCategoryName").value = "";
+            document.getElementById("newCategoryDesc").value = "";
+            window.loadCategories();
+        } else alert("Error: " + r.error);
+    };
+
+    // B-10: カテゴリ削除
+    window.deleteCategory = async (id) => {
+        const gid = window.getGuildId();
+        if (!confirm("このカテゴリを削除しますか？")) return;
+        const r = await api("/api/ticket-categories", { guild: gid, id }, "DELETE");
+        if (r.ok) window.loadCategories();
+        else alert("Error: " + r.error);
+    };
+
+    window.getGuildId = () => {
+        return document.getElementById("globalGuildSelect")?.value || null;
+    };
+
+    // Tickets Page Logic
+    window.initTicketsPage = async () => {
     window.__pageReload = async () => {
         saveGuildSelection();
         const gid = $("globalGuildSelect")?.value;
@@ -1265,7 +1330,7 @@ window.initTicketsPage = async () => {
     window.__pageReload();
 
     // カテゴリ読み込み
-    if (typeof loadCategories === "function") loadCategories();
+    if (typeof window.loadCategories === "function") window.loadCategories();
 
     // チケット設定保存
     const saveBtn = $("saveTicketSettings");

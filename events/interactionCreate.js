@@ -117,21 +117,17 @@ export default {
                         [guildId]
                     );
                     const settings = settingsRes.rows[0];
-                    const channel = await interaction.guild.channels.create({
-                        name: `ticket-${interaction.user.username}`,
-                        type: ChannelType.GuildText,
-                        permissionOverwrites: [
-                            { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-                            {
-                                id: interaction.user.id,
-                                allow: [
-                                    PermissionFlagsBits.ViewChannel,
-                                    PermissionFlagsBits.SendMessages,
-                                    PermissionFlagsBits.AttachFiles,
-                                ],
-                            },
-                        ],
+
+                    // Create Private Thread instead of Channel
+                    const channel = await interaction.channel.threads.create({
+                        name: `チケット-${interaction.user.username}`,
+                        autoArchiveDuration: 1440,
+                        type: ChannelType.PrivateThread,
+                        reason: `Ticket created by ${interaction.user.tag}`,
                     });
+
+                    // Add user to thread manually
+                    await channel.members.add(interaction.user.id);
                     await dbQuery(
                         "INSERT INTO tickets (guild_id, channel_id, user_id, status) VALUES ($1, $2, $3, 'open')",
                         [guildId, channel.id, interaction.user.id]
@@ -286,24 +282,19 @@ export default {
                     );
                     const settings = settingsRes.rows[0];
                     
-                    const prefix = category.name.toLowerCase().replace(/[^a-z0-9_-]/g, "");
-                    const safePrefix = prefix.length > 0 ? prefix : "ticket";
+                    const prefix = category.name.substring(0, 20); // Limit prefix length
+                    const safePrefix = prefix.length > 0 ? prefix : "チケット";
 
-                    const channel = await interaction.guild.channels.create({
+                    // Create Private Thread instead of Channel
+                    const channel = await interaction.channel.threads.create({
                         name: `${safePrefix}-${interaction.user.username}`,
-                        type: ChannelType.GuildText,
-                        permissionOverwrites: [
-                            { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-                            {
-                                id: interaction.user.id,
-                                allow: [
-                                    PermissionFlagsBits.ViewChannel,
-                                    PermissionFlagsBits.SendMessages,
-                                    PermissionFlagsBits.AttachFiles,
-                                ],
-                            },
-                        ],
+                        autoArchiveDuration: 1440,
+                        type: ChannelType.PrivateThread,
+                        reason: `Ticket (${category.name}) created by ${interaction.user.tag}`,
                     });
+
+                    // Add user to thread manually
+                    await channel.members.add(interaction.user.id);
                     
                     await dbQuery(
                         "INSERT INTO tickets (guild_id, channel_id, user_id, status, category_id) VALUES ($1, $2, $3, 'open', $4)",

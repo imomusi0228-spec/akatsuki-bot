@@ -4,7 +4,7 @@ import path from "node:path";
 import { ENV, BASE_REDIRECT_URI } from "../config/env.js";
 import { client } from "./client.js";
 import { handleAuthRoute } from "../routes/auth.js";
-import { handleApiRoute } from "../routes/api.js";
+import { handleApiRoute } from "../routes/api/index.js";
 import { handleAdminRoute } from "../routes/admin.js";
 import { renderLandingHTML, renderFeaturesHTML } from "../services/views.js";
 

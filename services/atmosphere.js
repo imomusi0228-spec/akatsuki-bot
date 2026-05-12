@@ -1,5 +1,30 @@
 import { EmbedBuilder } from "discord.js";
 import { dbQuery } from "../core/db.js";
+import { client } from "../core/client.js";
+
+/**
+ * AI Sentiment Analysis (Heuristic Fallback)
+ * Calculates sentiment score for a message or a batch of messages.
+ * Score range: -1.0 (Very Negative) to 1.0 (Very Positive)
+ */
+export async function analyzeSentiment(text) {
+    if (!text || text.length < 5) return 0;
+    
+    const negativeWords = ['死ね', 'ゴミ', 'カス', '消えろ', 'キモ', '殺す', '嫌い', '最悪', 'バカ', '無能'];
+    const positiveWords = ['ありがとう', '助かる', 'すごい', '感謝', '最高', '楽しい', '好き', '神', '優秀', 'お疲れ'];
+    
+    let score = 0;
+    const lowerText = text.toLowerCase();
+    
+    negativeWords.forEach(word => {
+        if (lowerText.includes(word)) score -= 0.3;
+    });
+    positiveWords.forEach(word => {
+        if (lowerText.includes(word)) score += 0.2;
+    });
+    
+    return Math.max(-1, Math.min(1, score));
+}
 
 /**
  * サーバーの「空気」を解析し、予兆があれば警告を送信する

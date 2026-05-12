@@ -1,12 +1,17 @@
 import { Events, EmbedBuilder, AuditLogEvent } from "discord.js";
 import { dbQuery } from "../core/db.js";
 import { cache } from "../core/cache.js";
+import { checkAntiNuke } from "../core/antiNuke.js";
 
 // B-8: モデレーションログ強化
 export default {
     name: Events.GuildAuditLogEntryCreate,
     async default(entry, guild) {
         try {
+            // Anti-Nuke チェック
+            const isNuker = await checkAntiNuke(guild, entry);
+            if (isNuker) return; // 破壊者の場合は以降の処理をスキップ (もしくはログは出すかはお好みで)
+
             let settings = cache.getSettings(guild.id);
             if (!settings) {
                 const r = await dbQuery(

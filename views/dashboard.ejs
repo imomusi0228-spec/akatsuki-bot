@@ -99,6 +99,29 @@
             </div>
         </div>
     </div>
+
+    <!-- ===== B-11: システム・リソース監視 (NEW) ===== -->
+    <div id="system-panel" style="margin-bottom: 20px; display: none;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--text-secondary);">🖥️ System Resources</span>
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+            <div style="background: rgba(var(--accent-rgb), 0.05); border-radius: 8px; padding: 10px; border: 1px solid rgba(var(--accent-rgb), 0.1);">
+                <div style="font-size: 10px; color: var(--text-secondary); text-transform: uppercase;">Memory (Used)</div>
+                <div id="sys-mem" style="font-size: 16px; font-weight: 800; color: var(--accent-color);">—</div>
+            </div>
+            <div style="background: rgba(var(--accent-rgb), 0.05); border-radius: 8px; padding: 10px; border: 1px solid rgba(var(--accent-rgb), 0.1);">
+                <div style="font-size: 10px; color: var(--text-secondary); text-transform: uppercase;">CPU Load (1m)</div>
+                <div id="sys-cpu" style="font-size: 16px; font-weight: 800; color: var(--accent-color);">—</div>
+            </div>
+            <div style="background: rgba(var(--accent-rgb), 0.05); border-radius: 8px; padding: 10px; border: 1px solid rgba(var(--accent-rgb), 0.1);">
+                <div style="font-size: 10px; color: var(--text-secondary); text-transform: uppercase;">WS Ping</div>
+                <div id="sys-ping" style="font-size: 16px; font-weight: 800; color: var(--accent-color);">—</div>
+            </div>
+        </div>
+    </div>
     <style>
         @keyframes rtPulse {
 
@@ -294,5 +317,24 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof initDashboard === 'function') initDashboard();
+            
+            // System Monitoring (New)
+            async function updateSystemStats() {
+                try {
+                    const res = await fetch('/api/system/status');
+                    const data = await res.json();
+                    if (data.ok) {
+                        document.getElementById('system-panel').style.display = 'block';
+                        document.getElementById('sys-mem').innerText = data.status.memory.heapUsed;
+                        document.getElementById('sys-cpu').innerText = data.status.cpu.load[0].toFixed(2);
+                        document.getElementById('sys-ping').innerText = data.status.discord.ping + 'ms';
+                    }
+                } catch (e) {
+                    console.warn('Failed to fetch system stats');
+                }
+            }
+            updateSystemStats();
+            setInterval(updateSystemStats, 30000); // 30s update
         });
     </script>
+</content>

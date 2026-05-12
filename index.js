@@ -6,7 +6,6 @@ import { startServer } from "./core/server.js";
 
 import { runEngagementCheck } from "./services/engagement.js";
 import { runInsightCheck } from "./services/insight.js";
-import { runIntroReminder } from "./services/introReminder.js";
 import { runAutoRecoveryCheck } from "./services/antiraidRecovery.js";
 import { cleanupOldData } from "./core/db.js";
 
@@ -37,11 +36,7 @@ const VERSION = "3.0.0";
         cron.default.schedule("0 * * * *", runEngagementCheck);
         cron.default.schedule("0 3 * * *", cleanupOldData);
         cron.default.schedule("0 */2 * * *", runInsightCheck);
-        cron.default.schedule("0 */6 * * *", runIntroReminder);
         cron.default.schedule("*/10 * * * *", runAutoRecoveryCheck);
-
-        const { runAutoUpdateCheck } = await import("./services/autoUpdateNotifier.js");
-        cron.default.schedule("0 21 * * 5", runAutoUpdateCheck);
 
         setTimeout(runAutoRecoveryCheck, 5000);
 
