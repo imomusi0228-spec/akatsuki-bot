@@ -27,7 +27,7 @@ const ACTION_MAP = {
  * サーバー破壊対策モジュール (Anti-Nuke)
  * 指定時間内に一定回数以上の破壊的アクションを行ったユーザーから権限を剥奪する。
  */
-export async function checkAntiNuke(guild, entry) {
+export async function checkAntiNuke(guild, entry, settings = null) {
     const actionKey = ACTION_MAP[entry.action];
     if (!actionKey) return false;
 
@@ -37,12 +37,18 @@ export async function checkAntiNuke(guild, entry) {
     const guildId = guild.id;
     const userId = entry.executor.id;
 
-    // 設定チェック
-    let settings = cache.getSettings(guildId) || {};
+    // 設定チェック (引数にない場合はキャッシュから取得)
+    if (!settings) {
+        settings = cache.getSettings(guildId) || {};
+    }
+    
     if (!settings.antiraid_enabled) return false;
 
     // 特定のアクションが有効かチェック
-    const flags = settings.antinuke_flags || {};
+    const flags = settings.antinuke_flags || {
+        ban: true, kick: true, channel_delete: true, role_delete: true,
+        guild_update: true, bot_add: true, webhook_create: true
+    };
     if (flags[actionKey] === false) return false;
 
     const threshold = settings.antinuke_threshold || 5; // 設定値またはデフォルト5回

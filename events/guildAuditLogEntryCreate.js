@@ -8,19 +8,20 @@ export default {
     name: Events.GuildAuditLogEntryCreate,
     async default(entry, guild) {
         try {
-            // Anti-Nuke チェック
-            const isNuker = await checkAntiNuke(guild, entry);
-            if (isNuker) return; // 破壊者の場合は以降の処理をスキップ (もしくはログは出すかはお好みで)
-
+            // キャッシュの読み込みを先に行う
             let settings = cache.getSettings(guild.id);
             if (!settings) {
                 const r = await dbQuery(
-                    "SELECT mod_log_channel_id, mod_log_flags FROM settings WHERE guild_id = $1",
+                    "SELECT * FROM settings WHERE guild_id = $1",
                     [guild.id]
                 );
                 settings = r.rows[0] || {};
                 cache.setSettings(guild.id, settings);
             }
+
+            // Anti-Nuke チェック (読み込んだ設定を反映)
+            const isNuker = await checkAntiNuke(guild, entry, settings);
+            if (isNuker) return;
 
             const channelId = settings.mod_log_channel_id;
             if (!channelId) return;
