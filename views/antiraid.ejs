@@ -320,6 +320,56 @@
             </div>
         </div>
 
+        <!-- 8. Anti-Nuke (v3.5.0) -->
+        <div class="accordion-item" id="sec-antinuke">
+            <div class="accordion-header" onclick="toggleAccordion('sec-antinuke')">
+                <span>
+                    <%= t("antinuke_title") %>
+                </span>
+                <span>▼</span>
+            </div>
+            <div class="accordion-content">
+                <p class="muted" style="font-size:12px; margin-bottom:15px;">
+                    <%= t("antinuke_desc") %>
+                </p>
+                <div style="margin-bottom:20px;">
+                    <label class="muted">
+                        <%= t("antinuke_threshold_label") %>
+                    </label>
+                    <input id="antinukeThreshold" type="number" value="3" min="1" max="20" style="width:100%; margin-top:5px;">
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <label style="display:flex; align-items:center; cursor:pointer;">
+                        <input type="checkbox" class="antinuke-flag" data-flag="BAN" style="width:18px; height:18px; margin-right:10px;">
+                        <span><%= t("antinuke_flag_ban") %></span>
+                    </label>
+                    <label style="display:flex; align-items:center; cursor:pointer;">
+                        <input type="checkbox" class="antinuke-flag" data-flag="KICK" style="width:18px; height:18px; margin-right:10px;">
+                        <span><%= t("antinuke_flag_kick") %></span>
+                    </label>
+                    <label style="display:flex; align-items:center; cursor:pointer;">
+                        <input type="checkbox" class="antinuke-flag" data-flag="CHANNEL_DELETE" style="width:18px; height:18px; margin-right:10px;">
+                        <span><%= t("antinuke_flag_channel_delete") %></span>
+                    </label>
+                    <label style="display:flex; align-items:center; cursor:pointer;">
+                        <input type="checkbox" class="antinuke-flag" data-flag="ROLE_DELETE" style="width:18px; height:18px; margin-right:10px;">
+                        <span><%= t("antinuke_flag_role_delete") %></span>
+                    </label>
+                    <label style="display:flex; align-items:center; cursor:pointer;">
+                        <input type="checkbox" class="antinuke-flag" data-flag="WEBHOOK_UPDATE" style="width:18px; height:18px; margin-right:10px;">
+                        <span><%= t("antinuke_flag_webhook_update") %></span>
+                    </label>
+                    <label style="display:flex; align-items:center; cursor:pointer;">
+                        <input type="checkbox" class="antinuke-flag" data-flag="GUILD_UPDATE" style="width:18px; height:18px; margin-right:10px;">
+                        <span><%= t("antinuke_flag_guild_update") %></span>
+                    </label>
+                </div>
+                <p class="muted" style="font-size:11px; margin-top:15px; color: var(--accent-color);">
+                    <%= t("antinuke_emergency_notice") %>
+                </p>
+            </div>
+        </div>
+
         <button id="save" class="btn btn-primary" style="width:100%; padding:15px; font-size:18px; margin-top:10px;">
             <%= t("save_fortress_btn") %>
         </button>
@@ -364,6 +414,16 @@
                 if (document.getElementById('antiraidHoneypotChannel')) {
                     document.getElementById('antiraidHoneypotChannel').value = s.antiraid_honeypot_channel_id || "";
                 }
+
+                // Anti-Nuke
+                if (document.getElementById('antinukeThreshold')) {
+                    document.getElementById('antinukeThreshold').value = s.antinuke_threshold || 3;
+                }
+                const flags = s.antinuke_flags || {};
+                document.querySelectorAll('.antinuke-flag').forEach(cb => {
+                    const f = cb.getAttribute('data-flag');
+                    cb.checked = !!flags[f];
+                });
             }
         };
 
@@ -383,7 +443,12 @@
                 domain_blacklist: document.getElementById('domainBlacklist').value.split(',').map(s => s.trim()).filter(s => s),
                 antiraid_auto_recovery_enabled: document.getElementById('antiraidAutoRecovery').checked,
                 antiraid_avatar_scrutiny_enabled: document.getElementById('antiraidAvatarScrutiny').checked,
-                antiraid_honeypot_channel_id: document.getElementById('antiraidHoneypotChannel').value || null
+                antiraid_honeypot_channel_id: document.getElementById('antiraidHoneypotChannel').value || null,
+                antinuke_threshold: parseInt(document.getElementById('antinukeThreshold').value),
+                antinuke_flags: Array.from(document.querySelectorAll('.antinuke-flag')).reduce((acc, cb) => {
+                    acc[cb.getAttribute('data-flag')] = cb.checked;
+                    return acc;
+                }, {})
             };
 
             const res = await api("/api/settings/update", body);

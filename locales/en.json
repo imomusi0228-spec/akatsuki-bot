@@ -414,5 +414,16 @@
     "help_cat_info": "ℹ️ Information Commands",
     "cmd_help_desc": "Displays this help menu",
     "help_footer": "For more details on each command, please contact the administrators.",
-    "ai_slowmode_restore_label": "Auto Restoration Time (min)"
+    "ai_slowmode_restore_label": "Auto Restoration Time (min)",
+    "antinuke_title": "Anti-Nuke Protection",
+    "antinuke_desc": "Detects misuse of administrator permissions (mass BAN, channel deletion, etc.) and immediately strips the perpetrator's roles.",
+    "antinuke_threshold_label": "Destruction Detection Threshold (actions/min)",
+    "antinuke_flags_label": "Monitored Actions",
+    "antinuke_flag_ban": "Mass BAN",
+    "antinuke_flag_kick": "Mass KICK",
+    "antinuke_flag_channel_delete": "Channel Deletion",
+    "antinuke_flag_role_delete": "Role Deletion",
+    "antinuke_flag_webhook_update": "Webhook Create/Update",
+    "antinuke_flag_guild_update": "Server Settings Change",
+    "antinuke_emergency_notice": "*On detection, an emergency DM is sent to the server owner, and all roles are stripped from the executor."
 }

@@ -416,5 +416,16 @@
     "help_cat_info": "ℹ️ 情報コマンド",
     "cmd_help_desc": "このヘルプメニューを表示します",
     "help_footer": "各コマンドの詳細は、サーバー管理者にお問い合わせください。",
-    "ai_slowmode_restore_label": "自動復旧時間 (分)"
+    "ai_slowmode_restore_label": "自動復旧時間 (分)",
+    "antinuke_title": "Anti-Nuke 防衛 (サーバー破壊対策)",
+    "antinuke_desc": "管理者権限の悪用（大量BAN、チャンネル削除など）を検知し、即座に実行者の権限を剥奪します。",
+    "antinuke_threshold_label": "破壊行為判定のしきい値 (回数/分)",
+    "antinuke_flags_label": "監視対象のアクション",
+    "antinuke_flag_ban": "大量BAN",
+    "antinuke_flag_kick": "大量キック",
+    "antinuke_flag_channel_delete": "チャンネル削除",
+    "antinuke_flag_role_delete": "ロール削除",
+    "antinuke_flag_webhook_update": "Webhook作成/更新",
+    "antinuke_flag_guild_update": "サーバー設定変更",
+    "antinuke_emergency_notice": "※検知時、サーバーオーナーへ緊急DMを送信し、実行者のロールを全て剥奪します。"
 }
