@@ -82,14 +82,26 @@ export async function checkAntiNuke(guild, entry) {
                 console.log(`[Anti-Nuke] ${guild.name} にて ${entry.executor.tag} の権限を剥奪しました。`);
                 
                 // ログチャンネルに通知
+                const alertMessage = `🚨 **サーバー破壊対策作動** 🚨\nサーバー「${guild.name}」にて、<@${userId}> (${entry.executor.tag}) が短時間に複数の破壊的アクションを実行したため、付与されているロールを全て剥奪しました。`;
+                
                 const channelId = settings.mod_log_channel_id;
                 if (channelId) {
                     const channel = guild.channels.cache.get(channelId);
                     if (channel) {
-                        await channel.send({
-                            content: `🚨 **サーバー破壊対策作動** 🚨\n<@${userId}> (\`${userId}\`) が短時間に複数の破壊的アクションを実行したため、付与されているロールを全て剥奪しました。`
-                        }).catch(() => {});
+                        await channel.send({ content: alertMessage }).catch(() => {});
                     }
+                }
+
+                // オーナーにDMで通知
+                try {
+                    const owner = await guild.fetchOwner();
+                    if (owner) {
+                        await owner.send({
+                            content: `⚠️ **【重要】緊急防衛アラート** ⚠️\n\nお嬢、大変ですわ！サーバー「${guild.name}」で破壊行為と思われる動きを検知したため、緊急措置として実行者の権限を剥奪しました。\n\n**詳細:**\n- 実行者: <@${userId}> (${entry.executor.tag})\n- 内容: 短時間での連続した破壊的アクション\n- 措置: 全ロールの剥奪\n\n至急、サーバーの状況をご確認くださいませ。`
+                        }).catch(() => console.log(`[Anti-Nuke] Owner DM failed for ${guild.name}`));
+                    }
+                } catch (e) {
+                    console.error("[Anti-Nuke] Failed to fetch owner for DM:", e.message);
                 }
                 
                 return true;
