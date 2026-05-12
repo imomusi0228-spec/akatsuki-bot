@@ -1,7 +1,7 @@
 import { EmbedBuilder } from "discord.js";
 import { dbQuery } from "../core/db.js";
 import { client } from "../core/client.js";
-import { runAtmosphereCheck } from "./ai_moderator.js";
+import { runAtmosphereCheck } from "./atmosphere.js";
 
 /**
  * VCエンゲージメント・チェック
