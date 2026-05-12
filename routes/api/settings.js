@@ -6,7 +6,13 @@ export async function handleSettingsRoutes(req, res, pathname, url, session) {
     const guildId = url.searchParams.get("guild");
     const method = req.method;
 
-    if (!guildId && method === "GET") return resJson(res, { ok: false, error: "Missing guild ID" }, 400);
+    const isSettingsRoute = pathname.startsWith("/api/settings");
+    if (!isSettingsRoute) return false;
+
+    if (!guildId && method === "GET") {
+        resJson(res, { ok: false, error: "Missing guild ID" }, 400);
+        return true;
+    }
 
     // GET /api/settings
     if (pathname === "/api/settings" && method === "GET") {

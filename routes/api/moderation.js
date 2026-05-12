@@ -7,7 +7,13 @@ export async function handleModerationRoutes(req, res, pathname, url, session) {
     const guildId = url.searchParams.get("guild");
     const method = req.method;
 
-    if (!guildId && method === "GET") return resJson(res, { ok: false, error: "Missing guild" }, 400);
+    const isModerationRoute = pathname.startsWith("/api/ngwords") || pathname === "/api/warnings" || pathname === "/api/timeout/release";
+    if (!isModerationRoute) return false;
+
+    if (!guildId && method === "GET") {
+        resJson(res, { ok: false, error: "Missing guild" }, 400);
+        return true;
+    }
 
     // GET /api/ngwords
     if (pathname === "/api/ngwords" && method === "GET") {

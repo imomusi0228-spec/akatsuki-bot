@@ -14,6 +14,7 @@ export function hasManageGuild(permissions, owner = false) {
 export const resJson = (res, data, status = 200) => {
     res.writeHead(status, { "Content-Type": "application/json" });
     res.end(JSON.stringify(data));
+    return true;
 };
 
 export const getBody = async (req) => {

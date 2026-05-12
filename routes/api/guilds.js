@@ -8,6 +8,9 @@ export async function handleGuildRoutes(req, res, pathname, url, session) {
     const guildId = url.searchParams.get("guild");
     const method = req.method;
 
+    const isGuildRoute = pathname === "/api/guilds" || pathname === "/api/channels" || pathname === "/api/roles" || pathname === "/api/roles/members";
+    if (!isGuildRoute) return false;
+
     // GET /api/guilds
     if (pathname === "/api/guilds" && method === "GET") {
         try {

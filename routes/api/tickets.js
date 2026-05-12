@@ -7,7 +7,13 @@ export async function handleTicketRoutes(req, res, pathname, url, session) {
     const guildId = url.searchParams.get("guild");
     const method = req.method;
 
-    if (!guildId && method === "GET") return resJson(res, { ok: false, error: "Missing guild ID" }, 400);
+    const isTicketRoute = pathname.startsWith("/api/tickets") || pathname.startsWith("/api/ticket-categories");
+    if (!isTicketRoute) return false;
+
+    if (!guildId && method === "GET") {
+        resJson(res, { ok: false, error: "Missing guild ID" }, 400);
+        return true;
+    }
 
     // GET /api/tickets
     if (pathname === "/api/tickets" && method === "GET") {

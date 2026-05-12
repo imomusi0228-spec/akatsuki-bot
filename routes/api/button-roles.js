@@ -6,8 +6,10 @@ export async function handleButtonRoleRoutes(req, res, pathname, url, session) {
     const guildId = url.searchParams.get("guild");
     const method = req.method;
 
+    if (pathname !== "/api/button-roles") return false;
+
     // GET /api/button-roles
-    if (pathname === "/api/button-roles" && method === "GET") {
+    if (method === "GET") {
         if (!guildId) return resJson(res, { ok: false, error: "Missing guild ID" }, 400);
         if (!(await verifyGuild(guildId, session))) return resJson(res, { ok: false, error: "Forbidden" }, 403);
         const resDb = await dbQuery("SELECT * FROM button_roles WHERE guild_id = $1 ORDER BY created_at DESC", [guildId]);

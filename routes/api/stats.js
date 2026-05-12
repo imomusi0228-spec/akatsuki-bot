@@ -8,8 +8,17 @@ export async function handleStatsRoutes(req, res, pathname, url, session) {
     const guildId = url.searchParams.get("guild");
     const monthParam = url.searchParams.get("month"); // YYYY-MM
 
-    if (!guildId) return resJson(res, { ok: false, error: "Missing guild ID" }, 400);
-    if (!(await verifyGuild(guildId, session))) return resJson(res, { ok: false, error: "Forbidden" }, 403);
+    const isStatsRoute = pathname.startsWith("/api/stats") || pathname === "/api/realtime-stats";
+    if (!isStatsRoute) return false;
+
+    if (!guildId) {
+        resJson(res, { ok: false, error: "Missing guild ID" }, 400);
+        return true;
+    }
+    if (!(await verifyGuild(guildId, session))) {
+        resJson(res, { ok: false, error: "Forbidden" }, 403);
+        return true;
+    }
 
     // GET /api/stats
     if (pathname === "/api/stats") {
