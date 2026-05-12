@@ -1,7 +1,7 @@
 import { EmbedBuilder, TextChannel } from "discord.js";
 import { dbQuery } from "../core/db.js";
 import { client } from "../core/client.js";
-import { getChannelAtmosphere } from "./sentiment.js";
+import { getChannelAtmosphere } from "./atmosphere.js";
 import { applyAIslowmode } from "../core/protection.js";
 
 /**

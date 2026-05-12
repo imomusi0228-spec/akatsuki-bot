@@ -128,3 +128,31 @@ export async function runAtmosphereCheck(guild, settings) {
         console.log(`[AI-PREDICT] Alert sent for ${guild.name} (Factor: ${unsettlingFactor})`);
     }
 }
+
+/**
+ * Calculates the average sentiment score for the recent messages in a channel.
+ */
+export async function getChannelAtmosphere(guildId, channelId) {
+    try {
+        const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
+        const channel = await guild?.channels.fetch(channelId).catch(() => null);
+        if (!channel || !channel.isTextBased()) return 0;
+
+        const messages = await channel.messages.fetch({ limit: 10 }).catch(() => []);
+        if (messages.size === 0) return 0;
+
+        let totalScore = 0;
+        let count = 0;
+
+        for (const msg of messages.values()) {
+            if (msg.author.bot || !msg.content) continue;
+            totalScore += await analyzeSentiment(msg.content);
+            count++;
+        }
+
+        return count > 0 ? totalScore / count : 0;
+    } catch (e) {
+        console.error("[ATMOSPHERE] Error getting channel atmosphere:", e.message);
+        return 0;
+    }
+}
