@@ -1,7 +1,7 @@
 import { dbQuery } from "../../core/db.js";
 import { getTier, getUserTier } from "../../core/subscription.js";
 import { getFeatures } from "../../core/tiers.js";
-import { resJson, verifyGuild, getSafeGuild, getBody } from "./helpers.js";
+import { resJson, verifyGuild, getSafeGuild, getBody, PERMISSION_LEVELS } from "./helpers.js";
 
 export async function handleModerationRoutes(req, res, pathname, url, session) {
     const guildId = url.searchParams.get("guild");
@@ -52,7 +52,7 @@ export async function handleModerationRoutes(req, res, pathname, url, session) {
     // POST /api/ngwords/clear
     if (pathname === "/api/ngwords/clear" && method === "POST") {
         const body = await getBody(req);
-        if (!(await verifyGuild(body.guild, session))) return resJson(res, { ok: false, error: "Forbidden" }, 403);
+        if (!(await verifyGuild(body.guild, session, PERMISSION_LEVELS.ADMIN))) return resJson(res, { ok: false, error: "Forbidden: Admin access required" }, 403);
         await dbQuery("DELETE FROM ng_words WHERE guild_id = $1", [body.guild]);
         await dbQuery("DELETE FROM ng_logs WHERE guild_id = $1", [body.guild]);
         return resJson(res, { ok: true });

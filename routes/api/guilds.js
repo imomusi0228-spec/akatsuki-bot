@@ -1,4 +1,4 @@
-import { resJson, verifyGuild, getSafeGuild } from "./helpers.js";
+import { resJson, verifyGuild, getSafeGuild, getPermissionLevel } from "./helpers.js";
 import { discordApi } from "../../middleware/auth.js";
 import { cache } from "../../core/cache.js";
 import { client } from "../../core/client.js";
@@ -27,15 +27,27 @@ export async function handleGuildRoutes(req, res, pathname, url, session) {
 
             if (!Array.isArray(userGuilds)) return resJson(res, { ok: false, error: "Failed to fetch guilds" }, 500);
 
-            const managedGuilds = userGuilds.filter(g => {
-                const p = BigInt(g.permissions || "0");
-                return (p & 0x20n) === 0x20n || (p & 0x8n) === 0x8n || g.owner;
-            });
+            const managedGuilds = userGuilds.map(g => {
+                const level = getPermissionLevel(g.permissions, g.owner);
+                return { ...g, level };
+            }).filter(g => g.level >= 2); // 2 = MODERATOR
 
-            const availableGuilds = managedGuilds.filter(g => client.guilds.cache.has(g.id)).map(g => ({ id: g.id, name: g.name, icon: g.icon }));
+            const availableGuilds = managedGuilds.filter(g => client.guilds.cache.has(g.id)).map(g => ({ 
+                id: g.id, 
+                name: g.name, 
+                icon: g.icon,
+                level: g.level
+            }));
+            
             const subInfo = await getSubscriptionInfo(availableGuilds[0]?.id, session.user.id);
 
-            return resJson(res, { ok: true, guilds: availableGuilds, planName: subInfo.name, planColor: subInfo.color });
+            return resJson(res, { 
+                ok: true, 
+                guilds: availableGuilds, 
+                planName: subInfo.name, 
+                planColor: subInfo.color,
+                permissionLevel: availableGuilds[0]?.level || 0
+            });
         } catch (e) {
             console.error("[GUILDS ERROR]", e);
             return resJson(res, { ok: false, error: "Internal Error" }, 500);

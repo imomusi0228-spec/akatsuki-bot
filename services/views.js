@@ -40,6 +40,7 @@ async function renderView(viewName, data, lang) {
         lang,
         TIERS,
         userTier: data.userTier ?? TIERS.FREE,
+        permissionLevel: data.permissionLevel ?? 0,
         t: (key, params) => t(key, lang, params),
     });
 
@@ -51,6 +52,7 @@ async function renderView(viewName, data, lang) {
         TIER_NAMES,
         TIER_COLORS,
         userTier: data.userTier ?? TIERS.FREE,
+        permissionLevel: data.permissionLevel ?? 0,
         dictionary: JSON.stringify(DICTIONARY),
         t: (key, params) => t(key, lang, params),
     });
@@ -72,7 +74,7 @@ export async function renderLoginHTML(req, url) {
     );
 }
 
-export async function renderAdminDashboardHTML({ user, req, url, userTier }) {
+export async function renderAdminDashboardHTML({ user, req, url, userTier, permissionLevel }) {
     const lang = getLang(req, url);
     return await renderView(
         "dashboard",
@@ -80,6 +82,7 @@ export async function renderAdminDashboardHTML({ user, req, url, userTier }) {
             title: t("dashboard", lang),
             user,
             userTier: userTier ?? TIERS.FREE,
+            permissionLevel: permissionLevel ?? 0,
             oauth: true,
             activeTab: "dashboard",
             scripts: "",
@@ -88,7 +91,7 @@ export async function renderAdminDashboardHTML({ user, req, url, userTier }) {
     );
 }
 
-export async function renderAdminSettingsHTML({ user, req, url, userTier }) {
+export async function renderAdminSettingsHTML({ user, req, url, userTier, permissionLevel }) {
     const lang = getLang(req, url);
     return await renderView(
         "settings",
@@ -96,6 +99,7 @@ export async function renderAdminSettingsHTML({ user, req, url, userTier }) {
             title: t("settings", lang),
             user,
             userTier: userTier ?? TIERS.FREE,
+            permissionLevel: permissionLevel ?? 0,
             oauth: true,
             activeTab: "settings",
             scripts: "",
@@ -104,7 +108,7 @@ export async function renderAdminSettingsHTML({ user, req, url, userTier }) {
     );
 }
 
-export async function renderAdminActivityHTML({ user, req, url, userTier }) {
+export async function renderAdminActivityHTML({ user, req, url, userTier, permissionLevel }) {
     const lang = getLang(req, url);
     return await renderView(
         "activity",
@@ -112,6 +116,7 @@ export async function renderAdminActivityHTML({ user, req, url, userTier }) {
             title: t("activity", lang),
             user,
             userTier: userTier ?? TIERS.FREE,
+            permissionLevel: permissionLevel ?? 0,
             oauth: true,
             activeTab: "activity",
             scripts: "",
@@ -153,7 +158,7 @@ export async function renderFeaturesHTML(req, url) {
     );
 }
 
-export async function renderAdminAntiraidHTML({ user, req, url, userTier }) {
+export async function renderAdminAntiraidHTML({ user, req, url, userTier, permissionLevel }) {
     const lang = getLang(req, url);
     return await renderView(
         "antiraid",
@@ -161,6 +166,7 @@ export async function renderAdminAntiraidHTML({ user, req, url, userTier }) {
             title: t("nav_antiraid", lang),
             user,
             userTier: userTier ?? TIERS.FREE,
+            permissionLevel: permissionLevel ?? 0,
             oauth: true,
             activeTab: "antiraid",
             scripts: "",
@@ -169,7 +175,7 @@ export async function renderAdminAntiraidHTML({ user, req, url, userTier }) {
     );
 }
 
-export async function renderAdminTicketsHTML({ user, req, url, userTier }) {
+export async function renderAdminTicketsHTML({ user, req, url, userTier, permissionLevel }) {
     const lang = getLang(req, url);
     return await renderView(
         "tickets",
@@ -177,6 +183,7 @@ export async function renderAdminTicketsHTML({ user, req, url, userTier }) {
             title: t("ticket_mgmt", lang),
             user,
             userTier: userTier ?? TIERS.FREE,
+            permissionLevel: permissionLevel ?? 0,
             oauth: true,
             activeTab: "tickets",
             scripts: "",
@@ -185,7 +192,7 @@ export async function renderAdminTicketsHTML({ user, req, url, userTier }) {
     );
 }
 
-export async function renderAdminBrandingHTML({ user, req, url, userTier }) {
+export async function renderAdminBrandingHTML({ user, req, url, userTier, permissionLevel }) {
     const lang = getLang(req, url);
     return await renderView(
         "branding",
@@ -193,6 +200,7 @@ export async function renderAdminBrandingHTML({ user, req, url, userTier }) {
             title: t("branding", lang),
             user,
             userTier: userTier ?? TIERS.FREE,
+            permissionLevel: permissionLevel ?? 0,
             oauth: true,
             activeTab: "branding",
             scripts: "",
@@ -201,7 +209,7 @@ export async function renderAdminBrandingHTML({ user, req, url, userTier }) {
     );
 }
 
-export async function renderAdminAiHTML({ user, req, url, userTier }) {
+export async function renderAdminAiHTML({ user, req, url, userTier, permissionLevel }) {
     const lang = getLang(req, url);
     return await renderView(
         "ai",
@@ -209,6 +217,7 @@ export async function renderAdminAiHTML({ user, req, url, userTier }) {
             title: t("ai_insight_title", lang),
             user,
             userTier: userTier ?? TIERS.FREE,
+            permissionLevel: permissionLevel ?? 0,
             oauth: true,
             activeTab: "ai",
             scripts: "",

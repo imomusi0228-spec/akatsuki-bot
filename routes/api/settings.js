@@ -1,6 +1,6 @@
 import { dbQuery } from "../../core/db.js";
 import { getSubscriptionInfo } from "../../core/subscription.js";
-import { resJson, verifyGuild, getSafeGuild, getBody } from "./helpers.js";
+import { resJson, verifyGuild, getSafeGuild, getBody, PERMISSION_LEVELS } from "./helpers.js";
 
 export async function handleSettingsRoutes(req, res, pathname, url, session) {
     const guildId = url.searchParams.get("guild");
@@ -67,7 +67,7 @@ export async function handleSettingsRoutes(req, res, pathname, url, session) {
     if (pathname === "/api/settings/update" && method === "POST") {
         const body = await getBody(req);
         if (!body.guild) return resJson(res, { ok: false, error: "Missing guild" }, 400);
-        if (!(await verifyGuild(body.guild, session))) return resJson(res, { ok: false, error: "Forbidden" }, 403);
+        if (!(await verifyGuild(body.guild, session, PERMISSION_LEVELS.ADMIN))) return resJson(res, { ok: false, error: "Forbidden: Admin access required" }, 403);
 
         try {
             const allowedFields = [

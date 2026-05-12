@@ -10,6 +10,7 @@ import {
 } from "../services/views.js";
 import { getTier, getUserTier } from "../core/subscription.js";
 import { getFeatures } from "../core/tiers.js";
+import { verifyGuild, PERMISSION_LEVELS } from "./api/helpers.js";
 
 export async function handleAdminRoute(req, res, pathname, url) {
     // Token Login (for debugging or admin bypass)
@@ -52,6 +53,7 @@ export async function handleAdminRoute(req, res, pathname, url) {
     const user = session.user;
     const userTier = await getUserTier(user.id);
 
+    let permissionLevel = PERMISSION_LEVELS.NONE;
     const guildId = url.searchParams.get("guild");
     if (guildId) {
         const guildTier = await getTier(guildId);
@@ -63,9 +65,22 @@ export async function handleAdminRoute(req, res, pathname, url) {
             res.end();
             return;
         }
+
+        const v = await verifyGuild(guildId, session);
+        if (!v) {
+            // No permission even for moderator
+            res.writeHead(302, { Location: "/admin/dashboard?msg=forbidden" });
+            res.end();
+            return;
+        }
+        permissionLevel = v.level;
+    } else {
+        // No guild selected yet, or default view. 
+        // We'll let the frontend handle the initial guild selection.
+        permissionLevel = PERMISSION_LEVELS.MODERATOR; 
     }
 
-    const renderData = { user, req, userTier };
+    const renderData = { user, req, url, userTier, permissionLevel };
 
     // Router
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });

@@ -68,12 +68,15 @@ function setLang(l) {
 }
 
 let _guildsLoaded = false;
+let _allGuilds = [];
 async function loadGuilds(force = false) {
     const sel = $("globalGuildSelect");
     if (!sel) return false;
     if (_guildsLoaded && !force) {
         // Just re-bind the onchange and return
         sel.onchange = () => {
+            const selected = _allGuilds.find(g => g.id === sel.value);
+            if (selected) window.permissionLevel = selected.level;
             saveGuildSelection();
             if (window.__pageReload) window.__pageReload();
         };
@@ -108,6 +111,8 @@ async function loadGuilds(force = false) {
             });
 
             sel.selectedIndex = selectedIndex;
+            _allGuilds = d.guilds;
+            if (_allGuilds[selectedIndex]) window.permissionLevel = _allGuilds[selectedIndex].level;
             _guildsLoaded = true;
 
             // Dynamic Tier Badge Update
@@ -149,6 +154,8 @@ async function loadGuilds(force = false) {
         // ALWAYS re-bind events even if _guildsLoaded was true
         // This ensures that when we switch tabs, the selector calls the new page's __pageReload
         sel.onchange = () => {
+            const selected = _allGuilds.find(g => g.id === sel.value);
+            if (selected) window.permissionLevel = selected.level;
             saveGuildSelection();
             if (window.__pageReload) window.__pageReload();
         };
@@ -579,10 +586,13 @@ async function initSettings() {
                 api("/api/settings?guild=" + gid),
             ]);
 
+            const canEdit = (window.permissionLevel || 0) >= 3; // 3 = ADMIN
+
             if (st.ok && st.settings) {
                 if (saveBtn) {
-                    saveBtn.disabled = false;
-                    saveBtn.textContent = t("save_settings");
+                    saveBtn.disabled = !canEdit;
+                    saveBtn.textContent = canEdit ? t("save_settings") : t("view_only_mode");
+                    if (!canEdit) saveBtn.style.opacity = "0.5";
                 }
                 const s = st.settings;
                 if ($("logCh")) $("logCh").value = s.log_channel_id || "";
@@ -650,6 +660,20 @@ async function initSettings() {
                 if (rulesList) {
                     rulesList.innerHTML = "";
                     (s.vc_role_rules || []).forEach((r) => addRoleRule(r));
+                }
+
+                // Disable all inputs if view-only
+                if (!canEdit) {
+                    const inputs = document.querySelectorAll("#settings-form input, #settings-form select, #settings-form textarea");
+                    inputs.forEach(i => {
+                        i.disabled = true;
+                        i.style.cursor = "not-allowed";
+                    });
+                    const addBtns = document.querySelectorAll(".btn-add, .btn-delete, button[onclick*='add'], button[onclick*='remove']");
+                    addBtns.forEach(b => {
+                        b.disabled = true;
+                        b.style.display = "none";
+                    });
                 }
             } else if (st.error) {
                 showPageError(st.error);
